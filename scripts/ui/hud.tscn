@@ -1,0 +1,333 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_hud"]
+
+[node name="Hud" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+mouse_filter = 2
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MenuButton" type="Button" parent="Root"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 72.0
+offset_bottom = 36.0
+text = "菜单"
+
+[node name="MenuPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 8.0
+offset_top = 42.0
+offset_right = 140.0
+offset_bottom = 118.0
+
+[node name="MenuLayout" type="VBoxContainer" parent="Root/MenuPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CharacterInfoButton" type="Button" parent="Root/MenuPanel/MenuLayout"]
+custom_minimum_size = Vector2(116, 28)
+layout_mode = 2
+text = "信息"
+
+[node name="InventoryButton" type="Button" parent="Root/MenuPanel/MenuLayout"]
+custom_minimum_size = Vector2(116, 28)
+layout_mode = 2
+text = "背包"
+
+[node name="CharacterInfoPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 84.0
+offset_top = 6.0
+offset_right = 500.0
+offset_bottom = 132.0
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/CharacterInfoPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/CharacterInfoPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(340, 24)
+layout_mode = 2
+text = "信息"
+
+[node name="CloseButton" type="Button" parent="Root/CharacterInfoPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="StatusLabel" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+custom_minimum_size = Vector2(400, 22)
+layout_mode = 2
+
+[node name="ElementLabel" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+custom_minimum_size = Vector2(400, 22)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.95, 1, 1)
+
+[node name="LogLabel" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+custom_minimum_size = Vector2(400, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.91, 0.62, 1)
+
+[node name="InventoryPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 84.0
+offset_top = 6.0
+offset_right = 520.0
+offset_bottom = 172.0
+
+[node name="InventoryLayout" type="VBoxContainer" parent="Root/InventoryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/InventoryPanel/InventoryLayout/Header"]
+custom_minimum_size = Vector2(360, 24)
+layout_mode = 2
+text = "背包"
+
+[node name="CloseButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="CategoryRow" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="SkillBookButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+custom_minimum_size = Vector2(62, 24)
+layout_mode = 2
+text = "技能书"
+
+[node name="RecipeButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+custom_minimum_size = Vector2(62, 24)
+layout_mode = 2
+text = "图纸"
+
+[node name="EquipmentButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+custom_minimum_size = Vector2(62, 24)
+layout_mode = 2
+text = "装备"
+
+[node name="MaterialButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+custom_minimum_size = Vector2(62, 24)
+layout_mode = 2
+text = "材料"
+
+[node name="CropButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+custom_minimum_size = Vector2(62, 24)
+layout_mode = 2
+text = "作物"
+
+[node name="PillButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+custom_minimum_size = Vector2(62, 24)
+layout_mode = 2
+text = "丹药"
+
+[node name="InventoryList" type="ItemList" parent="Root/InventoryPanel/InventoryLayout"]
+custom_minimum_size = Vector2(420, 84)
+layout_mode = 2
+allow_rmb_select = true
+
+[node name="FarmPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 430.0
+offset_top = 46.0
+offset_right = 606.0
+offset_bottom = 172.0
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/FarmPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/FarmPanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/FarmPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(108, 24)
+layout_mode = 2
+text = "农田"
+
+[node name="CloseButton" type="Button" parent="Root/FarmPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="ActionDetail" type="Label" parent="Root/FarmPanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 56)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ExecuteButton" type="Button" parent="Root/FarmPanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 28)
+layout_mode = 2
+text = "执行"
+
+[node name="ForgePanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 430.0
+offset_top = 46.0
+offset_right = 606.0
+offset_bottom = 172.0
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/ForgePanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/ForgePanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(108, 24)
+layout_mode = 2
+text = "炼器"
+
+[node name="CloseButton" type="Button" parent="Root/ForgePanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="ActionDetail" type="Label" parent="Root/ForgePanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 56)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ExecuteButton" type="Button" parent="Root/ForgePanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 28)
+layout_mode = 2
+text = "执行"
+
+[node name="AlchemyPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 430.0
+offset_top = 46.0
+offset_right = 606.0
+offset_bottom = 172.0
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/AlchemyPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/AlchemyPanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/AlchemyPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(108, 24)
+layout_mode = 2
+text = "炼丹"
+
+[node name="CloseButton" type="Button" parent="Root/AlchemyPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="ActionDetail" type="Label" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 56)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ExecuteButton" type="Button" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 28)
+layout_mode = 2
+text = "执行"
+
+[node name="MeditatePanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 430.0
+offset_top = 46.0
+offset_right = 606.0
+offset_bottom = 172.0
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/MeditatePanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/MeditatePanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/MeditatePanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(108, 24)
+layout_mode = 2
+text = "打坐"
+
+[node name="CloseButton" type="Button" parent="Root/MeditatePanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="ActionDetail" type="Label" parent="Root/MeditatePanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 56)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ExecuteButton" type="Button" parent="Root/MeditatePanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 28)
+layout_mode = 2
+text = "执行"
+
+[node name="FightPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 0
+offset_left = 430.0
+offset_top = 46.0
+offset_right = 606.0
+offset_bottom = 172.0
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/FightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Header" type="HBoxContainer" parent="Root/FightPanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/FightPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(108, 24)
+layout_mode = 2
+text = "打怪"
+
+[node name="CloseButton" type="Button" parent="Root/FightPanel/PanelLayout/Header"]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+text = "关闭"
+
+[node name="ActionDetail" type="Label" parent="Root/FightPanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 56)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="ExecuteButton" type="Button" parent="Root/FightPanel/PanelLayout"]
+custom_minimum_size = Vector2(164, 28)
+layout_mode = 2
+text = "执行"
+
+[node name="InventoryMenu" type="PopupMenu" parent="Root"]
+[connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
+[connection signal="pressed" from="Root/MenuPanel/MenuLayout/CharacterInfoButton" to="." method="_open_character_info_panel"]
+[connection signal="pressed" from="Root/MenuPanel/MenuLayout/InventoryButton" to="." method="_open_inventory_panel"]
