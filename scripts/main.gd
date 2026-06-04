@@ -1,9 +1,12 @@
 extends Node2D
 
 const GameStateScript = preload("res://scripts/game/game_state.gd")
-const WINDOW_SIZE := Vector2i(960, 180)
+const SaveManagerScript = preload("res://scripts/game/save_manager.gd")
+const WINDOW_SIZE := Vector2i(960, 480)
 
 var game_state = GameStateScript.new()
+var save_manager = SaveManagerScript.new()
+var save_timer: Timer
 var character
 var combat
 var hud
@@ -12,6 +15,8 @@ var home_map
 
 func _ready() -> void:
 	_setup_window()
+	_load_saved_data()
+	_setup_save_timer()
 
 	home_map = $Home
 	character = $CharacterController
@@ -22,8 +27,11 @@ func _ready() -> void:
 
 	home_map.home_node_selected.connect(_on_home_node_selected)
 	hud.home_action_requested.connect(_on_home_action_requested)
+	hud.hud_save_requested.connect(_queue_save_data)
 	combat.log_added.connect(hud.push_log)
 	game_state.log_added.connect(hud.push_log)
+	game_state.changed.connect(_queue_save_data)
+	hud.load_hud_save_data(_loaded_hud_data())
 	hud.push_log("家园已启动")
 
 
@@ -113,3 +121,38 @@ func _position_window_above_taskbar() -> void:
 	var x: int = usable.position.x + horizontal_offset
 	var y: int = usable.position.y + vertical_offset
 	DisplayServer.window_set_position(Vector2i(x, y))
+
+
+func _setup_save_timer() -> void:
+	save_timer = Timer.new()
+	save_timer.one_shot = true
+	save_timer.wait_time = 0.5
+	save_timer.timeout.connect(_save_data)
+	add_child(save_timer)
+
+
+func _load_saved_data() -> void:
+	var data: Dictionary = save_manager.load_data()
+	game_state.load_save_data(data.get("game_state", {}))
+
+
+func _loaded_hud_data() -> Dictionary:
+	return save_manager.load_data().get("hud", {})
+
+
+func _queue_save_data() -> void:
+	if save_timer == null:
+		return
+	if save_timer.is_stopped():
+		save_timer.start()
+
+
+func _save_data() -> void:
+	var hud_data := {}
+	if hud != null:
+		hud_data = hud.to_hud_save_data()
+	save_manager.save_data({
+		"game_state": game_state.to_save_data(),
+		"hud": hud_data,
+		"config": {"viewport_size": {"width": WINDOW_SIZE.x, "height": WINDOW_SIZE.y}},
+	})

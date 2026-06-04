@@ -207,17 +207,3 @@ theme_override_colors/font_shadow_color = Color(0.02, 0.02, 0.03, 0.85)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 horizontal_alignment = 1
-
-[node name="ProgressBack" type="ColorRect" parent="." unique_id=936722173]
-visible = false
-offset_left = -24.0
-offset_top = -76.0
-offset_right = 24.0
-offset_bottom = -71.0
-color = Color(0.05, 0.08, 0.12, 0.75)
-
-[node name="ProgressFill" type="ColorRect" parent="ProgressBack" unique_id=2049220795]
-visible = false
-layout_mode = 0
-offset_bottom = 5.0
-color = Color(0.95, 0.82, 0.28, 1)

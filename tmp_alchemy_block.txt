@@ -1,0 +1,45 @@
+﻿const ALCHEMY_RECIPE_DEFS := {
+	 pill: {recipe_id: pill, result_item_id: pill, materials: [{item_id: herb, amount: 2}]},
+	life_pill: {recipe_id: life_pill, result_item_id: life_pill, materials: [{item_id: herb, amount: 2}, {item_id: rice, amount: 1}]},
+	spirit_pill: {recipe_id: spirit_pill, result_item_id: spirit_pill, materials: [{item_id: mushroom, amount: 2}, {item_id: rice, amount: 1}]},
+	might_pill: {recipe_id: might_pill, result_item_id: might_pill, materials: [{item_id: blade_grass, amount: 2}, {item_id: rice, amount: 1}]},
+	attack_pill: {recipe_id: attack_pill, result_item_id: attack_pill, materials: [{item_id: blade_grass, amount: 2}, {item_id: rice, amount: 1}, {item_id: stat_stone_attack_t1, amount: 1}]},
+	defense_pill: {recipe_id: defense_pill, result_item_id: defense_pill, materials: [{item_id: ironroot, amount: 2}, {item_id: rice, amount: 1}, {item_id: stat_stone_defense_t1, amount: 1}]},
+	life_boost_pill: {recipe_id: life_boost_pill, result_item_id: life_boost_pill, materials: [{item_id: blood_ginseng, amount: 2}, {item_id: rice, amount: 1}, {item_id: stat_stone_max_hp_t1, amount: 1}]},
+	mana_boost_pill: {recipe_id: mana_boost_pill, result_item_id: mana_boost_pill, materials: [{item_id: spirit_lotus, amount: 2}, {item_id: rice, amount: 1}, {item_id: stat_stone_max_mp_t1, amount: 1}]},
+	root_bone_pill: {recipe_id: root_bone_pill, result_item_id: root_bone_pill, materials: [{item_id: bone_bamboo, amount: 2}, {item_id: rice, amount: 1}, {item_id: stat_stone_root_bone_t1, amount: 1}]},
+	wood_pill: {recipe_id: wood_pill, result_item_id: wood_pill, materials: [{item_id: woodvine, amount: 2}, {item_id: spirit_sand, amount: 1}, {item_id: spirit_stone_wood_t1, amount: 1}]},
+	fire_pill: {recipe_id: fire_pill, result_item_id: fire_pill, materials: [{item_id: flame_flower, amount: 2}, {item_id: spirit_sand, amount: 1}, {item_id: spirit_stone_fire_t1, amount: 1}]},
+	earth_pill: {recipe_id: earth_pill, result_item_id: earth_pill, materials: [{item_id: earth_moss, amount: 2}, {item_id: spirit_sand, amount: 1}, {item_id: spirit_stone_earth_t1, amount: 1}]},
+	metal_pill: {recipe_id: metal_pill, result_item_id: metal_pill, materials: [{item_id: metal_reed, amount: 2}, {item_id: spirit_sand, amount: 1}, {item_id: spirit_stone_metal_t1, amount: 1}]},
+	water_pill: {recipe_id: water_pill, result_item_id: water_pill, materials: [{item_id: water_orchid, amount: 2}, {item_id: spirit_sand, amount: 1}, {item_id: spirit_stone_water_t1, amount: 1}]},
+}
+
+const SKILL_DEFS := {
+	spark: {
+		id: spark,
+		name: Fire Spark,
+		element: fire,
+		cooldown: 3.5,
+		mp_cost: 8,
+		damage_multiplier: 1.8,
+	},
+	water_needle: {
+		id: water_needle,
+		name: Water Needle,
+		element: water,
+		cooldown: 2.0,
+		mp_cost: 5,
+		damage_multiplier: 1.25,
+	},
+	stone_seal: {
+		id: stone_seal,
+		name: Stone Seal,
+		element: earth,
+		cooldown: 6.0,
+		mp_cost: 13,
+		damage_multiplier: 2.3,
+	},
+}
+
+const EQUIPMENT_DEFS := {

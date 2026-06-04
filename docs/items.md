@@ -62,9 +62,11 @@
 
 ## 装备模板与槽位
 
-装备由 `EquipmentTemplate` 静态模板生成，进入背包时创建独立实例。生成时会随机五行与五阶品质，并初始化强化和词条字段。名称格式为 `<五行名>·<阶位名>·<槽位名>`，例如 `赤焰·三阶·武器`。
+装备由 `EquipmentTemplate` 静态模板生成，进入背包时创建独立实例。生成时会随机五行或无属性与五阶品质，并初始化强化和词条字段。五行装备名称格式为 `<五行名>·<阶位名>·<槽位名>`，例如 `赤焰·三阶·武器`；无属性装备名称格式为 `无相·<阶位名>·<槽位名>`。
 
-五阶品质按慢热挂机节奏分布：`t1` 一阶 55%、`t2` 二阶 28%、`t3` 三阶 12%、`t4` 四阶 4%、`t5` 五阶 1%。基础属性倍率分别为 `1.00`、`1.12`、`1.28`、`1.50`、`1.80`，五阶是周级长期目标而非短时毕业。
+五阶品质按慢热挂机节奏分布：`t1` 一阶 55%、`t2` 二阶 28%、`t3` 三阶 12%、`t4` 四阶 4%、`t5` 五阶 1%。阶级决定基础属性条数：一阶 1 条、二阶 2 条、三阶 3 条、四阶 4 条、五阶 5 条。无属性武器攻击倍率分别为 `1.15`、`1.30`、`1.50`、`1.75`、`2.10`。
+
+无属性装备使用 `element: neutral`。武器有 40% 概率为无属性，非武器有 15% 概率为无属性。无属性武器强制拥有 `attack` 基础属性，直接攻击高于同阶五行武器；无属性防具保留槽位核心普通属性，用普通属性灵石强化。
 
 | 模板 item_id | 基础槽位 | 装备定位 |
 | --- | --- | --- |
@@ -120,14 +122,24 @@
 
 ## 作物与农田种子
 
-| item_id | 名称 | 获取方式 | 当前用途 | seed_yield |
-| --- | --- | --- | --- | --- |
-| `herb` | 草药 | 初始 4 个；农田产出 | 炼丹材料、农田种子 | 3 |
-| `rice` | 灵米 | 农田产出 | 炼丹材料、农田种子 | 2 |
-| `mushroom` | 灵菇 | 农田产出 | 炼丹材料、农田种子 | 1 |
+| item_id | 名称 | 获取方式 | 当前用途 | seed_yield | 成熟时间 |
+| --- | --- | --- | --- | --- | ---: |
+| `herb` | 草药 | 初始 4 个；农田产出 | 通用炼丹材料、农田种子 | 3 | 60s |
+| `rice` | 灵米 | 农田产出 | 通用炼丹材料、农田种子 | 2 | 90s |
+| `mushroom` | 灵菇 | 农田产出 | 通用炼丹材料、农田种子 | 1 | 120s |
+| `blade_grass` | 刃纹草 | 攻击作物种子；农田产出 | 破军丹主材料 | 1 | 180s |
+| `ironroot` | 铁根藤 | 防御作物种子；农田产出 | 玄甲丹主材料 | 1 | 180s |
+| `blood_ginseng` | 血参 | 生命作物种子；农田产出 | 血元丹主材料 | 1 | 240s |
+| `spirit_lotus` | 灵泉莲 | 灵力作物种子；农田产出 | 灵泉丹主材料 | 1 | 240s |
+| `bone_bamboo` | 玉骨竹 | 根骨作物种子；农田产出 | 锻骨丹主材料 | 1 | 360s |
+| `woodvine` | 青木藤 | 木行作物种子；农田产出 | 青木丹主材料 | 1 | 180s |
+| `flame_flower` | 赤焰花 | 火行作物种子；农田产出 | 赤焰丹主材料 | 1 | 210s |
+| `earth_moss` | 厚土苔 | 土行作物种子；农田产出 | 厚土丹主材料 | 1 | 210s |
+| `metal_reed` | 玄金苇 | 金行作物种子；农田产出 | 玄金丹主材料 | 1 | 300s |
+| `water_orchid` | 玄水兰 | 水行作物种子；农田产出 | 玄水丹主材料 | 1 | 240s |
 
 种田操作规则：
-- 点击家园 `farmland` 节点打开种田 GUI，不加入任务队列。
+- 点击家园 `farmland` 节点打开种田 GUI，由面板直接结算。
 - 自动寻找背包中第一个可用作物作为种子。
 - 消耗 1 个作物种子。
 - 产量为 `seed_yield + farm_level - 1`。
@@ -148,6 +160,16 @@
 | `spirit_pill` | 聚灵丹 | `instant` | 聚灵丹方炼制 | 恢复灵力 |
 | `might_pill` | 壮气丹 | `duration` | 壮气丹方炼制 | 在持续时间内提供属性 Buff |
 | `breakthrough_pill` | 破境丹 | `instant` | 战斗或任务掉落 | 达到等级上限后突破下一阶段 |
+| `attack_pill` | 破军丹 | `duration` | 破军丹方炼制 | 300 秒攻击 +5 |
+| `defense_pill` | 玄甲丹 | `duration` | 玄甲丹方炼制 | 300 秒防御 +5 |
+| `life_boost_pill` | 血元丹 | `duration` | 血元丹方炼制 | 300 秒最大生命 +30 |
+| `mana_boost_pill` | 灵泉丹 | `duration` | 灵泉丹方炼制 | 300 秒最大灵力 +20 |
+| `root_bone_pill` | 锻骨丹 | `duration` | 锻骨丹方炼制 | 300 秒根骨 +2 |
+| `wood_pill` | 青木丹 | `duration` | 青木丹方炼制 | 300 秒木行 +5 |
+| `fire_pill` | 赤焰丹 | `duration` | 赤焰丹方炼制 | 300 秒火行 +5 |
+| `earth_pill` | 厚土丹 | `duration` | 厚土丹方炼制 | 300 秒土行 +5 |
+| `metal_pill` | 玄金丹 | `duration` | 玄金丹方炼制 | 300 秒金行 +5 |
+| `water_pill` | 玄水丹 | `duration` | 玄水丹方炼制 | 300 秒水行 +5 |
 
 破境丹规则：
 - 角色达到当前 10 级阶段上限时可使用。
@@ -171,16 +193,29 @@
 | `recipe_life_pill` | 归元丹方 | `life_pill` | 战斗或任务掉落 |
 | `recipe_spirit_pill` | 聚灵丹方 | `spirit_pill` | 战斗或任务掉落 |
 | `recipe_might_pill` | 壮气丹方 | `might_pill` | 战斗或任务掉落 |
+| `recipe_attack_pill` | 破军丹方 | `attack_pill` | 攻击图纸掉落；对应刃纹草 |
+| `recipe_defense_pill` | 玄甲丹方 | `defense_pill` | 防御图纸掉落；对应铁根藤 |
+| `recipe_life_boost_pill` | 血元丹方 | `life_boost_pill` | 生命图纸掉落；对应血参 |
+| `recipe_mana_boost_pill` | 灵泉丹方 | `mana_boost_pill` | 灵力图纸掉落；对应灵泉莲 |
+| `recipe_root_bone_pill` | 锻骨丹方 | `root_bone_pill` | 根骨图纸掉落；对应玉骨竹 |
+| `recipe_wood_pill` | 青木丹方 | `wood_pill` | 木行图纸掉落；对应青木藤 |
+| `recipe_fire_pill` | 赤焰丹方 | `fire_pill` | 火行图纸掉落；对应赤焰花 |
+| `recipe_earth_pill` | 厚土丹方 | `earth_pill` | 土行图纸掉落；对应厚土苔 |
+| `recipe_metal_pill` | 玄金丹方 | `metal_pill` | 金行图纸掉落；对应玄金苇 |
+| `recipe_water_pill` | 玄水丹方 | `water_pill` | 水行图纸掉落；对应玄水兰 |
+
+属性丹药配方使用“属性作物 + 通用辅料 + 对应灵石”结构：破军丹消耗刃纹草 ×2、灵米 ×1、`stat_stone_attack_t1` ×1；玄甲丹消耗铁根藤 ×2、灵米 ×1、`stat_stone_defense_t1` ×1；血元丹消耗血参 ×2、草药 ×1、`stat_stone_max_hp_t1` ×1；灵泉丹消耗灵泉莲 ×2、灵菇 ×1、`stat_stone_max_mp_t1` ×1；锻骨丹消耗玉骨竹 ×2、妖核 ×1、`stat_stone_root_bone_t1` ×1。五行丹药消耗对应五行作物 ×2、通用辅料 ×1、对应 `spirit_stone_<element>_t1` ×1。
 
 图纸使用规则：
 - 使用后学习对应丹方，写入 `known_alchemy_recipes`。
 - 成功学习后消耗 1 张图纸。
 
 炼丹操作规则：
-- 点击家园 `alchemy` 节点打开炼丹 GUI，不加入任务队列。
-- 只从 `known_alchemy_recipes` 中随机选择产物。
-- 没有已学习丹方时炼丹失败并提示。
-- 产出丹药后，根骨提供 `min(0.35, root_bone * 0.015)` 的额外产出概率。
+- 点击家园 `alchemy` 节点打开炼丹 GUI。
+- 丹方列表只显示 `known_alchemy_recipes` 中已学习丹方。
+- 最大可制作数量为所有材料 `floor(当前数量 / 单次需求)` 的最小值。
+- 批量炼丹按 `amount * 单次需求` 扣除材料，基础产物数量为 `amount`。
+- 每次制作独立判定额外出丹，概率为 `min(0.35, total_root_bone * 0.015)`，额外产物不增加材料消耗。
 
 ## 右键菜单行为
 
@@ -235,26 +270,32 @@ HUD 顶部资源摘要显示分类总量：作物、材料、丹药、图纸，�
 
 ## 装备属性条目与灵石材料
 
-装备基础属性从人物属性模板中抽取，当前模板包含 `max_hp`、`max_mp`、`attack`、`defense`、`root_bone`、`element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water`。生成装备时按来源等级决定抽取条数，并保证 `base_attributes` 中的 `stat` 不重复；每件装备会保留自身五行基础属性，确保可用对应五行灵石长期强化。
+装备基础属性从人物属性模板中抽取，当前模板包含 `max_hp`、`max_mp`、`attack`、`defense`、`root_bone`、`element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water`。生成顺序为阶级 → 等级 → 属性：阶级决定属性条数，等级提供额外属性点，并保证 `base_attributes` 中的 `stat` 不重复；五行装备会保留自身五行基础属性，无属性装备会保留槽位核心普通属性。
+
+属性值公式为 `round((random(tier_min, tier_max) + int(equipment_level * stat_level_scale) + craft_bonus) * rarity_multiplier)`，最低为 1。`attack/defense/root_bone/element_*` 的阶级范围为 `1-2`、`2-4`、`4-7`、`7-11`、`11-16`；`max_mp` 为 `4-8`、`8-14`、`14-22`、`22-34`、`34-50`；`max_hp` 为 `8-16`、`16-28`、`28-44`、`44-68`、`68-100`。等级成长系数为：攻防 `0.8`，根骨/五行 `0.4`，灵力 `1.2`，生命 `2.4`。
+
+装备掉落规则：战斗胜利结算敌人掉落表后，独立以 35% 概率掉落 1 件装备；掉落装备的 `equipment_level` 等于敌人等级，槽位从装备模板中随机，五行从木火土金水随机，阶位按装备阶位概率表随机。掉落装备获得不做属性门槛，只有穿戴时检查 `equip_requirement`。
 
 装备实例字段补充：
 - `equipment_level`：生成来源等级。炼器取玩家等级，掉落取敌人等级。
+- `equip_requirement`：穿戴需求。五行装备要求对应 `element_*`，无相装备要求核心普通属性；需求值为 `max(1, equipment_level * rarity_tier)`。
 - `base_attributes`：基础属性数组，每条包含 `stat` 和 `amount`。
 - `enhanced_attributes`：普通强化数组，每条包含 `stat`、`amount`、`quality`。
 - `refine_affixes`：洗练百分比词条数组，每条包含 `stat` 和 `percent`。
 - `enhance_count`：普通强化次数，用于计算下一次灵石消耗。
 - `refine_count`：洗练次数，用于计算下一次洗练符消耗。
 
-五行灵石属于材料分类，物品 ID 采用 `spirit_stone_<element>_<tier>` 结构，例如 `spirit_stone_fire_t1`、`spirit_stone_earth_t3`、`spirit_stone_water_t5`。灵石 payload 包含：
-- `stat`：对应的五行人物属性，例如 `element_fire`。
+灵石属于材料分类，分为五行灵石和普通属性灵石。五行灵石采用 `spirit_stone_<element>_<tier>`，例如 `spirit_stone_fire_t1`；普通属性灵石采用 `stat_stone_<stat>_<tier>`，例如 `stat_stone_attack_t1`、`stat_stone_max_hp_t3`。灵石 payload 包含：
+- `stat`：对应的人物属性，例如 `element_fire` 或 `attack`。
 - `quality`：阶位，当前为 `t1`、`t2`、`t3`、`t4`、`t5`。
 - `enhance_amount`：该阶位提供的加法强化值，分别为 `1`、`2`、`4`、`7`、`11`。
+- `stone_group`：`element` 表示五行灵石，`stat` 表示普通属性灵石。
 
-五行灵石掉落按长期挂机设计：`t1` 高频、`t2` 稳定积累、`t3` 数日目标、`t4` 低概率高价值、`t5` 极低概率周级惊喜。当前不提供合成系统。
+普通属性灵石服务无属性/通用成长，支持 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone`。五行灵石服务元素成长，支持木火土金水。两类灵石掉落都按长期挂机设计：`t1` 高频，`t5` 极低概率周级惊喜。当前不提供合成系统。
 
 普通强化规则：
 - 右键装备选择“强化”。
-- 只能消耗装备已有五行基础属性对应的灵石。
+- 只能消耗装备已有基础属性对应的灵石：普通属性用 `stat_stone_*`，五行属性用 `spirit_stone_*`。
 - 自动优先使用高阶灵石，再按装备基础属性顺序选择可强化属性，顺序为 `t5 → t4 → t3 → t2 → t1`。
 - 消耗数量为 `enhance_count + 1`。
 - 成功后向 `enhanced_attributes` 追加一条加法强化记录，并增加 `enhance_count`。

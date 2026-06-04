@@ -28,6 +28,7 @@ const SPIRIT_STONE_QUALITY_DEFS := {
 	"t5": {"name": "五阶", "amount": 11},
 }
 const SPIRIT_STONE_QUALITY_ORDER := ["t5", "t4", "t3", "t2", "t1"]
+const STAT_STONE_IDS := ["attack", "defense", "max_hp", "max_mp", "root_bone"]
 
 const ELEMENT_THEME_NAMES := {
 	"wood": "青木",
@@ -126,6 +127,88 @@ const ITEM_DEFS := {
 		"usable": false,
 		"payload": {"seed_yield": 1},
 	},
+
+	"blade_grass": {
+		"type": ITEM_TYPE_CROP,
+		"name": "刃纹草",
+		"description": "攻击属性丹药主材料，成熟时间 180 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 180, "stat": "attack"},
+	},
+
+	"ironroot": {
+		"type": ITEM_TYPE_CROP,
+		"name": "铁根藤",
+		"description": "防御属性丹药主材料，成熟时间 180 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 180, "stat": "defense"},
+	},
+	"blood_ginseng": {
+		"type": ITEM_TYPE_CROP,
+		"name": "血参",
+		"description": "生命属性丹药主材料，成熟时间 240 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 240, "stat": "max_hp"},
+	},
+	"spirit_lotus": {
+		"type": ITEM_TYPE_CROP,
+		"name": "灵泉莲",
+		"description": "灵力属性丹药主材料，成熟时间 240 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 240, "stat": "max_mp"},
+	},
+	"bone_bamboo": {
+		"type": ITEM_TYPE_CROP,
+		"name": "玉骨竹",
+		"description": "根骨属性丹药主材料，成熟时间 360 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 360, "stat": "root_bone"},
+	},
+	"woodvine": {
+		"type": ITEM_TYPE_CROP,
+		"name": "青木藤",
+		"description": "木行丹药主材料，成熟时间 180 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 180, "element": "wood"},
+	},
+	"flame_flower": {
+		"type": ITEM_TYPE_CROP,
+		"name": "赤焰花",
+		"description": "火行丹药主材料，成熟时间 210 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 210, "element": "fire"},
+	},
+	"earth_moss": {
+		"type": ITEM_TYPE_CROP,
+		"name": "厚土苔",
+		"description": "土行丹药主材料，成熟时间 210 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 210, "element": "earth"},
+	},
+	"metal_reed": {
+		"type": ITEM_TYPE_CROP,
+		"name": "玄金苇",
+		"description": "金行丹药主材料，成熟时间 300 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 300, "element": "metal"},
+	},
+	"water_orchid": {
+		"type": ITEM_TYPE_CROP,
+		"name": "玄水兰",
+		"description": "水行丹药主材料，成熟时间 240 秒。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"seed_yield": 1, "growth_seconds": 240, "element": "water"},
+	},
 	"pill": {
 		"type": ITEM_TYPE_PILL,
 		"name": "调息丹",
@@ -190,6 +273,167 @@ const ITEM_DEFS := {
 		"usable": true,
 		"payload": {"recipe_id": "might_pill"},
 	},
+
+	"recipe_attack_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "破军丹方",
+		"description": "学习破军丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "attack_pill"},
+	},
+	"recipe_defense_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "玄甲丹方",
+		"description": "学习玄甲丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "defense_pill"},
+	},
+	"recipe_life_boost_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "血元丹方",
+		"description": "学习血元丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "life_boost_pill"},
+	},
+	"recipe_mana_boost_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "灵泉丹方",
+		"description": "学习灵泉丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "mana_boost_pill"},
+	},
+	"recipe_root_bone_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "锻骨丹方",
+		"description": "学习锻骨丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "root_bone_pill"},
+	},
+	"recipe_wood_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "青木丹方",
+		"description": "学习青木丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "wood_pill"},
+	},
+	"recipe_fire_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "赤焰丹方",
+		"description": "学习赤焰丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "fire_pill"},
+	},
+	"recipe_earth_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "厚土丹方",
+		"description": "学习厚土丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "earth_pill"},
+	},
+	"recipe_metal_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "玄金丹方",
+		"description": "学习玄金丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "metal_pill"},
+	},
+	"recipe_water_pill": {
+		"type": ITEM_TYPE_ALCHEMY_RECIPE,
+		"name": "玄水丹方",
+		"description": "学习玄水丹炼制配方。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"recipe_id": "water_pill"},
+	},
+	"attack_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "破军丹",
+		"description": "300 秒攻击 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "attack", "amount": 5},
+	},
+	"defense_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "玄甲丹",
+		"description": "300 秒防御 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "defense", "amount": 5},
+	},
+	"life_boost_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "血元丹",
+		"description": "300 秒最大生命 +30。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "max_hp", "amount": 30},
+	},
+	"mana_boost_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "灵泉丹",
+		"description": "300 秒最大灵力 +20。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "max_mp", "amount": 20},
+	},
+	"root_bone_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "锻骨丹",
+		"description": "300 秒根骨 +2。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "root_bone", "amount": 2},
+	},
+	"wood_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "青木丹",
+		"description": "300 秒木行 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "element_wood", "amount": 5},
+	},
+	"fire_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "赤焰丹",
+		"description": "300 秒火行 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "element_fire", "amount": 5},
+	},
+	"earth_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "厚土丹",
+		"description": "300 秒土行 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "element_earth", "amount": 5},
+	},
+	"metal_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "玄金丹",
+		"description": "300 秒金行 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "element_metal", "amount": 5},
+	},
+	"water_pill": {
+		"type": ITEM_TYPE_PILL,
+		"name": "玄水丹",
+		"description": "300 秒水行 +5。",
+		"stackable": true,
+		"usable": true,
+		"payload": {"effect_mode": "duration", "duration": 300.0, "stat": "element_water", "amount": 5},
+	},
 	"breakthrough_pill": {
 		"type": ITEM_TYPE_PILL,
 		"name": "Breakthrough Pill",
@@ -198,6 +442,24 @@ const ITEM_DEFS := {
 		"usable": true,
 		"payload": {"breakthrough": true},
 	},
+}
+
+
+const ALCHEMY_RECIPE_DEFS := {
+	"pill": {"recipe_id": "pill", "result_item_id": "pill", "materials": [{"item_id": "herb", "amount": 2}]},
+	"life_pill": {"recipe_id": "life_pill", "result_item_id": "life_pill", "materials": [{"item_id": "herb", "amount": 2}, {"item_id": "rice", "amount": 1}]},
+	"spirit_pill": {"recipe_id": "spirit_pill", "result_item_id": "spirit_pill", "materials": [{"item_id": "mushroom", "amount": 2}, {"item_id": "rice", "amount": 1}]},
+	"might_pill": {"recipe_id": "might_pill", "result_item_id": "might_pill", "materials": [{"item_id": "blade_grass", "amount": 2}, {"item_id": "rice", "amount": 1}]},
+	"attack_pill": {"recipe_id": "attack_pill", "result_item_id": "attack_pill", "materials": [{"item_id": "blade_grass", "amount": 2}, {"item_id": "rice", "amount": 1}, {"item_id": "stat_stone_attack_t1", "amount": 1}]},
+	"defense_pill": {"recipe_id": "defense_pill", "result_item_id": "defense_pill", "materials": [{"item_id": "ironroot", "amount": 2}, {"item_id": "rice", "amount": 1}, {"item_id": "stat_stone_defense_t1", "amount": 1}]},
+	"life_boost_pill": {"recipe_id": "life_boost_pill", "result_item_id": "life_boost_pill", "materials": [{"item_id": "blood_ginseng", "amount": 2}, {"item_id": "herb", "amount": 1}, {"item_id": "stat_stone_max_hp_t1", "amount": 1}]},
+	"mana_boost_pill": {"recipe_id": "mana_boost_pill", "result_item_id": "mana_boost_pill", "materials": [{"item_id": "spirit_lotus", "amount": 2}, {"item_id": "rice", "amount": 1}, {"item_id": "stat_stone_max_mp_t1", "amount": 1}]},
+	"root_bone_pill": {"recipe_id": "root_bone_pill", "result_item_id": "root_bone_pill", "materials": [{"item_id": "bone_bamboo", "amount": 2}, {"item_id": "monster_core", "amount": 1}, {"item_id": "stat_stone_root_bone_t1", "amount": 1}]},
+	"wood_pill": {"recipe_id": "wood_pill", "result_item_id": "wood_pill", "materials": [{"item_id": "woodvine", "amount": 2}, {"item_id": "herb", "amount": 1}, {"item_id": "spirit_stone_wood_t1", "amount": 1}]},
+	"fire_pill": {"recipe_id": "fire_pill", "result_item_id": "fire_pill", "materials": [{"item_id": "flame_flower", "amount": 2}, {"item_id": "spirit_sand", "amount": 1}, {"item_id": "spirit_stone_fire_t1", "amount": 1}]},
+	"earth_pill": {"recipe_id": "earth_pill", "result_item_id": "earth_pill", "materials": [{"item_id": "earth_moss", "amount": 2}, {"item_id": "rice", "amount": 1}, {"item_id": "spirit_stone_earth_t1", "amount": 1}]},
+	"metal_pill": {"recipe_id": "metal_pill", "result_item_id": "metal_pill", "materials": [{"item_id": "metal_reed", "amount": 2}, {"item_id": "ore", "amount": 1}, {"item_id": "spirit_stone_metal_t1", "amount": 1}]},
+	"water_pill": {"recipe_id": "water_pill", "result_item_id": "water_pill", "materials": [{"item_id": "water_orchid", "amount": 2}, {"item_id": "mushroom", "amount": 1}, {"item_id": "spirit_stone_water_t1", "amount": 1}]},
 }
 
 const SKILL_DEFS := {
@@ -399,6 +661,7 @@ static func task_zone_id(task_type: int) -> String:
 	return "idle"
 
 
+
 static func resource_name(resource_id: String) -> String:
 	var definition = get_item_def(resource_id)
 	if definition != null:
@@ -406,10 +669,26 @@ static func resource_name(resource_id: String) -> String:
 	return resource_id
 
 
+static func alchemy_recipe_def(recipe_id: String) -> Dictionary:
+	if not ALCHEMY_RECIPE_DEFS.has(recipe_id):
+		return {}
+	return ALCHEMY_RECIPE_DEFS[recipe_id].duplicate(true)
+
+
+static func alchemy_recipe_materials(recipe_id: String) -> Array:
+	return alchemy_recipe_def(recipe_id).get("materials", []).duplicate(true)
+
+
+static func alchemy_recipe_result(recipe_id: String) -> String:
+	return alchemy_recipe_def(recipe_id).get("result_item_id", "")
+
+
 static func attribute_display_name(stat_id: String) -> String:
+	if stat_id.begins_with(ELEMENT_ATTRIBUTE_PREFIX):
+		return "%s属性" % element_name(element_id_from_attribute(stat_id))
 	for attribute_def in EQUIPMENT_ATTRIBUTE_DEFS:
 		if attribute_def.get("stat", "") == stat_id:
-			return attribute_def.get("name", stat_id)
+			return str(attribute_def.get("name", stat_id))
 	return stat_id
 
 
@@ -420,8 +699,22 @@ static func spirit_stone_item_id(stat_id: String, quality: String) -> String:
 	return "spirit_stone_%s_%s" % [element_id if not element_id.is_empty() else stat_id, quality]
 
 
+static func stat_stone_item_id(stat_id: String, quality: String) -> String:
+	return "stat_stone_%s_%s" % [stat_id, quality]
+
+
+static func enhance_stone_item_id(stat_id: String, quality: String) -> String:
+	if stat_id.begins_with(ELEMENT_ATTRIBUTE_PREFIX) or ELEMENT_IDS.has(stat_id):
+		return spirit_stone_item_id(stat_id, quality)
+	return stat_stone_item_id(stat_id, quality)
+
+
 static func spirit_stone_enhance_amount(quality: String) -> int:
 	return int(SPIRIT_STONE_QUALITY_DEFS.get(quality, SPIRIT_STONE_QUALITY_DEFS["t1"]).get("amount", 1))
+
+
+static func stat_stone_enhance_amount(quality: String) -> int:
+	return spirit_stone_enhance_amount(quality)
 
 
 static func equipment_rarity_name(rarity: String) -> String:
@@ -432,7 +725,13 @@ static func equipment_rarity_multiplier(rarity: String) -> float:
 	return float(EQUIPMENT_RARITY_DEFS.get(rarity, EQUIPMENT_RARITY_DEFS["t1"]).get("multiplier", 1.0))
 
 
+static func neutral_weapon_multiplier(rarity: String) -> float:
+	return equipment_rarity_multiplier(rarity) + 0.35
+
+
 static func element_theme_name(element_id: String) -> String:
+	if element_id == "neutral":
+		return "无相"
 	return ELEMENT_THEME_NAMES.get(element_id, element_name(element_id))
 
 
@@ -442,6 +741,14 @@ static func equipment_attribute_count(source_level: int, rng: RandomNumberGenera
 	if source_level < upper_threshold:
 		return clampi(source_level, 1, max_attributes)
 	return rng.randi_range(upper_threshold, max_attributes)
+
+
+static func equipment_attribute_count_for_rarity(rarity: String) -> int:
+	return clampi(EQUIPMENT_RARITY_ORDER.find(rarity) + 1, 1, EQUIPMENT_RARITY_ORDER.size())
+
+
+static func equipment_rarity_tier(rarity: String) -> int:
+	return clampi(EQUIPMENT_RARITY_ORDER.find(rarity) + 1, 1, EQUIPMENT_RARITY_ORDER.size())
 
 
 static func element_id_from_attribute(stat_id: String) -> String:
@@ -533,6 +840,20 @@ static func _item_def_data(item_id: String) -> Dictionary:
 			"usable": false,
 			"payload": {"stat": stat_id, "quality": quality, "enhance_amount": spirit_stone_enhance_amount(quality)},
 		}
+	if item_id.begins_with("stat_stone_"):
+		var parsed := _parse_stat_stone_id(item_id)
+		if parsed.is_empty():
+			return {}
+		var stat_id: String = parsed["stat"]
+		var quality: String = parsed["quality"]
+		return {
+			"type": ITEM_TYPE_MATERIAL,
+			"name": "%s%s灵石" % [attribute_display_name(stat_id), SPIRIT_STONE_QUALITY_DEFS[quality]["name"]],
+			"description": "用于强化%s属性的属性灵石。" % attribute_display_name(stat_id),
+			"stackable": true,
+			"usable": false,
+			"payload": {"stat": stat_id, "quality": quality, "enhance_amount": stat_stone_enhance_amount(quality)},
+		}
 	return {}
 
 
@@ -546,6 +867,19 @@ static func _parse_spirit_stone_id(item_id: String) -> Dictionary:
 			var element_id := item_id.substr(prefix.length(), item_id.length() - prefix.length() - suffix.length())
 			if ELEMENT_IDS.has(element_id):
 				var stat_id := "%s%s" % [ELEMENT_ATTRIBUTE_PREFIX, element_id]
+				return {"stat": stat_id, "quality": quality}
+	return {}
+
+
+static func _parse_stat_stone_id(item_id: String) -> Dictionary:
+	var prefix := "stat_stone_"
+	if not item_id.begins_with(prefix):
+		return {}
+	for quality in SPIRIT_STONE_QUALITY_DEFS.keys():
+		var suffix := "_%s" % quality
+		if item_id.ends_with(suffix):
+			var stat_id := item_id.substr(prefix.length(), item_id.length() - prefix.length() - suffix.length())
+			if STAT_STONE_IDS.has(stat_id):
 				return {"stat": stat_id, "quality": quality}
 	return {}
 
@@ -630,18 +964,23 @@ static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus
 	return create_equipment_from_template(template_id, level, rng, craft_bonus)
 
 
-static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, craft_bonus := 0) -> Dictionary:
+static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, craft_bonus := 0, forced_element_id := "", forced_rarity := "") -> Dictionary:
 	var template = get_equipment_template(template_id)
 	if template == null:
 		return {}
-	var rarity := _roll_equipment_rarity(rng)
-	var element_id: String = ELEMENT_IDS[rng.randi_range(0, ELEMENT_IDS.size() - 1)]
-	var base_attributes := _roll_equipment_attributes(level, rng, craft_bonus, equipment_rarity_multiplier(rarity))
-	_ensure_equipment_element_attribute(base_attributes, element_id, level, rng, craft_bonus, equipment_rarity_multiplier(rarity))
+	var rarity: String = forced_rarity if not forced_rarity.is_empty() else _roll_equipment_rarity(rng)
+	var element_id: String = forced_element_id if not forced_element_id.is_empty() else ELEMENT_IDS[rng.randi_range(0, ELEMENT_IDS.size() - 1)]
+	var multiplier := neutral_weapon_multiplier(rarity) if element_id == "neutral" else equipment_rarity_multiplier(rarity)
+	var base_attributes := _roll_equipment_attributes(level, rng, craft_bonus, multiplier, equipment_attribute_count_for_rarity(rarity))
+	if element_id != "neutral":
+		_ensure_equipment_element_attribute(base_attributes, element_id, level, rng, craft_bonus, multiplier)
+	else:
+		_ensure_equipment_stat_attribute(base_attributes, "attack", level, rng, craft_bonus, multiplier)
 	var attack_bonus := _sum_attribute_amount(base_attributes, "attack")
 	var defense_bonus := _sum_attribute_amount(base_attributes, "defense")
 	var rarity_name := equipment_rarity_name(rarity)
 	var equipment_name := "%s·%s·%s" % [element_theme_name(element_id), rarity_name, slot_name(template.slot)]
+	var equip_requirement := _equipment_requirement(template, level, element_id, rarity)
 	return {
 		"instance_id": "equipment_%d" % rng.randi(),
 		"item_id": template.item_id,
@@ -667,8 +1006,29 @@ static func create_equipment_from_template(template_id: String, level: int, rng:
 		"affixes": [],
 		"element": element_id,
 		"rarity": rarity,
+		"equip_requirement": equip_requirement,
 		"equipped": false,
 	}
+
+
+static func _equipment_requirement(template, level: int, element_id: String, rarity: String) -> Dictionary:
+	var stat_id := ""
+	if element_id != "neutral":
+		stat_id = "%s%s" % [ELEMENT_ATTRIBUTE_PREFIX, element_id]
+	else:
+		stat_id = _neutral_equipment_requirement_stat(template)
+	return {
+		"stat": stat_id,
+		"min": max(1, int(level) * equipment_rarity_tier(rarity)),
+	}
+
+
+static func _neutral_equipment_requirement_stat(template) -> String:
+	if template.slot == "weapon":
+		return "attack"
+	if int(template.attack_base) + int(template.attack_scale) > int(template.defense_base) + int(template.defense_scale):
+		return "attack"
+	return "defense"
 
 
 static func _roll_equipment_rarity(rng: RandomNumberGenerator) -> String:
@@ -681,10 +1041,10 @@ static func _roll_equipment_rarity(rng: RandomNumberGenerator) -> String:
 	return "t1"
 
 
-static func _roll_equipment_attributes(source_level: int, rng: RandomNumberGenerator, craft_bonus := 0, rarity_multiplier := 1.0) -> Array:
+static func _roll_equipment_attributes(source_level: int, rng: RandomNumberGenerator, craft_bonus := 0, rarity_multiplier := 1.0, fixed_count := 0) -> Array:
 	var pool := EQUIPMENT_ATTRIBUTE_DEFS.duplicate(true)
 	var attributes := []
-	var count := equipment_attribute_count(source_level, rng)
+	var count := fixed_count if fixed_count > 0 else equipment_attribute_count(source_level, rng)
 	for _i in range(count):
 		var index := rng.randi_range(0, pool.size() - 1)
 		var attribute_def: Dictionary = pool[index]
@@ -699,6 +1059,10 @@ static func _roll_equipment_attributes(source_level: int, rng: RandomNumberGener
 
 static func _ensure_equipment_element_attribute(attributes: Array, element_id: String, source_level: int, rng: RandomNumberGenerator, craft_bonus := 0, rarity_multiplier := 1.0) -> void:
 	var stat_id := "%s%s" % [ELEMENT_ATTRIBUTE_PREFIX, element_id]
+	_ensure_equipment_stat_attribute(attributes, stat_id, source_level, rng, craft_bonus, rarity_multiplier)
+
+
+static func _ensure_equipment_stat_attribute(attributes: Array, stat_id: String, source_level: int, rng: RandomNumberGenerator, craft_bonus := 0, rarity_multiplier := 1.0) -> void:
 	for attribute in attributes:
 		if attribute.get("stat", "") == stat_id:
 			return

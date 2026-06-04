@@ -55,9 +55,54 @@ func _init() -> void:
 	rng.randomize()
 	add_inventory_item("herb", 4, false)
 	add_inventory_item("ore", 4, false)
+	add_inventory_item("stat_stone_attack_t1", 2, false)
+	add_inventory_item("stat_stone_defense_t1", 2, false)
 	add_inventory_item("spirit_stone_fire_t1", 2, false)
 	add_inventory_item("spirit_stone_earth_t1", 2, false)
 	add_inventory_item("recipe_pill", 1, false)
+
+
+func to_save_data() -> Dictionary:
+	return {
+		"stats": stats.duplicate(true),
+		"elements": elements.duplicate(true),
+		"task_exp": task_exp.duplicate(true),
+		"inventory": inventory.duplicate(true),
+		"equipped": equipped.duplicate(true),
+		"skills": skills.duplicate(true),
+		"known_alchemy_recipes": known_alchemy_recipes.duplicate(),
+		"active_buffs": active_buffs.duplicate(true),
+	}
+
+
+func load_save_data(data: Dictionary) -> void:
+	if data.is_empty():
+		return
+
+	_load_dictionary_values(stats, data.get("stats", {}))
+	_load_dictionary_values(elements, data.get("elements", {}))
+	_load_dictionary_values(task_exp, data.get("task_exp", {}))
+	inventory = _duplicate_array(data.get("inventory", []))
+	_load_dictionary_values(equipped, data.get("equipped", {}))
+	skills = _duplicate_array(data.get("skills", skills))
+	known_alchemy_recipes.clear()
+	for recipe_id in data.get("known_alchemy_recipes", []):
+		known_alchemy_recipes.append(str(recipe_id))
+	active_buffs = _duplicate_array(data.get("active_buffs", []))
+	changed.emit()
+
+
+func _load_dictionary_values(target: Dictionary, source) -> void:
+	if not source is Dictionary:
+		return
+	for key in source.keys():
+		target[key] = source[key]
+
+
+func _duplicate_array(value) -> Array:
+	if value is Array:
+		return value.duplicate(true)
+	return []
 
 
 func total_attack() -> int:
@@ -295,6 +340,13 @@ func is_inventory_item_usable(instance_id: String) -> bool:
 	return bool(item.get("usable", false))
 
 
+func is_inventory_item_direct_usable(instance_id: String) -> bool:
+	var item := inventory_item_by_instance(instance_id)
+	if item.is_empty():
+		return false
+	return item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT or item.get("type", "") == DataTables.ITEM_TYPE_PILL
+
+
 func use_inventory_item(instance_id: String) -> bool:
 	var item := inventory_item_by_instance(instance_id)
 	if item.is_empty():
@@ -302,8 +354,7 @@ func use_inventory_item(instance_id: String) -> bool:
 
 	match item.get("type", ""):
 		DataTables.ITEM_TYPE_EQUIPMENT:
-			_equip_item(item)
-			return true
+			return _equip_item(item)
 		DataTables.ITEM_TYPE_SKILL_BOOK:
 			return _use_skill_book(item)
 		DataTables.ITEM_TYPE_ALCHEMY_RECIPE:
@@ -381,12 +432,57 @@ func _remove_inventory_count(item_id: String, amount: int) -> void:
 		return
 
 
-func _equip_item(item: Dictionary) -> void:
+func can_equip_item(item: Dictionary) -> bool:
+	if item.is_empty():
+		return false
+	if item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
+		return false
+	var slot: String = _equipment_slot_for_item(item)
+	return equipment_requirement_met(item, slot)
+
+
+func equipment_requirement_met(item: Dictionary, target_slot := "") -> bool:
+	var requirement: Dictionary = item.get("equip_requirement", {})
+	if requirement.is_empty():
+		return true
+	return equipment_requirement_current_value(item, target_slot) >= int(requirement.get("min", 0))
+
+
+func equipment_requirement_current_value(item: Dictionary, target_slot := "") -> int:
+	var requirement: Dictionary = item.get("equip_requirement", {})
+	var stat_id: String = requirement.get("stat", "")
+	if stat_id.is_empty():
+		return 0
+	var excluded_slot := str(target_slot)
+	if excluded_slot.is_empty():
+		excluded_slot = _equipment_slot_for_item(item)
+	return _total_requirement_stat_excluding_slot(stat_id, excluded_slot)
+
+
+func equipment_requirement_text(item: Dictionary) -> String:
+	var requirement: Dictionary = item.get("equip_requirement", {})
+	if requirement.is_empty():
+		return ""
+	var stat_id: String = requirement.get("stat", "")
+	var current := equipment_requirement_current_value(item)
+	var needed := int(requirement.get("min", 0))
+	var status := "已达标" if current >= needed else "未达标"
+	return "%s %d / 当前 %d（%s）" % [DataTables.attribute_display_name(stat_id), needed, current, status]
+
+
+func _equip_item(item: Dictionary) -> bool:
 	var slot: String = _equipment_slot_for_item(item)
 	var previous_id: String = equipped.get(slot, "")
 	if previous_id == item["instance_id"]:
 		log_added.emit("%s already equipped" % item["name"])
-		return
+		return true
+	if not equipment_requirement_met(item, slot):
+		var requirement_text := equipment_requirement_text(item)
+		if requirement_text.is_empty():
+			log_added.emit("%s cannot be equipped" % item["name"])
+		else:
+			log_added.emit("%s requirement not met: %s" % [item["name"], requirement_text])
+		return false
 
 	_unequip_if_needed(item["instance_id"])
 	if not previous_id.is_empty():
@@ -400,6 +496,7 @@ func _equip_item(item: Dictionary) -> void:
 	equipped[slot] = item["instance_id"]
 	log_added.emit("equipped %s" % item["name"])
 	changed.emit()
+	return true
 
 
 func _equipment_slot_for_item(item: Dictionary) -> String:
@@ -508,6 +605,8 @@ func _use_breakthrough_item(item: Dictionary) -> bool:
 
 
 func update_buffs(delta: float) -> void:
+	if active_buffs.is_empty():
+		return
 	var index := 0
 	while index < active_buffs.size():
 		var buff: Dictionary = active_buffs[index]
@@ -537,6 +636,55 @@ func random_known_alchemy_recipe() -> String:
 	if known_alchemy_recipes.is_empty():
 		return ""
 	return known_alchemy_recipes[rng.randi_range(0, known_alchemy_recipes.size() - 1)]
+
+
+func alchemy_max_craft_count(recipe_id: String) -> int:
+	if recipe_id.is_empty():
+		return 0
+
+	var materials := DataTables.alchemy_recipe_materials(recipe_id)
+	if materials.is_empty():
+		return 0
+
+	var max_count := 1 << 30
+	for material in materials:
+		var item_id: String = material.get("item_id", "")
+		var amount := int(material.get("amount", 0))
+		if item_id.is_empty() or amount <= 0:
+			return 0
+		max_count = min(max_count, floori(float(inventory_item_count(item_id)) / float(amount)))
+	return max_count
+
+
+func craft_alchemy_recipe(recipe_id: String, amount: int) -> bool:
+	if recipe_id.is_empty() or amount < 1:
+		log_added.emit("炼丹数量无效")
+		return false
+	if not known_alchemy_recipes.has(recipe_id):
+		log_added.emit("尚未学习丹方")
+		return false
+
+	var recipe := DataTables.alchemy_recipe_def(recipe_id)
+	var result_item_id: String = recipe.get("result_item_id", "")
+	var materials: Array = recipe.get("materials", [])
+	if result_item_id.is_empty() or materials.is_empty():
+		log_added.emit("丹方无效")
+		return false
+	if alchemy_max_craft_count(recipe_id) < amount:
+		log_added.emit("炼丹材料不足")
+		return false
+
+	for material in materials:
+		_remove_inventory_count(str(material.get("item_id", "")), int(material.get("amount", 0)) * amount)
+
+	var result_count := amount
+	for _index in range(amount):
+		if rng.randf() < alchemy_extra_chance():
+			result_count += 1
+	add_inventory_item(result_item_id, result_count, false)
+	log_added.emit("炼成%s x%d" % [DataTables.resource_name(result_item_id), result_count])
+	changed.emit()
+	return true
 
 
 func enhance_equipment(instance_id: String) -> bool:
@@ -622,6 +770,25 @@ func _equipment_attribute_bonus(stat_id: String) -> int:
 	return value
 
 
+func _total_requirement_stat_excluding_slot(stat_id: String, excluded_slot: String) -> int:
+	if stat_id.begins_with(DataTables.ELEMENT_ATTRIBUTE_PREFIX):
+		var element_id := DataTables.element_id_from_attribute(stat_id)
+		return int(elements.get(element_id, 0)) + _equipment_attribute_bonus_excluding_slot(stat_id, excluded_slot)
+	return int(stats.get(stat_id, 0)) + _stat_bonus(stat_id) + _equipment_attribute_bonus_excluding_slot(stat_id, excluded_slot)
+
+
+func _equipment_attribute_bonus_excluding_slot(stat_id: String, excluded_slot: String) -> int:
+	var value := 0
+	for slot in equipped.keys():
+		if slot == excluded_slot:
+			continue
+		var item: Dictionary = equipped_item(slot)
+		if item.is_empty():
+			continue
+		value += _item_equipment_attribute_value(item, stat_id)
+	return value
+
+
 func _item_equipment_attribute_value(item: Dictionary, stat_id: String) -> int:
 	var flat_value := 0
 	for attribute in item.get("base_attributes", []):
@@ -647,7 +814,9 @@ func _find_enhance_stone(item: Dictionary, cost: int) -> Dictionary:
 			base_stats.append(stat_id)
 	for quality in DataTables.SPIRIT_STONE_QUALITY_ORDER:
 		for stat_id in base_stats:
-			var item_id := DataTables.spirit_stone_item_id(stat_id, quality)
+			var item_id := DataTables.enhance_stone_item_id(stat_id, quality)
+			if item_id.is_empty():
+				continue
 			if inventory_item_count(item_id) >= cost:
 				return {
 					"item_id": item_id,

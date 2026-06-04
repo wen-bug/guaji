@@ -1,18 +1,20 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bncimxw76ytkf"]
 
-[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" uid="uid://gvdftb51q2gw" path="res://scripts/ui/hud.gd" id="1_hud"]
 
-[node name="Hud" type="CanvasLayer"]
+[node name="Hud" type="CanvasLayer" unique_id=466096065]
 script = ExtResource("1_hud")
 
-[node name="Root" type="Control" parent="."]
+[node name="Root" type="Control" parent="." unique_id=821763928]
 layout_mode = 3
 anchors_preset = 15
-mouse_filter = 2
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="MenuButton" type="Button" parent="Root"]
+[node name="MenuButton" type="Button" parent="Root" unique_id=1217437422]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 6.0
@@ -20,7 +22,7 @@ offset_right = 72.0
 offset_bottom = 36.0
 text = "菜单"
 
-[node name="MenuPanel" type="PanelContainer" parent="Root"]
+[node name="MenuPanel" type="PanelContainer" parent="Root" unique_id=1127247709]
 visible = false
 layout_mode = 0
 offset_left = 8.0
@@ -28,61 +30,77 @@ offset_top = 42.0
 offset_right = 140.0
 offset_bottom = 118.0
 
-[node name="MenuLayout" type="VBoxContainer" parent="Root/MenuPanel"]
+[node name="MenuLayout" type="VBoxContainer" parent="Root/MenuPanel" unique_id=1956287394]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="CharacterInfoButton" type="Button" parent="Root/MenuPanel/MenuLayout"]
+[node name="CharacterInfoButton" type="Button" parent="Root/MenuPanel/MenuLayout" unique_id=516247957]
 custom_minimum_size = Vector2(116, 28)
 layout_mode = 2
 text = "信息"
 
-[node name="InventoryButton" type="Button" parent="Root/MenuPanel/MenuLayout"]
+[node name="InventoryButton" type="Button" parent="Root/MenuPanel/MenuLayout" unique_id=1329990564]
 custom_minimum_size = Vector2(116, 28)
 layout_mode = 2
 text = "背包"
 
-[node name="CharacterInfoPanel" type="PanelContainer" parent="Root"]
+[node name="CharacterInfoPanel" type="PanelContainer" parent="Root" unique_id=38338302]
 visible = false
 layout_mode = 0
 offset_left = 84.0
 offset_top = 6.0
-offset_right = 500.0
-offset_bottom = 132.0
+offset_right = 548.0
+offset_bottom = 366.0
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/CharacterInfoPanel"]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/CharacterInfoPanel" unique_id=934941229]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1563610925]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/CharacterInfoPanel/PanelLayout/Header"]
+[node name="Title" type="Label" parent="Root/CharacterInfoPanel/PanelLayout/Header" unique_id=1810843250]
 custom_minimum_size = Vector2(340, 24)
 layout_mode = 2
 text = "信息"
 
-[node name="CloseButton" type="Button" parent="Root/CharacterInfoPanel/PanelLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/CharacterInfoPanel/PanelLayout/Header" unique_id=52625212]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="StatusLabel" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
-custom_minimum_size = Vector2(400, 22)
+[node name="AttributeTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
 layout_mode = 2
+text = "属性"
 
-[node name="ElementLabel" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
-custom_minimum_size = Vector2(400, 22)
+[node name="AttributeGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.86, 0.95, 1, 1)
+columns = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 3
 
-[node name="LogLabel" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
-custom_minimum_size = Vector2(400, 44)
+[node name="EquipmentTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.91, 0.62, 1)
+text = "装备"
 
-[node name="InventoryPanel" type="PanelContainer" parent="Root"]
+[node name="EquipmentGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="SkillTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+layout_mode = 2
+text = "技能"
+
+[node name="SkillGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="InventoryPanel" type="PanelContainer" parent="Root" unique_id=1318300020]
 visible = false
 layout_mode = 0
 offset_left = 84.0
@@ -90,64 +108,74 @@ offset_top = 6.0
 offset_right = 520.0
 offset_bottom = 172.0
 
-[node name="InventoryLayout" type="VBoxContainer" parent="Root/InventoryPanel"]
+[node name="InventoryLayout" type="VBoxContainer" parent="Root/InventoryPanel" unique_id=1318957084]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=940485189]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/InventoryPanel/InventoryLayout/Header"]
+[node name="Title" type="Label" parent="Root/InventoryPanel/InventoryLayout/Header" unique_id=1160814890]
 custom_minimum_size = Vector2(360, 24)
 layout_mode = 2
 text = "背包"
 
-[node name="CloseButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/Header" unique_id=1399758147]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="CategoryRow" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout"]
+[node name="CategoryRow" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=1351899094]
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="SkillBookButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+[node name="SkillBookButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=155804066]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "技能书"
 
-[node name="RecipeButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+[node name="RecipeButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=571620100]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "图纸"
 
-[node name="EquipmentButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+[node name="EquipmentButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=1538518689]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "装备"
 
-[node name="MaterialButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+[node name="MaterialButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=2111440773]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "材料"
 
-[node name="CropButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+[node name="CropButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=1286776505]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "作物"
 
-[node name="PillButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow"]
+[node name="PillButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=1230790701]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "丹药"
 
-[node name="InventoryList" type="ItemList" parent="Root/InventoryPanel/InventoryLayout"]
-custom_minimum_size = Vector2(420, 84)
+[node name="InventoryGrid" type="GridContainer" parent="Root/InventoryPanel/InventoryLayout"]
+custom_minimum_size = Vector2(420, 300)
 layout_mode = 2
-allow_rmb_select = true
+columns = 5
 
-[node name="FarmPanel" type="PanelContainer" parent="Root"]
+[node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root/InventoryPanel/InventoryLayout"]
+visible = false
+custom_minimum_size = Vector2(420, 86)
+layout_mode = 2
+
+[node name="DetailLabel" type="Label" parent="Root/InventoryPanel/InventoryLayout/InventoryItemDetailPanel"]
+custom_minimum_size = Vector2(410, 78)
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="FarmPanel" type="PanelContainer" parent="Root" unique_id=1723889884]
 visible = false
 layout_mode = 0
 offset_left = 430.0
@@ -155,35 +183,35 @@ offset_top = 46.0
 offset_right = 606.0
 offset_bottom = 172.0
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/FarmPanel"]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/FarmPanel" unique_id=1576174592]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/FarmPanel/PanelLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/FarmPanel/PanelLayout" unique_id=1644925438]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/FarmPanel/PanelLayout/Header"]
+[node name="Title" type="Label" parent="Root/FarmPanel/PanelLayout/Header" unique_id=382341055]
 custom_minimum_size = Vector2(108, 24)
 layout_mode = 2
 text = "农田"
 
-[node name="CloseButton" type="Button" parent="Root/FarmPanel/PanelLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/FarmPanel/PanelLayout/Header" unique_id=1548213224]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="ActionDetail" type="Label" parent="Root/FarmPanel/PanelLayout"]
+[node name="ActionDetail" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=1825481070]
 custom_minimum_size = Vector2(164, 56)
 layout_mode = 2
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/FarmPanel/PanelLayout"]
+[node name="ExecuteButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=923591809]
 custom_minimum_size = Vector2(164, 28)
 layout_mode = 2
 text = "执行"
 
-[node name="ForgePanel" type="PanelContainer" parent="Root"]
+[node name="ForgePanel" type="PanelContainer" parent="Root" unique_id=2108005769]
 visible = false
 layout_mode = 0
 offset_left = 430.0
@@ -191,71 +219,104 @@ offset_top = 46.0
 offset_right = 606.0
 offset_bottom = 172.0
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/ForgePanel"]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/ForgePanel" unique_id=209043123]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1458774509]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/ForgePanel/PanelLayout/Header"]
+[node name="Title" type="Label" parent="Root/ForgePanel/PanelLayout/Header" unique_id=650285451]
 custom_minimum_size = Vector2(108, 24)
 layout_mode = 2
 text = "炼器"
 
-[node name="CloseButton" type="Button" parent="Root/ForgePanel/PanelLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/ForgePanel/PanelLayout/Header" unique_id=1558048357]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="ActionDetail" type="Label" parent="Root/ForgePanel/PanelLayout"]
+[node name="ActionDetail" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=981033270]
 custom_minimum_size = Vector2(164, 56)
 layout_mode = 2
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/ForgePanel/PanelLayout"]
+[node name="ExecuteButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=1362689311]
 custom_minimum_size = Vector2(164, 28)
 layout_mode = 2
 text = "执行"
 
-[node name="AlchemyPanel" type="PanelContainer" parent="Root"]
+[node name="AlchemyPanel" type="PanelContainer" parent="Root" unique_id=97301869]
 visible = false
 layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
-offset_right = 606.0
-offset_bottom = 172.0
+offset_right = 750.0
+offset_bottom = 388.0
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/AlchemyPanel"]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/AlchemyPanel" unique_id=1772265639]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/AlchemyPanel/PanelLayout" unique_id=916465476]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/AlchemyPanel/PanelLayout/Header"]
-custom_minimum_size = Vector2(108, 24)
+[node name="Title" type="Label" parent="Root/AlchemyPanel/PanelLayout/Header" unique_id=1141489705]
+custom_minimum_size = Vector2(260, 24)
 layout_mode = 2
 text = "炼丹"
 
-[node name="CloseButton" type="Button" parent="Root/AlchemyPanel/PanelLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/AlchemyPanel/PanelLayout/Header" unique_id=838571275]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="ActionDetail" type="Label" parent="Root/AlchemyPanel/PanelLayout"]
-custom_minimum_size = Vector2(164, 56)
+[node name="RecipeSlotButton" type="Button" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
+text = "选择图纸"
+
+[node name="RecipePickerPanel" type="PanelContainer" parent="Root/AlchemyPanel/PanelLayout"]
+visible = false
+custom_minimum_size = Vector2(300, 90)
+layout_mode = 2
+
+[node name="RecipeList" type="ItemList" parent="Root/AlchemyPanel/PanelLayout/RecipePickerPanel"]
+custom_minimum_size = Vector2(292, 86)
+layout_mode = 2
+
+[node name="MaterialGrid" type="GridContainer" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 132)
+layout_mode = 2
+columns = 2
+
+[node name="MaxCountLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 22)
+layout_mode = 2
+text = "最多可做：0"
+
+[node name="CraftCountSpinBox" type="SpinBox" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 28)
+layout_mode = 2
+min_value = 1.0
+max_value = 1.0
+value = 1.0
+
+[node name="CraftButton" type="Button" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 30)
+layout_mode = 2
+disabled = true
+text = "制作"
+
+[node name="HintLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 42)
+layout_mode = 2
+text = "请选择图纸"
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/AlchemyPanel/PanelLayout"]
-custom_minimum_size = Vector2(164, 28)
-layout_mode = 2
-text = "执行"
-
-[node name="MeditatePanel" type="PanelContainer" parent="Root"]
+[node name="MeditatePanel" type="PanelContainer" parent="Root" unique_id=20215362]
 visible = false
 layout_mode = 0
 offset_left = 430.0
@@ -263,35 +324,35 @@ offset_top = 46.0
 offset_right = 606.0
 offset_bottom = 172.0
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/MeditatePanel"]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/MeditatePanel" unique_id=1608779150]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/MeditatePanel/PanelLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/MeditatePanel/PanelLayout" unique_id=465688560]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/MeditatePanel/PanelLayout/Header"]
+[node name="Title" type="Label" parent="Root/MeditatePanel/PanelLayout/Header" unique_id=453284457]
 custom_minimum_size = Vector2(108, 24)
 layout_mode = 2
 text = "打坐"
 
-[node name="CloseButton" type="Button" parent="Root/MeditatePanel/PanelLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/MeditatePanel/PanelLayout/Header" unique_id=716705505]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="ActionDetail" type="Label" parent="Root/MeditatePanel/PanelLayout"]
+[node name="ActionDetail" type="Label" parent="Root/MeditatePanel/PanelLayout" unique_id=964218206]
 custom_minimum_size = Vector2(164, 56)
 layout_mode = 2
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/MeditatePanel/PanelLayout"]
+[node name="ExecuteButton" type="Button" parent="Root/MeditatePanel/PanelLayout" unique_id=2069067699]
 custom_minimum_size = Vector2(164, 28)
 layout_mode = 2
 text = "执行"
 
-[node name="FightPanel" type="PanelContainer" parent="Root"]
+[node name="FightPanel" type="PanelContainer" parent="Root" unique_id=2124618921]
 visible = false
 layout_mode = 0
 offset_left = 430.0
@@ -299,35 +360,36 @@ offset_top = 46.0
 offset_right = 606.0
 offset_bottom = 172.0
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/FightPanel"]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/FightPanel" unique_id=926619473]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/FightPanel/PanelLayout"]
+[node name="Header" type="HBoxContainer" parent="Root/FightPanel/PanelLayout" unique_id=1113500344]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/FightPanel/PanelLayout/Header"]
+[node name="Title" type="Label" parent="Root/FightPanel/PanelLayout/Header" unique_id=1009372602]
 custom_minimum_size = Vector2(108, 24)
 layout_mode = 2
 text = "打怪"
 
-[node name="CloseButton" type="Button" parent="Root/FightPanel/PanelLayout/Header"]
+[node name="CloseButton" type="Button" parent="Root/FightPanel/PanelLayout/Header" unique_id=1409196236]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="ActionDetail" type="Label" parent="Root/FightPanel/PanelLayout"]
+[node name="ActionDetail" type="Label" parent="Root/FightPanel/PanelLayout" unique_id=1336005942]
 custom_minimum_size = Vector2(164, 56)
 layout_mode = 2
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/FightPanel/PanelLayout"]
+[node name="ExecuteButton" type="Button" parent="Root/FightPanel/PanelLayout" unique_id=2126297008]
 custom_minimum_size = Vector2(164, 28)
 layout_mode = 2
 text = "执行"
 
-[node name="InventoryMenu" type="PopupMenu" parent="Root"]
+[node name="InventoryMenu" type="PopupMenu" parent="Root" unique_id=197141140]
+
 [connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/CharacterInfoButton" to="." method="_open_character_info_panel"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/InventoryButton" to="." method="_open_inventory_panel"]

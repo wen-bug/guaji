@@ -2,216 +2,131 @@
 
 ## 项目定位
 
-这是一个运行在桌面任务栏上方的 2D 横版挂机桌宠原型。玩家通过任务队列安排打坐、打怪等可持续行动，也可以直接点击家园地图节点打开种田、炼器、炼丹 GUI 操作，并在挂机过程中获得资源、经验、装备、熟练度、根骨与五行成长。
+这是一个运行在桌面任务栏上方的 2D 横版挂机桌宠原型。玩家点击家园地图节点打开对应 HUD 面板，通过面板按钮直接进行打坐、种田、炼器、炼丹或战斗，并在挂机过程中获得资源、经验、装备、熟练度、根骨与五行成长。
 
 第一版目标是验证核心闭环：
+
 - 桌宠窗口：无边框、置顶、透明背景，窗口底边贴住系统任务栏顶部。
-- 双区块地图：家园使用 `res://scripts/map/home.tscn` 场景，负责恢复、种田、炼器、炼丹；历练负责打怪、经验、掉落和装备。
-- 任务队列：打坐、打怪等持续行动按固定耗时执行，完成后从队列移除；种田、炼器、炼丹不进入队列。
-- 地图交互：点击家园节点按节点名称匹配逻辑，`meditate` 加入打坐任务，`farmland`、`forge`、`alchemy` 打开对应 GUI。
-- 背包系统：统一管理技能书、装备、材料、作物、丹药和图纸，支持右键使用、丢弃与装备强化操作。
-- 输入加成：玩家平时键盘输入会增加当前任务熟练度，并少量推进任务。
-- 随机成长：升级时随机增加基础属性和五行属性。
+- 双区块地图：家园负责恢复、种田、炼器、炼丹；历练入口负责打怪、经验、掉落和装备。
+- 家园交互：点击 `meditate`、`farmland`、`forge`、`alchemy`、`fight` 打开对应 HUD 面板。
+- 背包系统：统一管理技能书、装备、材料、作物、丹药和图纸，支持右键使用、丢弃、装备强化与洗练。
+- 成长系统：等级、修为、熟练度、根骨、五行、装备词条和丹药 Buff 共同影响玩家数值。
 
-## 地图结构
+## 地图与交互
 
-地图分为两个连通区块：
+家园场景 `res://scripts/map/home.tscn` 的根节点挂载 `HomeMap` 脚本。可交互节点按名称匹配逻辑：`meditate`、`farmland`、`forge`、`alchemy`、`fight`。节点下的 `Area2D` 接收左键点击并发出节点名称，由主场景打开对应 HUD 面板。
 
-| 区块 | 区域 | 行为 |
-| --- | --- | --- |
-| 家园 | 打坐区 | 恢复生命/灵力，获得修为；达到等级需求时尝试升级 |
-| 家园 | 农田区 | 点击 `farmland` 打开种田 GUI，消耗作物种子并按农田等级产出作物 |
-| 家园 | 炼器区 | 点击 `forge` 打开炼器 GUI，消耗材料生成武器、头盔、护甲、腿甲、护手或饰品 |
-| 家园 | 炼丹区 | 点击 `alchemy` 打开炼丹 GUI，必须先学习丹方图纸，从已学丹方中产出丹药 |
-| 历练 | 打怪区 | 自动战斗，获得经验、材料、装备、丹方图纸和突破道具 |
+当前动作流程：
 
-角色会根据任务在区块间自动行走。队列任务目标为打怪时，角色会走到右侧历练区；打坐任务可由家园 `meditate` 节点加入。种田、炼器、炼丹通过家园 GUI 即时操作，不移动进任务队列。队列为空时，角色返回家园范围，在家中随机闲逛或显示短对白。
+1. 玩家点击家园节点。
+2. HUD 打开对应弹窗，并应用已保存的弹窗位置。
+3. 玩家点击弹窗按钮或选择配方/数量。
+4. `main.gd` 或 `GameState` 直接结算资源、经验、熟练度、装备、丹药或战斗状态。
+5. `GameState.changed` 触发 HUD 刷新与存档延迟写入。
 
-## 角色表现与状态机
-
-角色使用 `res://scripts/character/me.tscn` 作为人物实体场景。该场景根节点为 `CharacterBody2D` 并挂载角色控制脚本，子节点 `Sprite` 为 `AnimatedSprite2D`，提供 `idle`、`run`、`attack` 动画。
-
-角色控制器维护以下状态：
-- `IDLE`：家园待机，等待下一次空闲行为。
-- `ROAMING`：无任务时在家园范围内闲逛，播放 `run`。
-- `TALKING`：无任务时显示一句短对白，播放 `idle`。
-- `RETURNING_HOME`：任务结束或无任务时，从外部区域返回家园。
-- `MOVING_TO_TASK`：按任务队列移动到目标区域，播放 `run`。
-- `WORKING`：执行当前任务，普通任务播放 `idle`，打怪播放 `attack`。
-- `PAUSED`：任务暂停，保持待机表现。
-
-## 任务队列
-
-任务队列只承载持续行动，例如打坐和打怪。家园生产操作（种田、炼器、炼丹）由 `home.tscn` 节点点击打开 GUI 后直接结算，不生成队列任务。
-
-任务结构包含：
-- `id`：任务唯一编号。
-- `type`：任务类型。
-- `duration`：任务基础耗时。
-- `progress`：当前进度。
-- `target_zone`：目标区域。
-- `status`：等待、移动、执行、完成。
-
-执行规则：
-1. 从队列头取出任务。
-2. 角色自动移动到任务对应区域锚点。
-3. 到达后开始执行任务并累计进度。
-4. 完成后结算奖励或失败提示。
-5. 任务完成后直接移除。
-6. 队列为空时角色回到家园，在家园范围内闲逛或说话。
-
-家园场景交互规则：
-- `res://scripts/map/home.tscn` 的根节点挂载 `HomeMap` 脚本。
-- 可交互节点按名称匹配逻辑：`meditate`、`farmland`、`forge`、`alchemy`。
-- 节点下的 `Area2D` 接收左键点击并发出节点名称，由主场景分发到任务队列或 HUD GUI。
-- `farmland/crop` 是作物显示模板，运行时隐藏；实际显示由脚本复制到农田槽位。
+角色表现只保留桌宠待机逻辑：`IDLE`、`ROAMING`、`TALKING`、`PAUSED`。空闲时角色在家园范围内闲逛或显示短对白。
 
 ## 背包与物品
 
-详细物品规则见 [`items.md`](items.md)。
+物品实例统一包含：
 
-背包使用“静态定义 Resource 化 + 运行时实例 Dictionary”的双层模型。所有可显示物品都存放在 `GameState.inventory` 中。
-
-物品基础字段包含：
-- `instance_id`：背包内唯一实例 ID。堆叠物品使用 `item_id`，装备使用独立实例 ID。
 - `item_id`：物品定义 ID。
-- `type`：物品分类，包含 `skill_book`、`equipment`、`material`、`crop`、`pill`、`alchemy_recipe`。
-- `name`：显示名称。
-- `count`：数量。装备固定为 1。
-- `description`：描述文本。
+- `type`：物品类型，如 `equipment`、`material`、`crop`、`pill`、`alchemy_recipe`、`skill_book`。
+- `name` / `description`：显示文本。
+- `count` / `stackable`：数量与是否堆叠。
 - `usable`：是否允许右键使用。
 - `payload`：分类专属数据，例如恢复量、丹方 ID、种子产量、持续 Buff、突破效果等。
 
 主要类型：
+
 - 技能书：使用后学习对应技能，已学习则不重复消耗。
-- 装备：使用后穿戴到武器、头盔、护甲、腿甲、护手、饰品 1 或饰品 2；饰品优先填空槽，满槽时替换饰品 1。
-- 材料：炼器、强化、加词条、战斗奖励和其他消耗项，当前包含矿石、灵砂、妖核。
-- 作物：既是炼丹材料，也可作为农田种子，当前包含草药、灵米、灵菇。
+- 装备：使用后尝试穿戴到武器、头盔、护甲、腿甲、护手、饰品 1 或饰品 2；饰品优先填空槽，满槽时替换饰品 1。
+- 材料：炼器、强化、洗练、战斗奖励和其他消耗项。
+- 作物：既是炼丹材料，也可作为农田种子。
 - 丹药：分为一次性丹药和持续丹药；一次性立即结算，持续型加入 `active_buffs`。
 - 图纸：`alchemy_recipe` 类型，使用后学习丹方并写入 `known_alchemy_recipes`。
 
-背包 UI 由顶部“背包”按钮打开，显示为右侧浮层。浮层顶部可切换分类，物品列表支持右键菜单。菜单包含“使用”和“丢弃”；装备额外支持“强化”和“加词条”。不可使用物品会禁用“使用”，丢弃堆叠物品每次减少 1 个，丢弃装备会移除该装备实例。
+背包 UI 使用 5×5 格子。每格预留图标位置，悬浮显示物品介绍，双击只直接使用装备和丹药；图纸、技能书、材料、作物仍通过右键菜单使用或不响应直接使用。
 
-## 输入熟练度加成
+## 核心计算公式
 
-游戏运行时，玩家任意有效键盘输入都会作用于当前正在执行的任务：
-- 当前任务进度获得少量加成。
-- 当前任务类型的熟练度增加。
-- HUD 日志显示加成提示。
+### 属性总值
 
-该机制用于把“玩家正在电脑前活动”转化为桌宠成长加速，不要求玩家聚焦游戏窗口。
+- `total_stat(stat) = stats[stat] + active_buff_bonus(stat) + equipped_attribute_bonus(stat)`。
+- `total_element(element) = elements[element] + equipped_attribute_bonus("element_" + element)`。
+- `element_power = sum(total_element(木, 火, 土, 金, 水))`。
+- `total_attack = stats.attack + int(element_power * 0.15) + active_buff_bonus("attack") + equipped_attribute_bonus("attack")`。
+- `total_defense = stats.defense + active_buff_bonus("defense") + equipped_attribute_bonus("defense")`。
+- 主五行为 `total_element()` 数值最高的五行。
 
-## 人物属性、五行与等级阶段
+### 成长与突破
 
-`GameState.stats` 保存人物核心属性：
-- `level`：当前等级，初始为 1。
-- `level_cap`：当前阶段等级上限，初始为 10。
-- `stage`：当前阶段，初始为 1，每 10 级对应一个阶段。
-- `exp` / `exp_to_next`：经验与升级需求。
-- `cultivation` / `cultivation_to_next`：修为与升级需求。
-- `hp` / `max_hp`：生命。
-- `mp` / `max_mp`：灵力。
-- `attack`：基础攻击。
-- `defense`：基础防御，影响物理伤害减免。
-- `root_bone`：根骨，初始为 5。
-- `farm_level`：农田等级，初始为 1。
+- 经验增加后，只要 `exp >= next_exp` 且等级上限已打开，就升级。
+- 经验升级消耗当前 `next_exp`，然后 `next_exp = int(next_exp * 1.35) + 20`。
+- 打坐基础修为来自主流程：`8 + level`。
+- 实际修为收益：`base_amount + int(total_root_bone * 0.4)`。
+- 修为升级消耗当前 `next_cultivation`，然后 `next_cultivation = int(next_cultivation * 1.35) + 15`。
+- 每次升级随机增加：`max_hp 8~20`、`max_mp 4~12`、`attack 1~3`、`defense 0~2`、`root_bone 0~1`，并随机一个五行增加 `1~3`。
+- 达到等级上限时，使用突破丹可提升阶段并使 `level_cap += 10`；若 `root_bone > level`，可免突破丹打开下一阶段。
 
-人物五行属性保存在 `GameState.elements`，包含木、火、土、金、水。主五行为当前数值最高的五行。
+### 根骨加成
 
-五行规则：
-- 普通攻击使用主五行作为攻击元素。
-- 技能使用技能自身 `element`。
-- 技能五行伤害额外增加 `int(elements[element] * 0.5)`。
-- 受到五行伤害时减少 `int(elements[element] * 0.35)`。
-- 敌人存在 `weak_element` 时，对应五行伤害获得额外加成。
+- 修为收益加成：`int(total_root_bone * 0.4)`。
+- 炼器/装备生成加成：`craft_bonus = int(total_root_bone * 0.2)`。
+- 炼丹额外出丹概率：`min(0.35, total_root_bone * 0.015)`。
+- 根骨高于当前等级且达到等级上限时，可免道具突破。
 
-根骨规则：
-- 打坐收益为 `base + int(root_bone * 0.4)`。
-- 炼丹额外产出概率为 `min(0.35, root_bone * 0.015)`。
-- 炼器生成装备时追加 `int(root_bone * 0.2)` 攻防加成。
-- 当 `root_bone > level` 且人物达到当前等级上限时，可免道具突破。
+### 战斗
 
-等级阶段规则：
-- 每 10 级为一个阶段：1-10、11-20、21-30。
-- 经验或修为满足升级但 `level >= level_cap` 时，不再继续升级，只提示达到当前阶段上限。
-炼丹需要先学习丹方图纸。图纸作为背包物品使用后记录到 `known_alchemy_recipes`，并消耗 1 张。炼丹 GUI 操作只会从已学习丹方中选择产物；没有已学丹方时炼丹失败并提示。
+- 玩家普通攻击基础伤害：`max(1, total_attack - enemy.defense)`。
+- 普通攻击元素为玩家主五行；技能攻击元素为技能自身 `element`。
+- 元素伤害加成：`int(total_element(element) * 0.5)`。
+- 命中敌人弱点时额外增加：`max(1, int(base_damage * 0.25)) + total_element(element)`。
+- 技能伤害基础值：`int(total_attack * skill.damage_multiplier)`，再走同一元素/弱点加成。
+- 物理减伤：`max(1, amount - total_defense)`。
+- 元素减伤：`max(0, amount - int(total_element(element) * 0.35))`。
+- 敌人攻击可按 `element_attack_ratio` 随机附带敌人自身五行。
 
-丹药分为两类：
-- 一次性丹药：使用后立即恢复生命、灵力或触发一次性效果。
-- 持续丹药：使用后进入 `active_buffs`，在持续时间内提供属性、恢复或生产/战斗加成，到期后移除。
+### 掉落与装备掉落
 
-农田使用作物作为种子。种田 GUI 操作自动消耗背包中第一个可用作物，并按 `seed_yield + farm_level - 1` 计算产量。农田等级保存在 `farm_level`，暂由种田熟练度阶段提升。`farmland` 下有 5 个 `Marker2D` 槽位，种田成功后按产量上限显示最多 5 个由 `crop` 模板复制出的作物节点。后续可在该公式上叠加根骨与 Buff 产量加成。
+- 战斗胜利先结算敌人 `drops` 表：每个物品独立判断 `rng.randf() <= chance`，数量为 `randi_range(min, max)`。
+- 普通掉落结算后，独立进行装备掉落：当前条件为 `rng.randf() > 0.65`，即 35% 概率获得 1 件装备。
+- 掉落装备调用 `create_equipment(enemy.level, rng, craft_bonus)`，因此 `equipment_level = enemy.level`。
+- 掉落装备槽位从 `EQUIPMENT_DEFS` 随机选择：武器、头盔、护甲、腿甲、护手或饰品。
+- 掉落装备五行从木、火、土、金、水中随机选择；无相装备目前只通过强制生成接口出现，不属于普通随机掉落池。
+- 掉落装备阶位按 `EQUIPMENT_RARITY_DEFS` 概率随机，阶位决定显示名、词条数量、词条倍率和穿戴需求倍率。
+- 掉落装备获得不做属性门槛；穿戴时才检查 `equip_requirement`。
 
-炼器消耗材料生成装备。装备模板覆盖 `weapon`、`helmet`、`armor`、`leggings`、`gloves`、`accessory`，生成时会记录独立实例、品质、五行、基础攻防、强化等级和词条列表。
+### 生产与炼丹
 
+- 种田自动选择背包中第一个作物作为种子，消耗 1 个，产量为 `seed_yield + farm_level - 1`。
+- 炼器消耗 2 个 `ore`，生成 1 件随机装备，并获得经验与炼器熟练度。
+- 炼丹面板只展示 `known_alchemy_recipes` 中的已学丹方。
+- 单个丹方最大可制作数量为所有材料 `floor(当前数量 / 单次需求)` 的最小值。
+- 批量炼丹消耗 `amount * 单次需求`，基础产物数量为 `amount`。
+- 每次制作独立判定额外出丹：若 `rng.randf() < alchemy_extra_chance()`，本次额外 +1 产物，不增加材料消耗。
 
+### 装备生成、穿戴与养成
 
+- 装备名称格式：`<五行名>·<阶位名>·<槽位名>`；无相装备为 `无相·<阶位名>·<槽位名>`。
+- 阶位 `t1..t5` 对应 `rarity_tier = 1..5`，基础词条数量等于 `rarity_tier`。
+- 基础词条值：`round((random(min, max) + equipment_level * scale + craft_bonus) * rarity_multiplier)`，最低为 1。
+- 五行装备强制包含对应 `element_*` 词条；无相装备强制包含核心普通属性，武器优先 `attack`，防具优先 `defense`。
+- 无相武器使用 `neutral_weapon_multiplier = rarity_multiplier + 0.35`。
+- 穿戴需求：五行装备要求对应 `element_*`，无相装备要求核心普通属性；需求值为 `max(1, equipment_level * rarity_tier)`。
+- 穿戴校验不计入候选装备自身属性；替换同槽位装备时，也不计入即将被替换掉的同槽位装备。
+- 普通强化消耗装备已有基础属性对应的灵石，消耗数量为 `enhance_count + 1`，强化值由灵石品质决定。
+- 洗练消耗洗练符，消耗数量为 `refine_count + 1`；每次随机一条属性百分比词条，百分比为 `0.05~0.15` 并按 `0.01` 对齐。
+- 装备最终词条值为基础/强化加法值乘以同属性洗练百分比：`floor(flat_value * (1 + percent_bonus))`。
 
-装备和武器可通过材料强化或增加词条：
-- 强化消耗材料并提升 `enhance_level`，按装备定位增加 `enhance_attack_bonus` 或 `enhance_defense_bonus`。
-- 词条消耗材料并追加到 `affixes`，第一版只提供属性加成，不做特殊触发效果、失败率或保底。
-- 词条池包含攻击、防御、最大生命、最大灵力、根骨和单五行加成。
+## HUD 与存档
 
-## 战斗与敌人模板
+HUD 包含菜单按钮、玩家信息、背包、种田、炼器、炼丹、打坐、战斗等弹窗。玩家信息只展示属性、已穿戴装备和已学习技能；装备和技能槽位预留美术图标位置。所有弹窗支持拖动，拖动位置写入 `user://save.cfg` 并在下次打开时恢复，超出视口时会 clamp 回可见区域。
 
-战斗由打怪任务触发。运行时敌人仍为 Dictionary，属性来自 `DataTables.ENEMY_TEMPLATES`。
-
-敌人模板字段包含：
-- `id`、`name`：模板标识和显示名。
-- `base_hp`、`hp_scale`：生命基础值和等级缩放。
-- `base_attack`、`attack_scale`：攻击基础值和等级缩放。
-- `base_defense`、`defense_scale`：防御基础值和等级缩放。
-- `exp_base`、`exp_scale`：经验奖励基础值和等级缩放。
-- `element`：敌人五行。
-- `weak_element`：弱点五行。
-- `element_attack_ratio`：敌人五行伤害占比。
-- `drops`：掉落表，可掉落材料、装备、破境丹和丹方图纸。
-
-当前基础模板：
-- `wandering_imp`：均衡小妖，默认敌人。
-- `stone_beast`：高血高防，土属性，弱木。
-- `flame_sprite`：高攻击低防，火属性，弱水。
-
-结算规则：
-- 物理伤害按 `max(1, incoming - total_defense())` 结算。
-- 玩家受到敌人五行伤害时按对应五行抗性减免。
-- 胜利获得经验、矿石、打怪熟练度，并概率获得灵砂、妖核、装备、破境丹和丹方图纸。
-- 战败只记录日志，暂不进入死亡或惩罚流程。
-
-## UI 表现
-
-HUD 包含：
-- 顶部状态：等级、阶段、等级上限、经验、修为、生命、灵力、攻击、防御、根骨、农田等级和活跃 Buff。
-- 任务按钮：添加打坐、打怪等队列任务。
-- 家园 GUI：由 `home.tscn` 的 `farmland`、`forge`、`alchemy` 节点点击打开种田、炼器、炼丹操作面板。
-- 任务队列：显示当前等待和执行任务，不显示种田、炼器、炼丹。
-- 背包浮层：显示分类、物品数量、装备槽位、强化等级、词条和已装备状态。
-- 日志面板：显示任务完成、奖励、学习图纸、突破、强化和战斗结果。
+存档由 `SaveManager` 写入 `user://save.cfg`，包含版本号、游戏状态、HUD 面板位置和基础配置。缺失字段使用默认值，不阻塞启动。
 
 ## 扩展约定
 
-新增堆叠物品时优先在 `DataTables.ITEM_DEFS` 增加定义；新增技能同步扩展 `SKILL_DEFS`；新增装备模板同步扩展 `EQUIPMENT_DEFS`；新增敌人同步扩展 `ENEMY_TEMPLATES`；新增词条同步扩展 `AFFIX_DEFS`。
+新增堆叠物品时优先在 `DataTables.ITEM_DEFS` 增加定义；新增技能同步扩展 `SKILL_DEFS`；新增装备模板同步扩展 `EQUIPMENT_DEFS`；新增敌人同步扩展 `ENEMY_TEMPLATES`；新增词条同步扩展 `EQUIPMENT_ATTRIBUTE_DEFS`。
 
-后续可扩展：
-- 物品等级需求：`payload.level_required`。
-- 物品品质颜色和图标字段：`icon_path`。
-- 配方 UI、商店和技能书掉落来源。
-- 丹药持续 Buff 的更多类型和叠加规则。
-- 农田升级消耗、种子选择 UI、批量种植。
-- 强化失败率、词条洗练、词条锁定和保底机制。
-
-## 装备属性分级、灵石强化与洗练
-
-装备和武器采用“属性条目”模型。基础属性从人物属性模板中抽取，当前属性池为 `max_hp`、`max_mp`、`attack`、`defense`、`root_bone`、`element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water` 共 10 项。
-
-基础属性条数由来源等级决定：最低 1 条；当来源等级小于属性数量三分之二阈值时，条数等于来源等级；当来源等级达到或超过阈值时，在三分之二到最大属性数之间随机。当前 10 项属性的阈值为 7，因此高等级装备随机拥有 7 到 10 条基础属性。同一件装备的基础属性不可重复。
-
-来源等级规则：
-- 炼器装备使用玩家当前等级作为来源等级。
-- 战斗掉落装备使用敌人等级作为来源等级。
-
-装备实例新增字段：`equipment_level`、`base_attributes`、`enhanced_attributes`、`refine_affixes`、`enhance_count`、`refine_count`。旧 `attack_bonus`、`defense_bonus` 仅作为兼容显示字段，最终属性以基础属性、普通强化和洗练百分比综合计算。
-
-普通强化使用属性灵石，灵石通过 `payload.stat` 对应人物属性，通过 `payload.quality` 区分品质。品质越高，加法强化值越高。普通强化只能强化装备本身已有的基础属性，不做百分比加成。消耗数量为 `enhance_count + 1`，例如第 1 次消耗 1 个灵石，第 100 次消耗 100 个灵石。
-
-洗练使用 `refine_talisman` 洗练符。每次洗练随机增加 1 条人物属性百分比加成词条，写入 `refine_affixes`。洗练词条允许与基础属性重复，也允许多条洗练词条指向同一属性。消耗数量为 `refine_count + 1`，例如第 1 次消耗 1 张洗练符，第 100 次消耗 100 张洗练符。
+后续可扩展：物品品质颜色和图标字段、配方 UI、商店、技能书掉落来源、丹药持续 Buff 的更多类型和叠加规则、农田升级消耗、种子选择 UI、强化失败率、词条锁定和保底机制。

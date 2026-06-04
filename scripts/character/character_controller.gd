@@ -1,7 +1,7 @@
 class_name CharacterController
 extends CharacterBody2D
 
-enum CharacterState { IDLE, ROAMING, TALKING, MOVING_TO_TASK, WORKING, PAUSED, RETURNING_HOME }
+enum CharacterState { IDLE, ROAMING, TALKING, PAUSED }
 
 const BASELINE_Y := 170.0
 const HOME_LEFT := 48.0
@@ -21,16 +21,12 @@ var speed := 140.0
 var target_position := Vector2.ZERO
 var moving := false
 var state := CharacterState.IDLE
-var state_label := "空闲"
-var task_progress := 0.0
 var idle_timer := 0.0
 var talk_timer := 0.0
 var vertical_velocity := 0.0
 var rng := RandomNumberGenerator.new()
 var sprite: AnimatedSprite2D
 var talk_label: Label
-var progress_back: ColorRect
-var progress_fill: ColorRect
 
 
 func setup() -> void:
@@ -41,51 +37,19 @@ func setup() -> void:
 	vertical_velocity = 0.0
 	_set_state(CharacterState.IDLE)
 	_reset_idle_timer()
-	_update_progress_nodes()
-
-
-func move_to(target: Vector2) -> void:
-	target_position = Vector2(clamp(target.x, WORLD_LEFT, WORLD_RIGHT), BASELINE_Y)
-	if abs(position.x - target_position.x) > 1.0:
-		moving = true
-		talk_label.visible = false
-		_face_target()
-		_set_state(CharacterState.MOVING_TO_TASK)
-
-
-func is_at_target() -> bool:
-	return not moving and is_on_ground()
 
 
 func is_on_ground() -> bool:
 	return is_equal_approx(position.y, BASELINE_Y) and is_equal_approx(vertical_velocity, 0.0)
 
 
-func set_task_state(value: String) -> void:
-	state_label = value
-	talk_label.visible = false
-	if value == "暂停":
-		_set_state(CharacterState.PAUSED)
-	else:
-		_set_state(CharacterState.WORKING)
-	_update_progress_nodes()
-
-
-func set_task_progress(value: float) -> void:
-	task_progress = clamp(value, 0.0, 1.0)
-	_update_progress_nodes()
-
-
 func set_idle_roam() -> void:
-	task_progress = 0.0
-	_update_progress_nodes()
 	if _is_busy_with_home_idle():
 		return
 
 	if position.x < HOME_LEFT or position.x > HOME_RIGHT:
-		_walk_to(Vector2(HOME_X, BASELINE_Y), CharacterState.RETURNING_HOME)
+		_walk_to(Vector2(HOME_X, BASELINE_Y), CharacterState.ROAMING)
 	else:
-		state_label = "空闲"
 		_set_state(CharacterState.IDLE)
 		if idle_timer <= 0.0:
 			_reset_idle_timer()
@@ -119,7 +83,7 @@ func _update_movement(delta: float) -> void:
 	if abs(position.x - target_position.x) <= 1.0:
 		position.x = target_position.x
 		moving = false
-		if state == CharacterState.RETURNING_HOME or state == CharacterState.ROAMING:
+		if state == CharacterState.ROAMING:
 			_set_state(CharacterState.IDLE)
 			_reset_idle_timer()
 
@@ -177,16 +141,10 @@ func _set_state(next_state: CharacterState) -> void:
 
 	state = next_state
 	match state:
-		CharacterState.ROAMING, CharacterState.MOVING_TO_TASK, CharacterState.RETURNING_HOME:
+		CharacterState.ROAMING:
 			_play_animation("run")
-		CharacterState.WORKING:
-			if state_label == "打怪":
-				_play_animation("attack")
-			else:
-				_play_animation("idle")
 		_:
 			_play_animation("idle")
-	_update_progress_nodes()
 
 
 func _play_animation(animation_name: StringName) -> void:
@@ -202,7 +160,7 @@ func _reset_idle_timer() -> void:
 
 
 func _is_busy_with_home_idle() -> bool:
-	return state == CharacterState.RETURNING_HOME or state == CharacterState.ROAMING or state == CharacterState.TALKING
+	return state == CharacterState.ROAMING or state == CharacterState.TALKING
 
 
 func _bind_scene_nodes() -> void:
@@ -210,16 +168,3 @@ func _bind_scene_nodes() -> void:
 		sprite = $Sprite
 	if talk_label == null:
 		talk_label = $TalkLabel
-	if progress_back == null:
-		progress_back = $ProgressBack
-	if progress_fill == null:
-		progress_fill = $ProgressBack/ProgressFill
-
-
-func _update_progress_nodes() -> void:
-	if progress_back == null or progress_fill == null:
-		return
-	var visible_progress := state == CharacterState.WORKING
-	progress_back.visible = visible_progress
-	progress_fill.visible = visible_progress
-	progress_fill.size.x = 48.0 * task_progress
