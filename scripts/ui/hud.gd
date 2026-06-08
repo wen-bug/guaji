@@ -5,6 +5,9 @@ const MENU_USE := 1
 const MENU_DROP := 2
 const MENU_ENHANCE := 3
 const MENU_AFFIX := 4
+const FORGE_MODE_CRAFT := "craft"
+const FORGE_MODE_ENHANCE := "enhance"
+const FORGE_MODE_REFINE := "refine"
 const INVENTORY_CATEGORIES := [
 	{"type": DataTables.ITEM_TYPE_SKILL_BOOK, "label": "技能书", "node": "SkillBookButton"},
 	{"type": DataTables.ITEM_TYPE_ALCHEMY_RECIPE, "label": "图纸", "node": "RecipeButton"},
@@ -38,7 +41,31 @@ const INVENTORY_DOUBLE_CLICK_MS := 350
 @onready var inventory_menu: PopupMenu = $Root/InventoryMenu
 @onready var category_row: HBoxContainer = $Root/InventoryPanel/InventoryLayout/CategoryRow
 @onready var farm_detail: Label = $Root/FarmPanel/PanelLayout/ActionDetail
+@onready var farm_progress_label: Label = $Root/FarmPanel/PanelLayout/ProgressLabel
+@onready var farm_seed_slot_button: Button = $Root/FarmPanel/PanelLayout/SeedSlotButton
+@onready var farm_seed_picker_panel: PanelContainer = $Root/FarmPanel/PanelLayout/SeedPickerPanel
+@onready var farm_seed_list: ItemList = $Root/FarmPanel/PanelLayout/SeedPickerPanel/SeedList
+@onready var farm_slot_list: ItemList = $Root/FarmPanel/PanelLayout/FarmSlotList
+@onready var farm_speed_item_slot_button: Button = $Root/FarmPanel/PanelLayout/SpeedItemSlotButton
+@onready var farm_speed_item_picker_panel: PanelContainer = $Root/FarmPanel/PanelLayout/SpeedItemPickerPanel
+@onready var farm_speed_item_list: ItemList = $Root/FarmPanel/PanelLayout/SpeedItemPickerPanel/SpeedItemList
+@onready var farm_speed_status_label: Label = $Root/FarmPanel/PanelLayout/SpeedStatusLabel
+@onready var farm_use_speed_item_button: Button = $Root/FarmPanel/PanelLayout/UseSpeedItemButton
+@onready var farm_plant_button: Button = $Root/FarmPanel/PanelLayout/ActionRow/PlantButton
+@onready var farm_claim_button: Button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimButton
+@onready var farm_claim_all_button: Button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimAllButton
+@onready var farm_hint_label: Label = $Root/FarmPanel/PanelLayout/HintLabel
 @onready var forge_detail: Label = $Root/ForgePanel/PanelLayout/ActionDetail
+@onready var forge_progress_label: Label = $Root/ForgePanel/PanelLayout/ProgressLabel
+@onready var forge_action_button: Button = $Root/ForgePanel/PanelLayout/ExecuteButton
+@onready var forge_craft_mode_button: Button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeCraftButton
+@onready var forge_enhance_mode_button: Button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeEnhanceButton
+@onready var forge_refine_mode_button: Button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeRefineButton
+@onready var forge_equipment_slot_button: Button = $Root/ForgePanel/PanelLayout/EquipmentSlotButton
+@onready var forge_equipment_picker_panel: PanelContainer = $Root/ForgePanel/PanelLayout/EquipmentPickerPanel
+@onready var forge_equipment_list: ItemList = $Root/ForgePanel/PanelLayout/EquipmentPickerPanel/EquipmentList
+@onready var forge_material_grid: GridContainer = $Root/ForgePanel/PanelLayout/MaterialGrid
+@onready var forge_hint_label: Label = $Root/ForgePanel/PanelLayout/HintLabel
 @onready var meditate_detail: Label = $Root/MeditatePanel/PanelLayout/ActionDetail
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
 @onready var alchemy_recipe_slot_button: Button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
@@ -48,6 +75,7 @@ const INVENTORY_DOUBLE_CLICK_MS := 350
 @onready var alchemy_max_count_label: Label = $Root/AlchemyPanel/PanelLayout/MaxCountLabel
 @onready var alchemy_craft_count_spinbox: SpinBox = $Root/AlchemyPanel/PanelLayout/CraftCountSpinBox
 @onready var alchemy_craft_button: Button = $Root/AlchemyPanel/PanelLayout/CraftButton
+@onready var alchemy_progress_label: Label = $Root/AlchemyPanel/PanelLayout/ProgressLabel
 @onready var alchemy_hint_label: Label = $Root/AlchemyPanel/PanelLayout/HintLabel
 
 var category_buttons: Array[Button] = []
@@ -58,13 +86,22 @@ var selected_inventory_instance_id := ""
 var last_inventory_click_instance_id := ""
 var last_inventory_click_time_ms := 0
 var current_game_state
+var current_progress_state := {}
 var log_lines: Array = []
+var selected_farm_seed_id := ""
+var selected_farm_slot_index := -1
+var selected_farm_speed_item_id := ""
+var farm_controls_connected := false
+var selected_forge_mode := FORGE_MODE_CRAFT
+var selected_forge_equipment_instance_id := ""
+var forge_controls_connected := false
 var selected_alchemy_recipe_id := ""
 var alchemy_controls_connected := false
 var saved_panel_positions := {}
 var dragging_panel: Control = null
 var drag_mouse_start := Vector2.ZERO
 var drag_panel_start := Vector2.ZERO
+var menu_button_hover_tween: Tween = null
 
 
 func _ready() -> void:
@@ -77,10 +114,10 @@ func _ready() -> void:
 	$Root/MeditatePanel/PanelLayout/Header/CloseButton.pressed.connect(func(): meditate_panel.visible = false)
 	$Root/FightPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): fight_panel.visible = false)
 
-	$Root/FarmPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FARM))
-	$Root/ForgePanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FORGE))
 	$Root/MeditatePanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.MEDITATE))
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
+	_connect_farm_controls()
+	_connect_forge_controls()
 	_connect_alchemy_controls()
 
 	for category in INVENTORY_CATEGORIES:
@@ -92,6 +129,28 @@ func _ready() -> void:
 	inventory_menu.id_pressed.connect(_on_inventory_menu_id_pressed)
 	_ensure_inventory_slots()
 	_capture_default_panel_positions()
+	$Root/MenuButton.pivot_offset = $Root/MenuButton.size * 0.5
+
+
+func _on_menu_button_mouse_entered() -> void:
+	_animate_menu_button_hover(true)
+
+
+func _on_menu_button_mouse_exited() -> void:
+	_animate_menu_button_hover(false)
+
+
+func _animate_menu_button_hover(hovered: bool) -> void:
+	var button := $Root/MenuButton as Button
+	if menu_button_hover_tween != null:
+		menu_button_hover_tween.kill()
+		menu_button_hover_tween = null
+
+	var target_scale := Vector2(1.08, 1.08) if hovered else Vector2.ONE
+	menu_button_hover_tween = create_tween()
+	menu_button_hover_tween.set_trans(Tween.TRANS_SINE)
+	menu_button_hover_tween.set_ease(Tween.EASE_OUT)
+	menu_button_hover_tween.tween_property(button, "scale", target_scale, 0.12)
 
 
 func _input(event: InputEvent) -> void:
@@ -104,7 +163,6 @@ func _input(event: InputEvent) -> void:
 		var motion_event := event as InputEventMouseMotion
 		var next_position: Vector2 = drag_panel_start + motion_event.position - drag_mouse_start
 		dragging_panel.position = _clamp_panel_position(dragging_panel, next_position)
-
 
 func load_hud_save_data(data: Dictionary) -> void:
 	_ensure_menu_panel_refs()
@@ -130,6 +188,7 @@ func to_hud_save_data() -> Dictionary:
 func refresh(game_state) -> void:
 	_ensure_menu_panel_refs()
 	current_game_state = game_state
+	current_progress_state = game_state.progress_states.duplicate(true) if game_state != null else {}
 	_refresh_character_info(game_state)
 
 	if inventory_panel.visible:
@@ -254,6 +313,10 @@ func show_home_action_panel(task_type: int) -> void:
 	_apply_saved_panel_position(panel)
 	panel.visible = true
 	_refresh_action_detail(task_type)
+	if task_type == GameDefs.TaskType.FARM:
+		_refresh_farm_panel()
+	if task_type == GameDefs.TaskType.FORGE:
+		_refresh_forge_panel()
 	if task_type == GameDefs.TaskType.ALCHEMY:
 		_refresh_alchemy_panel()
 
@@ -318,8 +381,56 @@ func _ensure_menu_panel_refs() -> void:
 		category_row = $Root/InventoryPanel/InventoryLayout/CategoryRow
 	if farm_detail == null:
 		farm_detail = $Root/FarmPanel/PanelLayout/ActionDetail
+	if farm_progress_label == null:
+		farm_progress_label = $Root/FarmPanel/PanelLayout/ProgressLabel
+	if farm_seed_slot_button == null:
+		farm_seed_slot_button = $Root/FarmPanel/PanelLayout/SeedSlotButton
+	if farm_seed_picker_panel == null:
+		farm_seed_picker_panel = $Root/FarmPanel/PanelLayout/SeedPickerPanel
+	if farm_seed_list == null:
+		farm_seed_list = $Root/FarmPanel/PanelLayout/SeedPickerPanel/SeedList
+	if farm_slot_list == null:
+		farm_slot_list = $Root/FarmPanel/PanelLayout/FarmSlotList
+	if farm_speed_item_slot_button == null:
+		farm_speed_item_slot_button = $Root/FarmPanel/PanelLayout/SpeedItemSlotButton
+	if farm_speed_item_picker_panel == null:
+		farm_speed_item_picker_panel = $Root/FarmPanel/PanelLayout/SpeedItemPickerPanel
+	if farm_speed_item_list == null:
+		farm_speed_item_list = $Root/FarmPanel/PanelLayout/SpeedItemPickerPanel/SpeedItemList
+	if farm_speed_status_label == null:
+		farm_speed_status_label = $Root/FarmPanel/PanelLayout/SpeedStatusLabel
+	if farm_use_speed_item_button == null:
+		farm_use_speed_item_button = $Root/FarmPanel/PanelLayout/UseSpeedItemButton
+	if farm_plant_button == null:
+		farm_plant_button = $Root/FarmPanel/PanelLayout/ActionRow/PlantButton
+	if farm_claim_button == null:
+		farm_claim_button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimButton
+	if farm_claim_all_button == null:
+		farm_claim_all_button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimAllButton
+	if farm_hint_label == null:
+		farm_hint_label = $Root/FarmPanel/PanelLayout/HintLabel
 	if forge_detail == null:
 		forge_detail = $Root/ForgePanel/PanelLayout/ActionDetail
+	if forge_progress_label == null:
+		forge_progress_label = $Root/ForgePanel/PanelLayout/ProgressLabel
+	if forge_action_button == null:
+		forge_action_button = $Root/ForgePanel/PanelLayout/ExecuteButton
+	if forge_craft_mode_button == null:
+		forge_craft_mode_button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeCraftButton
+	if forge_enhance_mode_button == null:
+		forge_enhance_mode_button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeEnhanceButton
+	if forge_refine_mode_button == null:
+		forge_refine_mode_button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeRefineButton
+	if forge_equipment_slot_button == null:
+		forge_equipment_slot_button = $Root/ForgePanel/PanelLayout/EquipmentSlotButton
+	if forge_equipment_picker_panel == null:
+		forge_equipment_picker_panel = $Root/ForgePanel/PanelLayout/EquipmentPickerPanel
+	if forge_equipment_list == null:
+		forge_equipment_list = $Root/ForgePanel/PanelLayout/EquipmentPickerPanel/EquipmentList
+	if forge_material_grid == null:
+		forge_material_grid = $Root/ForgePanel/PanelLayout/MaterialGrid
+	if forge_hint_label == null:
+		forge_hint_label = $Root/ForgePanel/PanelLayout/HintLabel
 	if meditate_detail == null:
 		meditate_detail = $Root/MeditatePanel/PanelLayout/ActionDetail
 	if fight_detail == null:
@@ -338,9 +449,44 @@ func _ensure_menu_panel_refs() -> void:
 		alchemy_craft_count_spinbox = $Root/AlchemyPanel/PanelLayout/CraftCountSpinBox
 	if alchemy_craft_button == null:
 		alchemy_craft_button = $Root/AlchemyPanel/PanelLayout/CraftButton
+	if alchemy_progress_label == null:
+		alchemy_progress_label = $Root/AlchemyPanel/PanelLayout/ProgressLabel
 	if alchemy_hint_label == null:
 		alchemy_hint_label = $Root/AlchemyPanel/PanelLayout/HintLabel
+	_connect_farm_controls()
+	_connect_forge_controls()
 	_connect_alchemy_controls()
+
+
+func _connect_farm_controls() -> void:
+	if farm_controls_connected:
+		return
+	if farm_seed_slot_button == null or farm_seed_list == null or farm_slot_list == null or farm_plant_button == null:
+		return
+	farm_seed_slot_button.pressed.connect(_on_farm_seed_slot_pressed)
+	farm_seed_list.item_selected.connect(_on_farm_seed_selected)
+	farm_slot_list.item_selected.connect(_on_farm_slot_selected)
+	farm_speed_item_slot_button.pressed.connect(_on_farm_speed_item_slot_pressed)
+	farm_speed_item_list.item_selected.connect(_on_farm_speed_item_selected)
+	farm_use_speed_item_button.pressed.connect(_on_farm_use_speed_item_pressed)
+	farm_plant_button.pressed.connect(_on_farm_plant_pressed)
+	farm_claim_button.pressed.connect(_on_farm_claim_pressed)
+	farm_claim_all_button.pressed.connect(_on_farm_claim_all_pressed)
+	farm_controls_connected = true
+
+
+func _connect_forge_controls() -> void:
+	if forge_controls_connected:
+		return
+	if forge_craft_mode_button == null or forge_enhance_mode_button == null or forge_refine_mode_button == null or forge_action_button == null:
+		return
+	forge_craft_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_CRAFT))
+	forge_enhance_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_ENHANCE))
+	forge_refine_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_REFINE))
+	forge_equipment_slot_button.pressed.connect(_on_forge_equipment_slot_pressed)
+	forge_equipment_list.item_selected.connect(_on_forge_equipment_selected)
+	forge_action_button.pressed.connect(_on_forge_action_pressed)
+	forge_controls_connected = true
 
 
 func _connect_alchemy_controls() -> void:
@@ -490,9 +636,9 @@ func _panel_for_task(task_type: int) -> PanelContainer:
 
 func _refresh_visible_action_details() -> void:
 	if farm_panel.visible:
-		_refresh_action_detail(GameDefs.TaskType.FARM)
+		_refresh_farm_panel()
 	if forge_panel.visible:
-		_refresh_action_detail(GameDefs.TaskType.FORGE)
+		_refresh_forge_panel()
 	if alchemy_panel.visible:
 		_refresh_alchemy_panel()
 	if meditate_panel.visible:
@@ -506,25 +652,58 @@ func _refresh_action_detail(task_type: int) -> void:
 		return
 
 	if task_type == GameDefs.TaskType.FARM:
-		farm_detail.text = "消耗 1 个作物种子\n农田等级：%d\n作物：%d" % [
-			int(current_game_state.stats.get("farm_level", 1)),
-			current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_CROP),
-		]
+		_refresh_farm_panel()
 	elif task_type == GameDefs.TaskType.FORGE:
-		forge_detail.text = "消耗 2 个材料\n材料：%d\n炼器加成：%d" % [
-			current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL),
-			current_game_state.craft_bonus(),
-		]
+		_refresh_forge_panel()
 	elif task_type == GameDefs.TaskType.MEDITATE:
-		meditate_detail.text = "恢复生命和法力\n获得修为：%d\n根骨：%d" % [
+		meditate_detail.text = "???????\n?????%d\n???%d" % [
 			8 + int(current_game_state.stats["level"]),
 			int(current_game_state.stats.get("root_bone", 0)),
 		]
 	elif task_type == GameDefs.TaskType.FIGHT:
-		fight_detail.text = "遭遇一次敌人\n攻击：%d\n防御：%d" % [
+		fight_detail.text = "??????\n???%d\n???%d" % [
 			current_game_state.total_attack(),
 			current_game_state.total_defense(),
 		]
+
+
+func _progress_label_text(progress_id: String) -> String:
+	return "???%s" % _progress_summary(progress_id)
+
+
+func _action_button_text(progress_id: String) -> String:
+	var progress: Dictionary = current_game_state.progress_state(progress_id) if current_game_state != null else {}
+	if bool(progress.get("claimable", false)):
+		return "??"
+	if bool(progress.get("completed", false)):
+		return "???"
+	if progress_id == "farm":
+		return "??"
+	if progress_id == "forge":
+		return "??"
+	return "??"
+
+
+func _action_button_disabled(progress_id: String) -> bool:
+	var progress: Dictionary = current_game_state.progress_state(progress_id) if current_game_state != null else {}
+	if bool(progress.get("claimable", false)):
+		return false
+	if progress_id == "farm":
+		return current_game_state == null or current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_CROP) <= 0
+	if progress_id == "forge":
+		return current_game_state == null or current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL) <= 0
+	return current_game_state == null
+
+
+func _progress_summary(progress_id: String) -> String:
+	if current_game_state == null:
+		return "not_started / ???"
+	var progress: Dictionary = current_game_state.progress_state(progress_id)
+	var status := str(progress.get("status", "not_started"))
+	var detail := str(progress.get("detail", ""))
+	if detail.is_empty():
+		detail = "???"
+	return "%s / %s" % [status, detail]
 
 
 func _set_inventory_category(type_id: String) -> void:
@@ -738,8 +917,385 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 			current_game_state.drop_inventory_item(selected_inventory_instance_id)
 
 	_refresh_inventory()
+	if farm_panel.visible:
+		_refresh_farm_panel()
+	if forge_panel.visible:
+		_refresh_forge_panel()
 	if alchemy_panel.visible:
 		_refresh_alchemy_panel()
+
+
+func _on_farm_seed_slot_pressed() -> void:
+	_ensure_menu_panel_refs()
+	_refresh_farm_seed_list()
+	farm_seed_picker_panel.visible = true
+
+
+func _on_farm_seed_selected(index: int) -> void:
+	_ensure_menu_panel_refs()
+	if index < 0 or index >= farm_seed_list.item_count:
+		return
+	selected_farm_seed_id = str(farm_seed_list.get_item_metadata(index))
+	farm_seed_picker_panel.visible = false
+	_refresh_farm_panel()
+
+
+func _on_farm_slot_selected(index: int) -> void:
+	selected_farm_slot_index = index
+	_refresh_farm_panel()
+
+
+func _on_farm_speed_item_slot_pressed() -> void:
+	_ensure_menu_panel_refs()
+	_refresh_farm_speed_item_list()
+	farm_speed_item_picker_panel.visible = true
+
+
+func _on_farm_speed_item_selected(index: int) -> void:
+	_ensure_menu_panel_refs()
+	if index < 0 or index >= farm_speed_item_list.item_count:
+		return
+	selected_farm_speed_item_id = str(farm_speed_item_list.get_item_metadata(index))
+	farm_speed_item_picker_panel.visible = false
+	_refresh_farm_panel()
+
+
+func _on_farm_use_speed_item_pressed() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null or selected_farm_speed_item_id.is_empty():
+		return
+	if current_game_state.use_farm_speed_item(selected_farm_speed_item_id):
+		_refresh_farm_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()
+
+
+func _on_farm_plant_pressed() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null or selected_farm_slot_index < 0 or selected_farm_seed_id.is_empty():
+		return
+	if current_game_state.plant_farm_slot(selected_farm_slot_index, selected_farm_seed_id):
+		_refresh_farm_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()
+
+
+func _on_farm_claim_pressed() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null or selected_farm_slot_index < 0:
+		return
+	if current_game_state.claim_farm_slot(selected_farm_slot_index):
+		_refresh_farm_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()
+
+
+func _on_farm_claim_all_pressed() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null:
+		return
+	if current_game_state.claim_all_farm_slots() > 0:
+		_refresh_farm_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()
+
+
+func _refresh_farm_panel() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null:
+		return
+	if selected_farm_slot_index >= current_game_state.farm_slots.size():
+		selected_farm_slot_index = -1
+	farm_progress_label.text = _progress_label_text("farm")
+	farm_seed_slot_button.text = "选择种子" if selected_farm_seed_id.is_empty() else DataTables.resource_name(selected_farm_seed_id)
+	farm_speed_item_slot_button.text = "选择加速道具" if selected_farm_speed_item_id.is_empty() else DataTables.resource_name(selected_farm_speed_item_id)
+	farm_speed_status_label.text = "当前倍率：x%.1f  剩余：%s" % [current_game_state.farm_speed_multiplier(), _format_seconds(current_game_state.farm_speed_remaining_seconds())]
+	_refresh_farm_slot_list()
+	_refresh_farm_buttons()
+
+
+func _refresh_farm_buttons() -> void:
+	var selected_slot := _selected_farm_slot()
+	var selected_status := str(selected_slot.get("status", "empty"))
+	var can_plant: bool = selected_farm_slot_index >= 0 and selected_status == "empty" and not selected_farm_seed_id.is_empty() and current_game_state.inventory_item_count(selected_farm_seed_id) > 0
+	var can_claim: bool = selected_farm_slot_index >= 0 and selected_status == "ready"
+	farm_plant_button.disabled = not can_plant
+	farm_claim_button.disabled = not can_claim
+	farm_claim_all_button.disabled = current_game_state.ready_farm_slot_count() <= 0
+	var can_use_speed: bool = not selected_farm_speed_item_id.is_empty() and current_game_state.inventory_item_count(selected_farm_speed_item_id) > 0
+	farm_use_speed_item_button.disabled = not can_use_speed
+	farm_speed_item_slot_button.disabled = false
+	if can_use_speed:
+		farm_speed_item_slot_button.text = DataTables.resource_name(selected_farm_speed_item_id)
+	if selected_farm_slot_index < 0:
+		farm_hint_label.text = "请选择农田槽位"
+	elif selected_status == "empty":
+		farm_hint_label.text = "选择种子后可种植到空槽"
+	elif selected_status == "growing":
+		farm_hint_label.text = "作物生长中：%s / %s" % [_format_seconds(float(selected_slot.get("elapsed_seconds", 0.0))), _format_seconds(float(selected_slot.get("growth_seconds", 0.0)))]
+	else:
+		farm_hint_label.text = "作物已成熟，可收取"
+	farm_detail.text = "农田等级：%d  空槽：%d  成熟：%d" % [int(current_game_state.stats.get("farm_level", 1)), _empty_farm_slot_count(), current_game_state.ready_farm_slot_count()]
+
+
+func _refresh_farm_seed_list() -> void:
+	_ensure_menu_panel_refs()
+	farm_seed_list.clear()
+	if current_game_state == null:
+		return
+	for item in current_game_state.inventory_items_for_type(DataTables.ITEM_TYPE_CROP):
+		var item_id := str(item.get("item_id", ""))
+		if not DataTables.is_farm_seed(item_id):
+			continue
+		var count: int = current_game_state.inventory_item_count(item_id)
+		var label := "%s x%d  产量%d  %s" % [DataTables.resource_name(item_id), count, DataTables.crop_seed_yield(item_id) + int(current_game_state.stats.get("farm_level", 1)) - 1, _format_seconds(DataTables.crop_growth_seconds(item_id))]
+		var index := farm_seed_list.add_item(label)
+		farm_seed_list.set_item_metadata(index, item_id)
+
+
+func _refresh_farm_speed_item_list() -> void:
+	_ensure_menu_panel_refs()
+	farm_speed_item_list.clear()
+	if current_game_state == null:
+		return
+	for item in current_game_state.inventory_items_for_type(DataTables.ITEM_TYPE_MATERIAL):
+		var item_id := str(item.get("item_id", ""))
+		if not DataTables.is_farm_speed_item(item_id):
+			continue
+		var label := "%s x%d  x%.1f/%s" % [DataTables.resource_name(item_id), current_game_state.inventory_item_count(item_id), DataTables.farm_speed_item_multiplier(item_id), _format_seconds(DataTables.farm_speed_item_duration(item_id))]
+		var index := farm_speed_item_list.add_item(label)
+		farm_speed_item_list.set_item_metadata(index, item_id)
+
+
+func _refresh_farm_slot_list() -> void:
+	farm_slot_list.clear()
+	for index in range(current_game_state.farm_slots.size()):
+		var slot: Dictionary = current_game_state.farm_slots[index]
+		var label := _farm_slot_label(index, slot)
+		farm_slot_list.add_item(label)
+	if selected_farm_slot_index >= 0 and selected_farm_slot_index < farm_slot_list.item_count:
+		farm_slot_list.select(selected_farm_slot_index)
+
+
+func _farm_slot_label(index: int, slot: Dictionary) -> String:
+	var status := str(slot.get("status", "empty"))
+	if status == "empty":
+		return "%d. 空地" % (index + 1)
+	var crop_id := str(slot.get("crop_id", ""))
+	var amount := int(slot.get("harvest_amount", 0))
+	if status == "ready":
+		return "%d. %s x%d  已成熟" % [index + 1, DataTables.resource_name(crop_id), amount]
+	var elapsed := float(slot.get("elapsed_seconds", 0.0))
+	var growth := float(slot.get("growth_seconds", 1.0))
+	var percent := int(clamp(elapsed / max(1.0, growth) * 100.0, 0.0, 100.0))
+	return "%d. %s x%d  %d%%  剩余%s" % [index + 1, DataTables.resource_name(crop_id), amount, percent, _format_seconds(max(0.0, growth - elapsed))]
+
+
+func _selected_farm_slot() -> Dictionary:
+	if current_game_state == null or selected_farm_slot_index < 0 or selected_farm_slot_index >= current_game_state.farm_slots.size():
+		return {}
+	return current_game_state.farm_slots[selected_farm_slot_index]
+
+
+func _empty_farm_slot_count() -> int:
+	var count := 0
+	for slot in current_game_state.farm_slots:
+		if str(slot.get("status", "empty")) == "empty":
+			count += 1
+	return count
+
+
+func _format_seconds(seconds: float) -> String:
+	var total := maxi(0, int(ceil(seconds)))
+	var minutes := total / 60
+	var rest := total % 60
+	return "%02d:%02d" % [minutes, rest]
+
+
+func _set_forge_mode(mode: String) -> void:
+	selected_forge_mode = mode
+	if forge_equipment_picker_panel != null:
+		forge_equipment_picker_panel.visible = false
+	_refresh_forge_panel()
+
+
+func _on_forge_equipment_slot_pressed() -> void:
+	_ensure_menu_panel_refs()
+	_refresh_forge_equipment_list()
+	forge_equipment_picker_panel.visible = true
+
+
+func _on_forge_equipment_selected(index: int) -> void:
+	_ensure_menu_panel_refs()
+	if index < 0 or index >= forge_equipment_list.item_count:
+		return
+	selected_forge_equipment_instance_id = str(forge_equipment_list.get_item_metadata(index))
+	forge_equipment_picker_panel.visible = false
+	_refresh_forge_panel()
+
+
+func _on_forge_action_pressed() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null:
+		return
+	if selected_forge_mode == FORGE_MODE_CRAFT:
+		home_action_requested.emit(GameDefs.TaskType.FORGE)
+		return
+	if selected_forge_equipment_instance_id.is_empty():
+		return
+	var succeeded := false
+	if selected_forge_mode == FORGE_MODE_ENHANCE:
+		succeeded = current_game_state.enhance_equipment(selected_forge_equipment_instance_id)
+	elif selected_forge_mode == FORGE_MODE_REFINE:
+		succeeded = current_game_state.add_equipment_affix(selected_forge_equipment_instance_id)
+	if succeeded:
+		_refresh_forge_equipment_list()
+		_refresh_forge_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()
+		if character_info_panel.visible:
+			_refresh_character_info(current_game_state)
+
+
+func _refresh_forge_panel() -> void:
+	_ensure_menu_panel_refs()
+	if current_game_state == null:
+		return
+	if not [FORGE_MODE_CRAFT, FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode):
+		selected_forge_mode = FORGE_MODE_CRAFT
+
+	forge_craft_mode_button.disabled = selected_forge_mode == FORGE_MODE_CRAFT
+	forge_enhance_mode_button.disabled = selected_forge_mode == FORGE_MODE_ENHANCE
+	forge_refine_mode_button.disabled = selected_forge_mode == FORGE_MODE_REFINE
+	forge_progress_label.text = _progress_label_text("forge")
+	_clear_forge_material_grid()
+
+	if selected_forge_mode == FORGE_MODE_CRAFT:
+		_refresh_forge_craft_panel()
+	else:
+		_refresh_forge_equipment_action_panel()
+
+
+func _refresh_forge_craft_panel() -> void:
+	forge_equipment_slot_button.visible = false
+	forge_equipment_picker_panel.visible = false
+	forge_action_button.text = "开始炼器"
+	forge_action_button.disabled = _action_button_disabled("forge")
+	forge_detail.text = "可用材料：%d / 2" % current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL)
+	forge_material_grid.add_child(_create_forge_material_slot("material", "任意材料", current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL), 2))
+	forge_material_grid.add_child(_create_forge_material_slot("bonus", "根骨加成", current_game_state.craft_bonus(), 0))
+	if forge_action_button.disabled:
+		forge_hint_label.text = "材料不足，炼器需要 2 个任意材料"
+	else:
+		forge_hint_label.text = "消耗 2 个材料，随机炼制一件装备。根骨加成：%d" % current_game_state.craft_bonus()
+
+
+func _refresh_forge_equipment_action_panel() -> void:
+	forge_equipment_slot_button.visible = true
+	var selected_item: Dictionary = current_game_state.inventory_item_by_instance(selected_forge_equipment_instance_id)
+	if selected_item.is_empty() or selected_item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
+		selected_forge_equipment_instance_id = ""
+		forge_equipment_slot_button.text = "选择装备"
+	else:
+		forge_equipment_slot_button.text = str(selected_item.get("name", "装备"))
+
+	var has_selection := not selected_forge_equipment_instance_id.is_empty()
+	forge_action_button.disabled = not has_selection
+	if selected_forge_mode == FORGE_MODE_ENHANCE:
+		forge_action_button.text = "强化装备"
+		_refresh_forge_enhance_cost(selected_item)
+	elif selected_forge_mode == FORGE_MODE_REFINE:
+		forge_action_button.text = "洗练装备"
+		_refresh_forge_refine_cost(selected_item)
+	if not has_selection:
+		forge_hint_label.text = "请选择装备"
+
+
+func _refresh_forge_enhance_cost(item: Dictionary) -> void:
+	var cost := int(item.get("enhance_count", 0)) + 1 if not item.is_empty() else 1
+	forge_detail.text = "强化消耗：匹配灵石 x%d" % cost
+	if item.is_empty():
+		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
+		return
+	var best_item_id := _first_matching_enhance_stone_id(item, cost)
+	if best_item_id.is_empty():
+		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
+		forge_hint_label.text = "缺少可强化该装备属性的灵石"
+	else:
+		var current: int = current_game_state.inventory_item_count(best_item_id)
+		forge_material_grid.add_child(_create_forge_material_slot(best_item_id, DataTables.resource_name(best_item_id), current, cost))
+		forge_hint_label.text = "强化等级：+%d → +%d" % [int(item.get("enhance_count", 0)), int(item.get("enhance_count", 0)) + 1]
+
+
+func _refresh_forge_refine_cost(item: Dictionary) -> void:
+	var cost := int(item.get("refine_count", 0)) + 1 if not item.is_empty() else 1
+	var current: int = current_game_state.inventory_item_count("refine_talisman")
+	forge_detail.text = "洗练消耗：洗练符 x%d" % cost
+	forge_material_grid.add_child(_create_forge_material_slot("refine_talisman", DataTables.resource_name("refine_talisman"), current, cost))
+	if item.is_empty():
+		return
+	if current < cost:
+		forge_hint_label.text = "洗练符不足"
+	else:
+		forge_hint_label.text = "当前洗练词条：%d，洗练后新增百分比词条" % int(item.get("refine_count", 0))
+
+
+func _refresh_forge_equipment_list() -> void:
+	_ensure_menu_panel_refs()
+	forge_equipment_list.clear()
+	if current_game_state == null:
+		return
+	for item in current_game_state.inventory_items_for_type(DataTables.ITEM_TYPE_EQUIPMENT):
+		var instance_id := str(item.get("instance_id", ""))
+		if instance_id.is_empty():
+			continue
+		var label := "%s  +%d / 洗练%d" % [str(item.get("name", "装备")), int(item.get("enhance_count", 0)), int(item.get("refine_count", 0))]
+		var index := forge_equipment_list.add_item(label)
+		forge_equipment_list.set_item_metadata(index, instance_id)
+
+
+func _clear_forge_material_grid() -> void:
+	_ensure_menu_panel_refs()
+	for child in forge_material_grid.get_children():
+		child.queue_free()
+
+
+func _create_forge_material_slot(item_id: String, item_name: String, current: int, required: int) -> PanelContainer:
+	var slot := PanelContainer.new()
+	slot.custom_minimum_size = Vector2(144, 60)
+	var layout := VBoxContainer.new()
+	layout.name = "SlotLayout"
+	slot.add_child(layout)
+	var icon := TextureRect.new()
+	icon.name = "IconPlaceholder"
+	icon.custom_minimum_size = Vector2(28, 18)
+	layout.add_child(icon)
+	var name_label := Label.new()
+	name_label.name = "NameLabel"
+	name_label.text = item_name
+	layout.add_child(name_label)
+	var count_label := Label.new()
+	count_label.name = "CountLabel"
+	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	count_label.text = str(current) if required <= 0 else "%d/%d" % [current, required]
+	if required > 0 and current < required:
+		count_label.modulate = Color(1.0, 0.2, 0.2)
+	layout.add_child(count_label)
+	return slot
+
+
+func _first_matching_enhance_stone_id(item: Dictionary, cost: int) -> String:
+	var base_stats := []
+	for attribute in item.get("base_attributes", []):
+		var stat_id: String = attribute.get("stat", "")
+		if not stat_id.is_empty() and not base_stats.has(stat_id):
+			base_stats.append(stat_id)
+	for quality in DataTables.SPIRIT_STONE_QUALITY_ORDER:
+		for stat_id in base_stats:
+			var item_id := DataTables.enhance_stone_item_id(stat_id, quality)
+			if not item_id.is_empty() and current_game_state.inventory_item_count(item_id) >= cost:
+				return item_id
+	return ""
 
 
 func _on_alchemy_recipe_slot_pressed() -> void:
@@ -797,6 +1353,7 @@ func _refresh_alchemy_panel() -> void:
 		alchemy_material_grid.add_child(_create_alchemy_material_slot(material))
 
 	var learned: bool = current_game_state.known_alchemy_recipes.has(selected_alchemy_recipe_id)
+	alchemy_progress_label.text = _progress_label_text("alchemy")
 	alchemy_craft_button.disabled = max_count <= 0 or not learned
 	if not learned:
 		alchemy_hint_label.text = "尚未学习该丹方"

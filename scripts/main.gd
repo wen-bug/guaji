@@ -11,6 +11,8 @@ var character
 var combat
 var hud
 var home_map
+var battle_map
+var expedition_active := false
 
 
 func _ready() -> void:
@@ -18,24 +20,18 @@ func _ready() -> void:
 	_load_saved_data()
 	_setup_save_timer()
 
-	home_map = $Home
-	character = $CharacterController
+	_bind_scene_nodes()
 	character.setup()
 
-	combat = $CombatController
-	hud = $Hud
-
-	home_map.home_node_selected.connect(_on_home_node_selected)
-	hud.home_action_requested.connect(_on_home_action_requested)
-	hud.hud_save_requested.connect(_queue_save_data)
-	combat.log_added.connect(hud.push_log)
-	game_state.log_added.connect(hud.push_log)
-	game_state.changed.connect(_queue_save_data)
+	_connect_scene_signals()
 	hud.load_hud_save_data(_loaded_hud_data())
+	if home_map != null:
+		home_map.update_progress_alerts(game_state)
 	hud.push_log("家园已启动")
 
 
 func _on_home_node_selected(node_name: String) -> void:
+	_bind_scene_nodes()
 	var task_type: int = home_map.task_type_for_node(node_name)
 	if task_type == GameDefs.TaskType.MEDITATE \
 		or task_type == GameDefs.TaskType.FARM \
@@ -43,23 +39,17 @@ func _on_home_node_selected(node_name: String) -> void:
 		or task_type == GameDefs.TaskType.ALCHEMY \
 		or task_type == GameDefs.TaskType.FIGHT:
 		hud.show_home_action_panel(task_type)
+		hud.refresh(game_state)
 
 
 func _on_home_action_requested(task_type: int) -> void:
+	_bind_scene_nodes()
 	if task_type == GameDefs.TaskType.MEDITATE:
 		game_state.heal(18, 14)
 		game_state.add_cultivation(8 + game_state.stats["level"])
 		game_state.add_task_experience(task_type, 5)
 	elif task_type == GameDefs.TaskType.FARM:
-		var harvest: Dictionary = game_state.consume_seed_for_farm()
-		if harvest.is_empty():
-			hud.push_log("没有可用种子")
-			return
-		game_state.gain_resource(harvest["item_id"], int(harvest["amount"]))
-		if home_map != null:
-			home_map.show_farm_crops(str(harvest["item_id"]), int(harvest["amount"]))
-		game_state.add_exp(2)
-		game_state.add_task_experience(task_type, 5)
+		hud.show_home_action_panel(task_type)
 	elif task_type == GameDefs.TaskType.FORGE:
 		if game_state.spend_inventory_type(DataTables.ITEM_TYPE_MATERIAL, 2):
 			game_state.add_equipment(DataTables.create_equipment(game_state.stats["level"], game_state.rng, game_state.craft_bonus()))
@@ -81,18 +71,104 @@ func _on_home_action_requested(task_type: int) -> void:
 		else:
 			hud.push_log("作物不足，炼丹失败")
 	elif task_type == GameDefs.TaskType.FIGHT:
-		combat.begin_encounter(game_state)
+		_enter_expedition()
 
 
 func _process(delta: float) -> void:
+	_bind_scene_nodes()
 	game_state.update_buffs(delta)
+	game_state.update_farm(delta)
 	if combat.active:
 		combat.tick(delta, game_state)
-		if combat.is_finished():
-			game_state.add_task_experience(GameDefs.TaskType.FIGHT, 8)
-	else:
+	if combat.is_finished():
+		_finish_current_combat()
+	elif not expedition_active:
 		character.set_idle_roam()
 	hud.refresh(game_state)
+	if home_map != null:
+		home_map.show_farm_slots(game_state.farm_slots)
+		home_map.update_progress_alerts(game_state)
+
+
+func _enter_expedition() -> void:
+	_bind_scene_nodes()
+	_connect_scene_signals()
+	if expedition_active:
+		_push_log("已经在历练中，等待下一次遇怪")
+		return
+	expedition_active = true
+	if home_map != null:
+		home_map.visible = false
+	if battle_map != null:
+		battle_map.enter_expedition()
+	if character != null:
+		character.enter_expedition_run(Vector2(180, 170))
+	_push_log("进入历练地图，开始寻找怪物")
+
+
+func _on_monster_spawn_requested() -> void:
+	_bind_scene_nodes()
+	if not expedition_active or combat.active:
+		return
+	if battle_map != null:
+		battle_map.set_combat_mode(true)
+	combat.begin_encounter(game_state)
+
+
+func _finish_current_combat() -> void:
+	_bind_scene_nodes()
+	game_state.add_task_experience(GameDefs.TaskType.FIGHT, 8)
+	combat.clear()
+	if battle_map != null and expedition_active:
+		battle_map.finish_combat()
+	if character != null and expedition_active:
+		character.enter_expedition_run(Vector2(180, 170))
+
+
+func _bind_scene_nodes() -> void:
+	if home_map == null:
+		home_map = get_node_or_null("Home")
+	if battle_map == null:
+		battle_map = get_node_or_null("BattleMap")
+	if character == null:
+		character = get_node_or_null("CharacterController")
+	if combat == null:
+		combat = get_node_or_null("CombatController")
+	if hud == null:
+		hud = get_node_or_null("Hud")
+
+
+func _push_log(message: String) -> void:
+	if hud != null:
+		hud.push_log(message)
+
+
+func _connect_scene_signals() -> void:
+	if home_map != null:
+		var home_callback := Callable(self, "_on_home_node_selected")
+		if not home_map.home_node_selected.is_connected(home_callback):
+			home_map.home_node_selected.connect(home_callback)
+	if battle_map != null:
+		var spawn_callback := Callable(self, "_on_monster_spawn_requested")
+		if not battle_map.monster_spawn_requested.is_connected(spawn_callback):
+			battle_map.monster_spawn_requested.connect(spawn_callback)
+	if hud != null:
+		var action_callback := Callable(self, "_on_home_action_requested")
+		if not hud.home_action_requested.is_connected(action_callback):
+			hud.home_action_requested.connect(action_callback)
+		var save_callback := Callable(self, "_queue_save_data")
+		if not hud.hud_save_requested.is_connected(save_callback):
+			hud.hud_save_requested.connect(save_callback)
+	if combat != null and hud != null:
+		var combat_log_callback := Callable(hud, "push_log")
+		if not combat.log_added.is_connected(combat_log_callback):
+			combat.log_added.connect(combat_log_callback)
+	var game_log_callback := Callable(self, "_push_log")
+	if not game_state.log_added.is_connected(game_log_callback):
+		game_state.log_added.connect(game_log_callback)
+	var changed_callback := Callable(self, "_queue_save_data")
+	if not game_state.changed.is_connected(changed_callback):
+		game_state.changed.connect(changed_callback)
 
 
 func _setup_window() -> void:

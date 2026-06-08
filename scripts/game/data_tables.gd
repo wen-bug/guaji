@@ -109,7 +109,7 @@ const ITEM_DEFS := {
 		"description": "种田获得的药草，可用于炼丹。",
 		"stackable": true,
 		"usable": false,
-		"payload": {"seed_yield": 3},
+		"payload": {"seed_yield": 3, "growth_seconds": 60},
 	},
 	"rice": {
 		"type": ITEM_TYPE_CROP,
@@ -117,7 +117,7 @@ const ITEM_DEFS := {
 		"description": "带有灵气的谷物，适合后续扩展食补或炼丹配方。",
 		"stackable": true,
 		"usable": false,
-		"payload": {"seed_yield": 2},
+		"payload": {"seed_yield": 2, "growth_seconds": 90},
 	},
 	"mushroom": {
 		"type": ITEM_TYPE_CROP,
@@ -125,7 +125,15 @@ const ITEM_DEFS := {
 		"description": "生长在家园角落的灵菇，适合后续扩展特殊丹方。",
 		"stackable": true,
 		"usable": false,
-		"payload": {"seed_yield": 1},
+		"payload": {"seed_yield": 1, "growth_seconds": 120},
+	},
+	"farm_speed_talisman": {
+		"type": ITEM_TYPE_MATERIAL,
+		"name": "灵肥符",
+		"description": "农田加速道具，使用后 600 秒内作物生长速度 x2。",
+		"stackable": true,
+		"usable": false,
+		"payload": {"farm_speed_multiplier": 2.0, "duration_seconds": 600},
 	},
 
 	"blade_grass": {
@@ -667,6 +675,38 @@ static func resource_name(resource_id: String) -> String:
 	if definition != null:
 		return definition.display_name
 	return resource_id
+
+
+static func item_payload(item_id: String) -> Dictionary:
+	var definition := item_definition(item_id)
+	return definition.get("payload", {})
+
+
+static func is_farm_seed(item_id: String) -> bool:
+	var definition := item_definition(item_id)
+	if definition.get("type", "") != ITEM_TYPE_CROP:
+		return false
+	return int(definition.get("payload", {}).get("seed_yield", 0)) > 0
+
+
+static func crop_seed_yield(item_id: String) -> int:
+	return int(item_payload(item_id).get("seed_yield", 0))
+
+
+static func crop_growth_seconds(item_id: String) -> float:
+	return float(item_payload(item_id).get("growth_seconds", 60.0))
+
+
+static func is_farm_speed_item(item_id: String) -> bool:
+	return float(item_payload(item_id).get("farm_speed_multiplier", 0.0)) > 1.0
+
+
+static func farm_speed_item_multiplier(item_id: String) -> float:
+	return float(item_payload(item_id).get("farm_speed_multiplier", 1.0))
+
+
+static func farm_speed_item_duration(item_id: String) -> float:
+	return float(item_payload(item_id).get("duration_seconds", 0.0))
 
 
 static func alchemy_recipe_def(recipe_id: String) -> Dictionary:

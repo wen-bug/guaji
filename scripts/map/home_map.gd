@@ -15,10 +15,12 @@ const HIGHLIGHT_Z_OFFSET := 5
 const META_ORIGINAL_SCALE := "home_original_scale"
 const META_ORIGINAL_Z_INDEX := "home_original_z_index"
 const SHADER_PARAM_OUTLINE_ENABLED := "outline_enabled"
+const ALERT_TEXT := "!"
 
 var farm_markers: Array[Marker2D] = []
 var crop_template: Node2D
 var active_crop_nodes: Array[Node2D] = []
+var alert_labels := {}
 var _is_setup := false
 
 
@@ -84,6 +86,38 @@ func show_farm_crops(crop_id: String, amount: int) -> void:
 		_connect_action_area(crop_node, NODE_FARMLAND)
 
 
+func show_farm_slots(farm_slots: Array) -> void:
+	setup_home_map()
+	_clear_farm_crops()
+	if crop_template == null:
+		return
+	var farmland := get_node_or_null(NODE_FARMLAND)
+	if farmland == null:
+		return
+	var display_index := 0
+	for slot in farm_slots:
+		if display_index >= farm_markers.size():
+			break
+		if not slot is Dictionary:
+			continue
+		if str(slot.get("status", "empty")) == "empty":
+			continue
+		var crop_id := str(slot.get("crop_id", ""))
+		if crop_id.is_empty():
+			continue
+		var crop_node := crop_template.duplicate() as Node2D
+		crop_node.name = "crop_%d" % (display_index + 1)
+		crop_node.visible = true
+		crop_node.position = farm_markers[display_index].position
+		crop_node.set_meta("crop_id", crop_id)
+		crop_node.set_meta("slot_index", display_index)
+		crop_node.set_meta("farm_status", str(slot.get("status", "")))
+		farmland.add_child(crop_node)
+		active_crop_nodes.append(crop_node)
+		_connect_action_area(crop_node, NODE_FARMLAND)
+		display_index += 1
+
+
 func clear_farm_crops() -> void:
 	_clear_farm_crops()
 
@@ -116,6 +150,7 @@ func _setup_farm_slots() -> void:
 
 
 func _connect_action_area(action_node: Node, action_name: String, connect_mouse_signals := true) -> void:
+	_ensure_alert_label(action_node, action_name)
 	if action_node == null:
 		return
 	var area := action_node.get_node_or_null("Area2D") as Area2D
@@ -252,6 +287,50 @@ func _create_outline_material() -> ShaderMaterial:
 	outline_material.set_shader_parameter(SHADER_PARAM_OUTLINE_ENABLED, false)
 	return outline_material
 
+
+
+
+func update_progress_alerts(game_state) -> void:
+	setup_home_map()
+	for node_name in [NODE_ALCHEMY, NODE_FORGE, NODE_FARMLAND]:
+		var progress_id := _progress_id_for_node(node_name)
+		var state: Dictionary = game_state.progress_state(progress_id) if game_state != null else {}
+		_set_alert_visible(node_name, bool(state.get("claimable", false)) or bool(state.get("completed", false)))
+
+
+func clear_progress_alert(node_name: String) -> void:
+	_set_alert_visible(node_name, false)
+
+
+func _progress_id_for_node(node_name: String) -> String:
+	match node_name:
+		NODE_ALCHEMY:
+			return "alchemy"
+		NODE_FORGE:
+			return "forge"
+		NODE_FARMLAND:
+			return "farm"
+	return ""
+
+
+func _set_alert_visible(node_name: String, visible: bool) -> void:
+	var label: Label = alert_labels.get(node_name, null)
+	if label == null:
+		return
+	label.visible = visible
+
+
+func _ensure_alert_label(action_node: Node, action_name: String) -> void:
+	if action_node == null or alert_labels.has(action_name):
+		return
+	var label := Label.new()
+	label.name = "AlertLabel"
+	label.text = ALERT_TEXT
+	label.position = Vector2(0, -18)
+	label.visible = false
+	label.z_index = 50
+	action_node.add_child(label)
+	alert_labels[action_name] = label
 
 func _clear_farm_crops() -> void:
 	for crop_node in active_crop_nodes:

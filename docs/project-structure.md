@@ -148,3 +148,9 @@ HUD 控制脚本：
 - 新增玩法先接入 `GameState` 结算，再接入 HUD 展示和测试。
 - 涉及数值公式时同步更新 `docs/design.md`。
 - 涉及场景节点命名时同步更新 HUD/场景结构测试。
+# 历练战斗补充
+
+- `scripts/map/battle_map.tscn`：历练地图场景，默认隐藏；进入打怪历练后显示，提供远景与地面两层循环滚动背景。
+- `scripts/map/battle_map.gd`：历练地图控制器，维护随机刷怪计时，发出 `monster_spawn_requested`，并在战斗结束后重新安排下一次遇怪。
+- `scripts/game/combat_controller.gd`：单场自动战斗控制器，只处理当前遇怪战斗，不负责怪物刷新频率。
+- `docs/battle-expedition.md`：记录家园入口、历练跑图、随机遇怪、自动战斗和战后继续跑图的流程。

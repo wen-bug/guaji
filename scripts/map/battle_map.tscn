@@ -1,0 +1,78 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/map/battle_map.gd" id="1_battle_map"]
+[ext_resource type="Texture2D" path="res://assets/Tiny Swords (Free Pack)/Decorations/Trees/Tree3.png" id="2_tree"]
+[ext_resource type="Texture2D" path="res://assets/Tiny Swords (Free Pack)/Terrain/Tilemap_color1.png" id="3_ground"]
+
+[node name="BattleMap" type="Node2D"]
+visible = false
+script = ExtResource("1_battle_map")
+
+[node name="Sky" type="ColorRect" parent="."]
+offset_right = 960.0
+offset_bottom = 480.0
+color = Color(0.08, 0.12, 0.18, 0.92)
+
+[node name="FarLayer" type="Node2D" parent="."]
+z_index = 1
+
+[node name="TreeA" type="Sprite2D" parent="FarLayer"]
+position = Vector2(120, 160)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("2_tree")
+
+[node name="TreeB" type="Sprite2D" parent="FarLayer"]
+position = Vector2(420, 155)
+scale = Vector2(0.7, 0.7)
+texture = ExtResource("2_tree")
+
+[node name="TreeC" type="Sprite2D" parent="FarLayer"]
+position = Vector2(760, 165)
+scale = Vector2(0.85, 0.85)
+texture = ExtResource("2_tree")
+
+[node name="TreeARepeat" type="Sprite2D" parent="FarLayer"]
+position = Vector2(1080, 160)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("2_tree")
+
+[node name="TreeBRepeat" type="Sprite2D" parent="FarLayer"]
+position = Vector2(1380, 155)
+scale = Vector2(0.7, 0.7)
+texture = ExtResource("2_tree")
+
+[node name="TreeCRepeat" type="Sprite2D" parent="FarLayer"]
+position = Vector2(1720, 165)
+scale = Vector2(0.85, 0.85)
+texture = ExtResource("2_tree")
+
+[node name="GroundLayer" type="Node2D" parent="."]
+z_index = 5
+
+[node name="GroundA" type="Sprite2D" parent="GroundLayer"]
+position = Vector2(240, 360)
+scale = Vector2(2.0, 2.0)
+texture = ExtResource("3_ground")
+region_enabled = true
+region_rect = Rect2(0, 0, 480, 96)
+
+[node name="GroundB" type="Sprite2D" parent="GroundLayer"]
+position = Vector2(720, 360)
+scale = Vector2(2.0, 2.0)
+texture = ExtResource("3_ground")
+region_enabled = true
+region_rect = Rect2(0, 0, 480, 96)
+
+[node name="GroundARepeat" type="Sprite2D" parent="GroundLayer"]
+position = Vector2(1200, 360)
+scale = Vector2(2.0, 2.0)
+texture = ExtResource("3_ground")
+region_enabled = true
+region_rect = Rect2(0, 0, 480, 96)
+
+[node name="GroundBRepeat" type="Sprite2D" parent="GroundLayer"]
+position = Vector2(1680, 360)
+scale = Vector2(2.0, 2.0)
+texture = ExtResource("3_ground")
+region_enabled = true
+region_rect = Rect2(0, 0, 480, 96)

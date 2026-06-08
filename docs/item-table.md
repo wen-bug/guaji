@@ -166,6 +166,25 @@ stat_stone_<stat>_<tier>
 
 动态装备名称格式为 `<五行名>·<阶位名>·<槽位名>`，例如 `赤焰·三阶·武器`；无属性装备名称格式为 `无相·<阶位名>·<槽位名>`，例如 `无相·三阶·武器`。五行装备会保留自身五行基础属性；无属性装备会保留槽位核心普通属性。
 
+### 人物与装备基础属性类型表
+
+人物基础属性存放在 `GameState.stats` 和 `GameState.elements`；装备基础属性存放在装备实例的 `base_attributes` 中，并通过同名 `stat` 叠加到人物总属性。装备强化只允许强化装备已有的基础属性。
+
+| stat ID | 中文名 | 属性组 | 人物来源 | 装备来源 | 强化材料 | 主要影响 |
+|---|---|---|---|---|---|---|
+| `max_hp` | 生命上限 | 普通属性 | `stats.max_hp` | 装备基础/强化/洗练词条 | `stat_stone_max_hp_t*` | HP 上限与恢复上限 |
+| `max_mp` | 灵力上限 | 普通属性 | `stats.max_mp` | 装备基础/强化/洗练词条 | `stat_stone_max_mp_t*` | MP 上限与恢复上限 |
+| `attack` | 攻击 | 普通属性 | `stats.attack` | 装备基础/强化/洗练词条 | `stat_stone_attack_t*` | 普攻、技能基础伤害 |
+| `defense` | 防御 | 普通属性 | `stats.defense` | 装备基础/强化/洗练词条 | `stat_stone_defense_t*` | 物理减伤 |
+| `root_bone` | 根骨 | 普通属性 | `stats.root_bone` | 装备基础/强化/洗练词条 | `stat_stone_root_bone_t*` | 修为收益、炼器加成、额外出丹、突破 |
+| `element_wood` | 木行 | 五行属性 | `elements.wood` | 装备基础/强化/洗练词条 | `spirit_stone_wood_t*` | 木伤害加成、木伤害减免、主五行候选 |
+| `element_fire` | 火行 | 五行属性 | `elements.fire` | 装备基础/强化/洗练词条 | `spirit_stone_fire_t*` | 火伤害加成、火伤害减免、主五行候选 |
+| `element_earth` | 土行 | 五行属性 | `elements.earth` | 装备基础/强化/洗练词条 | `spirit_stone_earth_t*` | 土伤害加成、土伤害减免、主五行候选 |
+| `element_metal` | 金行 | 五行属性 | `elements.metal` | 装备基础/强化/洗练词条 | `spirit_stone_metal_t*` | 金伤害加成、金伤害减免、主五行候选 |
+| `element_water` | 水行 | 五行属性 | `elements.water` | 装备基础/强化/洗练词条 | `spirit_stone_water_t*` | 水伤害加成、水伤害减免、主五行候选 |
+
+装备总属性贡献按 `base_attributes`、`enhanced_attributes` 和 `refine_affixes` 计算；人物总属性再叠加基础值、持续 Buff 和装备贡献。
+
 | 五行 | 装备前缀 |
 |---|---|
 | `wood` | 青木 |

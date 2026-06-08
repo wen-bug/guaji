@@ -4,6 +4,11 @@ extends RefCounted
 signal changed
 signal log_added(message: String)
 
+const FARM_SLOT_COUNT := 5
+const FARM_STATUS_EMPTY := "empty"
+const FARM_STATUS_GROWING := "growing"
+const FARM_STATUS_READY := "ready"
+
 var rng := RandomNumberGenerator.new()
 var stats := {
 	"level": 1,
@@ -49,16 +54,25 @@ var equipped := {
 var skills := [DataTables.create_skill()]
 var known_alchemy_recipes: Array[String] = []
 var active_buffs: Array = []
+var farm_slots: Array[Dictionary] = []
+var farm_speed_buffs: Array[Dictionary] = []
+var progress_states := {
+	"alchemy": {"status": "not_started", "title": "Alchemy", "detail": "Not started", "completed": false, "claimable": false},
+	"forge": {"status": "not_started", "title": "Forge", "detail": "Not started", "completed": false, "claimable": false},
+	"farm": {"status": "not_started", "title": "Farm", "detail": "Not started", "completed": false, "claimable": false},
+}
 
 
 func _init() -> void:
 	rng.randomize()
+	_ensure_farm_slots()
 	add_inventory_item("herb", 4, false)
 	add_inventory_item("ore", 4, false)
 	add_inventory_item("stat_stone_attack_t1", 2, false)
 	add_inventory_item("stat_stone_defense_t1", 2, false)
 	add_inventory_item("spirit_stone_fire_t1", 2, false)
 	add_inventory_item("spirit_stone_earth_t1", 2, false)
+	add_inventory_item("farm_speed_talisman", 1, false)
 	add_inventory_item("recipe_pill", 1, false)
 
 
@@ -72,6 +86,9 @@ func to_save_data() -> Dictionary:
 		"skills": skills.duplicate(true),
 		"known_alchemy_recipes": known_alchemy_recipes.duplicate(),
 		"active_buffs": active_buffs.duplicate(true),
+		"farm_slots": farm_slots.duplicate(true),
+		"farm_speed_buffs": farm_speed_buffs.duplicate(true),
+		"progress_states": progress_states.duplicate(true),
 	}
 
 
@@ -89,7 +106,54 @@ func load_save_data(data: Dictionary) -> void:
 	for recipe_id in data.get("known_alchemy_recipes", []):
 		known_alchemy_recipes.append(str(recipe_id))
 	active_buffs = _duplicate_array(data.get("active_buffs", []))
+	farm_slots.assign(_duplicate_array(data.get("farm_slots", [])))
+	farm_speed_buffs.assign(_duplicate_array(data.get("farm_speed_buffs", [])))
+	_ensure_farm_slots()
+	_load_progress_states(data.get("progress_states", {}))
+	_refresh_farm_progress_state()
 	changed.emit()
+
+
+func _load_progress_states(source) -> void:
+	if not source is Dictionary:
+		return
+	for key in progress_states.keys():
+		var progress: Dictionary = progress_states[key]
+		var loaded: Dictionary = source.get(key, {})
+		progress["status"] = str(loaded.get("status", progress.get("status", "not_started")))
+		progress["title"] = str(loaded.get("title", progress.get("title", key)))
+		progress["detail"] = str(loaded.get("detail", progress.get("detail", "Not started")))
+		progress["completed"] = bool(loaded.get("completed", progress.get("completed", false)))
+		progress["claimable"] = bool(loaded.get("claimable", progress.get("claimable", false)))
+		progress_states[key] = progress
+
+
+func set_progress_state(progress_id: String, status: String, detail := "") -> void:
+	if not progress_states.has(progress_id):
+		return
+	var progress: Dictionary = progress_states[progress_id]
+	progress["status"] = status
+	progress["detail"] = detail if not detail.is_empty() else str(progress.get("detail", ""))
+	progress["completed"] = status == "completed" or status == "claimable"
+	progress["claimable"] = status == "claimable"
+	progress_states[progress_id] = progress
+	changed.emit()
+
+
+func clear_progress_state(progress_id: String) -> void:
+	if not progress_states.has(progress_id):
+		return
+	var progress: Dictionary = progress_states[progress_id]
+	progress["status"] = "not_started"
+	progress["detail"] = "Not started"
+	progress["completed"] = false
+	progress["claimable"] = false
+	progress_states[progress_id] = progress
+	changed.emit()
+
+
+func progress_state(progress_id: String) -> Dictionary:
+	return progress_states.get(progress_id, {}).duplicate(true)
 
 
 func _load_dictionary_values(target: Dictionary, source) -> void:
@@ -619,17 +683,197 @@ func update_buffs(delta: float) -> void:
 
 
 func consume_seed_for_farm() -> Dictionary:
+	var slot_index := first_empty_farm_slot_index()
+	if slot_index < 0:
+		log_added.emit("农田已满")
+		return {}
 	for item in inventory:
-		if item.get("type", "") != DataTables.ITEM_TYPE_CROP:
-			continue
-		var seed_yield := int(item.get("payload", {}).get("seed_yield", 0))
-		if seed_yield <= 0:
-			continue
-		var item_id: String = item["item_id"]
-		_remove_inventory_count(item_id, 1)
-		changed.emit()
-		return {"item_id": item_id, "amount": seed_yield + int(stats.get("farm_level", 1)) - 1}
+		var item_id := str(item.get("item_id", ""))
+		if DataTables.is_farm_seed(item_id) and plant_farm_slot(slot_index, item_id):
+			var slot: Dictionary = farm_slots[slot_index]
+			return {"item_id": item_id, "amount": int(slot.get("harvest_amount", 0)), "slot_index": slot_index}
 	return {}
+
+
+func first_empty_farm_slot_index() -> int:
+	_ensure_farm_slots()
+	for index in range(farm_slots.size()):
+		if str(farm_slots[index].get("status", FARM_STATUS_EMPTY)) == FARM_STATUS_EMPTY:
+			return index
+	return -1
+
+
+func plant_farm_slot(slot_index: int, crop_id: String) -> bool:
+	_ensure_farm_slots()
+	if slot_index < 0 or slot_index >= farm_slots.size():
+		return false
+	if str(farm_slots[slot_index].get("status", FARM_STATUS_EMPTY)) != FARM_STATUS_EMPTY:
+		log_added.emit("农田槽位已有作物")
+		return false
+	if not DataTables.is_farm_seed(crop_id):
+		log_added.emit("该物品不能种植")
+		return false
+	if not spend_resource(crop_id, 1):
+		log_added.emit("种子不足")
+		return false
+	var harvest_amount := DataTables.crop_seed_yield(crop_id) + int(stats.get("farm_level", 1)) - 1
+	farm_slots[slot_index] = {
+		"status": FARM_STATUS_GROWING,
+		"crop_id": crop_id,
+		"elapsed_seconds": 0.0,
+		"growth_seconds": DataTables.crop_growth_seconds(crop_id),
+		"harvest_amount": max(1, harvest_amount),
+	}
+	set_progress_state("farm", "growing", "%s growing" % DataTables.resource_name(crop_id))
+	log_added.emit("种下%s" % DataTables.resource_name(crop_id))
+	changed.emit()
+	return true
+
+
+func update_farm(delta: float) -> void:
+	_ensure_farm_slots()
+	var changed_farm := false
+	var multiplier := farm_speed_multiplier()
+	for index in range(farm_slots.size()):
+		var slot: Dictionary = farm_slots[index]
+		if str(slot.get("status", FARM_STATUS_EMPTY)) != FARM_STATUS_GROWING:
+			continue
+		slot["elapsed_seconds"] = min(float(slot.get("growth_seconds", 0.0)), float(slot.get("elapsed_seconds", 0.0)) + delta * multiplier)
+		if float(slot.get("elapsed_seconds", 0.0)) >= float(slot.get("growth_seconds", 0.0)):
+			slot["status"] = FARM_STATUS_READY
+			log_added.emit("%s成熟了" % DataTables.resource_name(str(slot.get("crop_id", ""))))
+		farm_slots[index] = slot
+		changed_farm = true
+	changed_farm = _update_farm_speed_buffs(delta) or changed_farm
+	if changed_farm:
+		_refresh_farm_progress_state()
+		changed.emit()
+
+
+func claim_farm_slot(slot_index: int) -> bool:
+	_ensure_farm_slots()
+	if slot_index < 0 or slot_index >= farm_slots.size():
+		return false
+	var slot: Dictionary = farm_slots[slot_index]
+	if str(slot.get("status", FARM_STATUS_EMPTY)) != FARM_STATUS_READY:
+		return false
+	var crop_id := str(slot.get("crop_id", ""))
+	var amount := int(slot.get("harvest_amount", 0))
+	if crop_id.is_empty() or amount <= 0:
+		return false
+	add_inventory_item(crop_id, amount, false)
+	farm_slots[slot_index] = _empty_farm_slot()
+	add_exp(2)
+	add_task_experience(GameDefs.TaskType.FARM, 5)
+	log_added.emit("收取%s x%d" % [DataTables.resource_name(crop_id), amount])
+	_refresh_farm_progress_state()
+	changed.emit()
+	return true
+
+
+func claim_all_farm_slots() -> int:
+	var claimed := 0
+	for index in range(FARM_SLOT_COUNT):
+		if claim_farm_slot(index):
+			claimed += 1
+	return claimed
+
+
+func use_farm_speed_item(item_id: String) -> bool:
+	if not DataTables.is_farm_speed_item(item_id):
+		return false
+	if not spend_resource(item_id, 1):
+		log_added.emit("农田加速道具不足")
+		return false
+	farm_speed_buffs.append({
+		"item_id": item_id,
+		"multiplier": DataTables.farm_speed_item_multiplier(item_id),
+		"remaining_seconds": DataTables.farm_speed_item_duration(item_id),
+	})
+	log_added.emit("农田加速 x%.1f" % DataTables.farm_speed_item_multiplier(item_id))
+	changed.emit()
+	return true
+
+
+func farm_speed_multiplier() -> float:
+	var multiplier := 1.0
+	for buff in farm_speed_buffs:
+		if float(buff.get("remaining_seconds", 0.0)) > 0.0:
+			multiplier = max(multiplier, float(buff.get("multiplier", 1.0)))
+	return multiplier
+
+
+func farm_speed_remaining_seconds() -> float:
+	var remaining := 0.0
+	for buff in farm_speed_buffs:
+		remaining = max(remaining, float(buff.get("remaining_seconds", 0.0)))
+	return remaining
+
+
+func ready_farm_slot_count() -> int:
+	var count := 0
+	for slot in farm_slots:
+		if str(slot.get("status", FARM_STATUS_EMPTY)) == FARM_STATUS_READY:
+			count += 1
+	return count
+
+
+func active_farm_slot_count() -> int:
+	var count := 0
+	for slot in farm_slots:
+		if str(slot.get("status", FARM_STATUS_EMPTY)) != FARM_STATUS_EMPTY:
+			count += 1
+	return count
+
+
+func _ensure_farm_slots() -> void:
+	while farm_slots.size() < FARM_SLOT_COUNT:
+		farm_slots.append(_empty_farm_slot())
+	while farm_slots.size() > FARM_SLOT_COUNT:
+		farm_slots.remove_at(farm_slots.size() - 1)
+	for index in range(farm_slots.size()):
+		var slot: Dictionary = farm_slots[index] if farm_slots[index] is Dictionary else {}
+		var status := str(slot.get("status", FARM_STATUS_EMPTY))
+		if not [FARM_STATUS_EMPTY, FARM_STATUS_GROWING, FARM_STATUS_READY].has(status):
+			status = FARM_STATUS_EMPTY
+		if status == FARM_STATUS_EMPTY:
+			farm_slots[index] = _empty_farm_slot()
+		else:
+			slot["status"] = status
+			slot["crop_id"] = str(slot.get("crop_id", ""))
+			slot["elapsed_seconds"] = float(slot.get("elapsed_seconds", 0.0))
+			slot["growth_seconds"] = max(1.0, float(slot.get("growth_seconds", DataTables.crop_growth_seconds(str(slot.get("crop_id", ""))))))
+			slot["harvest_amount"] = max(1, int(slot.get("harvest_amount", 1)))
+			farm_slots[index] = slot
+
+
+func _empty_farm_slot() -> Dictionary:
+	return {"status": FARM_STATUS_EMPTY, "crop_id": "", "elapsed_seconds": 0.0, "growth_seconds": 0.0, "harvest_amount": 0}
+
+
+func _update_farm_speed_buffs(delta: float) -> bool:
+	var changed_buffs := false
+	var index := 0
+	while index < farm_speed_buffs.size():
+		var buff: Dictionary = farm_speed_buffs[index]
+		buff["remaining_seconds"] = float(buff.get("remaining_seconds", 0.0)) - delta
+		if float(buff.get("remaining_seconds", 0.0)) <= 0.0:
+			farm_speed_buffs.remove_at(index)
+		else:
+			farm_speed_buffs[index] = buff
+			index += 1
+		changed_buffs = true
+	return changed_buffs
+
+
+func _refresh_farm_progress_state() -> void:
+	var ready_count := ready_farm_slot_count()
+	if ready_count > 0:
+		set_progress_state("farm", "claimable", "%d plots ready" % ready_count)
+	elif active_farm_slot_count() > 0:
+		set_progress_state("farm", "growing", "%d plots growing" % active_farm_slot_count())
+	else:
+		clear_progress_state("farm")
 
 
 func random_known_alchemy_recipe() -> String:
@@ -709,8 +953,8 @@ func enhance_equipment(instance_id: String) -> bool:
 	item["enhance_count"] = int(item.get("enhance_count", 0)) + 1
 	item["enhance_level"] = item["enhance_count"]
 	_update_equipment_compat_bonuses(item)
+	set_progress_state("forge", "completed", "Enhanced %s to +%d" % [item["name"], item["enhance_count"]])
 	log_added.emit("enhanced %s to +%d" % [item["name"], item["enhance_count"]])
-	changed.emit()
 	return true
 
 
@@ -731,8 +975,8 @@ func add_equipment_affix(instance_id: String) -> bool:
 	})
 	item["refine_affixes"] = refine_affixes
 	item["refine_count"] = int(item.get("refine_count", 0)) + 1
+	set_progress_state("forge", "completed", "Refined %s" % item["name"])
 	log_added.emit("refined %s" % item["name"])
-	changed.emit()
 	return true
 
 

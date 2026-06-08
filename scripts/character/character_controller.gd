@@ -1,7 +1,7 @@
 class_name CharacterController
 extends CharacterBody2D
 
-enum CharacterState { IDLE, ROAMING, TALKING, PAUSED }
+enum CharacterState { IDLE, ROAMING, TALKING, PAUSED, EXPEDITION_RUNNING }
 
 const BASELINE_Y := 170.0
 const HOME_LEFT := 48.0
@@ -55,6 +55,31 @@ func set_idle_roam() -> void:
 			_reset_idle_timer()
 
 
+func enter_expedition_run(run_position: Vector2) -> void:
+	_bind_scene_nodes()
+	moving = false
+	target_position = run_position
+	position = run_position
+	vertical_velocity = 0.0
+	if talk_label != null:
+		talk_label.visible = false
+	if sprite != null:
+		sprite.flip_h = false
+	_set_state(CharacterState.EXPEDITION_RUNNING)
+
+
+func exit_expedition_run() -> void:
+	_bind_scene_nodes()
+	moving = false
+	position = Vector2(HOME_X, BASELINE_Y)
+	target_position = position
+	vertical_velocity = 0.0
+	if talk_label != null:
+		talk_label.visible = false
+	_set_state(CharacterState.IDLE)
+	_reset_idle_timer()
+
+
 func _ready() -> void:
 	_bind_scene_nodes()
 
@@ -64,6 +89,8 @@ func _process(delta: float) -> void:
 		_update_movement(delta)
 	else:
 		match state:
+			CharacterState.EXPEDITION_RUNNING:
+				_play_animation("run")
 			CharacterState.IDLE:
 				idle_timer -= delta
 				if idle_timer <= 0.0:
@@ -141,7 +168,7 @@ func _set_state(next_state: CharacterState) -> void:
 
 	state = next_state
 	match state:
-		CharacterState.ROAMING:
+		CharacterState.ROAMING, CharacterState.EXPEDITION_RUNNING:
 			_play_animation("run")
 		_:
 			_play_animation("idle")
@@ -160,7 +187,7 @@ func _reset_idle_timer() -> void:
 
 
 func _is_busy_with_home_idle() -> bool:
-	return state == CharacterState.ROAMING or state == CharacterState.TALKING
+	return state == CharacterState.ROAMING or state == CharacterState.TALKING or state == CharacterState.EXPEDITION_RUNNING
 
 
 func _bind_scene_nodes() -> void:

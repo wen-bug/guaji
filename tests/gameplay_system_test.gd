@@ -4,6 +4,7 @@ const GameStateScript = preload("res://scripts/game/game_state.gd")
 const SaveManagerScript = preload("res://scripts/game/save_manager.gd")
 const HomeMapScript = preload("res://scripts/map/home_map.gd")
 const HomeMapScene = preload("res://scripts/map/home.tscn")
+const BattleMapScene = preload("res://scripts/map/battle_map.tscn")
 const HudScene = preload("res://scripts/ui/hud.tscn")
 const CharacterScene = preload("res://scripts/character/character_controller.tscn")
 const MeScene = preload("res://scripts/character/me.tscn")
@@ -25,9 +26,15 @@ func _run() -> void:
 	_test_alchemy_recipes_and_duration_buffs()
 	_test_alchemy_recipe_materials_and_batch_crafting()
 	_test_save_manager_and_game_state_roundtrip()
+	_test_home_action_opens_farm_panel()
+	_test_main_scene_opens_farm_hud()
+	_test_progress_state_save_and_alerts()
 	_test_farm_seeds_and_level_yield()
+	_test_farm_slots_growth_claim_and_speed_buff()
 	_test_queue_modules_removed()
 	_test_home_map_node_mapping_and_farm_slots()
+	_test_battle_map_expedition_spawns_monsters()
+	_test_main_scene_enters_expedition_before_combat()
 	_test_hud_uses_scene_nodes()
 	_test_character_gravity()
 	_test_me_scene_uses_character_body()
@@ -152,6 +159,48 @@ func _test_alchemy_recipe_materials_and_batch_crafting() -> void:
 	_check(not unlearned_state.craft_alchemy_recipe("attack_pill", 1), "alchemy crafting rejects unlearned recipes")
 
 
+func _test_home_action_opens_farm_panel() -> void:
+	var hud = HudScene.instantiate()
+	get_root().add_child(hud)
+	hud.refresh(GameStateScript.new())
+	hud.show_home_action_panel(GameDefs.TaskType.FARM)
+	var farm_panel := hud.get_node("Root/FarmPanel") as Control
+	_check(farm_panel.visible, "farm action opens hud panel")
+	hud.queue_free()
+
+func _test_main_scene_opens_farm_hud() -> void:
+	var main = MainScene.instantiate()
+	get_root().add_child(main)
+	main.home_map = main.get_node("Home")
+	main.hud = main.get_node("Hud")
+	var hud = main.get_node("Hud") as CanvasLayer
+	var farm_panel := hud.get_node("Root/FarmPanel") as Control
+	main._on_home_node_selected("farmland")
+	_check(farm_panel.visible, "main scene opens farm hud when farmland is selected")
+	main.queue_free()
+
+func _test_progress_state_save_and_alerts() -> void:
+	var game_state = GameStateScript.new()
+	game_state.set_progress_state("alchemy", "claimable", "Pill ready")
+	var saved := game_state.to_save_data()
+	var restored = GameStateScript.new()
+	restored.load_save_data(saved)
+	_check(restored.progress_state("alchemy").get("claimable", false), "progress state restores claimable flag")
+
+	var home_map = HomeMapScene.instantiate()
+	get_root().add_child(home_map)
+	home_map.setup_home_map()
+	home_map.update_progress_alerts(restored)
+	var forge_alert := home_map.get_node_or_null("forge/AlertLabel") as Label
+	_check(forge_alert == null or not forge_alert.visible, "forge alert stays hidden without completion")
+	home_map.update_progress_alerts(game_state)
+	var alchemy_alert := home_map.get_node_or_null("alchemy/AlertLabel") as Label
+	_check(alchemy_alert != null and alchemy_alert.visible, "claimable progress shows alert above building")
+	game_state.clear_progress_state("alchemy")
+	home_map.update_progress_alerts(game_state)
+	_check(not alchemy_alert.visible, "clearing progress hides alert")
+	home_map.queue_free()
+
 func _test_save_manager_and_game_state_roundtrip() -> void:
 	var game_state = GameStateScript.new()
 	game_state.inventory.clear()
@@ -192,8 +241,37 @@ func _test_farm_seeds_and_level_yield() -> void:
 	_check(result.get("item_id", "") == "herb", "farm consumes first crop as seed")
 	_check(int(result.get("amount", 0)) == 5, "farm level increases seed yield")
 	_check(game_state.inventory_item_count("herb") == 3, "seed is consumed before harvest reward")
+	_check(game_state.inventory_item_count("herb") == 3, "farm harvest waits in plot before entering backpack")
 	game_state.add_task_experience(GameDefs.TaskType.FARM, 25)
 	_check(game_state.stats["farm_level"] > 3, "farm proficiency can raise farm level")
+
+
+func _test_farm_slots_growth_claim_and_speed_buff() -> void:
+	var game_state = GameStateScript.new()
+	game_state.inventory.clear()
+	game_state.add_inventory_item("herb", 2, false)
+	game_state.add_inventory_item("farm_speed_talisman", 1, false)
+	_check(game_state.farm_slots.size() == 5, "game state initializes five farm slots")
+	_check(DataTables.crop_growth_seconds("herb") == 60.0, "basic herb has documented growth time")
+	_check(DataTables.is_farm_speed_item("farm_speed_talisman"), "farm speed talisman is recognized")
+	_check(game_state.plant_farm_slot(0, "herb"), "planting a farm slot succeeds")
+	_check(game_state.inventory_item_count("herb") == 1, "planting consumes one seed")
+	game_state.update_farm(30.0)
+	_check(str(game_state.farm_slots[0].get("status", "")) == "growing", "crop remains growing before maturity")
+	_check(game_state.inventory_item_count("herb") == 1, "growing crop output is not yet in backpack")
+	_check(game_state.use_farm_speed_item("farm_speed_talisman"), "farm speed item can be consumed")
+	_check(game_state.farm_speed_multiplier() == 2.0, "farm speed buff doubles growth speed")
+	game_state.update_farm(15.0)
+	_check(str(game_state.farm_slots[0].get("status", "")) == "ready", "speed buff advances crop to ready")
+	_check(game_state.inventory_item_count("herb") == 1, "ready crop output stays in farm slot")
+	_check(game_state.claim_farm_slot(0), "ready farm slot can be claimed")
+	_check(game_state.inventory_item_count("herb") == 4, "claimed harvest enters backpack with seed yield")
+	_check(str(game_state.farm_slots[0].get("status", "")) == "empty", "claimed farm slot becomes empty")
+	var saved := game_state.to_save_data()
+	var restored = GameStateScript.new()
+	restored.load_save_data(saved)
+	_check(restored.farm_slots.size() == 5, "farm slots roundtrip through save data")
+	_check(restored.farm_speed_buffs.size() == 1, "farm speed buffs roundtrip through save data")
 
 
 func _test_queue_modules_removed() -> void:
@@ -278,6 +356,68 @@ func _test_home_map_node_mapping_and_farm_slots() -> void:
 	home_map.queue_free()
 
 
+func _test_battle_map_expedition_spawns_monsters() -> void:
+	var battle_map = BattleMapScene.instantiate()
+	get_root().add_child(battle_map)
+	_check(not battle_map.visible, "battle map starts hidden")
+
+	var spawn_events := []
+	battle_map.monster_spawn_requested.connect(func(): spawn_events.append(true))
+	battle_map.enter_expedition()
+	_check(battle_map.visible, "battle map shows when expedition starts")
+	_check(battle_map.is_expedition_active(), "battle map tracks active expedition")
+	_check(battle_map.next_spawn_time >= battle_map.spawn_interval_min, "spawn timer uses minimum interval")
+	_check(battle_map.next_spawn_time <= battle_map.spawn_interval_max, "spawn timer uses maximum interval")
+
+	var initial_ground_x: float = battle_map.ground_layer.position.x
+	battle_map.advance(0.25)
+	_check(battle_map.ground_layer.position.x != initial_ground_x, "battle map ground scrolls while running")
+
+	battle_map.next_spawn_time = 0.01
+	battle_map.spawn_timer = 0.0
+	battle_map.advance(0.02)
+	_check(spawn_events.size() == 1, "battle map requests monster after random wait")
+	_check(battle_map.is_waiting_for_combat(), "battle map waits for combat after spawn request")
+
+	battle_map.finish_combat()
+	_check(not battle_map.is_waiting_for_combat(), "battle map resumes route after combat finishes")
+	_check(battle_map.next_spawn_time >= battle_map.spawn_interval_min, "battle map schedules another random spawn after combat")
+	spawn_events.clear()
+	battle_map.advance(0.02)
+	_check(spawn_events.is_empty(), "battle map does not immediately chain spawn after combat")
+	battle_map.queue_free()
+
+
+func _test_main_scene_enters_expedition_before_combat() -> void:
+	var main = MainScene.instantiate()
+	get_root().add_child(main)
+	var battle_map = main.get_node_or_null("BattleMap")
+	var home = main.get_node_or_null("Home")
+	var combat = main.get_node_or_null("CombatController")
+	var character = main.get_node_or_null("CharacterController")
+	_check(battle_map != null and not battle_map.visible, "main battle map starts hidden")
+
+	main._on_home_action_requested(GameDefs.TaskType.FIGHT)
+	_check(home != null and not home.visible, "starting fight hides home map")
+	_check(battle_map != null and battle_map.visible, "starting fight opens expedition map")
+	_check(combat != null and not combat.active, "expedition starts before first monster combat")
+	_check(character != null and character.sprite.animation == &"run", "expedition uses character run animation")
+
+	battle_map.next_spawn_time = 0.01
+	battle_map.spawn_timer = 0.0
+	battle_map.advance(0.02)
+	_check(combat.active, "main starts combat when battle map requests a monster")
+
+	combat.active = false
+	combat.finished = true
+	main._process(0.02)
+	_check(battle_map.visible, "battle map remains visible after one combat")
+	_check(home != null and not home.visible, "home stays hidden while expedition continues")
+	_check(not battle_map.is_waiting_for_combat(), "battle map schedules next monster after combat result")
+	_check(character.sprite.animation == &"run", "character keeps running after combat result")
+	main.queue_free()
+
+
 func _test_hud_uses_scene_nodes() -> void:
 	var hud = HudScene.instantiate()
 	get_root().add_child(hud)
@@ -300,7 +440,12 @@ func _test_hud_uses_scene_nodes() -> void:
 	var inventory_grid := hud.get_node_or_null("Root/InventoryPanel/InventoryLayout/InventoryGrid") as GridContainer
 	_check(inventory_grid != null, "inventory panel exposes a grid UI")
 	_check(hud.get_node_or_null("Root/InventoryPanel/InventoryLayout/InventoryItemDetailPanel") != null, "inventory panel exposes hover detail UI")
-	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/ExecuteButton") != null, "farm panel is a separate UI")
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/SeedSlotButton") != null, "farm panel exposes seed selector")
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/FarmSlotList") != null, "farm panel exposes farm slot list")
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/SpeedItemSlotButton") != null, "farm panel exposes speed item selector")
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/ActionRow/PlantButton") != null, "farm panel exposes plant button")
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/ActionRow/ClaimButton") != null, "farm panel exposes claim button")
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/ActionRow/ClaimAllButton") != null, "farm panel exposes claim all button")
 	_check(hud.get_node_or_null("Root/ForgePanel/PanelLayout/ExecuteButton") != null, "forge panel is a separate UI")
 	_check(hud.get_node_or_null("Root/AlchemyPanel/PanelLayout/RecipeSlotButton") != null, "alchemy panel exposes recipe slot")
 	_check(hud.get_node_or_null("Root/AlchemyPanel/PanelLayout/RecipePickerPanel") != null, "alchemy panel exposes embedded recipe picker")
@@ -363,6 +508,8 @@ func _test_hud_uses_scene_nodes() -> void:
 
 	var farm_panel := hud.get_node("Root/FarmPanel") as Control
 	var forge_panel := hud.get_node("Root/ForgePanel") as Control
+	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/ProgressLabel") != null, "farm panel includes progress label")
+	_check(hud.get_node_or_null("Root/ForgePanel/PanelLayout/ProgressLabel") != null, "forge panel includes progress label")
 	hud.load_hud_save_data({"panel_positions": {"FarmPanel": {"x": 111.0, "y": 77.0}}})
 	hud.show_home_action_panel(GameDefs.TaskType.FARM)
 	_check(farm_panel.visible and not forge_panel.visible, "opening a home action shows only its matching panel")
@@ -387,6 +534,7 @@ func _test_hud_uses_scene_nodes() -> void:
 	hud.refresh(game_state)
 	hud.show_home_action_panel(GameDefs.TaskType.ALCHEMY)
 	var recipe_slot := hud.get_node("Root/AlchemyPanel/PanelLayout/RecipeSlotButton") as Button
+	_check(hud.get_node_or_null("Root/AlchemyPanel/PanelLayout/ProgressLabel") != null, "alchemy panel includes progress label")
 	var recipe_picker := hud.get_node("Root/AlchemyPanel/PanelLayout/RecipePickerPanel") as Control
 	var recipe_list := hud.get_node("Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList") as ItemList
 	var material_grid := hud.get_node("Root/AlchemyPanel/PanelLayout/MaterialGrid") as GridContainer

@@ -20,7 +20,21 @@ offset_left = 8.0
 offset_top = 6.0
 offset_right = 72.0
 offset_bottom = 36.0
+
+[node name="MenuLabel" type="Label" parent="Root/MenuButton" unique_id=329583013]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 1.0
+offset_top = 1.0
+offset_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.58, 1)
 text = "菜单"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="MenuPanel" type="PanelContainer" parent="Root" unique_id=1127247709]
 visible = false
@@ -70,35 +84,35 @@ custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="AttributeTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="AttributeTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1561382855]
 layout_mode = 2
 text = "属性"
 
-[node name="AttributeGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="AttributeGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=174227289]
 layout_mode = 2
-columns = 2
 theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 3
+columns = 2
 
-[node name="EquipmentTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="EquipmentTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1435669809]
 layout_mode = 2
 text = "装备"
 
-[node name="EquipmentGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="EquipmentGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=2044326899]
 layout_mode = 2
-columns = 2
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
+columns = 2
 
-[node name="SkillTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="SkillTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=54302961]
 layout_mode = 2
 text = "技能"
 
-[node name="SkillGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout"]
+[node name="SkillGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1617409243]
 layout_mode = 2
-columns = 2
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
+columns = 2
 
 [node name="InventoryPanel" type="PanelContainer" parent="Root" unique_id=1318300020]
 visible = false
@@ -160,17 +174,17 @@ custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 text = "丹药"
 
-[node name="InventoryGrid" type="GridContainer" parent="Root/InventoryPanel/InventoryLayout"]
+[node name="InventoryGrid" type="GridContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=1409974471]
 custom_minimum_size = Vector2(420, 300)
 layout_mode = 2
 columns = 5
 
-[node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root/InventoryPanel/InventoryLayout"]
+[node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=1685661679]
 visible = false
 custom_minimum_size = Vector2(420, 86)
 layout_mode = 2
 
-[node name="DetailLabel" type="Label" parent="Root/InventoryPanel/InventoryLayout/InventoryItemDetailPanel"]
+[node name="DetailLabel" type="Label" parent="Root/InventoryPanel/InventoryLayout/InventoryItemDetailPanel" unique_id=579077130]
 custom_minimum_size = Vector2(410, 78)
 layout_mode = 2
 autowrap_mode = 2
@@ -180,8 +194,8 @@ visible = false
 layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
-offset_right = 606.0
-offset_bottom = 172.0
+offset_right = 750.0
+offset_bottom = 432.0
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/FarmPanel" unique_id=1576174592]
 layout_mode = 2
@@ -192,7 +206,7 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Root/FarmPanel/PanelLayout/Header" unique_id=382341055]
-custom_minimum_size = Vector2(108, 24)
+custom_minimum_size = Vector2(260, 24)
 layout_mode = 2
 text = "农田"
 
@@ -201,23 +215,91 @@ custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
+[node name="SeedSlotButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=500000020]
+custom_minimum_size = Vector2(300, 34)
+layout_mode = 2
+text = "选择种子"
+
+[node name="SeedPickerPanel" type="PanelContainer" parent="Root/FarmPanel/PanelLayout" unique_id=500000021]
+visible = false
+custom_minimum_size = Vector2(300, 82)
+layout_mode = 2
+
+[node name="SeedList" type="ItemList" parent="Root/FarmPanel/PanelLayout/SeedPickerPanel" unique_id=500000022]
+custom_minimum_size = Vector2(292, 78)
+layout_mode = 2
+
+[node name="FarmSlotList" type="ItemList" parent="Root/FarmPanel/PanelLayout" unique_id=500000023]
+custom_minimum_size = Vector2(300, 112)
+layout_mode = 2
+
+[node name="SpeedItemSlotButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=500000024]
+custom_minimum_size = Vector2(300, 30)
+layout_mode = 2
+text = "选择加速道具"
+
+[node name="SpeedItemPickerPanel" type="PanelContainer" parent="Root/FarmPanel/PanelLayout" unique_id=500000025]
+visible = false
+custom_minimum_size = Vector2(300, 74)
+layout_mode = 2
+
+[node name="SpeedItemList" type="ItemList" parent="Root/FarmPanel/PanelLayout/SpeedItemPickerPanel" unique_id=500000026]
+custom_minimum_size = Vector2(292, 70)
+layout_mode = 2
+
+[node name="SpeedStatusLabel" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=500000027]
+custom_minimum_size = Vector2(300, 22)
+layout_mode = 2
+text = "当前倍率：x1.0"
+
+[node name="UseSpeedItemButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=500000033]
+custom_minimum_size = Vector2(300, 28)
+layout_mode = 2
+text = "使用加速道具"
+
+[node name="ActionRow" type="HBoxContainer" parent="Root/FarmPanel/PanelLayout" unique_id=500000028]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PlantButton" type="Button" parent="Root/FarmPanel/PanelLayout/ActionRow" unique_id=500000029]
+custom_minimum_size = Vector2(96, 30)
+layout_mode = 2
+text = "种植"
+
+[node name="ClaimButton" type="Button" parent="Root/FarmPanel/PanelLayout/ActionRow" unique_id=500000030]
+custom_minimum_size = Vector2(96, 30)
+layout_mode = 2
+text = "收取"
+
+[node name="ClaimAllButton" type="Button" parent="Root/FarmPanel/PanelLayout/ActionRow" unique_id=500000031]
+custom_minimum_size = Vector2(96, 30)
+layout_mode = 2
+text = "一键收取"
+
 [node name="ActionDetail" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=1825481070]
-custom_minimum_size = Vector2(164, 56)
+custom_minimum_size = Vector2(300, 22)
 layout_mode = 2
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=923591809]
-custom_minimum_size = Vector2(164, 28)
+[node name="ProgressLabel" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=500000001]
+custom_minimum_size = Vector2(300, 20)
 layout_mode = 2
-text = "执行"
+text = "Progress: not_started"
+autowrap_mode = 2
+
+[node name="HintLabel" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=500000032]
+custom_minimum_size = Vector2(300, 42)
+layout_mode = 2
+text = "请选择种子和空农田"
+autowrap_mode = 2
 
 [node name="ForgePanel" type="PanelContainer" parent="Root" unique_id=2108005769]
 visible = false
 layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
-offset_right = 606.0
-offset_bottom = 172.0
+offset_right = 750.0
+offset_bottom = 388.0
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/ForgePanel" unique_id=209043123]
 layout_mode = 2
@@ -228,7 +310,7 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="Title" type="Label" parent="Root/ForgePanel/PanelLayout/Header" unique_id=650285451]
-custom_minimum_size = Vector2(108, 24)
+custom_minimum_size = Vector2(260, 24)
 layout_mode = 2
 text = "炼器"
 
@@ -237,15 +319,65 @@ custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
+[node name="ModeRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=500000010]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ForgeCraftButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=500000011]
+custom_minimum_size = Vector2(96, 28)
+layout_mode = 2
+text = "炼器"
+
+[node name="ForgeEnhanceButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=500000012]
+custom_minimum_size = Vector2(96, 28)
+layout_mode = 2
+text = "强化"
+
+[node name="ForgeRefineButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=500000013]
+custom_minimum_size = Vector2(96, 28)
+layout_mode = 2
+text = "洗练"
+
+[node name="EquipmentSlotButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=500000014]
+custom_minimum_size = Vector2(300, 34)
+layout_mode = 2
+text = "选择装备"
+
+[node name="EquipmentPickerPanel" type="PanelContainer" parent="Root/ForgePanel/PanelLayout" unique_id=500000015]
+visible = false
+custom_minimum_size = Vector2(300, 90)
+layout_mode = 2
+
+[node name="EquipmentList" type="ItemList" parent="Root/ForgePanel/PanelLayout/EquipmentPickerPanel" unique_id=500000016]
+custom_minimum_size = Vector2(292, 86)
+layout_mode = 2
+
+[node name="MaterialGrid" type="GridContainer" parent="Root/ForgePanel/PanelLayout" unique_id=500000017]
+custom_minimum_size = Vector2(300, 132)
+layout_mode = 2
+columns = 2
+
 [node name="ActionDetail" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=981033270]
-custom_minimum_size = Vector2(164, 56)
+custom_minimum_size = Vector2(300, 22)
 layout_mode = 2
 autowrap_mode = 2
 
 [node name="ExecuteButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=1362689311]
-custom_minimum_size = Vector2(164, 28)
+custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
 text = "执行"
+
+[node name="ProgressLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=500000002]
+custom_minimum_size = Vector2(300, 20)
+layout_mode = 2
+text = "Progress: not_started"
+autowrap_mode = 2
+
+[node name="HintLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=500000018]
+custom_minimum_size = Vector2(300, 42)
+layout_mode = 2
+text = "选择炼器方式"
+autowrap_mode = 2
 
 [node name="AlchemyPanel" type="PanelContainer" parent="Root" unique_id=97301869]
 visible = false
@@ -273,44 +405,50 @@ custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 text = "关闭"
 
-[node name="RecipeSlotButton" type="Button" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="RecipeSlotButton" type="Button" parent="Root/AlchemyPanel/PanelLayout" unique_id=1918234530]
 custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
 text = "选择图纸"
 
-[node name="RecipePickerPanel" type="PanelContainer" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="RecipePickerPanel" type="PanelContainer" parent="Root/AlchemyPanel/PanelLayout" unique_id=1225726465]
 visible = false
 custom_minimum_size = Vector2(300, 90)
 layout_mode = 2
 
-[node name="RecipeList" type="ItemList" parent="Root/AlchemyPanel/PanelLayout/RecipePickerPanel"]
+[node name="RecipeList" type="ItemList" parent="Root/AlchemyPanel/PanelLayout/RecipePickerPanel" unique_id=1296309046]
 custom_minimum_size = Vector2(292, 86)
 layout_mode = 2
 
-[node name="MaterialGrid" type="GridContainer" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="MaterialGrid" type="GridContainer" parent="Root/AlchemyPanel/PanelLayout" unique_id=274457533]
 custom_minimum_size = Vector2(300, 132)
 layout_mode = 2
 columns = 2
 
-[node name="MaxCountLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="MaxCountLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=2089368044]
 custom_minimum_size = Vector2(300, 22)
 layout_mode = 2
 text = "最多可做：0"
 
-[node name="CraftCountSpinBox" type="SpinBox" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="CraftCountSpinBox" type="SpinBox" parent="Root/AlchemyPanel/PanelLayout" unique_id=478964888]
 custom_minimum_size = Vector2(300, 28)
 layout_mode = 2
 min_value = 1.0
 max_value = 1.0
 value = 1.0
 
-[node name="CraftButton" type="Button" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="CraftButton" type="Button" parent="Root/AlchemyPanel/PanelLayout" unique_id=99072483]
 custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
 disabled = true
 text = "制作"
 
-[node name="HintLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout"]
+[node name="ProgressLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=500000003]
+custom_minimum_size = Vector2(300, 20)
+layout_mode = 2
+text = "Progress: not_started"
+autowrap_mode = 2
+
+[node name="HintLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=1417538748]
 custom_minimum_size = Vector2(300, 42)
 layout_mode = 2
 text = "请选择图纸"
@@ -389,7 +527,10 @@ layout_mode = 2
 text = "执行"
 
 [node name="InventoryMenu" type="PopupMenu" parent="Root" unique_id=197141140]
+oversampling_override = 1.0
 
 [connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
+[connection signal="mouse_entered" from="Root/MenuButton" to="." method="_on_menu_button_mouse_entered"]
+[connection signal="mouse_exited" from="Root/MenuButton" to="." method="_on_menu_button_mouse_exited"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/CharacterInfoButton" to="." method="_open_character_info_panel"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/InventoryButton" to="." method="_open_inventory_panel"]

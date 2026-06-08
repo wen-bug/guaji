@@ -52,6 +52,8 @@
 
 ### 属性总值
 
+人物与装备可叠加的基础属性类型见 `docs/item-table.md` 的“人物与装备基础属性类型表”。普通属性来自 `GameState.stats`，五行属性来自 `GameState.elements`；装备使用同名 `stat` 写入 `base_attributes`、`enhanced_attributes` 和 `refine_affixes`。
+
 - `total_stat(stat) = stats[stat] + active_buff_bonus(stat) + equipped_attribute_bonus(stat)`。
 - `total_element(element) = elements[element] + equipped_attribute_bonus("element_" + element)`。
 - `element_power = sum(total_element(木, 火, 土, 金, 水))`。
@@ -130,3 +132,8 @@ HUD 包含菜单按钮、玩家信息、背包、种田、炼器、炼丹、打�
 新增堆叠物品时优先在 `DataTables.ITEM_DEFS` 增加定义；新增技能同步扩展 `SKILL_DEFS`；新增装备模板同步扩展 `EQUIPMENT_DEFS`；新增敌人同步扩展 `ENEMY_TEMPLATES`；新增词条同步扩展 `EQUIPMENT_ATTRIBUTE_DEFS`。
 
 后续可扩展：物品品质颜色和图标字段、配方 UI、商店、技能书掉落来源、丹药持续 Buff 的更多类型和叠加规则、农田升级消耗、种子选择 UI、强化失败率、词条锁定和保底机制。
+# 历练地图、随机遇怪与自动战斗补充
+
+点击家园 `fight` 节点后，玩家通过 HUD 打怪面板进入 `BattleMap` 历练地图。进入历练后不会立即连续战斗，而是隐藏家园、显示历练地图、让角色固定站位播放 `run` 动画，并通过远景/地面两层循环滚动背景表现持续赶路。
+
+怪物刷新由 `BattleMap` 维护随机间隔计时，默认在 `8.0` 到 `20.0` 秒之间。计时到达且当前不在战斗时，`BattleMap` 发出 `monster_spawn_requested`，主场景再调用 `CombatController.begin_encounter(game_state)` 开始一场自动战斗。战斗结束后清空当前遭遇，结算打怪熟练度，并调用 `BattleMap.finish_combat()` 重新安排下一次随机遇怪，角色继续留在历练地图跑步等待。
