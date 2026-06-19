@@ -150,9 +150,6 @@ animations = [{
 "speed": 5.0
 }]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_n1itv"]
-size = Vector2(57.37967, 45.958435)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_5megq"]
 size = Vector2(342, 56)
 
@@ -1473,47 +1470,16 @@ sprite_frames = SubResource("SpriteFrames_yy0q4")
 position = Vector2(1.9877319, 6.1082916)
 shape = SubResource("RectangleShape2D_dbfj0")
 
-[node name="farmland" type="Node2D" parent="." unique_id=2117690805]
+[node name="farmland" type="AnimatedSprite2D" parent="." unique_id=2117690805]
 z_index = 10
-
-[node name="ColorRect" type="ColorRect" parent="farmland" unique_id=660341138]
-offset_left = 599.0
-offset_top = 119.0
-offset_right = 941.0
-offset_bottom = 174.0
-color = Color(0.36, 0.2, 0.09, 0.45)
-
-[node name="crop" type="AnimatedSprite2D" parent="farmland" unique_id=2097128127]
-position = Vector2(635.00006, 171)
-scale = Vector2(0.7578125, 0.5546875)
+position = Vector2(770, 147)
+scale = Vector2(0.9, 0.66)
 sprite_frames = SubResource("SpriteFrames_xuar5")
 frame_progress = 0.40543684
-
-[node name="Area2D" type="Area2D" parent="farmland/crop" unique_id=1092803447]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="farmland/crop/Area2D" unique_id=1739716871]
-position = Vector2(-1.3196688, -10.816906)
-shape = SubResource("RectangleShape2D_n1itv")
-
-[node name="Marker2D" type="Marker2D" parent="farmland" unique_id=838497172]
-position = Vector2(635, 171)
-
-[node name="Marker2D2" type="Marker2D" parent="farmland" unique_id=1170135882]
-position = Vector2(763, 170)
-
-[node name="Marker2D3" type="Marker2D" parent="farmland" unique_id=925104658]
-position = Vector2(691, 170)
-
-[node name="Marker2D4" type="Marker2D" parent="farmland" unique_id=337272209]
-position = Vector2(816, 170)
-
-[node name="Marker2D5" type="Marker2D" parent="farmland" unique_id=2096074618]
-position = Vector2(853, 170)
 
 [node name="Area2D" type="Area2D" parent="farmland" unique_id=695472341]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="farmland/Area2D" unique_id=1361556120]
-position = Vector2(770, 147)
 shape = SubResource("RectangleShape2D_5megq")
 
 [node name="floor" type="TileMapLayer" parent="." unique_id=1650262714]

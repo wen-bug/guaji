@@ -8,6 +8,8 @@ extends Resource
 @export var attack_scale := 0
 @export var defense_base := 0
 @export var defense_scale := 0
+@export var base_attributes := []
+@export var requirement_stat := ""
 @export_multiline var description := ""
 
 
@@ -19,5 +21,7 @@ func setup(data: Dictionary) -> EquipmentTemplate:
 	attack_scale = int(data.get("attack_scale", 0))
 	defense_base = int(data.get("defense_base", 0))
 	defense_scale = int(data.get("defense_scale", 0))
+	base_attributes = data.get("base_attributes", []).duplicate(true)
+	requirement_stat = data.get("requirement_stat", "")
 	description = data.get("description", "")
 	return self

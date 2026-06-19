@@ -1,33 +1,80 @@
-[gd_scene format=3]
+[gd_scene load_steps=5 format=3 uid="uid://c0t1hgwaosio5"]
 
-[ext_resource type="Script" path="res://scripts/game/combat_controller.gd" id="1_combat"]
+[ext_resource type="Script" uid="uid://virww324ont2" path="res://scripts/game/combat_controller.gd" id="1_combat"]
 
-[node name="CombatController" type="Node2D"]
+[sub_resource type="Animation" id="Animation_normal_attack"]
+resource_name = "normal_attack"
+length = 0.18
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("EnemyVisual:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.09, 0.18),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(1.16, 0.86), Vector2(1, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_skill_cast"]
+resource_name = "skill_cast"
+length = 0.24
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("EnemyVisual:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 1), Color(1, 0.62, 0.28, 1), Color(1, 1, 1, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_defend"]
+resource_name = "defend"
+length = 0.12
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_combat"]
+_data = {
+"defend": SubResource("Animation_defend"),
+"normal_attack": SubResource("Animation_normal_attack"),
+"skill_cast": SubResource("Animation_skill_cast")
+}
+
+[node name="CombatController" type="Node2D" unique_id=376286259]
 script = ExtResource("1_combat")
 
-[node name="EnemyVisual" type="Node2D" parent="."]
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=600000101]
+libraries = {
+&"": SubResource("AnimationLibrary_combat")
+}
+
+[node name="EnemyVisual" type="Node2D" parent="." unique_id=695000471]
 visible = false
 position = Vector2(866, 126)
 
-[node name="Body" type="Polygon2D" parent="EnemyVisual"]
+[node name="Body" type="Polygon2D" parent="EnemyVisual" unique_id=445850722]
 color = Color(0.82, 0.12, 0.16, 0.95)
 polygon = PackedVector2Array(0, -15, 10.6, -10.6, 15, 0, 10.6, 10.6, 0, 15, -10.6, 10.6, -15, 0, -10.6, -10.6)
 
-[node name="Eye" type="Polygon2D" parent="EnemyVisual"]
+[node name="Eye" type="Polygon2D" parent="EnemyVisual" unique_id=506360771]
 position = Vector2(5, -4)
 color = Color(0.08, 0.02, 0.02, 1)
 polygon = PackedVector2Array(0, -3, 2.1, -2.1, 3, 0, 2.1, 2.1, 0, 3, -2.1, 2.1, -3, 0, -2.1, -2.1)
 
-[node name="HPBack" type="ColorRect" parent="EnemyVisual"]
+[node name="HPBack" type="ColorRect" parent="EnemyVisual" unique_id=182786221]
 offset_left = -24.0
 offset_top = -28.0
 offset_right = 24.0
 offset_bottom = -23.0
 color = Color(0.1, 0.05, 0.05, 0.75)
 
-[node name="HPFill" type="ColorRect" parent="EnemyVisual/HPBack"]
-offset_left = 0.0
-offset_top = 0.0
+[node name="HPFill" type="ColorRect" parent="EnemyVisual/HPBack" unique_id=1527643618]
+layout_mode = 0
 offset_right = 48.0
 offset_bottom = 5.0
 color = Color(0.95, 0.25, 0.2, 1)

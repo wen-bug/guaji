@@ -19,6 +19,9 @@ const INVENTORY_CATEGORIES := [
 
 signal home_action_requested(task_type: int)
 signal hud_save_requested()
+signal combat_mode_toggle_requested()
+signal combat_action_requested(action_id: String, skill_id: String)
+signal expedition_exit_requested()
 
 const DRAG_MARGIN := 12.0
 const INVENTORY_SLOT_COUNT := 25
@@ -68,6 +71,15 @@ const INVENTORY_DOUBLE_CLICK_MS := 350
 @onready var forge_hint_label: Label = $Root/ForgePanel/PanelLayout/HintLabel
 @onready var meditate_detail: Label = $Root/MeditatePanel/PanelLayout/ActionDetail
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
+@onready var battle_action_hud: PanelContainer = $Root/BattleActionHud
+@onready var battle_mode_button: Button = $Root/BattleActionHud/ActionLayout/ModeButton
+@onready var battle_status_label: Label = $Root/BattleActionHud/ActionLayout/StatusLabel
+@onready var battle_attack_button: Button = $Root/BattleActionHud/ActionLayout/AttackButton
+@onready var battle_defend_button: Button = $Root/BattleActionHud/ActionLayout/DefendButton
+@onready var battle_skill_button_row: HBoxContainer = $Root/BattleActionHud/ActionLayout/SkillButtonRow
+@onready var expedition_exit_button: Button = $Root/BattleActionHud/ActionLayout/ExitExpeditionButton
+@onready var window_drag_button: Button = $Root/WindowDragButton
+@onready var damage_feedback_label: Label = $Root/BattleActionHud/DamageFeedbackLabel
 @onready var alchemy_recipe_slot_button: Button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
 @onready var alchemy_recipe_picker_panel: PanelContainer = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel
 @onready var alchemy_recipe_list: ItemList = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList
@@ -101,6 +113,10 @@ var saved_panel_positions := {}
 var dragging_panel: Control = null
 var drag_mouse_start := Vector2.ZERO
 var drag_panel_start := Vector2.ZERO
+var dragging_window := false
+var window_drag_mouse_start := Vector2.ZERO
+var window_drag_start_position := Vector2i.ZERO
+var damage_feedback_tween: Tween = null
 var menu_button_hover_tween: Tween = null
 
 
@@ -116,6 +132,10 @@ func _ready() -> void:
 
 	$Root/MeditatePanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.MEDITATE))
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
+	battle_mode_button.pressed.connect(func(): combat_mode_toggle_requested.emit())
+	battle_attack_button.pressed.connect(func(): combat_action_requested.emit("attack", ""))
+	battle_defend_button.pressed.connect(func(): combat_action_requested.emit("defend", ""))
+	expedition_exit_button.pressed.connect(func(): expedition_exit_requested.emit())
 	_connect_farm_controls()
 	_connect_forge_controls()
 	_connect_alchemy_controls()
@@ -130,6 +150,7 @@ func _ready() -> void:
 	_ensure_inventory_slots()
 	_capture_default_panel_positions()
 	$Root/MenuButton.pivot_offset = $Root/MenuButton.size * 0.5
+	window_drag_button.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 func _on_menu_button_mouse_entered() -> void:
@@ -156,13 +177,20 @@ func _animate_menu_button_hover(hovered: bool) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			if _begin_window_drag(event.position):
+				return
 			_begin_panel_drag(event.position)
 		else:
+			_end_window_drag()
 			_end_panel_drag()
-	elif event is InputEventMouseMotion and dragging_panel != null:
+	elif event is InputEventMouseMotion:
 		var motion_event := event as InputEventMouseMotion
-		var next_position: Vector2 = drag_panel_start + motion_event.position - drag_mouse_start
-		dragging_panel.position = _clamp_panel_position(dragging_panel, next_position)
+		if dragging_window:
+			var delta := motion_event.position - window_drag_mouse_start
+			DisplayServer.window_set_position(window_drag_start_position + Vector2i(roundi(delta.x), roundi(delta.y)))
+		elif dragging_panel != null:
+			var next_position: Vector2 = drag_panel_start + motion_event.position - drag_mouse_start
+			dragging_panel.position = _clamp_panel_position(dragging_panel, next_position)
 
 func load_hud_save_data(data: Dictionary) -> void:
 	_ensure_menu_panel_refs()
@@ -185,11 +213,12 @@ func to_hud_save_data() -> Dictionary:
 	return {"panel_positions": saved_panel_positions.duplicate(true)}
 
 
-func refresh(game_state) -> void:
+func refresh(game_state, combat = null, expedition_active := false) -> void:
 	_ensure_menu_panel_refs()
 	current_game_state = game_state
 	current_progress_state = game_state.progress_states.duplicate(true) if game_state != null else {}
 	_refresh_character_info(game_state)
+	_refresh_battle_action_hud(game_state, combat, expedition_active)
 
 	if inventory_panel.visible:
 		_refresh_inventory()
@@ -270,6 +299,22 @@ func _refresh_character_skills(game_state) -> void:
 func _create_character_slot(slot_label: String, item_name: String, detail_text: String) -> PanelContainer:
 	var slot := PanelContainer.new()
 	slot.custom_minimum_size = Vector2(220, 48)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.18, 0.13, 0.08, 0.88)
+	style.border_color = Color(0.72, 0.55, 0.28, 0.9)
+	style.border_width_left = 1
+	style.border_width_top = 1
+	style.border_width_right = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_right = 6
+	style.corner_radius_bottom_left = 6
+	style.content_margin_left = 8.0
+	style.content_margin_top = 6.0
+	style.content_margin_right = 8.0
+	style.content_margin_bottom = 6.0
+	slot.add_theme_stylebox_override("panel", style)
 	var layout := HBoxContainer.new()
 	layout.name = "SlotLayout"
 	layout.add_theme_constant_override("separation", 6)
@@ -285,6 +330,7 @@ func _create_character_slot(slot_label: String, item_name: String, detail_text: 
 	var name_label := Label.new()
 	name_label.name = "NameLabel"
 	name_label.text = "%s：%s" % [slot_label, item_name]
+	name_label.add_theme_color_override("font_color", Color(1, 0.93, 0.74, 1))
 	text_layout.add_child(name_label)
 	var detail_label := Label.new()
 	detail_label.name = "DetailLabel"
@@ -293,12 +339,107 @@ func _create_character_slot(slot_label: String, item_name: String, detail_text: 
 	return slot
 
 
+
 func _clear_control_children(container: Control) -> void:
 	if container == null:
 		return
 	for child in container.get_children():
 		container.remove_child(child)
 		child.queue_free()
+
+
+func _refresh_battle_action_hud(game_state, combat, expedition_active := false) -> void:
+	_ensure_menu_panel_refs()
+	var in_combat := combat != null and bool(combat.active) and not bool(combat.finished)
+	battle_action_hud.visible = in_combat or expedition_active
+	expedition_exit_button.visible = expedition_active
+	if not in_combat or game_state == null:
+		battle_mode_button.visible = false
+		battle_status_label.visible = false
+		battle_attack_button.visible = false
+		battle_defend_button.visible = false
+		_clear_control_children(battle_skill_button_row)
+		return
+	battle_mode_button.visible = true
+	battle_status_label.visible = true
+	battle_attack_button.visible = true
+	battle_defend_button.visible = true
+
+	var status: Dictionary = combat.combat_status()
+	var mode: String = status.get("player_mode", "auto")
+	var is_manual := mode == "manual"
+	var turn_ready := bool(status.get("player_turn_ready", false))
+	var pending_mode: String = status.get("pending_player_mode", "")
+	battle_mode_button.text = "切手动" if mode == "auto" else "切自动"
+	battle_status_label.text = _battle_status_text(mode, pending_mode, turn_ready, bool(status.get("defending", false)))
+	battle_attack_button.disabled = not (is_manual and turn_ready)
+	battle_defend_button.disabled = not (is_manual and turn_ready)
+	_refresh_battle_skill_buttons(game_state, status, is_manual and turn_ready)
+
+
+func _battle_status_text(mode: String, pending_mode: String, turn_ready: bool, is_defending: bool) -> String:
+	if not pending_mode.is_empty():
+		return "本轮后切%s" % ("自动" if pending_mode == "auto" else "手动")
+	if is_defending:
+		return "防御中"
+	if mode == "auto":
+		return "自动战斗"
+	return "请选择动作" if turn_ready else "等待回合"
+
+
+func _refresh_battle_skill_buttons(game_state, status: Dictionary, can_act: bool) -> void:
+	_clear_control_children(battle_skill_button_row)
+	var cooldowns: Dictionary = status.get("skill_cooldowns", {})
+	for skill in game_state.skills:
+		var skill_id: String = skill.get("id", "")
+		if skill_id.is_empty():
+			continue
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(98, 32)
+		_style_inventory_slot_button(button)
+		var cooldown := float(cooldowns.get(skill_id, 0.0))
+		var mp_cost := int(skill.get("mp_cost", 0))
+		button.text = "%s MP%d" % [skill.get("name", skill_id), mp_cost]
+		if cooldown > 0.0:
+			button.text = "%s %.1fs" % [skill.get("name", skill_id), cooldown]
+		button.disabled = not can_act or cooldown > 0.0 or int(game_state.stats.get("mp", 0)) < mp_cost
+		button.pressed.connect(func(id = skill_id): combat_action_requested.emit("skill", id))
+		battle_skill_button_row.add_child(button)
+
+
+func show_damage_feedback(payload: Dictionary) -> void:
+	_ensure_menu_panel_refs()
+	if damage_feedback_label == null:
+		return
+	var damage := int(payload.get("damage", 0))
+	var message := str(payload.get("message", ""))
+	var skill_name := str(payload.get("skill_name", ""))
+	if damage > 0:
+		damage_feedback_label.text = "%s -%d" % [skill_name if not skill_name.is_empty() else message, damage]
+	else:
+		damage_feedback_label.text = message
+	damage_feedback_label.visible = true
+	damage_feedback_label.modulate = Color(1, 1, 1, 1)
+	if damage_feedback_tween != null:
+		damage_feedback_tween.kill()
+	damage_feedback_tween = create_tween()
+	damage_feedback_tween.tween_property(damage_feedback_label, "position:y", damage_feedback_label.position.y - 8.0, 0.18)
+	damage_feedback_tween.parallel().tween_property(damage_feedback_label, "modulate:a", 0.0, 0.45).set_delay(0.25)
+	damage_feedback_tween.tween_callback(func(): damage_feedback_label.visible = false)
+
+
+func _begin_window_drag(mouse_position: Vector2) -> bool:
+	_ensure_menu_panel_refs()
+	if window_drag_button == null or not window_drag_button.get_global_rect().has_point(mouse_position):
+		return false
+	dragging_window = true
+	window_drag_mouse_start = mouse_position
+	window_drag_start_position = DisplayServer.window_get_position()
+	return true
+
+
+func _end_window_drag() -> void:
+	dragging_window = false
 
 
 func show_home_action_panel(task_type: int) -> void:
@@ -435,6 +576,24 @@ func _ensure_menu_panel_refs() -> void:
 		meditate_detail = $Root/MeditatePanel/PanelLayout/ActionDetail
 	if fight_detail == null:
 		fight_detail = $Root/FightPanel/PanelLayout/ActionDetail
+	if battle_action_hud == null:
+		battle_action_hud = $Root/BattleActionHud
+	if battle_mode_button == null:
+		battle_mode_button = $Root/BattleActionHud/ActionLayout/ModeButton
+	if battle_status_label == null:
+		battle_status_label = $Root/BattleActionHud/ActionLayout/StatusLabel
+	if battle_attack_button == null:
+		battle_attack_button = $Root/BattleActionHud/ActionLayout/AttackButton
+	if battle_defend_button == null:
+		battle_defend_button = $Root/BattleActionHud/ActionLayout/DefendButton
+	if battle_skill_button_row == null:
+		battle_skill_button_row = $Root/BattleActionHud/ActionLayout/SkillButtonRow
+	if expedition_exit_button == null:
+		expedition_exit_button = $Root/BattleActionHud/ActionLayout/ExitExpeditionButton
+	if window_drag_button == null:
+		window_drag_button = $Root/WindowDragButton
+	if damage_feedback_label == null:
+		damage_feedback_label = $Root/BattleActionHud/DamageFeedbackLabel
 	if alchemy_recipe_slot_button == null:
 		alchemy_recipe_slot_button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
 	if alchemy_recipe_picker_panel == null:
@@ -795,6 +954,7 @@ func _ensure_inventory_slots() -> void:
 		slot.name = "InventorySlot%d" % (index + 1)
 		slot.custom_minimum_size = Vector2(78, 54)
 		slot.clip_contents = true
+		_style_inventory_slot_button(slot)
 		var layout := VBoxContainer.new()
 		layout.name = "SlotLayout"
 		slot.add_child(layout)
@@ -817,6 +977,35 @@ func _ensure_inventory_slots() -> void:
 		inventory_grid.add_child(slot)
 		inventory_slot_buttons.append(slot)
 		inventory_slot_instance_ids.append("")
+
+
+func _style_inventory_slot_button(slot: Button) -> void:
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0.16, 0.11, 0.07, 0.92)
+	normal.border_color = Color(0.55, 0.42, 0.24, 0.9)
+	normal.border_width_left = 1
+	normal.border_width_top = 1
+	normal.border_width_right = 1
+	normal.border_width_bottom = 1
+	normal.corner_radius_top_left = 5
+	normal.corner_radius_top_right = 5
+	normal.corner_radius_bottom_right = 5
+	normal.corner_radius_bottom_left = 5
+	normal.content_margin_left = 4.0
+	normal.content_margin_top = 4.0
+	normal.content_margin_right = 4.0
+	normal.content_margin_bottom = 4.0
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color(0.24, 0.17, 0.09, 1)
+	hover.border_color = Color(0.9, 0.72, 0.38, 1)
+	var disabled := normal.duplicate() as StyleBoxFlat
+	disabled.bg_color = Color(0.1, 0.08, 0.06, 0.6)
+	disabled.border_color = Color(0.28, 0.23, 0.18, 0.75)
+	slot.add_theme_stylebox_override("normal", normal)
+	slot.add_theme_stylebox_override("hover", hover)
+	slot.add_theme_stylebox_override("pressed", hover)
+	slot.add_theme_stylebox_override("focus", hover)
+	slot.add_theme_stylebox_override("disabled", disabled)
 
 
 func _update_inventory_slot(index: int, item: Dictionary) -> void:

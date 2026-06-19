@@ -1,78 +1,78 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://bdl5feyi8qwb7"]
 
-[ext_resource type="Script" path="res://scripts/map/battle_map.gd" id="1_battle_map"]
-[ext_resource type="Texture2D" path="res://assets/Tiny Swords (Free Pack)/Decorations/Trees/Tree3.png" id="2_tree"]
-[ext_resource type="Texture2D" path="res://assets/Tiny Swords (Free Pack)/Terrain/Tilemap_color1.png" id="3_ground"]
+[ext_resource type="Script" uid="uid://cijx4vhhgahhx" path="res://scripts/map/battle_map.gd" id="1_battle_map"]
+[ext_resource type="Texture2D" uid="uid://ciaxh4pq7adqk" path="res://assets/Tiny Swords (Free Pack)/Decorations/Trees/Tree3.png" id="2_tree"]
+[ext_resource type="Texture2D" uid="uid://13h8y31kx4ao" path="res://assets/Tiny Swords (Free Pack)/Terrain/Tilemap_color1.png" id="3_ground"]
 
-[node name="BattleMap" type="Node2D"]
+[node name="BattleMap" type="Node2D" unique_id=712539348]
 visible = false
 script = ExtResource("1_battle_map")
 
-[node name="Sky" type="ColorRect" parent="."]
+[node name="Sky" type="ColorRect" parent="." unique_id=903005061]
 offset_right = 960.0
 offset_bottom = 480.0
 color = Color(0.08, 0.12, 0.18, 0.92)
 
-[node name="FarLayer" type="Node2D" parent="."]
+[node name="FarLayer" type="Node2D" parent="." unique_id=720442485]
 z_index = 1
 
-[node name="TreeA" type="Sprite2D" parent="FarLayer"]
+[node name="TreeA" type="Sprite2D" parent="FarLayer" unique_id=91413362]
 position = Vector2(120, 160)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("2_tree")
 
-[node name="TreeB" type="Sprite2D" parent="FarLayer"]
+[node name="TreeB" type="Sprite2D" parent="FarLayer" unique_id=1471369338]
 position = Vector2(420, 155)
 scale = Vector2(0.7, 0.7)
 texture = ExtResource("2_tree")
 
-[node name="TreeC" type="Sprite2D" parent="FarLayer"]
+[node name="TreeC" type="Sprite2D" parent="FarLayer" unique_id=1627233631]
 position = Vector2(760, 165)
 scale = Vector2(0.85, 0.85)
 texture = ExtResource("2_tree")
 
-[node name="TreeARepeat" type="Sprite2D" parent="FarLayer"]
+[node name="TreeARepeat" type="Sprite2D" parent="FarLayer" unique_id=255052051]
 position = Vector2(1080, 160)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("2_tree")
 
-[node name="TreeBRepeat" type="Sprite2D" parent="FarLayer"]
+[node name="TreeBRepeat" type="Sprite2D" parent="FarLayer" unique_id=1261223128]
 position = Vector2(1380, 155)
 scale = Vector2(0.7, 0.7)
 texture = ExtResource("2_tree")
 
-[node name="TreeCRepeat" type="Sprite2D" parent="FarLayer"]
+[node name="TreeCRepeat" type="Sprite2D" parent="FarLayer" unique_id=751225532]
 position = Vector2(1720, 165)
 scale = Vector2(0.85, 0.85)
 texture = ExtResource("2_tree")
 
-[node name="GroundLayer" type="Node2D" parent="."]
+[node name="GroundLayer" type="Node2D" parent="." unique_id=1911738924]
 z_index = 5
 
-[node name="GroundA" type="Sprite2D" parent="GroundLayer"]
+[node name="GroundA" type="Sprite2D" parent="GroundLayer" unique_id=1994645630]
 position = Vector2(240, 360)
-scale = Vector2(2.0, 2.0)
+scale = Vector2(2, 2)
 texture = ExtResource("3_ground")
 region_enabled = true
 region_rect = Rect2(0, 0, 480, 96)
 
-[node name="GroundB" type="Sprite2D" parent="GroundLayer"]
+[node name="GroundB" type="Sprite2D" parent="GroundLayer" unique_id=1139489154]
 position = Vector2(720, 360)
-scale = Vector2(2.0, 2.0)
+scale = Vector2(2, 2)
 texture = ExtResource("3_ground")
 region_enabled = true
 region_rect = Rect2(0, 0, 480, 96)
 
-[node name="GroundARepeat" type="Sprite2D" parent="GroundLayer"]
+[node name="GroundARepeat" type="Sprite2D" parent="GroundLayer" unique_id=472157336]
 position = Vector2(1200, 360)
-scale = Vector2(2.0, 2.0)
+scale = Vector2(2, 2)
 texture = ExtResource("3_ground")
 region_enabled = true
 region_rect = Rect2(0, 0, 480, 96)
 
-[node name="GroundBRepeat" type="Sprite2D" parent="GroundLayer"]
+[node name="GroundBRepeat" type="Sprite2D" parent="GroundLayer" unique_id=1242278465]
 position = Vector2(1680, 360)
-scale = Vector2(2.0, 2.0)
+scale = Vector2(2, 2)
 texture = ExtResource("3_ground")
 region_enabled = true
 region_rect = Rect2(0, 0, 480, 96)

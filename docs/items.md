@@ -62,20 +62,20 @@
 
 ## 装备模板与槽位
 
-装备由 `EquipmentTemplate` 静态模板生成，进入背包时创建独立实例。生成时会随机五行或无属性与五阶品质，并初始化强化和词条字段。五行装备名称格式为 `<五行名>·<阶位名>·<槽位名>`，例如 `赤焰·三阶·武器`；无属性装备名称格式为 `无相·<阶位名>·<槽位名>`。
+装备由 `EquipmentTemplate` 静态模板生成，进入背包时创建独立实例。生成时会随机五阶品质，并初始化模板基础属性、随机词条、强化和洗练字段。装备名称格式为 `<阶位名>·<槽位名>`，例如 `三阶·武器`。
 
-五阶品质按慢热挂机节奏分布：`t1` 一阶 55%、`t2` 二阶 28%、`t3` 三阶 12%、`t4` 四阶 4%、`t5` 五阶 1%。阶级决定基础属性条数：一阶 1 条、二阶 2 条、三阶 3 条、四阶 4 条、五阶 5 条。无属性武器攻击倍率分别为 `1.15`、`1.30`、`1.50`、`1.75`、`2.10`。
+五阶品质按慢热挂机节奏分布：`t1` 一阶 55%、`t2` 二阶 28%、`t3` 三阶 12%、`t4` 四阶 4%、`t5` 五阶 1%。阶级决定随机词条条数：一阶 1 条、二阶 2 条、三阶 3 条、四阶 4 条、五阶 5 条。
 
-无属性装备使用 `element: neutral`。武器有 40% 概率为无属性，非武器有 15% 概率为无属性。无属性武器强制拥有 `attack` 基础属性，直接攻击高于同阶五行武器；无属性防具保留槽位核心普通属性，用普通属性灵石强化。
+掉落装备统一使用 `element: neutral` 兼容旧字段。五行属性不再作为装备身份或强制基础属性，只作为随机词条写入 `affixes`。
 
 | 模板 item_id | 基础槽位 | 装备定位 |
 | --- | --- | --- |
 | `weapon` | `weapon` | 主要增加攻击 |
-| `helmet` | `helmet` | 主要增加防御 |
-| `armor` | `armor` | 主要增加防御 |
-| `leggings` | `leggings` | 主要增加防御 |
+| `helmet` | `helmet` | 主要增加生命和防御 |
+| `armor` | `armor` | 主要增加防御和生命 |
+| `leggings` | `leggings` | 主要增加防御和生命 |
 | `gloves` | `gloves` | 兼顾攻击和防御 |
-| `accessory` | `accessory` | 兼顾攻击、防御或特殊属性 |
+| `accessory` | `accessory` | 主要增加灵力和根骨 |
 
 实际穿戴槽位：
 - `weapon`：武器。
@@ -270,15 +270,15 @@ HUD 顶部资源摘要显示分类总量：作物、材料、丹药、图纸，�
 
 ## 装备属性条目与灵石材料
 
-装备基础属性从人物属性模板中抽取，当前模板包含 `max_hp`、`max_mp`、`attack`、`defense`、`root_bone`、`element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water`。生成顺序为阶级 → 等级 → 属性：阶级决定属性条数，等级提供额外属性点，并保证 `base_attributes` 中的 `stat` 不重复；五行装备会保留自身五行基础属性，无属性装备会保留槽位核心普通属性。
+装备基础属性只来自装备模板自身设定，生成顺序为阶级 → 模板基础属性 → 随机词条。模板基础属性固定写入 `base_attributes`；五行、根骨、生命、灵力等随机变化写入 `affixes`。
 
-属性值公式为 `round((random(tier_min, tier_max) + int(equipment_level * stat_level_scale) + craft_bonus) * rarity_multiplier)`，最低为 1。`attack/defense/root_bone/element_*` 的阶级范围为 `1-2`、`2-4`、`4-7`、`7-11`、`11-16`；`max_mp` 为 `4-8`、`8-14`、`14-22`、`22-34`、`34-50`；`max_hp` 为 `8-16`、`16-28`、`28-44`、`44-68`、`68-100`。等级成长系数为：攻防 `0.8`，根骨/五行 `0.4`，灵力 `1.2`，生命 `2.4`。
+基础属性值公式为 `round((base + equipment_level * level_scale + craft_bonus) * rarity_multiplier)`，最低为 1。随机词条值沿用属性池公式：`round((random(min, max) + int(equipment_level * stat_level_scale) + craft_bonus) * rarity_multiplier)`。
 
-装备掉落规则：战斗胜利结算敌人掉落表后，独立以 35% 概率掉落 1 件装备；掉落装备的 `equipment_level` 等于敌人等级，槽位从装备模板中随机，五行从木火土金水随机，阶位按装备阶位概率表随机。掉落装备获得不做属性门槛，只有穿戴时检查 `equip_requirement`。
+装备掉落规则：战斗胜利结算敌人掉落表后，独立以 35% 概率掉落 1 件装备；掉落装备的 `equipment_level` 等于敌人等级，槽位从装备模板中随机，阶位按装备阶位概率表随机。掉落装备获得不做属性门槛，只有穿戴时检查 `equip_requirement`。
 
 装备实例字段补充：
 - `equipment_level`：生成来源等级。炼器取玩家等级，掉落取敌人等级。
-- `equip_requirement`：穿戴需求。五行装备要求对应 `element_*`，无相装备要求核心普通属性；需求值为 `max(1, equipment_level * rarity_tier)`。
+- `equip_requirement`：穿戴需求。按装备模板的需求属性检查；需求值为 `max(1, equipment_level * rarity_tier)`。
 - `base_attributes`：基础属性数组，每条包含 `stat` 和 `amount`。
 - `enhanced_attributes`：普通强化数组，每条包含 `stat`、`amount`、`quality`。
 - `refine_affixes`：洗练百分比词条数组，每条包含 `stat` 和 `percent`。

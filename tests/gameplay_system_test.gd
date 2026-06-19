@@ -2,6 +2,7 @@ extends SceneTree
 
 const GameStateScript = preload("res://scripts/game/game_state.gd")
 const SaveManagerScript = preload("res://scripts/game/save_manager.gd")
+const SkillResolverScript = preload("res://scripts/game/skill_resolver.gd")
 const HomeMapScript = preload("res://scripts/map/home_map.gd")
 const HomeMapScene = preload("res://scripts/map/home.tscn")
 const BattleMapScene = preload("res://scripts/map/battle_map.tscn")
@@ -24,6 +25,7 @@ func _run() -> void:
 	_test_root_bone_breakthrough()
 	_test_root_bone_activity_bonuses()
 	_test_alchemy_recipes_and_duration_buffs()
+	_test_duration_pills_extend_same_buff_time()
 	_test_alchemy_recipe_materials_and_batch_crafting()
 	_test_save_manager_and_game_state_roundtrip()
 	_test_home_action_opens_farm_panel()
@@ -35,6 +37,11 @@ func _run() -> void:
 	_test_home_map_node_mapping_and_farm_slots()
 	_test_battle_map_expedition_spawns_monsters()
 	_test_main_scene_enters_expedition_before_combat()
+	_test_main_scene_exits_expedition_to_home()
+	_test_combat_manual_auto_modes()
+	_test_combat_actions_wait_for_animation_and_emit_feedback()
+	_test_skill_resolver_outputs_damage_and_buffs()
+	_test_combat_turn_buffs_expire_and_clear()
 	_test_hud_uses_scene_nodes()
 	_test_character_gravity()
 	_test_me_scene_uses_character_body()
@@ -120,6 +127,20 @@ func _test_alchemy_recipes_and_duration_buffs() -> void:
 	_check(game_state.active_buffs.size() == 1, "duration pill creates active buff")
 	game_state.update_buffs(999.0)
 	_check(game_state.active_buffs.is_empty(), "duration buff expires")
+
+
+func _test_duration_pills_extend_same_buff_time() -> void:
+	var game_state = GameStateScript.new()
+	game_state.inventory.clear()
+	_check(game_state.add_inventory_item("might_pill", 2, false), "duration pill stack can be added")
+	_check(game_state.use_inventory_item("might_pill"), "first duration pill can be used")
+	var first_remaining := float(game_state.active_buffs[0].get("remaining", 0.0))
+	var first_amount := int(game_state.active_buffs[0].get("amount", 0))
+	game_state.update_buffs(5.0)
+	_check(game_state.use_inventory_item("might_pill"), "second same duration pill can be used")
+	_check(game_state.active_buffs.size() == 1, "same duration pill extends existing buff instead of stacking")
+	_check(int(game_state.active_buffs[0].get("amount", 0)) == first_amount, "same duration pill does not stack stat amount")
+	_check(is_equal_approx(float(game_state.active_buffs[0].get("remaining", 0.0)), first_remaining - 5.0 + first_remaining), "same duration pill adds time to current remaining")
 
 
 func _test_alchemy_recipe_materials_and_batch_crafting() -> void:
@@ -211,7 +232,7 @@ func _test_save_manager_and_game_state_roundtrip() -> void:
 	game_state.add_inventory_item("blade_grass", 3, false)
 	game_state.active_buffs.append({"stat": "attack", "amount": 2, "remaining": 30.0})
 
-	var path := "user://test_save_manager.cfg"
+	var path := "res://tmp_test_save_manager.cfg"
 	var manager = SaveManagerScript.new(path)
 	var save_data := {
 		"game_state": game_state.to_save_data(),
@@ -339,20 +360,21 @@ func _test_home_map_node_mapping_and_farm_slots() -> void:
 	_check(forge.z_index == 15, "home action hover stays between building and character z index")
 	forge_area.mouse_exited.emit()
 	var farmland := home_map.get_node("farmland") as CanvasItem
+	_check(farmland is AnimatedSprite2D, "farmland is a single sprite node")
 	_check(farmland.material is ShaderMaterial, "farmland has outline shader material bound after setup")
-	var farmland_rect := home_map.get_node("farmland/ColorRect") as CanvasItem
-	var crop_area := home_map.get_node("farmland/crop/Area2D") as Area2D
-	crop_area.mouse_entered.emit()
-	_check(farmland.material.get_shader_parameter("outline_enabled") == true, "crop hover enables outline shader on farmland action")
-	_check(farmland_rect.material is ShaderMaterial, "farmland visual child also receives outline shader")
-	crop_area.mouse_exited.emit()
-	_check(home_map.farm_slot_count() == 5, "home map exposes five farm slots")
+	_check(home_map.get_node_or_null("farmland/ColorRect") == null, "farmland does not use a separate rect node")
+	_check(home_map.get_node_or_null("farmland/crop") == null, "farmland does not use a separate crop node")
+	var farmland_area := home_map.get_node("farmland/Area2D") as Area2D
+	farmland_area.mouse_entered.emit()
+	_check(farmland.material.get_shader_parameter("outline_enabled") == true, "farmland hover enables outline shader")
+	farmland_area.mouse_exited.emit()
+	_check(home_map.farm_slot_count() == 0, "home map does not expose visual farm slots")
 	home_map.show_farm_crops("herb", 8)
-	_check(home_map.active_crop_count() == 5, "farm crop display is capped to five slots")
+	_check(home_map.active_crop_count() == 0, "farm crops are not rendered as map child nodes")
 	home_map.show_farm_crops("rice", 2)
-	_check(home_map.active_crop_count() == 2, "farm crop display refreshes to current amount")
+	_check(home_map.active_crop_count() == 0, "farm crop refresh keeps map visual simple")
 	var first_crop := home_map.get_node_or_null("farmland/crop_1")
-	_check(first_crop != null and first_crop.get_meta("crop_id") == "rice", "farm crop node stores displayed crop id")
+	_check(first_crop == null, "farm crop state remains in HUD instead of map nodes")
 	home_map.queue_free()
 
 
@@ -418,6 +440,161 @@ func _test_main_scene_enters_expedition_before_combat() -> void:
 	main.queue_free()
 
 
+func _test_main_scene_exits_expedition_to_home() -> void:
+	var main = MainScene.instantiate()
+	get_root().add_child(main)
+	main._on_home_action_requested(GameDefs.TaskType.FIGHT)
+	var home := main.get_node_or_null("Home") as Node2D
+	var battle_map := main.get_node_or_null("BattleMap")
+	var combat := main.get_node_or_null("CombatController")
+	var character := main.get_node_or_null("CharacterController")
+	_check(main.expedition_active, "expedition is active before exit")
+	battle_map.next_spawn_time = 0.01
+	battle_map.advance(0.02)
+	_check(combat.active, "combat is active before expedition exit")
+	main._on_expedition_exit_requested()
+	_check(not main.expedition_active, "expedition exit clears main expedition flag")
+	_check(home != null and home.visible, "expedition exit shows home map")
+	_check(not battle_map.is_expedition_active() and not battle_map.visible, "expedition exit hides battle map")
+	_check(not combat.active and not combat.finished, "expedition exit clears current combat")
+	_check(character.sprite.animation == &"idle", "expedition exit returns character to idle")
+	main.queue_free()
+
+
+func _test_combat_manual_auto_modes() -> void:
+	var game_state = GameStateScript.new()
+	var combat = preload("res://scripts/game/combat_controller.tscn").instantiate()
+	get_root().add_child(combat)
+	combat.begin_encounter(game_state)
+	combat.enemy["hp"] = 9999
+	combat.enemy["max_hp"] = 9999
+	_check(combat.player_mode == combat.PLAYER_MODE_AUTO, "combat starts in auto mode")
+	var start_hp: int = int(combat.enemy["hp"])
+	combat.tick(0.01, game_state)
+	combat._complete_pending_player_action()
+	_check(int(combat.enemy["hp"]) < start_hp, "auto mode performs player attack")
+
+	combat.request_toggle_player_mode()
+	_check(combat.player_mode == combat.PLAYER_MODE_MANUAL, "mode toggle switches to manual")
+	combat.attack_timer = 0.0
+	var manual_wait_hp: int = int(combat.enemy["hp"])
+	combat.tick(0.01, game_state)
+	_check(combat.player_turn_ready, "manual mode marks player turn ready")
+	_check(int(combat.enemy["hp"]) == manual_wait_hp, "manual mode waits for action before attacking")
+	_check(combat.request_player_action(combat.PLAYER_ACTION_ATTACK, "", game_state), "manual normal attack can resolve ready turn")
+	combat._complete_pending_player_action()
+	_check(int(combat.enemy["hp"]) < manual_wait_hp, "manual normal attack damages enemy")
+
+	combat.attack_timer = 0.0
+	combat.tick(0.01, game_state)
+	var mp_before: int = int(game_state.stats["mp"])
+	var skill_id: String = game_state.skills[0]["id"]
+	combat.skill_cooldowns[skill_id] = 0.0
+	_check(combat.request_player_action(combat.PLAYER_ACTION_SKILL, skill_id, game_state), "manual skill can resolve ready turn")
+	combat._complete_pending_player_action()
+	_check(int(game_state.stats["mp"]) < mp_before, "manual skill spends mp")
+	_check(float(combat.skill_cooldowns.get(skill_id, 0.0)) > 0.0, "manual skill starts cooldown")
+
+	combat.attack_timer = 0.0
+	combat.tick(0.01, game_state)
+	var hp_before_defend: int = int(game_state.stats["hp"])
+	var enemy_attack: int = int(combat.enemy["attack"])
+	_check(combat.request_player_action(combat.PLAYER_ACTION_DEFEND, "", game_state), "manual defend can resolve ready turn")
+	combat._complete_pending_player_action()
+	combat.enemy_timer = 0.0
+	combat.tick(0.01, game_state)
+	_check(hp_before_defend - int(game_state.stats["hp"]) <= max(1, int(ceil(float(enemy_attack) * 0.5))), "defend reduces next enemy hit")
+
+	combat.player_action_resolving = true
+	combat.request_toggle_player_mode()
+	_check(combat.pending_player_mode == combat.PLAYER_MODE_AUTO, "mode toggle queues while player action resolves")
+	combat.player_action_resolving = false
+	combat._finish_player_turn()
+	_check(combat.player_mode == combat.PLAYER_MODE_AUTO, "queued mode applies after player turn")
+	combat.queue_free()
+
+
+func _test_combat_actions_wait_for_animation_and_emit_feedback() -> void:
+	var game_state = GameStateScript.new()
+	var combat = preload("res://scripts/game/combat_controller.tscn").instantiate()
+	get_root().add_child(combat)
+	var feedback_events := []
+	combat.damage_feedback.connect(func(payload: Dictionary): feedback_events.append(payload))
+	combat.begin_encounter(game_state)
+	combat.enemy["hp"] = 9999
+	combat.enemy["max_hp"] = 9999
+	combat.request_toggle_player_mode()
+	combat.attack_timer = 0.0
+	combat.tick(0.01, game_state)
+	var hp_before_attack: int = int(combat.enemy["hp"])
+	_check(combat.request_player_action(combat.PLAYER_ACTION_ATTACK, "", game_state), "animated normal attack can be requested")
+	_check(combat.player_action_resolving, "normal attack waits for animation before resolving")
+	_check(int(combat.enemy["hp"]) == hp_before_attack, "normal attack does not damage before animation finishes")
+	combat._complete_pending_player_action()
+	_check(int(combat.enemy["hp"]) < hp_before_attack, "normal attack damages after animation finishes")
+	_check(feedback_events.size() == 1 and int(feedback_events[0].get("damage", 0)) > 0, "normal attack emits damage feedback")
+
+	combat.attack_timer = 0.0
+	combat.tick(0.01, game_state)
+	var skill_id: String = game_state.skills[0]["id"]
+	combat.skill_cooldowns[skill_id] = 0.0
+	var hp_before_skill: int = int(combat.enemy["hp"])
+	var mp_before_skill: int = int(game_state.stats["mp"])
+	_check(combat.request_player_action(combat.PLAYER_ACTION_SKILL, skill_id, game_state), "animated skill can be requested")
+	_check(int(combat.enemy["hp"]) == hp_before_skill, "skill does not damage before animation finishes")
+	combat._complete_pending_player_action()
+	_check(int(combat.enemy["hp"]) < hp_before_skill, "skill damages after animation finishes")
+	_check(int(game_state.stats["mp"]) < mp_before_skill, "skill spends mp after animation finishes")
+	_check(str(feedback_events.back().get("action_id", "")) == combat.PLAYER_ACTION_SKILL, "skill emits skill damage feedback")
+	combat.queue_free()
+
+
+func _test_skill_resolver_outputs_damage_and_buffs() -> void:
+	var game_state = GameStateScript.new()
+	var resolver = SkillResolverScript.new()
+	var spark := DataTables.create_skill("spark")
+	var spark_result: Dictionary = resolver.resolve_skill(spark, game_state, {"total_attack": game_state.total_attack()})
+	_check(bool(spark_result.get("success", false)), "skill resolver accepts damage skill with enough mp")
+	_check(int(spark_result.get("damage", 0)) > 0, "skill resolver returns damage for damage skill")
+	_check(str(spark_result.get("element", "")) == "fire", "skill resolver returns skill element")
+	_check(int(spark_result.get("mp_spent", 0)) == int(spark.get("mp_cost", 0)), "skill resolver spends skill mp cost")
+	_check(float(spark_result.get("cooldown", 0.0)) == float(spark.get("cooldown", 0.0)), "skill resolver returns skill cooldown")
+
+	var guard := DataTables.create_skill("guard_focus")
+	var guard_result: Dictionary = resolver.resolve_skill(guard, game_state, {"total_attack": game_state.total_attack()})
+	_check(bool(guard_result.get("success", false)), "skill resolver accepts buff skill with enough mp")
+	_check(int(guard_result.get("damage", -1)) == 0, "buff skill resolver returns zero damage")
+	_check((guard_result.get("combat_buffs", []) as Array).size() == 1, "buff skill resolver returns combat buff definitions")
+
+
+func _test_combat_turn_buffs_expire_and_clear() -> void:
+	var game_state = GameStateScript.new()
+	game_state.skills.clear()
+	game_state.skills.append(DataTables.create_skill("guard_focus"))
+	var combat = preload("res://scripts/game/combat_controller.tscn").instantiate()
+	get_root().add_child(combat)
+	combat.begin_encounter(game_state)
+	combat.enemy["hp"] = 9999
+	combat.enemy["max_hp"] = 9999
+	combat.request_toggle_player_mode()
+	combat.attack_timer = 0.0
+	combat.tick(0.01, game_state)
+	_check(combat.request_player_action(combat.PLAYER_ACTION_SKILL, "guard_focus", game_state), "manual buff skill can resolve ready turn")
+	combat._complete_pending_player_action()
+	_check(combat.combat_buffs.size() == 1, "buff skill adds combat turn buff")
+	_check(combat.combat_stat_bonus("defense") > 0, "combat turn buff contributes stat bonus")
+	for i in range(3):
+		combat.attack_timer = 0.0
+		combat.tick(0.01, game_state)
+		combat.request_player_action(combat.PLAYER_ACTION_ATTACK, "", game_state)
+		combat._complete_pending_player_action()
+	_check(combat.combat_buffs.is_empty(), "combat turn buff expires after three player actions")
+	combat.combat_buffs.append({"stat": "defense", "amount": 4, "remaining_turns": 3, "source_skill_id": "guard_focus"})
+	combat.clear()
+	_check(combat.combat_buffs.is_empty(), "combat clear removes combat turn buffs")
+	combat.queue_free()
+
+
 func _test_hud_uses_scene_nodes() -> void:
 	var hud = HudScene.instantiate()
 	get_root().add_child(hud)
@@ -456,6 +633,13 @@ func _test_hud_uses_scene_nodes() -> void:
 	_check(hud.get_node_or_null("Root/AlchemyPanel/PanelLayout/MaxCountLabel") != null, "alchemy panel exposes max count label")
 	_check(hud.get_node_or_null("Root/MeditatePanel/PanelLayout/ExecuteButton") != null, "meditate panel is a separate UI")
 	_check(hud.get_node_or_null("Root/FightPanel/PanelLayout/ExecuteButton") != null, "fight panel is a separate UI for future building")
+	_check(hud.get_node_or_null("Root/BattleActionHud/ActionLayout/ModeButton") != null, "battle action hud exposes mode toggle")
+	_check(hud.get_node_or_null("Root/BattleActionHud/ActionLayout/AttackButton") != null, "battle action hud exposes normal attack")
+	_check(hud.get_node_or_null("Root/BattleActionHud/ActionLayout/DefendButton") != null, "battle action hud exposes defend action")
+	_check(hud.get_node_or_null("Root/BattleActionHud/ActionLayout/SkillButtonRow") != null, "battle action hud exposes dynamic skill slots")
+	_check(hud.get_node_or_null("Root/BattleActionHud/ActionLayout/ExitExpeditionButton") != null, "battle action hud exposes expedition exit button")
+	_check(hud.get_node_or_null("Root/WindowDragButton") != null, "hud exposes window drag button")
+	_check(hud.get_node_or_null("Root/BattleActionHud/DamageFeedbackLabel") != null, "battle action hud exposes damage feedback label")
 	_check(hud.get_node_or_null("Root/MenuPanel/MenuLayout/ButtonRow") == null, "secondary menu does not contain task action buttons")
 	_check(hud.get_node_or_null("Root/MenuPanel/MenuLayout/InventorySection") == null, "secondary menu does not embed inventory UI directly")
 	_check(hud.get_node_or_null("Root/InventoryPanel/InventoryLayout/InventoryList") == null, "inventory panel no longer uses item list as main UI")
@@ -525,6 +709,9 @@ func _test_hud_uses_scene_nodes() -> void:
 	inventory_panel.position = Vector2(144.0, 88.0)
 	var hud_save: Dictionary = hud.to_hud_save_data()
 	_check(hud_save.get("panel_positions", {}).get("InventoryPanel", {}).get("x", 0.0) == 144.0, "hud save data stores dragged panel x position")
+	hud.show_damage_feedback({"action_id": "attack", "damage": 12, "message": "????"})
+	var damage_feedback_label := hud.get_node("Root/BattleActionHud/DamageFeedbackLabel") as Label
+	_check(damage_feedback_label.visible and damage_feedback_label.text.contains("12"), "hud shows damage feedback text")
 
 	game_state.inventory.clear()
 	game_state.known_alchemy_recipes.append("attack_pill")
@@ -643,36 +830,37 @@ func _test_equipment_attribute_tiers_stones_and_refine() -> void:
 	_check(DataTables.spirit_stone_enhance_amount("t5") == 11, "tier five spirit stone enhances by eleven")
 	_check(DataTables.stat_stone_enhance_amount("t5") == 11, "stat stones use the same five tier values")
 	_check(DataTables.equipment_rarity_multiplier("t5") > DataTables.equipment_rarity_multiplier("t1"), "high tier equipment has stronger attribute multiplier")
-	_check(DataTables.neutral_weapon_multiplier("t1") > DataTables.equipment_rarity_multiplier("t1"), "neutral weapons have stronger direct attack multiplier")
 	var level_one := DataTables.create_equipment_from_template("weapon", 1, rng)
 	var tier_two := DataTables.create_equipment_from_template("weapon", 3, rng, 0, "fire", "t2")
 	var tier_four := DataTables.create_equipment_from_template("weapon", 9, rng, 0, "fire", "t4")
 	_check(DataTables.EQUIPMENT_RARITY_DEFS.has(level_one.get("rarity", "")), "equipment rarity is one of five tiers")
-	_check(level_one.get("name", "").contains("·"), "equipment name uses five element tier format")
+	_check(level_one.get("name", "").begins_with(DataTables.equipment_rarity_name(level_one.get("rarity", "t1"))), "equipment name starts with rarity name")
 	_check(level_one.get("name", "").contains(DataTables.slot_name("weapon")), "equipment name includes slot name")
-	_check(level_one.get("base_attributes", []).size() == DataTables.equipment_attribute_count_for_rarity(level_one.get("rarity", "t1")), "equipment attribute count follows rarity")
-	_check(tier_two.get("base_attributes", []).size() == 2, "tier two creates two base attributes")
-	_check(tier_four.get("base_attributes", []).size() == 4, "tier four creates four base attributes")
-	var seen := {}
-	for attribute in tier_four.get("base_attributes", []):
-		seen[attribute.get("stat", "")] = true
-	_check(seen.size() == tier_four.get("base_attributes", []).size(), "base attributes are unique")
-	_check(_attribute_amount(tier_four, "element_fire") > 0, "tier four elemental weapon includes forced element attribute")
+	_check(level_one.get("base_attributes", []).size() == 2, "weapon base attributes come from fixed weapon pool")
+	_check(_equipment_base_attribute_total(level_one) == _equipment_base_attribute_total(DataTables.create_equipment_from_template("weapon", 1, RandomNumberGenerator.new(), 0, "neutral", "t1")), "same level and rarity keep the same total points")
+	_check(_equipment_base_attribute_stats(level_one) == ["attack", "defense"], "weapon base attributes use fixed weapon pool")
+	_check(_attribute_amount(tier_four, "element_fire") == 0, "element attributes are not generated as base attributes")
+	_check(tier_two.get("affixes", []).size() == 2, "tier two creates two random affixes")
+	_check(tier_four.get("affixes", []).size() == 4, "tier four creates four random affixes")
+	var armor := DataTables.create_equipment_from_template("armor", 5, rng, 0, "water", "t3")
+	_check(armor.get("base_attributes", []).size() == 2, "armor base attributes come from fixed armor pool")
+	_check(_equipment_base_attribute_stats(armor) == ["max_hp", "defense"], "armor base attributes use fixed armor pool")
+	_check(_attribute_amount(armor, "defense") > 0 and _attribute_amount(armor, "max_hp") > 0, "armor template distributes points across fixed stats")
+	_check(_attribute_amount(armor, "element_water") == 0 and _attribute_amount(armor, "root_bone") == 0, "armor base attributes exclude unrelated stats")
 	var neutral_weapon := DataTables.create_equipment_from_template("weapon", 1, rng, 0, "neutral", "t4")
-	var fire_weapon := DataTables.create_equipment_from_template("weapon", 1, rng, 0, "fire", "t4")
 	_check(neutral_weapon.get("element", "") == "neutral", "neutral weapon stores neutral element")
-	_check(neutral_weapon.get("name", "").begins_with("无相·"), "neutral weapon uses no-element name")
-	_check(neutral_weapon.get("base_attributes", []).size() == 4, "tier four neutral weapon has four attributes")
+	_check(neutral_weapon.get("name", "").begins_with(DataTables.equipment_rarity_name("t4")), "new equipment names use rarity prefix")
+	_check(neutral_weapon.get("base_attributes", []).size() == 2, "tier four weapon keeps fixed pool attributes")
+	_check(neutral_weapon.get("affixes", []).size() == 4, "tier four weapon stores extra stats as affixes")
 	_check(_attribute_amount(neutral_weapon, "attack") > 0, "neutral weapon has attack base attribute")
 	_check(_attribute_amount(neutral_weapon, "element_fire") == 0, "neutral weapon does not force element base attribute")
-	_check(_attribute_amount(neutral_weapon, "attack") > _attribute_amount(fire_weapon, "attack"), "neutral weapon has higher direct attack than elemental weapon")
 	var low_level_rng := RandomNumberGenerator.new()
 	low_level_rng.seed = 1001
 	var high_level_rng := RandomNumberGenerator.new()
 	high_level_rng.seed = 1001
 	var low_level_weapon := DataTables.create_equipment_from_template("weapon", 1, low_level_rng, 0, "neutral", "t3")
 	var high_level_weapon := DataTables.create_equipment_from_template("weapon", 10, high_level_rng, 0, "neutral", "t3")
-	_check(_attribute_amount(high_level_weapon, "attack") > _attribute_amount(low_level_weapon, "attack"), "equipment level adds extra attribute points")
+	_check(_equipment_base_attribute_total(high_level_weapon) > _equipment_base_attribute_total(low_level_weapon), "equipment level adds extra base points")
 	_check(neutral_weapon.get("attack_bonus", 0) == _attribute_amount(neutral_weapon, "attack"), "attack bonus mirrors current base attack attribute")
 
 	var game_state = GameStateScript.new()
@@ -697,8 +885,12 @@ func _test_equipment_attribute_tiers_stones_and_refine() -> void:
 	neutral_state.add_equipment(neutral_weapon)
 	neutral_state.use_inventory_item(neutral_weapon["instance_id"])
 	var attack_before := neutral_state.total_attack()
+	var element_affix_weapon := neutral_weapon.duplicate(true)
+	element_affix_weapon["base_attributes"] = [{"stat": "attack", "amount": 5}]
+	element_affix_weapon["affixes"] = [{"stat": "element_fire", "amount": 9}]
+	_check(_attribute_amount(element_affix_weapon, "element_fire") == 0 and _affix_amount(element_affix_weapon, "element_fire") == 9, "element stats are stored as affixes instead of base attributes")
 	neutral_state.add_inventory_item("spirit_stone_fire_t1", 3, false)
-	_check(not neutral_state.enhance_equipment(neutral_weapon["instance_id"]), "neutral weapon rejects missing element stone")
+	_check(not neutral_state.enhance_equipment(neutral_weapon["instance_id"]), "equipment rejects stones for affix-only attributes")
 	neutral_state.add_inventory_item("stat_stone_attack_t1", 3, false)
 	_check(neutral_state.enhance_equipment(neutral_weapon["instance_id"]), "neutral weapon enhances with attack stat stone")
 	_check(neutral_state.total_attack() > attack_before, "stat stone enhancement contributes to direct attack")
@@ -714,18 +906,18 @@ func _test_equipment_equip_requirements() -> void:
 	rng.seed = 2024
 	var fire_weapon := DataTables.create_equipment_from_template("weapon", 3, rng, 0, "fire", "t2")
 	var requirement: Dictionary = fire_weapon.get("equip_requirement", {})
-	_check(requirement.get("stat", "") == "element_fire", "elemental equipment requires matching element")
+	_check(requirement.get("stat", "") == "attack", "new equipment requirement uses slot primary stat")
 	_check(int(requirement.get("min", 0)) == 6, "equipment requirement scales by level and rarity tier")
 	var weak_state = GameStateScript.new()
 	weak_state.inventory.clear()
-	weak_state.elements["fire"] = 1
+	weak_state.stats["attack"] = 1
 	weak_state.add_equipment(fire_weapon)
 	_check(not weak_state.use_inventory_item(fire_weapon["instance_id"]), "equipment cannot be equipped below requirement")
 	_check(weak_state.equipped["weapon"].is_empty(), "failed requirement does not change equipped slot")
 
 	var strong_state = GameStateScript.new()
 	strong_state.inventory.clear()
-	strong_state.elements["fire"] = 6
+	strong_state.stats["attack"] = 6
 	strong_state.add_equipment(fire_weapon.duplicate(true))
 	_check(strong_state.use_inventory_item(fire_weapon["instance_id"]), "equipment can be equipped when requirement is met")
 	_check(strong_state.equipped["weapon"] == fire_weapon["instance_id"], "met requirement equips item")
@@ -769,6 +961,30 @@ func _attribute_amount(item: Dictionary, stat_id: String) -> int:
 	for attribute in item.get("base_attributes", []):
 		if attribute.get("stat", "") == stat_id:
 			value += int(attribute.get("amount", 0))
+	return value
+
+
+func _equipment_base_attribute_total(item: Dictionary) -> int:
+	var value := 0
+	for attribute in item.get("base_attributes", []):
+		value += int(attribute.get("amount", 0))
+	return value
+
+
+func _equipment_base_attribute_stats(item: Dictionary) -> Array:
+	var stats := []
+	for attribute in item.get("base_attributes", []):
+		var stat_id := str(attribute.get("stat", ""))
+		if not stat_id.is_empty():
+			stats.append(stat_id)
+	return stats
+
+
+func _affix_amount(item: Dictionary, stat_id: String) -> int:
+	var value := 0
+	for affix in item.get("affixes", []):
+		if affix.get("stat", "") == stat_id:
+			value += int(affix.get("amount", 0))
 	return value
 
 

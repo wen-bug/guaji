@@ -627,13 +627,18 @@ func _use_pill(item: Dictionary) -> bool:
 	if bool(payload.get("breakthrough", false)):
 		return _use_breakthrough_item(item)
 	if payload.get("effect_mode", "instant") == "duration":
-		active_buffs.append({
-			"item_id": item["item_id"],
-			"name": item["name"],
-			"stat": payload.get("stat", ""),
-			"amount": int(payload.get("amount", 0)),
-			"remaining": float(payload.get("duration", 0.0)),
-		})
+		var duration := float(payload.get("duration", 0.0))
+		var existing_buff := _active_buff_for_item(str(item["item_id"]))
+		if existing_buff.is_empty():
+			active_buffs.append({
+				"item_id": item["item_id"],
+				"name": item["name"],
+				"stat": payload.get("stat", ""),
+				"amount": int(payload.get("amount", 0)),
+				"remaining": duration,
+			})
+		else:
+			existing_buff["remaining"] = float(existing_buff.get("remaining", 0.0)) + duration
 		_remove_inventory_count(item["item_id"], 1)
 		log_added.emit("used %s, buff active" % item["name"])
 		changed.emit()
@@ -728,6 +733,13 @@ func plant_farm_slot(slot_index: int, crop_id: String) -> bool:
 	log_added.emit("种下%s" % DataTables.resource_name(crop_id))
 	changed.emit()
 	return true
+
+
+func _active_buff_for_item(item_id: String) -> Dictionary:
+	for buff in active_buffs:
+		if str(buff.get("item_id", "")) == item_id:
+			return buff
+	return {}
 
 
 func update_farm(delta: float) -> void:

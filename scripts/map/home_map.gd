@@ -17,8 +17,6 @@ const META_ORIGINAL_Z_INDEX := "home_original_z_index"
 const SHADER_PARAM_OUTLINE_ENABLED := "outline_enabled"
 const ALERT_TEXT := "!"
 
-var farm_markers: Array[Marker2D] = []
-var crop_template: Node2D
 var active_crop_nodes: Array[Node2D] = []
 var alert_labels := {}
 var _is_setup := false
@@ -52,7 +50,7 @@ func setup_home_map() -> void:
 
 
 func farm_slot_count() -> int:
-	return farm_markers.size()
+	return 0
 
 
 func active_crop_count() -> int:
@@ -66,56 +64,11 @@ func active_crop_count() -> int:
 func show_farm_crops(crop_id: String, amount: int) -> void:
 	setup_home_map()
 	_clear_farm_crops()
-	if crop_template == null:
-		return
-
-	var display_count: int = mini(maxi(amount, 0), farm_markers.size())
-	var farmland := get_node_or_null(NODE_FARMLAND)
-	if farmland == null:
-		return
-
-	for index in range(display_count):
-		var crop_node := crop_template.duplicate() as Node2D
-		crop_node.name = "crop_%d" % (index + 1)
-		crop_node.visible = true
-		crop_node.position = farm_markers[index].position
-		crop_node.set_meta("crop_id", crop_id)
-		crop_node.set_meta("slot_index", index)
-		farmland.add_child(crop_node)
-		active_crop_nodes.append(crop_node)
-		_connect_action_area(crop_node, NODE_FARMLAND)
 
 
 func show_farm_slots(farm_slots: Array) -> void:
 	setup_home_map()
 	_clear_farm_crops()
-	if crop_template == null:
-		return
-	var farmland := get_node_or_null(NODE_FARMLAND)
-	if farmland == null:
-		return
-	var display_index := 0
-	for slot in farm_slots:
-		if display_index >= farm_markers.size():
-			break
-		if not slot is Dictionary:
-			continue
-		if str(slot.get("status", "empty")) == "empty":
-			continue
-		var crop_id := str(slot.get("crop_id", ""))
-		if crop_id.is_empty():
-			continue
-		var crop_node := crop_template.duplicate() as Node2D
-		crop_node.name = "crop_%d" % (display_index + 1)
-		crop_node.visible = true
-		crop_node.position = farm_markers[display_index].position
-		crop_node.set_meta("crop_id", crop_id)
-		crop_node.set_meta("slot_index", display_index)
-		crop_node.set_meta("farm_status", str(slot.get("status", "")))
-		farmland.add_child(crop_node)
-		active_crop_nodes.append(crop_node)
-		_connect_action_area(crop_node, NODE_FARMLAND)
-		display_index += 1
 
 
 func clear_farm_crops() -> void:
@@ -126,27 +79,10 @@ func _setup_action_areas() -> void:
 	for node_name in ACTION_NODE_NAMES:
 		var action_node := get_node_or_null(node_name)
 		_connect_action_area(action_node, node_name, false)
-		if node_name == NODE_FARMLAND and action_node != null:
-			for child in action_node.get_children():
-				if child.name == "crop":
-					_connect_action_area(child, NODE_FARMLAND)
 
 
 func _setup_farm_slots() -> void:
-	var farmland := get_node_or_null(NODE_FARMLAND)
-	if farmland == null:
-		return
-
-	crop_template = farmland.get_node_or_null("crop") as Node2D
-	if crop_template != null:
-		crop_template.visible = false
-		crop_template.set_meta("is_template", true)
-
-	farm_markers.clear()
-	for child in farmland.get_children():
-		if child is Marker2D:
-			farm_markers.append(child)
-	farm_markers.sort_custom(func(left: Marker2D, right: Marker2D) -> bool: return _marker_sort_key(left.name) < _marker_sort_key(right.name))
+	pass
 
 
 func _connect_action_area(action_node: Node, action_name: String, connect_mouse_signals := true) -> void:
@@ -340,10 +276,3 @@ func _clear_farm_crops() -> void:
 				parent.remove_child(crop_node)
 			crop_node.free()
 	active_crop_nodes.clear()
-
-
-func _marker_sort_key(marker_name: StringName) -> int:
-	var suffix := String(marker_name).trim_prefix("Marker2D")
-	if suffix.is_empty():
-		return 1
-	return int(suffix)
