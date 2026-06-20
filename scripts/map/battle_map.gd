@@ -15,6 +15,7 @@ signal monster_spawn_requested
 
 var spawn_timer := 0.0
 var next_spawn_time := 0.0
+var player_combat_position := Vector2(736, 170)
 
 var _expedition_active := false
 var _waiting_for_combat := false
@@ -64,6 +65,14 @@ func is_expedition_active() -> bool:
 
 func is_waiting_for_combat() -> bool:
 	return _waiting_for_combat
+
+
+func battle_player_position() -> Vector2:
+	return player_combat_position
+
+
+func set_player_combat_position(position: Vector2) -> void:
+	player_combat_position = position
 
 
 func _process(delta: float) -> void:

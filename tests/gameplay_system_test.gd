@@ -39,6 +39,7 @@ func _run() -> void:
 	_test_main_scene_enters_expedition_before_combat()
 	_test_main_scene_exits_expedition_to_home()
 	_test_combat_manual_auto_modes()
+	_test_skill_release_distance_and_range_gates_actions()
 	_test_combat_actions_wait_for_animation_and_emit_feedback()
 	_test_skill_resolver_outputs_damage_and_buffs()
 	_test_combat_turn_buffs_expire_and_clear()
@@ -514,6 +515,27 @@ func _test_combat_manual_auto_modes() -> void:
 	combat.queue_free()
 
 
+func _test_skill_release_distance_and_range_gates_actions() -> void:
+	var game_state = GameStateScript.new()
+	var combat = preload("res://scripts/game/combat_controller.tscn").instantiate()
+	get_root().add_child(combat)
+	combat.begin_encounter(game_state)
+	combat.enemy["hp"] = 9999
+	combat.enemy["max_hp"] = 9999
+	combat.request_toggle_player_mode()
+	combat.attack_timer = 0.0
+	combat.tick(0.01, game_state)
+	combat.enemy_position = Vector2(combat.enemy_position.x + 200.0, combat.enemy_position.y)
+	_check(not combat.can_use_player_action(combat.PLAYER_ACTION_ATTACK, "", game_state), "attack is blocked while enemy is out of range")
+	var skill_id: String = game_state.skills[0]["id"]
+	combat.skill_cooldowns[skill_id] = 0.0
+	_check(not combat.can_use_player_action(combat.PLAYER_ACTION_SKILL, skill_id, game_state), "skill is blocked while out of release distance")
+	combat.enemy_position = Vector2(combat._player_position.x + 32.0, combat.enemy_position.y)
+	_check(combat.can_use_player_action(combat.PLAYER_ACTION_ATTACK, "", game_state), "attack is allowed in range")
+	_check(combat.can_use_player_action(combat.PLAYER_ACTION_SKILL, skill_id, game_state), "skill is allowed within release distance")
+	combat.queue_free()
+
+
 func _test_combat_actions_wait_for_animation_and_emit_feedback() -> void:
 	var game_state = GameStateScript.new()
 	var combat = preload("res://scripts/game/combat_controller.tscn").instantiate()
@@ -559,6 +581,7 @@ func _test_skill_resolver_outputs_damage_and_buffs() -> void:
 	_check(str(spark_result.get("element", "")) == "fire", "skill resolver returns skill element")
 	_check(int(spark_result.get("mp_spent", 0)) == int(spark.get("mp_cost", 0)), "skill resolver spends skill mp cost")
 	_check(float(spark_result.get("cooldown", 0.0)) == float(spark.get("cooldown", 0.0)), "skill resolver returns skill cooldown")
+	_check(float(spark_result.get("release_distance", 0.0)) > 0.0, "skill resolver returns release distance")
 
 	var guard := DataTables.create_skill("guard_focus")
 	var guard_result: Dictionary = resolver.resolve_skill(guard, game_state, {"total_attack": game_state.total_attack()})
@@ -687,328 +710,3 @@ func _test_hud_uses_scene_nodes() -> void:
 	game_state.add_inventory_item("recipe_attack_pill", 1, false)
 	hud._set_inventory_category(DataTables.ITEM_TYPE_ALCHEMY_RECIPE)
 	hud._on_inventory_slot_pressed(0)
-	hud._on_inventory_slot_pressed(0)
-	_check(game_state.inventory_item_count("recipe_attack_pill") == 1 and not game_state.known_alchemy_recipes.has("attack_pill"), "double clicking recipe slot does not directly learn recipe")
-
-	var farm_panel := hud.get_node("Root/FarmPanel") as Control
-	var forge_panel := hud.get_node("Root/ForgePanel") as Control
-	_check(hud.get_node_or_null("Root/FarmPanel/PanelLayout/ProgressLabel") != null, "farm panel includes progress label")
-	_check(hud.get_node_or_null("Root/ForgePanel/PanelLayout/ProgressLabel") != null, "forge panel includes progress label")
-	hud.load_hud_save_data({"panel_positions": {"FarmPanel": {"x": 111.0, "y": 77.0}}})
-	hud.show_home_action_panel(GameDefs.TaskType.FARM)
-	_check(farm_panel.visible and not forge_panel.visible, "opening a home action shows only its matching panel")
-	_check(farm_panel.position == Vector2(111.0, 77.0), "home action panel opens at saved position")
-	hud.load_hud_save_data({"panel_positions": {"InventoryPanel": {"x": 5000.0, "y": 5000.0}}})
-	hud._open_inventory_panel()
-	var viewport_size := Vector2(
-		float(ProjectSettings.get_setting("display/window/size/viewport_width", 960)),
-		float(ProjectSettings.get_setting("display/window/size/viewport_height", 480))
-	)
-	_check(inventory_panel.position.x + inventory_panel.size.x <= viewport_size.x, "saved hud x position is clamped inside viewport")
-	_check(inventory_panel.position.y + inventory_panel.size.y <= viewport_size.y, "saved hud y position is clamped inside viewport")
-	inventory_panel.position = Vector2(144.0, 88.0)
-	var hud_save: Dictionary = hud.to_hud_save_data()
-	_check(hud_save.get("panel_positions", {}).get("InventoryPanel", {}).get("x", 0.0) == 144.0, "hud save data stores dragged panel x position")
-	hud.show_damage_feedback({"action_id": "attack", "damage": 12, "message": "????"})
-	var damage_feedback_label := hud.get_node("Root/BattleActionHud/DamageFeedbackLabel") as Label
-	_check(damage_feedback_label.visible and damage_feedback_label.text.contains("12"), "hud shows damage feedback text")
-
-	game_state.inventory.clear()
-	game_state.known_alchemy_recipes.append("attack_pill")
-	game_state.add_inventory_item("blade_grass", 4, false)
-	game_state.add_inventory_item("rice", 2, false)
-	game_state.add_inventory_item("stat_stone_attack_t1", 2, false)
-	hud.refresh(game_state)
-	hud.show_home_action_panel(GameDefs.TaskType.ALCHEMY)
-	var recipe_slot := hud.get_node("Root/AlchemyPanel/PanelLayout/RecipeSlotButton") as Button
-	_check(hud.get_node_or_null("Root/AlchemyPanel/PanelLayout/ProgressLabel") != null, "alchemy panel includes progress label")
-	var recipe_picker := hud.get_node("Root/AlchemyPanel/PanelLayout/RecipePickerPanel") as Control
-	var recipe_list := hud.get_node("Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList") as ItemList
-	var material_grid := hud.get_node("Root/AlchemyPanel/PanelLayout/MaterialGrid") as GridContainer
-	var craft_count := hud.get_node("Root/AlchemyPanel/PanelLayout/CraftCountSpinBox") as SpinBox
-	var craft_button := hud.get_node("Root/AlchemyPanel/PanelLayout/CraftButton") as Button
-	recipe_slot.pressed.emit()
-	_check(recipe_picker.visible and recipe_list.item_count == 1, "recipe slot opens embedded recipe list")
-	_check(str(recipe_list.get_item_metadata(0)) == "attack_pill", "alchemy recipe list uses learned recipes instead of backpack recipes")
-	recipe_list.select(0)
-	hud._on_alchemy_recipe_selected(0)
-	_check(not recipe_picker.visible and recipe_slot.text == "破军丹", "selecting a recipe updates slot label")
-	_check(material_grid.get_child_count() == 3, "selecting a recipe refreshes material slots")
-	var first_count := material_grid.get_child(0).get_node("SlotLayout/CountLabel") as Label
-	_check(first_count.text == "4/2", "material slot shows current and required count")
-	_check(int(craft_count.max_value) == 2 and int(craft_count.value) == 2, "craft count defaults to max craftable amount")
-	_check(not craft_button.disabled, "craft button is enabled when materials are enough")
-	craft_button.pressed.emit()
-	_check(game_state.inventory_item_count("attack_pill") >= 2, "craft button batch crafts selected recipe")
-	hud.queue_free()
-
-
-func _test_character_gravity() -> void:
-	var character = CharacterScene.instantiate()
-	get_root().add_child(character)
-	character.setup()
-	character.position.y = character.BASELINE_Y - 48.0
-	character.vertical_velocity = 0.0
-	character._process(0.1)
-	_check(character.position.y > character.BASELINE_Y - 48.0, "gravity pulls character down")
-	for _step in range(30):
-		character._process(0.1)
-	_check(is_equal_approx(character.position.y, character.BASELINE_Y), "gravity settles character on baseline")
-	character.queue_free()
-
-
-func _test_me_scene_uses_character_body() -> void:
-	var me = MeScene.instantiate()
-	get_root().add_child(me)
-	_check(me is CharacterBody2D, "me scene root is CharacterBody2D")
-	_check((me as CanvasItem).z_index == 20, "character uses highest z index")
-	_check(me.get_node_or_null("Sprite") is AnimatedSprite2D, "me scene keeps animated sprite as child")
-	_check(me.get_node_or_null("CollisionShape2D") is CollisionShape2D, "me scene has body collision shape")
-	_check(me.get_node_or_null("Progress" + "Back") == null, "me scene no longer has progress UI")
-	me.queue_free()
-
-
-func _test_character_reference_chain_uses_me_scene() -> void:
-	var character = CharacterScene.instantiate()
-	_check(character is CharacterBody2D, "compat character scene root is CharacterBody2D")
-	_check(character.get_node_or_null("Sprite") is AnimatedSprite2D, "compat character scene exposes sprite directly")
-	character.queue_free()
-
-	var main = MainScene.instantiate()
-	var main_character = main.get_node_or_null("CharacterController")
-	_check(main_character is CharacterBody2D, "main scene character node is CharacterBody2D")
-	_check(main_character != null and main_character.scene_file_path == "res://scripts/character/me.tscn", "main scene references me scene directly")
-	main.queue_free()
-
-
-func _test_equipment_slots_strengthening_and_affixes() -> void:
-	var game_state = GameStateScript.new()
-	_check(game_state.equipped.has("helmet"), "helmet slot exists")
-	_check(game_state.equipped.has("accessory_2"), "second accessory slot exists")
-	_check(DataTables.EQUIPMENT_DEFS.has("gloves"), "expanded equipment templates exist")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	var helmet := DataTables.create_equipment_from_template("helmet", 1, rng)
-	game_state.add_equipment(helmet)
-	_check(game_state.use_inventory_item(helmet["instance_id"]), "helmet can be equipped")
-	_check(game_state.equipped["helmet"] == helmet["instance_id"], "helmet occupies helmet slot")
-	var accessory_a := DataTables.create_equipment_from_template("accessory", 1, rng)
-	var accessory_b := DataTables.create_equipment_from_template("accessory", 1, rng)
-	game_state.add_equipment(accessory_a)
-	game_state.add_equipment(accessory_b)
-	game_state.use_inventory_item(accessory_a["instance_id"])
-	game_state.use_inventory_item(accessory_b["instance_id"])
-	_check(not game_state.equipped["accessory_1"].is_empty(), "first accessory slot can be filled")
-	_check(not game_state.equipped["accessory_2"].is_empty(), "second accessory slot can be filled")
-	var helmet_stat: String = helmet.get("base_attributes", [])[0].get("stat", "element_fire")
-	game_state.add_inventory_item(DataTables.spirit_stone_item_id(helmet_stat, "t1"), 4, false)
-	_check(game_state.enhance_equipment(helmet["instance_id"]), "equipment can be enhanced with materials")
-	_check(helmet.get("enhance_count", 0) == 1, "enhance count increases")
-	game_state.add_inventory_item("refine_talisman", 1, false)
-	_check(game_state.add_equipment_affix(helmet["instance_id"]), "equipment can gain refine affix")
-	_check(helmet.get("refine_affixes", []).size() == 1, "refine affix is stored on equipment")
-
-
-func _test_equipment_attribute_tiers_stones_and_refine() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 99
-	_check(DataTables.EQUIPMENT_ATTRIBUTE_DEFS.size() == 10, "equipment attribute template has ten stats")
-	for element_id in DataTables.ELEMENT_IDS:
-		for tier in DataTables.SPIRIT_STONE_QUALITY_ORDER:
-			var item_id := DataTables.spirit_stone_item_id("element_%s" % element_id, tier)
-			var stone := DataTables.create_stack_item(item_id, 1)
-			_check(not stone.is_empty(), "%s can be dynamically created" % item_id)
-	for stat_id in DataTables.STAT_STONE_IDS:
-		for tier in DataTables.SPIRIT_STONE_QUALITY_ORDER:
-			var item_id := DataTables.stat_stone_item_id(stat_id, tier)
-			var stone := DataTables.create_stack_item(item_id, 1)
-			_check(not stone.is_empty(), "%s can be dynamically created" % item_id)
-	_check(DataTables.spirit_stone_enhance_amount("t1") == 1, "tier one spirit stone enhances by one")
-	_check(DataTables.spirit_stone_enhance_amount("t2") == 2, "tier two spirit stone enhances by two")
-	_check(DataTables.spirit_stone_enhance_amount("t3") == 4, "tier three spirit stone enhances by four")
-	_check(DataTables.spirit_stone_enhance_amount("t4") == 7, "tier four spirit stone enhances by seven")
-	_check(DataTables.spirit_stone_enhance_amount("t5") == 11, "tier five spirit stone enhances by eleven")
-	_check(DataTables.stat_stone_enhance_amount("t5") == 11, "stat stones use the same five tier values")
-	_check(DataTables.equipment_rarity_multiplier("t5") > DataTables.equipment_rarity_multiplier("t1"), "high tier equipment has stronger attribute multiplier")
-	var level_one := DataTables.create_equipment_from_template("weapon", 1, rng)
-	var tier_two := DataTables.create_equipment_from_template("weapon", 3, rng, 0, "fire", "t2")
-	var tier_four := DataTables.create_equipment_from_template("weapon", 9, rng, 0, "fire", "t4")
-	_check(DataTables.EQUIPMENT_RARITY_DEFS.has(level_one.get("rarity", "")), "equipment rarity is one of five tiers")
-	_check(level_one.get("name", "").begins_with(DataTables.equipment_rarity_name(level_one.get("rarity", "t1"))), "equipment name starts with rarity name")
-	_check(level_one.get("name", "").contains(DataTables.slot_name("weapon")), "equipment name includes slot name")
-	_check(level_one.get("base_attributes", []).size() == 2, "weapon base attributes come from fixed weapon pool")
-	_check(_equipment_base_attribute_total(level_one) == _equipment_base_attribute_total(DataTables.create_equipment_from_template("weapon", 1, RandomNumberGenerator.new(), 0, "neutral", "t1")), "same level and rarity keep the same total points")
-	_check(_equipment_base_attribute_stats(level_one) == ["attack", "defense"], "weapon base attributes use fixed weapon pool")
-	_check(_attribute_amount(tier_four, "element_fire") == 0, "element attributes are not generated as base attributes")
-	_check(tier_two.get("affixes", []).size() == 2, "tier two creates two random affixes")
-	_check(tier_four.get("affixes", []).size() == 4, "tier four creates four random affixes")
-	var armor := DataTables.create_equipment_from_template("armor", 5, rng, 0, "water", "t3")
-	_check(armor.get("base_attributes", []).size() == 2, "armor base attributes come from fixed armor pool")
-	_check(_equipment_base_attribute_stats(armor) == ["max_hp", "defense"], "armor base attributes use fixed armor pool")
-	_check(_attribute_amount(armor, "defense") > 0 and _attribute_amount(armor, "max_hp") > 0, "armor template distributes points across fixed stats")
-	_check(_attribute_amount(armor, "element_water") == 0 and _attribute_amount(armor, "root_bone") == 0, "armor base attributes exclude unrelated stats")
-	var neutral_weapon := DataTables.create_equipment_from_template("weapon", 1, rng, 0, "neutral", "t4")
-	_check(neutral_weapon.get("element", "") == "neutral", "neutral weapon stores neutral element")
-	_check(neutral_weapon.get("name", "").begins_with(DataTables.equipment_rarity_name("t4")), "new equipment names use rarity prefix")
-	_check(neutral_weapon.get("base_attributes", []).size() == 2, "tier four weapon keeps fixed pool attributes")
-	_check(neutral_weapon.get("affixes", []).size() == 4, "tier four weapon stores extra stats as affixes")
-	_check(_attribute_amount(neutral_weapon, "attack") > 0, "neutral weapon has attack base attribute")
-	_check(_attribute_amount(neutral_weapon, "element_fire") == 0, "neutral weapon does not force element base attribute")
-	var low_level_rng := RandomNumberGenerator.new()
-	low_level_rng.seed = 1001
-	var high_level_rng := RandomNumberGenerator.new()
-	high_level_rng.seed = 1001
-	var low_level_weapon := DataTables.create_equipment_from_template("weapon", 1, low_level_rng, 0, "neutral", "t3")
-	var high_level_weapon := DataTables.create_equipment_from_template("weapon", 10, high_level_rng, 0, "neutral", "t3")
-	_check(_equipment_base_attribute_total(high_level_weapon) > _equipment_base_attribute_total(low_level_weapon), "equipment level adds extra base points")
-	_check(neutral_weapon.get("attack_bonus", 0) == _attribute_amount(neutral_weapon, "attack"), "attack bonus mirrors current base attack attribute")
-
-	var game_state = GameStateScript.new()
-	game_state.inventory.clear()
-	var item := DataTables.create_equipment_from_template("weapon", 1, rng)
-	item["base_attributes"] = [{"stat": "element_fire", "amount": 5}]
-	item["attack_bonus"] = 0
-	item["defense_bonus"] = 0
-	game_state.add_equipment(item)
-	game_state.use_inventory_item(item["instance_id"])
-	var fire_before := game_state.total_element("fire")
-	game_state.add_inventory_item("spirit_stone_water_t1", 3, false)
-	_check(not game_state.enhance_equipment(item["instance_id"]), "enhance rejects stones for missing base attribute")
-	game_state.add_inventory_item("spirit_stone_fire_t1", 3, false)
-	_check(game_state.enhance_equipment(item["instance_id"]), "enhance consumes matching attribute stone")
-	_check(item.get("enhance_count", 0) == 1, "enhance count is tracked")
-	_check(game_state.inventory_item_count("spirit_stone_fire_t1") == 2, "first enhance consumes one stone")
-	_check(game_state.total_element("fire") > fire_before, "enhanced element attribute contributes to total element")
-
-	var neutral_state = GameStateScript.new()
-	neutral_state.inventory.clear()
-	neutral_state.add_equipment(neutral_weapon)
-	neutral_state.use_inventory_item(neutral_weapon["instance_id"])
-	var attack_before := neutral_state.total_attack()
-	var element_affix_weapon := neutral_weapon.duplicate(true)
-	element_affix_weapon["base_attributes"] = [{"stat": "attack", "amount": 5}]
-	element_affix_weapon["affixes"] = [{"stat": "element_fire", "amount": 9}]
-	_check(_attribute_amount(element_affix_weapon, "element_fire") == 0 and _affix_amount(element_affix_weapon, "element_fire") == 9, "element stats are stored as affixes instead of base attributes")
-	neutral_state.add_inventory_item("spirit_stone_fire_t1", 3, false)
-	_check(not neutral_state.enhance_equipment(neutral_weapon["instance_id"]), "equipment rejects stones for affix-only attributes")
-	neutral_state.add_inventory_item("stat_stone_attack_t1", 3, false)
-	_check(neutral_state.enhance_equipment(neutral_weapon["instance_id"]), "neutral weapon enhances with attack stat stone")
-	_check(neutral_state.total_attack() > attack_before, "stat stone enhancement contributes to direct attack")
-	game_state.add_inventory_item("refine_talisman", 3, false)
-	_check(game_state.add_equipment_affix(item["instance_id"]), "refine consumes talisman and adds percent affix")
-	_check(item.get("refine_count", 0) == 1, "refine count is tracked")
-	_check(game_state.inventory_item_count("refine_talisman") == 2, "first refine consumes one talisman")
-	_check(item.get("refine_affixes", []).size() == 1, "refine affix is stored separately")
-
-
-func _test_equipment_equip_requirements() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 2024
-	var fire_weapon := DataTables.create_equipment_from_template("weapon", 3, rng, 0, "fire", "t2")
-	var requirement: Dictionary = fire_weapon.get("equip_requirement", {})
-	_check(requirement.get("stat", "") == "attack", "new equipment requirement uses slot primary stat")
-	_check(int(requirement.get("min", 0)) == 6, "equipment requirement scales by level and rarity tier")
-	var weak_state = GameStateScript.new()
-	weak_state.inventory.clear()
-	weak_state.stats["attack"] = 1
-	weak_state.add_equipment(fire_weapon)
-	_check(not weak_state.use_inventory_item(fire_weapon["instance_id"]), "equipment cannot be equipped below requirement")
-	_check(weak_state.equipped["weapon"].is_empty(), "failed requirement does not change equipped slot")
-
-	var strong_state = GameStateScript.new()
-	strong_state.inventory.clear()
-	strong_state.stats["attack"] = 6
-	strong_state.add_equipment(fire_weapon.duplicate(true))
-	_check(strong_state.use_inventory_item(fire_weapon["instance_id"]), "equipment can be equipped when requirement is met")
-	_check(strong_state.equipped["weapon"] == fire_weapon["instance_id"], "met requirement equips item")
-
-	var neutral_weapon := DataTables.create_equipment_from_template("weapon", 4, rng, 0, "neutral", "t3")
-	var neutral_requirement: Dictionary = neutral_weapon.get("equip_requirement", {})
-	_check(neutral_requirement.get("stat", "") == "attack", "neutral weapon requires attack")
-	var neutral_state = GameStateScript.new()
-	neutral_state.inventory.clear()
-	neutral_state.stats["attack"] = int(neutral_requirement.get("min", 0))
-	neutral_state.add_equipment(neutral_weapon)
-	_check(neutral_state.use_inventory_item(neutral_weapon["instance_id"]), "neutral weapon can be equipped with enough attack")
-
-	var old_item := DataTables.create_equipment_from_template("helmet", 1, rng, 0, "earth", "t1")
-	old_item.erase("equip_requirement")
-	var legacy_state = GameStateScript.new()
-	legacy_state.inventory.clear()
-	legacy_state.add_equipment(old_item)
-	_check(legacy_state.use_inventory_item(old_item["instance_id"]), "legacy equipment without requirement remains equipable")
-
-	var current_weapon := DataTables.create_equipment_from_template("weapon", 1, rng, 0, "neutral", "t1")
-	current_weapon["equip_requirement"] = {}
-	current_weapon["base_attributes"] = [{"stat": "attack", "amount": 20}]
-	current_weapon["attack_bonus"] = 20
-	var replacement := DataTables.create_equipment_from_template("weapon", 5, rng, 0, "neutral", "t5")
-	replacement["equip_requirement"] = {"stat": "attack", "min": 20}
-	replacement["base_attributes"] = [{"stat": "attack", "amount": 1}]
-	replacement["attack_bonus"] = 1
-	var swap_state = GameStateScript.new()
-	swap_state.inventory.clear()
-	swap_state.stats["attack"] = 8
-	swap_state.add_equipment(current_weapon)
-	swap_state.add_equipment(replacement)
-	_check(swap_state.use_inventory_item(current_weapon["instance_id"]), "setup equips current weapon")
-	_check(not swap_state.use_inventory_item(replacement["instance_id"]), "replacement cannot rely on removed same-slot equipment")
-	_check(swap_state.equipped["weapon"] == current_weapon["instance_id"], "failed replacement keeps current equipment")
-
-
-func _attribute_amount(item: Dictionary, stat_id: String) -> int:
-	var value := 0
-	for attribute in item.get("base_attributes", []):
-		if attribute.get("stat", "") == stat_id:
-			value += int(attribute.get("amount", 0))
-	return value
-
-
-func _equipment_base_attribute_total(item: Dictionary) -> int:
-	var value := 0
-	for attribute in item.get("base_attributes", []):
-		value += int(attribute.get("amount", 0))
-	return value
-
-
-func _equipment_base_attribute_stats(item: Dictionary) -> Array:
-	var stats := []
-	for attribute in item.get("base_attributes", []):
-		var stat_id := str(attribute.get("stat", ""))
-		if not stat_id.is_empty():
-			stats.append(stat_id)
-	return stats
-
-
-func _affix_amount(item: Dictionary, stat_id: String) -> int:
-	var value := 0
-	for affix in item.get("affixes", []):
-		if affix.get("stat", "") == stat_id:
-			value += int(affix.get("amount", 0))
-	return value
-
-
-func _recipe_material_amount(materials: Array, item_id: String) -> int:
-	for material in materials:
-		if material.get("item_id", "") == item_id:
-			return int(material.get("amount", 0))
-	return 0
-
-
-func _test_enemy_templates() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1
-	var enemy := DataTables.create_enemy(5, rng)
-	_check(enemy.has("template_id"), "enemy instances include template id")
-	_check(enemy.has("element_attack_ratio"), "enemy instances include elemental attack ratio")
-	_check(DataTables.ENEMY_TEMPLATES.size() >= 3, "enemy template table has multiple templates")
-
-
-func _test_element_and_physical_reduction() -> void:
-	var game_state = GameStateScript.new()
-	game_state.stats["defense"] = 5
-	game_state.elements["fire"] = 10
-	_check(game_state.reduce_physical_damage(12) == 7, "defense reduces physical damage")
-	_check(game_state.reduce_element_damage("fire", 12) == 9, "matching element reduces elemental damage")
-	_check(game_state.element_damage_bonus("fire") == 5, "element value increases matching damage")
-

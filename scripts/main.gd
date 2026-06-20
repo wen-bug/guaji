@@ -112,7 +112,7 @@ func _on_monster_spawn_requested() -> void:
 		return
 	if battle_map != null:
 		battle_map.set_combat_mode(true)
-	combat.begin_encounter(game_state)
+	combat.begin_encounter(game_state, battle_map)
 
 
 func _on_combat_mode_toggle_requested() -> void:

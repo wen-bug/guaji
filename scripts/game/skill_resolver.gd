@@ -1,4 +1,4 @@
-﻿class_name SkillResolver
+class_name SkillResolver
 extends RefCounted
 
 
@@ -23,6 +23,7 @@ func resolve_skill(skill: Dictionary, game_state, combat_context := {}) -> Dicti
 		"element": str(skill.get("element", "")),
 		"mp_spent": mp_cost,
 		"cooldown": float(skill.get("cooldown", 0.0)),
+		"release_distance": float(skill.get("release_distance", 0.0)),
 		"combat_buffs": skill.get("combat_buffs", []).duplicate(true),
 		"message": "释放%s" % str(skill.get("name", "技能")),
 	}
@@ -35,6 +36,7 @@ func _failed_result(message: String) -> Dictionary:
 		"element": "",
 		"mp_spent": 0,
 		"cooldown": 0.0,
+		"release_distance": 0.0,
 		"combat_buffs": [],
 		"message": message,
 	}

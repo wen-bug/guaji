@@ -12,6 +12,10 @@ const PLAYER_ACTION_SKILL := "skill"
 const PLAYER_TURN_WAIT := 1.1
 const ENEMY_TURN_WAIT := 1.4
 const DEFEND_DAMAGE_MULTIPLIER := 0.5
+const DEFAULT_ATTACK_RANGE := 96.0
+const DEFAULT_ENEMY_ATTACK_RANGE := 88.0
+const DEFAULT_MOVE_STEP := 120.0
+const DEFAULT_RETREAT_DISTANCE := 72.0
 const SkillResolverScript = preload("res://scripts/game/skill_resolver.gd")
 
 var active := false
@@ -33,6 +37,14 @@ var animation_player: AnimationPlayer
 var skill_resolver := SkillResolverScript.new()
 var pending_player_action := {}
 var pending_game_state = null
+var battle_map: Node2D = null
+var player_range := DEFAULT_ATTACK_RANGE
+var enemy_range := DEFAULT_ENEMY_ATTACK_RANGE
+var player_move_speed := DEFAULT_MOVE_STEP
+var player_retreat_distance := DEFAULT_RETREAT_DISTANCE
+var _player_position := Vector2.ZERO
+var _home_position := Vector2.ZERO
+var _player_action_step := 0.0
 
 
 func _ready() -> void:
@@ -40,8 +52,12 @@ func _ready() -> void:
 	_update_enemy_visual()
 
 
-func begin_encounter(game_state) -> void:
+func begin_encounter(game_state, map_node := null) -> void:
 	_bind_scene_nodes()
+	battle_map = map_node if map_node != null else battle_map
+	if battle_map == null:
+		battle_map = get_parent() as Node2D
+	_set_combat_positions()
 	enemy = DataTables.create_enemy(game_state.stats["level"], game_state.rng)
 	active = true
 	finished = false
@@ -67,6 +83,7 @@ func tick(delta: float, game_state) -> void:
 	attack_timer -= delta
 	enemy_timer -= delta
 	_tick_skill_cooldowns(delta)
+	_update_player_movement(delta)
 
 	if attack_timer <= 0.0 and not player_action_resolving:
 		if player_mode == PLAYER_MODE_AUTO:
@@ -101,6 +118,7 @@ func clear() -> void:
 	pending_player_action.clear()
 	pending_game_state = null
 	combat_buffs.clear()
+	battle_map = null
 	_update_enemy_visual()
 
 
@@ -124,7 +142,9 @@ func request_player_action(action_id: String, skill_id: String, game_state) -> b
 func can_use_player_action(action_id: String, skill_id: String, game_state) -> bool:
 	if not active or finished or player_mode != PLAYER_MODE_MANUAL or not player_turn_ready or player_action_resolving:
 		return false
-	if action_id == PLAYER_ACTION_ATTACK or action_id == PLAYER_ACTION_DEFEND:
+	if action_id == PLAYER_ACTION_ATTACK:
+		return _distance_to_enemy() <= player_range
+	if action_id == PLAYER_ACTION_DEFEND:
 		return true
 	if action_id != PLAYER_ACTION_SKILL:
 		return false
@@ -133,7 +153,9 @@ func can_use_player_action(action_id: String, skill_id: String, game_state) -> b
 		return false
 	if float(skill_cooldowns.get(skill_id, 0.0)) > 0.0:
 		return false
-	return int(game_state.stats.get("mp", 0)) >= int(skill["mp_cost"])
+	if int(game_state.stats.get("mp", 0)) < int(skill["mp_cost"]):
+		return false
+	return _distance_to_enemy() <= _skill_release_distance(skill)
 
 
 func combat_status() -> Dictionary:
@@ -147,6 +169,9 @@ func combat_status() -> Dictionary:
 		"skill_cooldowns": skill_cooldowns.duplicate(true),
 		"combat_buffs": combat_buffs.duplicate(true),
 		"defending": defending,
+		"player_position": _player_position,
+		"enemy_position": enemy_position,
+		"distance_to_enemy": _distance_to_enemy(),
 	}
 
 
@@ -180,11 +205,16 @@ func _tick_skill_cooldowns(delta: float) -> void:
 
 func _run_auto_player_turn(game_state) -> void:
 	var skill := _first_available_skill(game_state)
-	if skill.is_empty():
+	if not skill.is_empty() and _distance_to_enemy() > _skill_release_distance(skill):
+		_move_toward_enemy()
+		return
+	if skill.is_empty() or _distance_to_enemy() > _skill_release_distance(skill):
+		if _distance_to_enemy() > player_range:
+			_move_toward_enemy()
+			return
 		_start_player_action(PLAYER_ACTION_ATTACK, "", game_state)
 	else:
 		_start_player_action(PLAYER_ACTION_SKILL, str(skill.get("id", "")), game_state)
-
 
 
 func _start_player_action(action_id: String, skill_id: String, game_state) -> void:
@@ -226,7 +256,7 @@ func _complete_pending_player_action() -> void:
 		_resolve_normal_attack(game_state)
 	elif action_id == PLAYER_ACTION_DEFEND:
 		defending = true
-		log_added.emit("????")
+		log_added.emit("进入防御姿态")
 	elif action_id == PLAYER_ACTION_SKILL:
 		_resolve_skill_action(game_state, _find_skill(skill_id, game_state.skills))
 
@@ -243,15 +273,15 @@ func _resolve_normal_attack(game_state) -> void:
 		"skill_id": "",
 		"skill_name": "",
 		"damage": damage,
-		"message": "????",
+		"message": "挥出一击",
 	})
-	log_added.emit("????")
+	log_added.emit("普通攻击命中%s，造成%d点伤害" % [enemy.get("name", "敌人"), damage])
 
 
 func _resolve_skill_action(game_state, skill: Dictionary) -> void:
 	var result: Dictionary = skill_resolver.resolve_skill(skill, game_state, {"total_attack": _combat_total_attack(game_state)})
 	if not bool(result.get("success", false)):
-		log_added.emit(str(result.get("message", "????")))
+		log_added.emit(str(result.get("message", "释放失败")))
 		return
 	var skill_id := str(result.get("skill_id", skill.get("id", "")))
 	skill_cooldowns[skill_id] = float(result.get("cooldown", 0.0))
@@ -264,11 +294,11 @@ func _resolve_skill_action(game_state, skill: Dictionary) -> void:
 	_emit_damage_feedback({
 		"action_id": PLAYER_ACTION_SKILL,
 		"skill_id": skill_id,
-		"skill_name": str(result.get("skill_name", skill.get("name", ""))),
+		"skill_name": str(result.get("skill_name", skill.get("name", "技能"))),
 		"damage": final_damage,
-		"message": str(result.get("message", "????")),
+		"message": str(result.get("message", "释放失败")),
 	})
-	log_added.emit(str(result.get("message", "????")))
+	log_added.emit(str(result.get("message", "释放失败")))
 
 
 func _emit_damage_feedback(payload: Dictionary) -> void:
@@ -319,6 +349,8 @@ func _run_enemy_turn(game_state) -> void:
 	if game_state.rng.randf() < float(enemy.get("element_attack_ratio", 0.0)):
 		element_id = enemy.get("element", "")
 	game_state.take_damage(damage_to_player, element_id)
+	if _distance_to_enemy() > enemy_range:
+		_move_away_from_enemy()
 
 
 func _apply_skill_combat_buffs_from_defs(buff_defs: Array, source_skill_id: String) -> void:
@@ -419,3 +451,54 @@ func _update_enemy_visual() -> void:
 	enemy_visual.position = enemy_position
 	var ratio: float = clamp(float(enemy["hp"]) / float(enemy["max_hp"]), 0.0, 1.0)
 	hp_fill.size.x = 48.0 * ratio
+
+
+func _set_combat_positions() -> void:
+	var map_node := battle_map if battle_map != null else get_parent()
+	if map_node != null and map_node.has_method("battle_player_position"):
+		_player_position = map_node.call("battle_player_position")
+		_home_position = _player_position
+	return
+	_player_position = Vector2(736, 170)
+	_home_position = Vector2(736, 170)
+
+
+func _distance_to_enemy() -> float:
+	return abs(_player_position.x - enemy_position.x)
+
+
+func _skill_release_distance(skill: Dictionary) -> float:
+	return max(player_range, float(skill.get("release_distance", player_range)))
+
+
+func _move_toward_enemy() -> void:
+	if _player_position.x < enemy_position.x:
+		_player_position.x = minf(enemy_position.x, _player_position.x + player_move_speed * 0.016)
+	else:
+		_player_position.x = maxf(enemy_position.x, _player_position.x - player_move_speed * 0.016)
+	_update_player_state()
+
+
+func _move_away_from_enemy() -> void:
+	var target_x := _home_position.x
+	if _player_position.x < target_x:
+		_player_position.x = minf(target_x, _player_position.x + player_move_speed * 0.016)
+	else:
+		_player_position.x = maxf(target_x, _player_position.x - player_move_speed * 0.016)
+	_update_player_state()
+
+
+func _update_player_movement(delta: float) -> void:
+	if not active or finished:
+		return
+	if _distance_to_enemy() > player_range and not player_action_resolving:
+		_move_toward_enemy()
+	elif _distance_to_enemy() <= player_range and not player_action_resolving:
+		_player_action_step = max(0.0, _player_action_step - delta)
+	_update_player_state()
+
+
+func _update_player_state() -> void:
+	if battle_map != null and battle_map.has_method("set_player_combat_position"):
+		battle_map.call("set_player_combat_position", _player_position)
+
