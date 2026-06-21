@@ -593,7 +593,7 @@ func _use_skill_book(item: Dictionary) -> bool:
 		log_added.emit("已经学会%s" % DataTables.create_skill(skill_id)["name"])
 		return false
 
-	var skill := DataTables.create_skill(skill_id)
+	var skill := DataTables.create_skill(skill_id, str(item.get("payload", {}).get("obtain_source", "non_drop")))
 	skills.append(skill)
 	_remove_inventory_count(item["item_id"], 1)
 	log_added.emit("学会%s" % skill["name"])
@@ -1028,7 +1028,7 @@ func _equipment_attribute_bonus(stat_id: String) -> int:
 
 func _total_requirement_stat_excluding_slot(stat_id: String, excluded_slot: String) -> int:
 	if stat_id.begins_with(DataTables.ELEMENT_ATTRIBUTE_PREFIX):
-		var element_id := DataTables.element_id_from_attribute(stat_id)
+		var element_id: String = DataTables.element_id_from_attribute(stat_id)
 		return int(elements.get(element_id, 0)) + _equipment_attribute_bonus_excluding_slot(stat_id, excluded_slot)
 	return int(stats.get(stat_id, 0)) + _stat_bonus(stat_id) + _equipment_attribute_bonus_excluding_slot(stat_id, excluded_slot)
 
@@ -1070,7 +1070,7 @@ func _find_enhance_stone(item: Dictionary, cost: int) -> Dictionary:
 			base_stats.append(stat_id)
 	for quality in DataTables.SPIRIT_STONE_QUALITY_ORDER:
 		for stat_id in base_stats:
-			var item_id := DataTables.enhance_stone_item_id(stat_id, quality)
+			var item_id: String = DataTables.enhance_stone_item_id(stat_id, quality)
 			if item_id.is_empty():
 				continue
 			if inventory_item_count(item_id) >= cost:
@@ -1117,7 +1117,7 @@ func _apply_random_level_gain() -> void:
 	stats["defense"] += defense_gain
 	stats["root_bone"] += root_bone_gain
 
-	var element_id: String = DataTables.ELEMENT_IDS[rng.randi_range(0, DataTables.ELEMENT_IDS.size() - 1)]
+	var element_id: String = String(DataTables.ELEMENT_IDS[rng.randi_range(0, DataTables.ELEMENT_IDS.size() - 1)])
 	var element_gain := rng.randi_range(1, 3)
 	elements[element_id] += element_gain
 

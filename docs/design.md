@@ -32,6 +32,7 @@
 - `count` / `stackable`：数量与是否堆叠。
 - `usable`：是否允许右键使用。
 - `payload`：分类专属数据，例如恢复量、丹方 ID、种子产量、持续 Buff、突破效果等。
+- `obtain_source`：来源标记，当前用 `drop` / `non_drop` 区分掉落与非掉落实例。
 
 ### 主要类型
 
@@ -90,11 +91,12 @@
 
 - 战斗胜利先结算敌人 `drops` 表：每个物品独立判断 `rng.randf() <= chance`，数量为 `randi_range(min, max)`。
 - 普通掉落结算后，独立进行装备掉落：当前条件下有 35% 概率获得 1 件装备。
-- 掉落装备调用 `create_equipment(enemy.level, rng, craft_bonus)`，因此 `equipment_level = enemy.level`。
+- 掉落装备调用 `create_equipment(enemy.level, rng, craft_bonus, "drop")`，因此 `equipment_level = enemy.level`，并标记为掉落来源。
 - 掉落装备槽位从 `EQUIPMENT_DEFS` 随机选择：武器、头盔、护甲、胫甲、护手或饰品。
 - 掉落装备不再随机五行身份，统一按槽位模板生成基础属性；五行只作为随机词条出现。
 - 掉落装备阶位按 `EQUIPMENT_RARITY_DEFS` 概率随机，阶位决定显示名、随机词条数量、词条倍率和穿戴需求倍率。
 - 掉落装备获得不做属性门槛；穿戴时才检查 `equip_requirement`。
+- 炼器等非掉落生成的装备调用同一工厂函数，但传入 `non_drop` 来源标记。
 
 ### 生产与炼制
 

@@ -52,7 +52,7 @@ func _on_home_action_requested(task_type: int) -> void:
 		hud.show_home_action_panel(task_type)
 	elif task_type == GameDefs.TaskType.FORGE:
 		if game_state.spend_inventory_type(DataTables.ITEM_TYPE_MATERIAL, 2):
-			game_state.add_equipment(DataTables.create_equipment(game_state.stats["level"], game_state.rng, game_state.craft_bonus()))
+			game_state.add_equipment(DataTables.create_equipment(game_state.stats["level"], game_state.rng, game_state.craft_bonus(), "non_drop"))
 			game_state.add_exp(4)
 			game_state.add_task_experience(task_type, 5)
 		else:

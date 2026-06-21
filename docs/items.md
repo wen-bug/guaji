@@ -23,6 +23,7 @@
 - `count`：数量。装备固定为 1。
 - `usable`：是否允许右键使用。
 - `payload`：分类专属数据。
+- `obtain_source`：来源标记，当前用 `drop` / `non_drop` 区分掉落和非掉落产物。
 
 装备额外字段：
 - `slot`：基础槽位，可为 `weapon`、`helmet`、`armor`、`leggings`、`gloves`、`accessory`。
@@ -36,6 +37,7 @@
 - `enhance_attack_bonus`：强化提供的攻击加成。
 - `enhance_defense_bonus`：强化提供的防御加成。
 - `affixes`：词条列表，每条包含 `id`、`name`、`stat`、`amount`。
+- `obtain_source`：来源标记，掉落装备记为 `drop`，炼器等非掉落装备记为 `non_drop`。
 
 ## 物品分类
 
@@ -59,6 +61,7 @@
 技能书使用规则：
 - 未学习对应技能时，使用后加入 `GameState.skills` 并消耗 1 本。
 - 已学习时只提示，不消耗。
+- 学会后的技能实例也会带 `obtain_source`，用于区分掉落技能书和非掉落来源。
 
 ## 装备模板与槽位
 
@@ -284,6 +287,7 @@ HUD 顶部资源摘要显示分类总量：作物、材料、丹药、图纸，�
 - `refine_affixes`：洗练百分比词条数组，每条包含 `stat` 和 `percent`。
 - `enhance_count`：普通强化次数，用于计算下一次灵石消耗。
 - `refine_count`：洗练次数，用于计算下一次洗练符消耗。
+- `obtain_source`：生成来源，掉落为 `drop`，炼器等非掉落为 `non_drop`。
 
 灵石属于材料分类，分为五行灵石和普通属性灵石。五行灵石采用 `spirit_stone_<element>_<tier>`，例如 `spirit_stone_fire_t1`；普通属性灵石采用 `stat_stone_<stat>_<tier>`，例如 `stat_stone_attack_t1`、`stat_stone_max_hp_t3`。灵石 payload 包含：
 - `stat`：对应的人物属性，例如 `element_fire` 或 `attack`。

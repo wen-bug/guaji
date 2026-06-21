@@ -136,6 +136,8 @@ func _ready() -> void:
 	battle_attack_button.pressed.connect(func(): combat_action_requested.emit("attack", ""))
 	battle_defend_button.pressed.connect(func(): combat_action_requested.emit("defend", ""))
 	expedition_exit_button.pressed.connect(func(): expedition_exit_requested.emit())
+	window_drag_button.button_down.connect(_on_window_drag_button_down)
+	window_drag_button.button_up.connect(_on_window_drag_button_up)
 	_connect_farm_controls()
 	_connect_forge_controls()
 	_connect_alchemy_controls()
@@ -292,7 +294,8 @@ func _refresh_character_skills(game_state) -> void:
 		return
 	for skill in game_state.skills:
 		var element_id: String = skill.get("element", "")
-		var detail := "%s  CD %.1fs  MP %d" % [DataTables.element_name(element_id), float(skill.get("cooldown", 0.0)), int(skill.get("mp_cost", 0))]
+		var source_text := DataTables.obtain_source_name(str(skill.get("obtain_source", "non_drop")))
+		var detail := "%s  CD %.1fs  MP %d  %s" % [DataTables.element_name(element_id), float(skill.get("cooldown", 0.0)), int(skill.get("mp_cost", 0)), source_text]
 		character_skill_grid.add_child(_create_character_slot("技能", str(skill.get("name", "未命名技能")), detail))
 
 
@@ -432,10 +435,23 @@ func _begin_window_drag(mouse_position: Vector2) -> bool:
 	_ensure_menu_panel_refs()
 	if window_drag_button == null or not window_drag_button.get_global_rect().has_point(mouse_position):
 		return false
+	_start_window_drag(mouse_position)
+	return true
+
+
+func _on_window_drag_button_down() -> void:
+	_ensure_menu_panel_refs()
+	_start_window_drag(get_viewport().get_mouse_position())
+
+
+func _on_window_drag_button_up() -> void:
+	_end_window_drag()
+
+
+func _start_window_drag(mouse_position: Vector2) -> void:
 	dragging_window = true
 	window_drag_mouse_start = mouse_position
 	window_drag_start_position = DisplayServer.window_get_position()
-	return true
 
 
 func _end_window_drag() -> void:
@@ -815,32 +831,32 @@ func _refresh_action_detail(task_type: int) -> void:
 	elif task_type == GameDefs.TaskType.FORGE:
 		_refresh_forge_panel()
 	elif task_type == GameDefs.TaskType.MEDITATE:
-		meditate_detail.text = "???????\n?????%d\n???%d" % [
+		meditate_detail.text = "打坐收益\n基础修为 %d\n根骨 %d" % [
 			8 + int(current_game_state.stats["level"]),
 			int(current_game_state.stats.get("root_bone", 0)),
 		]
 	elif task_type == GameDefs.TaskType.FIGHT:
-		fight_detail.text = "??????\n???%d\n???%d" % [
+		fight_detail.text = "打怪收益\n攻击 %d\n防御 %d" % [
 			current_game_state.total_attack(),
 			current_game_state.total_defense(),
 		]
 
 
 func _progress_label_text(progress_id: String) -> String:
-	return "???%s" % _progress_summary(progress_id)
+	return "进度：%s" % _progress_summary(progress_id)
 
 
 func _action_button_text(progress_id: String) -> String:
 	var progress: Dictionary = current_game_state.progress_state(progress_id) if current_game_state != null else {}
 	if bool(progress.get("claimable", false)):
-		return "??"
+		return "领取"
 	if bool(progress.get("completed", false)):
-		return "???"
+		return "已完成"
 	if progress_id == "farm":
-		return "??"
+		return "种植"
 	if progress_id == "forge":
-		return "??"
-	return "??"
+		return "炼制"
+	return "执行"
 
 
 func _action_button_disabled(progress_id: String) -> bool:
@@ -856,12 +872,12 @@ func _action_button_disabled(progress_id: String) -> bool:
 
 func _progress_summary(progress_id: String) -> String:
 	if current_game_state == null:
-		return "not_started / ???"
+		return "not_started / 未开始"
 	var progress: Dictionary = current_game_state.progress_state(progress_id)
 	var status := str(progress.get("status", "not_started"))
 	var detail := str(progress.get("detail", ""))
 	if detail.is_empty():
-		detail = "???"
+		detail = "无详情"
 	return "%s / %s" % [status, detail]
 
 
@@ -926,6 +942,7 @@ func _format_inventory_item_detail(item: Dictionary) -> String:
 		lines.append(description)
 	if item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		lines.append("槽位：%s  等级：%d" % [DataTables.slot_name(str(item.get("slot", ""))), int(item.get("equipment_level", 1))])
+		lines.append("来源：%s" % DataTables.obtain_source_name(str(item.get("obtain_source", "non_drop"))))
 		if current_game_state != null:
 			var requirement_text: String = current_game_state.equipment_requirement_text(item)
 			if not requirement_text.is_empty():
@@ -934,6 +951,8 @@ func _format_inventory_item_detail(item: Dictionary) -> String:
 		lines.append("ATK:%d DEF:%d" % [int(item.get("attack_bonus", 0)), int(item.get("defense_bonus", 0))])
 	elif item.get("type", "") == DataTables.ITEM_TYPE_PILL:
 		var payload: Dictionary = item.get("payload", {})
+		var source_text := DataTables.obtain_source_name(str(payload.get("obtain_source", item.get("obtain_source", "non_drop"))))
+		lines.append("来源：%s" % source_text)
 		if payload.get("effect_mode", "instant") == "duration":
 			lines.append("效果：%s +%d，持续 %d 秒" % [payload.get("stat", ""), int(payload.get("amount", 0)), int(payload.get("duration", 0))])
 		else:

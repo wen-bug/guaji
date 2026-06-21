@@ -575,6 +575,7 @@ func _test_skill_resolver_outputs_damage_and_buffs() -> void:
 	var game_state = GameStateScript.new()
 	var resolver = SkillResolverScript.new()
 	var spark := DataTables.create_skill("spark")
+	_check(str(spark.get("obtain_source", "")) == "non_drop", "default skill source is non-drop")
 	var spark_result: Dictionary = resolver.resolve_skill(spark, game_state, {"total_attack": game_state.total_attack()})
 	_check(bool(spark_result.get("success", false)), "skill resolver accepts damage skill with enough mp")
 	_check(int(spark_result.get("damage", 0)) > 0, "skill resolver returns damage for damage skill")
@@ -671,7 +672,8 @@ func _test_hud_uses_scene_nodes() -> void:
 	_check(hud.get_node_or_null("Root/HomeActionPanel") == null, "generic home action panel is replaced by action-specific panels")
 	var game_state = GameStateScript.new()
 	game_state.add_inventory_item("might_pill", 1, false)
-	var info_weapon := DataTables.create_equipment_from_template("weapon", 1, RandomNumberGenerator.new(), 0, "neutral", "t1")
+	var info_weapon := DataTables.create_equipment_from_template("weapon", 1, RandomNumberGenerator.new(), 0, "neutral", "t1", "drop")
+	_check(str(info_weapon.get("obtain_source", "")) == "drop", "drop equipment keeps drop source")
 	info_weapon["equip_requirement"] = {}
 	game_state.add_equipment(info_weapon)
 	game_state.use_inventory_item(info_weapon["instance_id"])

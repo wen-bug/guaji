@@ -52,7 +52,7 @@ func _ready() -> void:
 	_update_enemy_visual()
 
 
-func begin_encounter(game_state, map_node := null) -> void:
+func begin_encounter(game_state, map_node: Node2D = null) -> void:
 	_bind_scene_nodes()
 	battle_map = map_node if map_node != null else battle_map
 	if battle_map == null:
@@ -403,7 +403,7 @@ func _finish_victory(game_state) -> void:
 	game_state.add_exp(enemy["exp"])
 	_resolve_drops(game_state)
 	if game_state.rng.randf() > 0.65:
-		game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", game_state.stats["level"])), game_state.rng, game_state.craft_bonus()))
+		game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", game_state.stats["level"])), game_state.rng, game_state.craft_bonus(), "drop"))
 	log_added.emit("击败%s" % enemy["name"])
 	_update_enemy_visual()
 
@@ -501,4 +501,3 @@ func _update_player_movement(delta: float) -> void:
 func _update_player_state() -> void:
 	if battle_map != null and battle_map.has_method("set_player_combat_position"):
 		battle_map.call("set_player_combat_position", _player_position)
-
