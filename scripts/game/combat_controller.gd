@@ -2,16 +2,11 @@ class_name CombatController
 extends Node2D
 
 signal log_added(message: String)
-signal damage_feedback(payload: Dictionary)
 
-const PLAYER_MODE_AUTO := "auto"
-const PLAYER_MODE_MANUAL := "manual"
 const PLAYER_ACTION_ATTACK := "attack"
-const PLAYER_ACTION_DEFEND := "defend"
 const PLAYER_ACTION_SKILL := "skill"
 const PLAYER_TURN_WAIT := 1.1
 const ENEMY_TURN_WAIT := 1.4
-const DEFEND_DAMAGE_MULTIPLIER := 0.5
 const DEFAULT_ATTACK_RANGE := 96.0
 const DEFAULT_ENEMY_ATTACK_RANGE := 88.0
 const DEFAULT_MOVE_STEP := 120.0
@@ -25,11 +20,7 @@ var attack_timer := 0.0
 var enemy_timer := 0.0
 var skill_cooldowns := {}
 var combat_buffs := []
-var player_mode := PLAYER_MODE_AUTO
-var pending_player_mode := ""
-var player_turn_ready := false
 var player_action_resolving := false
-var defending := false
 var enemy_position := Vector2(866, 126)
 var enemy_visual: Node2D
 var hp_fill: ColorRect
@@ -63,11 +54,7 @@ func begin_encounter(game_state, map_node: Node2D = null) -> void:
 	finished = false
 	attack_timer = 0.0
 	enemy_timer = 0.8
-	player_mode = PLAYER_MODE_AUTO
-	pending_player_mode = ""
-	player_turn_ready = false
 	player_action_resolving = false
-	defending = false
 	pending_player_action.clear()
 	pending_game_state = null
 	skill_cooldowns.clear()
@@ -86,10 +73,7 @@ func tick(delta: float, game_state) -> void:
 	_update_player_movement(delta)
 
 	if attack_timer <= 0.0 and not player_action_resolving:
-		if player_mode == PLAYER_MODE_AUTO:
-			_run_auto_player_turn(game_state)
-		else:
-			player_turn_ready = true
+		_run_auto_player_turn(game_state)
 
 	if enemy["hp"] <= 0:
 		_finish_victory(game_state)
@@ -111,10 +95,7 @@ func clear() -> void:
 	active = false
 	finished = false
 	enemy = {}
-	pending_player_mode = ""
-	player_turn_ready = false
 	player_action_resolving = false
-	defending = false
 	pending_player_action.clear()
 	pending_game_state = null
 	combat_buffs.clear()
@@ -122,53 +103,13 @@ func clear() -> void:
 	_update_enemy_visual()
 
 
-func request_toggle_player_mode() -> void:
-	if not active or finished:
-		return
-	var target_mode := PLAYER_MODE_MANUAL if player_mode == PLAYER_MODE_AUTO else PLAYER_MODE_AUTO
-	if player_action_resolving:
-		pending_player_mode = target_mode
-		return
-	_set_player_mode(target_mode)
-
-
-func request_player_action(action_id: String, skill_id: String, game_state) -> bool:
-	if not can_use_player_action(action_id, skill_id, game_state):
-		return false
-	_start_player_action(action_id, skill_id, game_state)
-	return true
-
-
-func can_use_player_action(action_id: String, skill_id: String, game_state) -> bool:
-	if not active or finished or player_mode != PLAYER_MODE_MANUAL or not player_turn_ready or player_action_resolving:
-		return false
-	if action_id == PLAYER_ACTION_ATTACK:
-		return _distance_to_enemy() <= player_range
-	if action_id == PLAYER_ACTION_DEFEND:
-		return true
-	if action_id != PLAYER_ACTION_SKILL:
-		return false
-	var skill := _find_skill(skill_id, game_state.skills)
-	if skill.is_empty():
-		return false
-	if float(skill_cooldowns.get(skill_id, 0.0)) > 0.0:
-		return false
-	if int(game_state.stats.get("mp", 0)) < int(skill["mp_cost"]):
-		return false
-	return _distance_to_enemy() <= _skill_release_distance(skill)
-
-
 func combat_status() -> Dictionary:
 	return {
 		"active": active,
 		"finished": finished,
-		"player_mode": player_mode,
-		"pending_player_mode": pending_player_mode,
-		"player_turn_ready": player_turn_ready,
 		"player_action_resolving": player_action_resolving,
 		"skill_cooldowns": skill_cooldowns.duplicate(true),
 		"combat_buffs": combat_buffs.duplicate(true),
-		"defending": defending,
 		"player_position": _player_position,
 		"enemy_position": enemy_position,
 		"distance_to_enemy": _distance_to_enemy(),
@@ -219,7 +160,6 @@ func _run_auto_player_turn(game_state) -> void:
 
 func _start_player_action(action_id: String, skill_id: String, game_state) -> void:
 	player_action_resolving = true
-	player_turn_ready = false
 	pending_game_state = game_state
 	pending_player_action = {
 		"action_id": action_id,
@@ -231,8 +171,6 @@ func _start_player_action(action_id: String, skill_id: String, game_state) -> vo
 func _play_player_action_animation(action_id: String) -> void:
 	_bind_scene_nodes()
 	var animation_name := "skill_cast" if action_id == PLAYER_ACTION_SKILL else "normal_attack"
-	if action_id == PLAYER_ACTION_DEFEND:
-		animation_name = "defend"
 	if animation_player != null and animation_player.has_animation(animation_name):
 		animation_player.play(animation_name)
 	else:
@@ -254,9 +192,6 @@ func _complete_pending_player_action() -> void:
 
 	if action_id == PLAYER_ACTION_ATTACK:
 		_resolve_normal_attack(game_state)
-	elif action_id == PLAYER_ACTION_DEFEND:
-		defending = true
-		log_added.emit("进入防御姿态")
 	elif action_id == PLAYER_ACTION_SKILL:
 		_resolve_skill_action(game_state, _find_skill(skill_id, game_state.skills))
 
@@ -268,13 +203,6 @@ func _complete_pending_player_action() -> void:
 func _resolve_normal_attack(game_state) -> void:
 	var damage := _player_damage(game_state, _combat_total_attack(game_state))
 	_damage_enemy(damage)
-	_emit_damage_feedback({
-		"action_id": PLAYER_ACTION_ATTACK,
-		"skill_id": "",
-		"skill_name": "",
-		"damage": damage,
-		"message": "挥出一击",
-	})
 	log_added.emit("普通攻击命中%s，造成%d点伤害" % [enemy.get("name", "敌人"), damage])
 
 
@@ -291,18 +219,7 @@ func _resolve_skill_action(game_state, skill: Dictionary) -> void:
 	if raw_damage > 0:
 		final_damage = _player_damage(game_state, raw_damage, str(result.get("element", "")))
 		_damage_enemy(final_damage)
-	_emit_damage_feedback({
-		"action_id": PLAYER_ACTION_SKILL,
-		"skill_id": skill_id,
-		"skill_name": str(result.get("skill_name", skill.get("name", "技能"))),
-		"damage": final_damage,
-		"message": str(result.get("message", "释放失败")),
-	})
 	log_added.emit(str(result.get("message", "释放失败")))
-
-
-func _emit_damage_feedback(payload: Dictionary) -> void:
-	damage_feedback.emit(payload.duplicate(true))
 
 
 func _first_available_skill(game_state) -> Dictionary:
@@ -322,28 +239,11 @@ func _finish_player_turn() -> void:
 	_update_combat_buff_turns()
 	attack_timer = PLAYER_TURN_WAIT
 	player_action_resolving = false
-	if not pending_player_mode.is_empty():
-		_set_player_mode(pending_player_mode)
-		pending_player_mode = ""
-
-
-func _set_player_mode(next_mode: String) -> void:
-	if next_mode != PLAYER_MODE_AUTO and next_mode != PLAYER_MODE_MANUAL:
-		return
-	player_mode = next_mode
-	pending_player_mode = ""
-	player_turn_ready = false
-	if player_mode == PLAYER_MODE_MANUAL:
-		attack_timer = max(attack_timer, 0.05)
-	log_added.emit("切换为%s模式" % ("自动" if player_mode == PLAYER_MODE_AUTO else "手动"))
 
 
 func _run_enemy_turn(game_state) -> void:
 	enemy_timer = ENEMY_TURN_WAIT
 	var damage_to_player: int = int(enemy["attack"])
-	if defending:
-		damage_to_player = max(1, int(ceil(float(damage_to_player) * DEFEND_DAMAGE_MULTIPLIER)))
-		defending = false
 	damage_to_player = max(1, damage_to_player - combat_stat_bonus("defense"))
 	var element_id := ""
 	if game_state.rng.randf() < float(enemy.get("element_attack_ratio", 0.0)):

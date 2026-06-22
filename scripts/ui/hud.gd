@@ -19,13 +19,31 @@ const INVENTORY_CATEGORIES := [
 
 signal home_action_requested(task_type: int)
 signal hud_save_requested()
-signal combat_mode_toggle_requested()
-signal combat_action_requested(action_id: String, skill_id: String)
 signal expedition_exit_requested()
+signal scene_transition_midpoint()
+signal scene_transition_finished()
 
 const DRAG_MARGIN := 12.0
 const INVENTORY_SLOT_COUNT := 25
 const INVENTORY_DOUBLE_CLICK_MS := 350
+const PANEL_FILL_COLOR := Color(0.13, 0.09, 0.06, 0.9)
+const PANEL_BORDER_COLOR := Color(0.72, 0.55, 0.28, 0.95)
+const TITLE_FILL_COLOR := Color(0.18, 0.12, 0.07, 0.88)
+const TITLE_BORDER_COLOR := Color(0.86, 0.72, 0.36, 1.0)
+const BUTTON_FILL_COLOR := Color(0.25, 0.18, 0.11, 0.95)
+const BUTTON_BORDER_COLOR := Color(0.77, 0.62, 0.34, 1.0)
+const BUTTON_HOVER_FILL_COLOR := Color(0.34, 0.24, 0.13, 1.0)
+const BUTTON_HOVER_BORDER_COLOR := Color(0.95, 0.8, 0.46, 1.0)
+const BUTTON_PRESSED_FILL_COLOR := Color(0.18, 0.12, 0.07, 1.0)
+const BUTTON_PRESSED_BORDER_COLOR := Color(0.62, 0.45, 0.18, 1.0)
+const BUTTON_DISABLED_FILL_COLOR := Color(0.18, 0.15, 0.12, 0.75)
+const BUTTON_DISABLED_BORDER_COLOR := Color(0.35, 0.3, 0.24, 0.9)
+const BUTTON_FOCUS_FILL_COLOR := Color(0.3, 0.22, 0.12, 1.0)
+const BUTTON_FOCUS_BORDER_COLOR := Color(1, 0.86, 0.58, 1.0)
+const CARD_FILL_COLOR := Color(0.18, 0.13, 0.08, 0.88)
+const CARD_BORDER_COLOR := Color(0.72, 0.55, 0.28, 0.9)
+const SLOT_FILL_COLOR := Color(0.16, 0.11, 0.07, 0.92)
+const SLOT_BORDER_COLOR := Color(0.55, 0.42, 0.24, 0.9)
 
 @onready var menu_panel: PanelContainer = $Root/MenuPanel
 @onready var character_info_panel: PanelContainer = $Root/CharacterInfoPanel
@@ -71,15 +89,11 @@ const INVENTORY_DOUBLE_CLICK_MS := 350
 @onready var forge_hint_label: Label = $Root/ForgePanel/PanelLayout/HintLabel
 @onready var meditate_detail: Label = $Root/MeditatePanel/PanelLayout/ActionDetail
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
-@onready var battle_action_hud: PanelContainer = $Root/BattleActionHud
-@onready var battle_mode_button: Button = $Root/BattleActionHud/ActionLayout/ModeButton
-@onready var battle_status_label: Label = $Root/BattleActionHud/ActionLayout/StatusLabel
-@onready var battle_attack_button: Button = $Root/BattleActionHud/ActionLayout/AttackButton
-@onready var battle_defend_button: Button = $Root/BattleActionHud/ActionLayout/DefendButton
-@onready var battle_skill_button_row: HBoxContainer = $Root/BattleActionHud/ActionLayout/SkillButtonRow
-@onready var expedition_exit_button: Button = $Root/BattleActionHud/ActionLayout/ExitExpeditionButton
+@onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
+@onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
+@onready var loading_overlay: Control = $Root/LoadingOverlay
+@onready var loading_label: Label = $Root/LoadingOverlay/LoadingLabel
 @onready var window_drag_button: Button = $Root/WindowDragButton
-@onready var damage_feedback_label: Label = $Root/BattleActionHud/DamageFeedbackLabel
 @onready var alchemy_recipe_slot_button: Button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
 @onready var alchemy_recipe_picker_panel: PanelContainer = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel
 @onready var alchemy_recipe_list: ItemList = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList
@@ -116,8 +130,8 @@ var drag_panel_start := Vector2.ZERO
 var dragging_window := false
 var window_drag_mouse_start := Vector2.ZERO
 var window_drag_start_position := Vector2i.ZERO
-var damage_feedback_tween: Tween = null
 var menu_button_hover_tween: Tween = null
+var scene_transition_tween: Tween = null
 
 
 func _ready() -> void:
@@ -132,10 +146,7 @@ func _ready() -> void:
 
 	$Root/MeditatePanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.MEDITATE))
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
-	battle_mode_button.pressed.connect(func(): combat_mode_toggle_requested.emit())
-	battle_attack_button.pressed.connect(func(): combat_action_requested.emit("attack", ""))
-	battle_defend_button.pressed.connect(func(): combat_action_requested.emit("defend", ""))
-	expedition_exit_button.pressed.connect(func(): expedition_exit_requested.emit())
+	return_home_button.pressed.connect(func(): expedition_exit_requested.emit())
 	window_drag_button.button_down.connect(_on_window_drag_button_down)
 	window_drag_button.button_up.connect(_on_window_drag_button_up)
 	_connect_farm_controls()
@@ -153,6 +164,60 @@ func _ready() -> void:
 	_capture_default_panel_positions()
 	$Root/MenuButton.pivot_offset = $Root/MenuButton.size * 0.5
 	window_drag_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	loading_overlay.visible = false
+	loading_overlay.modulate.a = 0.0
+
+
+func set_expedition_controls_visible(visible: bool) -> void:
+	_ensure_menu_panel_refs()
+	if expedition_hud != null:
+		expedition_hud.visible = visible
+
+
+func play_scene_transition(message := "加载中...") -> void:
+	_ensure_menu_panel_refs()
+	if loading_overlay == null or loading_label == null:
+		scene_transition_midpoint.emit()
+		scene_transition_finished.emit()
+		return
+	if scene_transition_tween != null:
+		scene_transition_tween.kill()
+		scene_transition_tween = null
+	loading_label.text = message
+	loading_overlay.visible = true
+	loading_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	loading_overlay.modulate.a = 0.0
+	scene_transition_tween = create_tween()
+	scene_transition_tween.set_trans(Tween.TRANS_SINE)
+	scene_transition_tween.set_ease(Tween.EASE_IN_OUT)
+	scene_transition_tween.tween_property(loading_overlay, "modulate:a", 1.0, 0.18)
+	scene_transition_tween.tween_callback(func(): scene_transition_midpoint.emit())
+	scene_transition_tween.tween_interval(0.24)
+	scene_transition_tween.tween_property(loading_overlay, "modulate:a", 0.0, 0.18)
+	scene_transition_tween.tween_callback(func():
+		loading_overlay.visible = false
+		scene_transition_tween = null
+		scene_transition_finished.emit()
+	)
+
+
+func hide_home_ui() -> void:
+	_ensure_menu_panel_refs()
+	_close_popup_panels()
+	if menu_panel != null:
+		menu_panel.visible = false
+	if inventory_item_detail_panel != null:
+		inventory_item_detail_panel.visible = false
+	if farm_seed_picker_panel != null:
+		farm_seed_picker_panel.visible = false
+	if farm_speed_item_picker_panel != null:
+		farm_speed_item_picker_panel.visible = false
+	if forge_equipment_picker_panel != null:
+		forge_equipment_picker_panel.visible = false
+	if alchemy_recipe_picker_panel != null:
+		alchemy_recipe_picker_panel.visible = false
+	if inventory_menu != null:
+		inventory_menu.hide()
 
 
 func _on_menu_button_mouse_entered() -> void:
@@ -215,12 +280,11 @@ func to_hud_save_data() -> Dictionary:
 	return {"panel_positions": saved_panel_positions.duplicate(true)}
 
 
-func refresh(game_state, combat = null, expedition_active := false) -> void:
+func refresh(game_state) -> void:
 	_ensure_menu_panel_refs()
 	current_game_state = game_state
 	current_progress_state = game_state.progress_states.duplicate(true) if game_state != null else {}
 	_refresh_character_info(game_state)
-	_refresh_battle_action_hud(game_state, combat, expedition_active)
 
 	if inventory_panel.visible:
 		_refresh_inventory()
@@ -243,9 +307,9 @@ func _refresh_character_info(game_state) -> void:
 
 func _refresh_character_attributes(game_state) -> void:
 	_clear_control_children(character_attribute_grid)
-	_add_attribute_row("等级", "Lv.%d  阶段 %d/%d" % [int(game_state.stats.get("level", 1)), int(game_state.stats.get("stage", 1)), int(game_state.stats.get("level_cap", 10))])
-	_add_attribute_row("HP", "%d/%d" % [int(game_state.stats.get("hp", 0)), int(game_state.stats.get("max_hp", 0))])
-	_add_attribute_row("MP", "%d/%d" % [int(game_state.stats.get("mp", 0)), int(game_state.stats.get("max_mp", 0))])
+	_add_attribute_row("等级", "%d  阶段 %d/%d" % [int(game_state.stats.get("level", 1)), int(game_state.stats.get("stage", 1)), int(game_state.stats.get("level_cap", 10))])
+	_add_attribute_row("气血", "%d/%d" % [int(game_state.stats.get("hp", 0)), int(game_state.stats.get("max_hp", 0))])
+	_add_attribute_row("法力", "%d/%d" % [int(game_state.stats.get("mp", 0)), int(game_state.stats.get("max_mp", 0))])
 	_add_attribute_row("修为", "%d/%d" % [int(game_state.stats.get("cultivation", 0)), int(game_state.stats.get("next_cultivation", 0))])
 	_add_attribute_row("攻击", str(game_state.total_attack()))
 	_add_attribute_row("防御", str(game_state.total_defense()))
@@ -263,6 +327,31 @@ func _add_attribute_row(label_text: String, value_text: String) -> void:
 	value_label.custom_minimum_size = Vector2(330, 18)
 	value_label.text = value_text
 	character_attribute_grid.add_child(value_label)
+
+
+func _create_panel_style(fill_color: Color, border_color: Color, border_width := 1, corner_radius := 6, left_margin := 8.0, top_margin := 6.0, right_margin := 8.0, bottom_margin := 6.0, shadow_size := 2, shadow_color := Color(0, 0, 0, 0.28)) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill_color
+	style.border_color = border_color
+	style.border_width_left = border_width
+	style.border_width_top = border_width
+	style.border_width_right = border_width
+	style.border_width_bottom = border_width
+	style.corner_radius_top_left = corner_radius
+	style.corner_radius_top_right = corner_radius
+	style.corner_radius_bottom_right = corner_radius
+	style.corner_radius_bottom_left = corner_radius
+	style.content_margin_left = left_margin
+	style.content_margin_top = top_margin
+	style.content_margin_right = right_margin
+	style.content_margin_bottom = bottom_margin
+	style.shadow_size = shadow_size
+	style.shadow_color = shadow_color
+	return style
+
+
+func _create_button_style(fill_color: Color, border_color: Color) -> StyleBoxFlat:
+	return _create_panel_style(fill_color, border_color, 1, 6, 10.0, 5.0, 10.0, 5.0, 1, Color(0, 0, 0, 0.3))
 
 
 func _refresh_character_equipment(game_state) -> void:
@@ -283,7 +372,7 @@ func _refresh_character_equipment(game_state) -> void:
 		var detail := ""
 		if not item.is_empty():
 			item_name = str(item.get("name", "装备"))
-			detail = "L%d %s" % [int(item.get("equipment_level", 1)), DataTables.equipment_rarity_name(str(item.get("rarity", "t1")))]
+			detail = "等级 %d  %s" % [int(item.get("equipment_level", 1)), DataTables.equipment_rarity_name(str(item.get("rarity", "t1")))]
 		character_equipment_grid.add_child(_create_character_slot(str(slot_def.get("label", slot_id)), item_name, detail))
 
 
@@ -295,29 +384,14 @@ func _refresh_character_skills(game_state) -> void:
 	for skill in game_state.skills:
 		var element_id: String = skill.get("element", "")
 		var source_text := DataTables.obtain_source_name(str(skill.get("obtain_source", "non_drop")))
-		var detail := "%s  CD %.1fs  MP %d  %s" % [DataTables.element_name(element_id), float(skill.get("cooldown", 0.0)), int(skill.get("mp_cost", 0)), source_text]
+		var detail := "%s  冷却 %.1f秒  法力 %d  %s" % [DataTables.element_name(element_id), float(skill.get("cooldown", 0.0)), int(skill.get("mp_cost", 0)), source_text]
 		character_skill_grid.add_child(_create_character_slot("技能", str(skill.get("name", "未命名技能")), detail))
 
 
 func _create_character_slot(slot_label: String, item_name: String, detail_text: String) -> PanelContainer:
 	var slot := PanelContainer.new()
 	slot.custom_minimum_size = Vector2(220, 48)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.18, 0.13, 0.08, 0.88)
-	style.border_color = Color(0.72, 0.55, 0.28, 0.9)
-	style.border_width_left = 1
-	style.border_width_top = 1
-	style.border_width_right = 1
-	style.border_width_bottom = 1
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_right = 6
-	style.corner_radius_bottom_left = 6
-	style.content_margin_left = 8.0
-	style.content_margin_top = 6.0
-	style.content_margin_right = 8.0
-	style.content_margin_bottom = 6.0
-	slot.add_theme_stylebox_override("panel", style)
+	slot.add_theme_stylebox_override("panel", _create_panel_style(CARD_FILL_COLOR, CARD_BORDER_COLOR))
 	var layout := HBoxContainer.new()
 	layout.name = "SlotLayout"
 	layout.add_theme_constant_override("separation", 6)
@@ -349,86 +423,6 @@ func _clear_control_children(container: Control) -> void:
 	for child in container.get_children():
 		container.remove_child(child)
 		child.queue_free()
-
-
-func _refresh_battle_action_hud(game_state, combat, expedition_active := false) -> void:
-	_ensure_menu_panel_refs()
-	var in_combat := combat != null and bool(combat.active) and not bool(combat.finished)
-	battle_action_hud.visible = in_combat or expedition_active
-	expedition_exit_button.visible = expedition_active
-	if not in_combat or game_state == null:
-		battle_mode_button.visible = false
-		battle_status_label.visible = false
-		battle_attack_button.visible = false
-		battle_defend_button.visible = false
-		_clear_control_children(battle_skill_button_row)
-		return
-	battle_mode_button.visible = true
-	battle_status_label.visible = true
-	battle_attack_button.visible = true
-	battle_defend_button.visible = true
-
-	var status: Dictionary = combat.combat_status()
-	var mode: String = status.get("player_mode", "auto")
-	var is_manual := mode == "manual"
-	var turn_ready := bool(status.get("player_turn_ready", false))
-	var pending_mode: String = status.get("pending_player_mode", "")
-	battle_mode_button.text = "切手动" if mode == "auto" else "切自动"
-	battle_status_label.text = _battle_status_text(mode, pending_mode, turn_ready, bool(status.get("defending", false)))
-	battle_attack_button.disabled = not (is_manual and turn_ready)
-	battle_defend_button.disabled = not (is_manual and turn_ready)
-	_refresh_battle_skill_buttons(game_state, status, is_manual and turn_ready)
-
-
-func _battle_status_text(mode: String, pending_mode: String, turn_ready: bool, is_defending: bool) -> String:
-	if not pending_mode.is_empty():
-		return "本轮后切%s" % ("自动" if pending_mode == "auto" else "手动")
-	if is_defending:
-		return "防御中"
-	if mode == "auto":
-		return "自动战斗"
-	return "请选择动作" if turn_ready else "等待回合"
-
-
-func _refresh_battle_skill_buttons(game_state, status: Dictionary, can_act: bool) -> void:
-	_clear_control_children(battle_skill_button_row)
-	var cooldowns: Dictionary = status.get("skill_cooldowns", {})
-	for skill in game_state.skills:
-		var skill_id: String = skill.get("id", "")
-		if skill_id.is_empty():
-			continue
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(98, 32)
-		_style_inventory_slot_button(button)
-		var cooldown := float(cooldowns.get(skill_id, 0.0))
-		var mp_cost := int(skill.get("mp_cost", 0))
-		button.text = "%s MP%d" % [skill.get("name", skill_id), mp_cost]
-		if cooldown > 0.0:
-			button.text = "%s %.1fs" % [skill.get("name", skill_id), cooldown]
-		button.disabled = not can_act or cooldown > 0.0 or int(game_state.stats.get("mp", 0)) < mp_cost
-		button.pressed.connect(func(id = skill_id): combat_action_requested.emit("skill", id))
-		battle_skill_button_row.add_child(button)
-
-
-func show_damage_feedback(payload: Dictionary) -> void:
-	_ensure_menu_panel_refs()
-	if damage_feedback_label == null:
-		return
-	var damage := int(payload.get("damage", 0))
-	var message := str(payload.get("message", ""))
-	var skill_name := str(payload.get("skill_name", ""))
-	if damage > 0:
-		damage_feedback_label.text = "%s -%d" % [skill_name if not skill_name.is_empty() else message, damage]
-	else:
-		damage_feedback_label.text = message
-	damage_feedback_label.visible = true
-	damage_feedback_label.modulate = Color(1, 1, 1, 1)
-	if damage_feedback_tween != null:
-		damage_feedback_tween.kill()
-	damage_feedback_tween = create_tween()
-	damage_feedback_tween.tween_property(damage_feedback_label, "position:y", damage_feedback_label.position.y - 8.0, 0.18)
-	damage_feedback_tween.parallel().tween_property(damage_feedback_label, "modulate:a", 0.0, 0.45).set_delay(0.25)
-	damage_feedback_tween.tween_callback(func(): damage_feedback_label.visible = false)
 
 
 func _begin_window_drag(mouse_position: Vector2) -> bool:
@@ -592,24 +586,16 @@ func _ensure_menu_panel_refs() -> void:
 		meditate_detail = $Root/MeditatePanel/PanelLayout/ActionDetail
 	if fight_detail == null:
 		fight_detail = $Root/FightPanel/PanelLayout/ActionDetail
-	if battle_action_hud == null:
-		battle_action_hud = $Root/BattleActionHud
-	if battle_mode_button == null:
-		battle_mode_button = $Root/BattleActionHud/ActionLayout/ModeButton
-	if battle_status_label == null:
-		battle_status_label = $Root/BattleActionHud/ActionLayout/StatusLabel
-	if battle_attack_button == null:
-		battle_attack_button = $Root/BattleActionHud/ActionLayout/AttackButton
-	if battle_defend_button == null:
-		battle_defend_button = $Root/BattleActionHud/ActionLayout/DefendButton
-	if battle_skill_button_row == null:
-		battle_skill_button_row = $Root/BattleActionHud/ActionLayout/SkillButtonRow
-	if expedition_exit_button == null:
-		expedition_exit_button = $Root/BattleActionHud/ActionLayout/ExitExpeditionButton
+	if expedition_hud == null:
+		expedition_hud = $Root/ExpeditionHud
+	if return_home_button == null:
+		return_home_button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
+	if loading_overlay == null:
+		loading_overlay = $Root/LoadingOverlay
+	if loading_label == null:
+		loading_label = $Root/LoadingOverlay/LoadingLabel
 	if window_drag_button == null:
 		window_drag_button = $Root/WindowDragButton
-	if damage_feedback_label == null:
-		damage_feedback_label = $Root/BattleActionHud/DamageFeedbackLabel
 	if alchemy_recipe_slot_button == null:
 		alchemy_recipe_slot_button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
 	if alchemy_recipe_picker_panel == null:
@@ -836,10 +822,7 @@ func _refresh_action_detail(task_type: int) -> void:
 			int(current_game_state.stats.get("root_bone", 0)),
 		]
 	elif task_type == GameDefs.TaskType.FIGHT:
-		fight_detail.text = "打怪收益\n攻击 %d\n防御 %d" % [
-			current_game_state.total_attack(),
-			current_game_state.total_defense(),
-		]
+		fight_detail.text = "进入历练地图\n随机遇怪并自动战斗"
 
 
 func _progress_label_text(progress_id: String) -> String:
@@ -872,13 +855,39 @@ func _action_button_disabled(progress_id: String) -> bool:
 
 func _progress_summary(progress_id: String) -> String:
 	if current_game_state == null:
-		return "not_started / 未开始"
+		return "未开始"
 	var progress: Dictionary = current_game_state.progress_state(progress_id)
 	var status := str(progress.get("status", "not_started"))
 	var detail := str(progress.get("detail", ""))
 	if detail.is_empty():
-		detail = "无详情"
-	return "%s / %s" % [status, detail]
+		return _progress_status_text(status)
+	return "%s / %s" % [_progress_status_text(status), _progress_detail_text(detail)]
+
+
+func _progress_status_text(status: String) -> String:
+	match status:
+		"not_started":
+			return "未开始"
+		"growing":
+			return "生长中"
+		"claimable":
+			return "可领取"
+		"completed":
+			return "已完成"
+		_:
+			return status
+
+
+func _progress_detail_text(detail: String) -> String:
+	if detail == "Not started":
+		return "未开始"
+	if detail.ends_with(" growing"):
+		return "%s 生长中" % detail.trim_suffix(" growing")
+	if detail.ends_with(" plots ready"):
+		return "%s 块农田可收取" % detail.trim_suffix(" plots ready")
+	if detail.ends_with(" plots growing"):
+		return "%s 块农田生长中" % detail.trim_suffix(" plots growing")
+	return detail
 
 
 func _set_inventory_category(type_id: String) -> void:
@@ -911,8 +920,8 @@ func _format_inventory_item(item: Dictionary) -> String:
 	if item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		var equipped_mark := ""
 		if bool(item.get("equipped", false)):
-			equipped_mark = "[E] "
-		return "%s%s [%s] L%d Attr%d +%d R%d ATK%d DEF%d" % [
+			equipped_mark = "[已装备] "
+		return "%s%s [%s] 等级%d 属性%d 强化+%d 洗练%d 攻击%d 防御%d" % [
 			equipped_mark,
 			item["name"],
 			DataTables.slot_name(item.get("slot", "")),
@@ -948,7 +957,7 @@ func _format_inventory_item_detail(item: Dictionary) -> String:
 			if not requirement_text.is_empty():
 				lines.append("穿戴需求：%s" % requirement_text)
 		lines.append("强化：+%d  洗练：%d" % [int(item.get("enhance_count", 0)), int(item.get("refine_count", 0))])
-		lines.append("ATK:%d DEF:%d" % [int(item.get("attack_bonus", 0)), int(item.get("defense_bonus", 0))])
+		lines.append("攻击：%d  防御：%d" % [int(item.get("attack_bonus", 0)), int(item.get("defense_bonus", 0))])
 	elif item.get("type", "") == DataTables.ITEM_TYPE_PILL:
 		var payload: Dictionary = item.get("payload", {})
 		var source_text := DataTables.obtain_source_name(str(payload.get("obtain_source", item.get("obtain_source", "non_drop"))))
@@ -956,7 +965,7 @@ func _format_inventory_item_detail(item: Dictionary) -> String:
 		if payload.get("effect_mode", "instant") == "duration":
 			lines.append("效果：%s +%d，持续 %d 秒" % [payload.get("stat", ""), int(payload.get("amount", 0)), int(payload.get("duration", 0))])
 		else:
-			lines.append("效果：HP +%d MP +%d" % [int(payload.get("hp", 0)), int(payload.get("mp", 0))])
+			lines.append("效果：气血 +%d  法力 +%d" % [int(payload.get("hp", 0)), int(payload.get("mp", 0))])
 	return "\n".join(lines)
 
 
@@ -999,27 +1008,9 @@ func _ensure_inventory_slots() -> void:
 
 
 func _style_inventory_slot_button(slot: Button) -> void:
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(0.16, 0.11, 0.07, 0.92)
-	normal.border_color = Color(0.55, 0.42, 0.24, 0.9)
-	normal.border_width_left = 1
-	normal.border_width_top = 1
-	normal.border_width_right = 1
-	normal.border_width_bottom = 1
-	normal.corner_radius_top_left = 5
-	normal.corner_radius_top_right = 5
-	normal.corner_radius_bottom_right = 5
-	normal.corner_radius_bottom_left = 5
-	normal.content_margin_left = 4.0
-	normal.content_margin_top = 4.0
-	normal.content_margin_right = 4.0
-	normal.content_margin_bottom = 4.0
-	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color(0.24, 0.17, 0.09, 1)
-	hover.border_color = Color(0.9, 0.72, 0.38, 1)
-	var disabled := normal.duplicate() as StyleBoxFlat
-	disabled.bg_color = Color(0.1, 0.08, 0.06, 0.6)
-	disabled.border_color = Color(0.28, 0.23, 0.18, 0.75)
+	var normal := _create_panel_style(SLOT_FILL_COLOR, SLOT_BORDER_COLOR, 1, 5, 4.0, 4.0, 4.0, 4.0, 0, Color(0, 0, 0, 0))
+	var hover := _create_panel_style(Color(0.24, 0.17, 0.09, 1), BUTTON_HOVER_BORDER_COLOR, 1, 5, 4.0, 4.0, 4.0, 4.0, 0, Color(0, 0, 0, 0))
+	var disabled := _create_panel_style(Color(0.1, 0.08, 0.06, 0.6), Color(0.28, 0.23, 0.18, 0.75), 1, 5, 4.0, 4.0, 4.0, 4.0, 0, Color(0, 0, 0, 0))
 	slot.add_theme_stylebox_override("normal", normal)
 	slot.add_theme_stylebox_override("hover", hover)
 	slot.add_theme_stylebox_override("pressed", hover)
@@ -1471,6 +1462,7 @@ func _clear_forge_material_grid() -> void:
 func _create_forge_material_slot(item_id: String, item_name: String, current: int, required: int) -> PanelContainer:
 	var slot := PanelContainer.new()
 	slot.custom_minimum_size = Vector2(144, 60)
+	slot.add_theme_stylebox_override("panel", _create_panel_style(CARD_FILL_COLOR, CARD_BORDER_COLOR))
 	var layout := VBoxContainer.new()
 	layout.name = "SlotLayout"
 	slot.add_child(layout)
@@ -1596,6 +1588,7 @@ func _create_alchemy_material_slot(material: Dictionary) -> PanelContainer:
 	var current: int = current_game_state.inventory_item_count(item_id)
 	var slot := PanelContainer.new()
 	slot.custom_minimum_size = Vector2(144, 60)
+	slot.add_theme_stylebox_override("panel", _create_panel_style(CARD_FILL_COLOR, CARD_BORDER_COLOR))
 
 	var layout := VBoxContainer.new()
 	layout.name = "SlotLayout"

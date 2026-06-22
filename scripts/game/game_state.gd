@@ -57,9 +57,9 @@ var active_buffs: Array = []
 var farm_slots: Array[Dictionary] = []
 var farm_speed_buffs: Array[Dictionary] = []
 var progress_states := {
-	"alchemy": {"status": "not_started", "title": "Alchemy", "detail": "Not started", "completed": false, "claimable": false},
-	"forge": {"status": "not_started", "title": "Forge", "detail": "Not started", "completed": false, "claimable": false},
-	"farm": {"status": "not_started", "title": "Farm", "detail": "Not started", "completed": false, "claimable": false},
+	"alchemy": {"status": "not_started", "title": "Alchemy", "detail": "未开始", "completed": false, "claimable": false},
+	"forge": {"status": "not_started", "title": "Forge", "detail": "未开始", "completed": false, "claimable": false},
+	"farm": {"status": "not_started", "title": "Farm", "detail": "未开始", "completed": false, "claimable": false},
 }
 
 
@@ -122,7 +122,7 @@ func _load_progress_states(source) -> void:
 		var loaded: Dictionary = source.get(key, {})
 		progress["status"] = str(loaded.get("status", progress.get("status", "not_started")))
 		progress["title"] = str(loaded.get("title", progress.get("title", key)))
-		progress["detail"] = str(loaded.get("detail", progress.get("detail", "Not started")))
+		progress["detail"] = str(loaded.get("detail", progress.get("detail", "未开始")))
 		progress["completed"] = bool(loaded.get("completed", progress.get("completed", false)))
 		progress["claimable"] = bool(loaded.get("claimable", progress.get("claimable", false)))
 		progress_states[key] = progress
@@ -145,7 +145,7 @@ func clear_progress_state(progress_id: String) -> void:
 		return
 	var progress: Dictionary = progress_states[progress_id]
 	progress["status"] = "not_started"
-	progress["detail"] = "Not started"
+	progress["detail"] = "未开始"
 	progress["completed"] = false
 	progress["claimable"] = false
 	progress_states[progress_id] = progress
@@ -272,7 +272,7 @@ func add_exp(amount: int) -> void:
 func add_cultivation(amount: int) -> void:
 	var final_amount := cultivation_gain(amount)
 	stats["cultivation"] += final_amount
-	log_added.emit("Meditation cultivation +%d" % final_amount)
+	log_added.emit("打坐修为 +%d" % final_amount)
 	while stats["cultivation"] >= stats["next_cultivation"]:
 		if not _ensure_level_cap_open():
 			break
@@ -288,7 +288,7 @@ func add_task_experience(task_type: int, amount: int) -> void:
 	if key == "farm":
 		_update_farm_level()
 	if task_exp[key] % 10 == 0:
-		log_added.emit("%s proficiency reached %d" % [DataTables.task_name(task_type), task_exp[key]])
+		log_added.emit("%s熟练度达到 %d" % [DataTables.task_name(task_type), task_exp[key]])
 	changed.emit()
 
 
@@ -538,14 +538,14 @@ func _equip_item(item: Dictionary) -> bool:
 	var slot: String = _equipment_slot_for_item(item)
 	var previous_id: String = equipped.get(slot, "")
 	if previous_id == item["instance_id"]:
-		log_added.emit("%s already equipped" % item["name"])
+		log_added.emit("%s已装备" % item["name"])
 		return true
 	if not equipment_requirement_met(item, slot):
 		var requirement_text := equipment_requirement_text(item)
 		if requirement_text.is_empty():
-			log_added.emit("%s cannot be equipped" % item["name"])
+			log_added.emit("%s无法穿戴" % item["name"])
 		else:
-			log_added.emit("%s requirement not met: %s" % [item["name"], requirement_text])
+			log_added.emit("%s穿戴需求不足：%s" % [item["name"], requirement_text])
 		return false
 
 	_unequip_if_needed(item["instance_id"])
@@ -558,7 +558,7 @@ func _equip_item(item: Dictionary) -> bool:
 	item["equipped"] = true
 	item["equipped_slot"] = slot
 	equipped[slot] = item["instance_id"]
-	log_added.emit("equipped %s" % item["name"])
+	log_added.emit("穿戴%s" % item["name"])
 	changed.emit()
 	return true
 
@@ -613,11 +613,11 @@ func _use_alchemy_recipe(item: Dictionary) -> bool:
 	if recipe_id.is_empty():
 		return false
 	if known_alchemy_recipes.has(recipe_id):
-		log_added.emit("recipe already learned")
+		log_added.emit("已学会该丹方")
 		return false
 	known_alchemy_recipes.append(recipe_id)
 	_remove_inventory_count(item["item_id"], 1)
-	log_added.emit("learned recipe: %s" % DataTables.resource_name(recipe_id))
+	log_added.emit("学会丹方：%s" % DataTables.resource_name(recipe_id))
 	changed.emit()
 	return true
 
@@ -640,7 +640,7 @@ func _use_pill(item: Dictionary) -> bool:
 		else:
 			existing_buff["remaining"] = float(existing_buff.get("remaining", 0.0)) + duration
 		_remove_inventory_count(item["item_id"], 1)
-		log_added.emit("used %s, buff active" % item["name"])
+		log_added.emit("使用%s，增益生效" % item["name"])
 		changed.emit()
 		return true
 
@@ -652,23 +652,23 @@ func _use_pill(item: Dictionary) -> bool:
 	stats["hp"] = min(total_stat("max_hp"), stats["hp"] + hp_amount)
 	stats["mp"] = min(total_stat("max_mp"), stats["mp"] + mp_amount)
 	if stats["hp"] == old_hp and stats["mp"] == old_mp:
-		log_added.emit("hp and mp are full")
+		log_added.emit("气血和法力已满")
 		return false
 
 	_remove_inventory_count(item["item_id"], 1)
-	log_added.emit("used %s" % item["name"])
+	log_added.emit("使用%s" % item["name"])
 	changed.emit()
 	return true
 
 
 func _use_breakthrough_item(item: Dictionary) -> bool:
 	if stats["level"] < stats["level_cap"]:
-		log_added.emit("Current stage cap not reached")
+		log_added.emit("尚未达到当前阶段等级上限")
 		return false
 
 	_unlock_next_stage()
 	_remove_inventory_count(item["item_id"], 1)
-	log_added.emit("Used %s, reached stage %d" % [item["name"], stats["stage"]])
+	log_added.emit("使用%s，突破至阶段 %d" % [item["name"], stats["stage"]])
 	changed.emit()
 	return true
 
@@ -729,7 +729,7 @@ func plant_farm_slot(slot_index: int, crop_id: String) -> bool:
 		"growth_seconds": DataTables.crop_growth_seconds(crop_id),
 		"harvest_amount": max(1, harvest_amount),
 	}
-	set_progress_state("farm", "growing", "%s growing" % DataTables.resource_name(crop_id))
+	set_progress_state("farm", "growing", "%s 生长中" % DataTables.resource_name(crop_id))
 	log_added.emit("种下%s" % DataTables.resource_name(crop_id))
 	changed.emit()
 	return true
@@ -881,9 +881,9 @@ func _update_farm_speed_buffs(delta: float) -> bool:
 func _refresh_farm_progress_state() -> void:
 	var ready_count := ready_farm_slot_count()
 	if ready_count > 0:
-		set_progress_state("farm", "claimable", "%d plots ready" % ready_count)
+		set_progress_state("farm", "claimable", "%d 块农田可收取" % ready_count)
 	elif active_farm_slot_count() > 0:
-		set_progress_state("farm", "growing", "%d plots growing" % active_farm_slot_count())
+		set_progress_state("farm", "growing", "%d 块农田生长中" % active_farm_slot_count())
 	else:
 		clear_progress_state("farm")
 
@@ -950,10 +950,10 @@ func enhance_equipment(instance_id: String) -> bool:
 	var cost := int(item.get("enhance_count", 0)) + 1
 	var stone := _find_enhance_stone(item, cost)
 	if stone.is_empty():
-		log_added.emit("missing matching spirit stone")
+		log_added.emit("缺少匹配的灵石")
 		return false
 	if not spend_resource(stone["item_id"], cost):
-		log_added.emit("not enough spirit stones")
+		log_added.emit("灵石不足")
 		return false
 	var enhanced_attributes: Array = item.get("enhanced_attributes", [])
 	enhanced_attributes.append({
@@ -965,8 +965,8 @@ func enhance_equipment(instance_id: String) -> bool:
 	item["enhance_count"] = int(item.get("enhance_count", 0)) + 1
 	item["enhance_level"] = item["enhance_count"]
 	_update_equipment_compat_bonuses(item)
-	set_progress_state("forge", "completed", "Enhanced %s to +%d" % [item["name"], item["enhance_count"]])
-	log_added.emit("enhanced %s to +%d" % [item["name"], item["enhance_count"]])
+	set_progress_state("forge", "completed", "已强化%s至 +%d" % [item["name"], item["enhance_count"]])
+	log_added.emit("强化%s至 +%d" % [item["name"], item["enhance_count"]])
 	return true
 
 
@@ -976,7 +976,7 @@ func add_equipment_affix(instance_id: String) -> bool:
 		return false
 	var cost := int(item.get("refine_count", 0)) + 1
 	if not spend_resource("refine_talisman", cost):
-		log_added.emit("not enough refine talisman")
+		log_added.emit("洗练符不足")
 		return false
 	var attribute_def: Dictionary = DataTables.EQUIPMENT_ATTRIBUTE_DEFS[rng.randi_range(0, DataTables.EQUIPMENT_ATTRIBUTE_DEFS.size() - 1)]
 	var refine_affixes: Array = item.get("refine_affixes", [])
@@ -987,8 +987,8 @@ func add_equipment_affix(instance_id: String) -> bool:
 	})
 	item["refine_affixes"] = refine_affixes
 	item["refine_count"] = int(item.get("refine_count", 0)) + 1
-	set_progress_state("forge", "completed", "Refined %s" % item["name"])
-	log_added.emit("refined %s" % item["name"])
+	set_progress_state("forge", "completed", "已洗练%s" % item["name"])
+	log_added.emit("洗练%s" % item["name"])
 	return true
 
 
@@ -1101,7 +1101,7 @@ func _sum_enhanced_attribute(item: Dictionary, stat_id: String) -> int:
 func _update_farm_level() -> void:
 	while task_exp.get("farm", 0) >= int(stats.get("farm_level", 1)) * 5:
 		stats["farm_level"] += 1
-		log_added.emit("farm level %d" % stats["farm_level"])
+		log_added.emit("农田等级提升至 %d" % stats["farm_level"])
 
 
 func _apply_random_level_gain() -> void:
@@ -1121,7 +1121,7 @@ func _apply_random_level_gain() -> void:
 	var element_gain := rng.randi_range(1, 3)
 	elements[element_id] += element_gain
 
-	log_added.emit("Level %d: HP+%d MP+%d ATK+%d DEF+%d Root+%d %s+%d" % [
+	log_added.emit("等级 %d：气血+%d 法力+%d 攻击+%d 防御+%d 根骨+%d %s+%d" % [
 		stats["level"],
 		hp_gain,
 		mp_gain,
@@ -1139,7 +1139,7 @@ func try_breakthrough() -> bool:
 	if stats["root_bone"] <= stats["level"]:
 		return false
 	_unlock_next_stage()
-	log_added.emit("Root bone breakthrough to stage %d" % stats["stage"])
+	log_added.emit("根骨突破至阶段 %d" % stats["stage"])
 	changed.emit()
 	return true
 
@@ -1149,7 +1149,7 @@ func _ensure_level_cap_open() -> bool:
 		return true
 	if try_breakthrough():
 		return true
-	log_added.emit("Reached level cap %d; use breakthrough pill or raise root bone" % stats["level_cap"])
+	log_added.emit("已达到等级上限 %d；请使用突破丹或提升根骨" % stats["level_cap"])
 	return false
 
 

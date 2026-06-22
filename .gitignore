@@ -4,3 +4,6 @@
 /assets/
 /addons/
 ./tests/
+./vscode/
+.agents/
+.godot_user/

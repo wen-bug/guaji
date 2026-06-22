@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://gvdftb51q2gw" path="res://scripts/ui/hud.gd" id="1_hud"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.13, 0.09, 0.06, 0.9)
-border_color = Color(0.72, 0.55, 0.28, 0.95)
+bg_color = Color(0.13, 0.09, 0.06, 0.92)
+border_color = Color(0.75, 0.58, 0.3, 0.96)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
@@ -21,8 +21,8 @@ shadow_size = 2
 shadow_color = Color(0, 0, 0, 0.35)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(0.25, 0.18, 0.11, 0.95)
-border_color = Color(0.77, 0.62, 0.34, 1)
+bg_color = Color(0.26, 0.19, 0.12, 0.97)
+border_color = Color(0.8, 0.65, 0.36, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -39,8 +39,8 @@ shadow_size = 1
 shadow_color = Color(0, 0, 0, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-bg_color = Color(0.34, 0.24, 0.13, 1)
-border_color = Color(0.95, 0.8, 0.46, 1)
+bg_color = Color(0.37, 0.26, 0.14, 1)
+border_color = Color(0.98, 0.84, 0.5, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -57,8 +57,8 @@ shadow_size = 1
 shadow_color = Color(0, 0, 0, 0.3)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-bg_color = Color(0.18, 0.12, 0.07, 1)
-border_color = Color(0.62, 0.45, 0.18, 1)
+bg_color = Color(0.17, 0.12, 0.07, 1)
+border_color = Color(0.58, 0.42, 0.17, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -73,8 +73,8 @@ content_margin_right = 10.0
 content_margin_bottom = 5.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
-bg_color = Color(0.18, 0.15, 0.12, 0.75)
-border_color = Color(0.35, 0.3, 0.24, 0.9)
+bg_color = Color(0.17, 0.14, 0.11, 0.76)
+border_color = Color(0.34, 0.29, 0.23, 0.9)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -89,8 +89,8 @@ content_margin_right = 10.0
 content_margin_bottom = 5.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_focus"]
-bg_color = Color(0.3, 0.22, 0.12, 1)
-border_color = Color(1, 0.86, 0.58, 1)
+bg_color = Color(0.32, 0.23, 0.13, 1)
+border_color = Color(1, 0.88, 0.6, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -105,8 +105,8 @@ content_margin_right = 10.0
 content_margin_bottom = 5.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title"]
-bg_color = Color(0.18, 0.12, 0.07, 0.88)
-border_color = Color(0.86, 0.72, 0.36, 1)
+bg_color = Color(0.18, 0.12, 0.07, 0.9)
+border_color = Color(0.89, 0.75, 0.38, 1)
 border_width_left = 0
 border_width_top = 0
 border_width_right = 0
@@ -532,7 +532,7 @@ autowrap_mode = 2
 [node name="ProgressLabel" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=500000001]
 custom_minimum_size = Vector2(300, 20)
 layout_mode = 2
-text = "Progress: not_started"
+text = "进度：未开始"
 autowrap_mode = 2
 
 [node name="HintLabel" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=500000032]
@@ -654,7 +654,7 @@ text = "执行"
 [node name="ProgressLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=500000002]
 custom_minimum_size = Vector2(300, 20)
 layout_mode = 2
-text = "Progress: not_started"
+text = "进度：未开始"
 autowrap_mode = 2
 
 [node name="HintLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=500000018]
@@ -750,7 +750,7 @@ text = "制作"
 [node name="ProgressLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=500000003]
 custom_minimum_size = Vector2(300, 20)
 layout_mode = 2
-text = "Progress: not_started"
+text = "进度：未开始"
 autowrap_mode = 2
 
 [node name="HintLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=1417538748]
@@ -859,98 +859,89 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "执行"
+text = "进入历练"
 
 [node name="InventoryMenu" type="PopupMenu" parent="Root" unique_id=197141140]
 oversampling_override = 1.0
 
-[node name="BattleActionHud" type="PanelContainer" parent="Root" unique_id=600000001]
+[node name="ExpeditionHud" type="PanelContainer" parent="Root" unique_id=600000301]
 visible = false
 layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
+anchors_preset = 1
+anchor_left = 1.0
 anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 120.0
-offset_top = -60.0
-offset_right = -120.0
-offset_bottom = -8.0
-grow_horizontal = 2
-grow_vertical = 0
+offset_left = -246.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 118.0
+grow_horizontal = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
+[node name="PanelLayout" type="VBoxContainer" parent="Root/ExpeditionHud" unique_id=600000305]
+layout_mode = 2
+theme_override_constants/separation = 5
 
-[node name="DamageFeedbackLabel" type="Label" parent="Root/BattleActionHud" unique_id=600000202]
-visible = false
-layout_mode = 0
-offset_left = 360.0
-offset_top = -34.0
-offset_right = 560.0
-offset_bottom = -8.0
-theme_override_colors/font_color = Color(1, 0.35, 0.18, 1)
-theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.02, 1)
+[node name="Title" type="Label" parent="Root/ExpeditionHud/PanelLayout" unique_id=600000306]
+custom_minimum_size = Vector2(216, 24)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
+theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
-text = "-0"
+text = "历练中"
 horizontal_alignment = 1
-vertical_alignment = 1
 
-[node name="ActionLayout" type="HBoxContainer" parent="Root/BattleActionHud" unique_id=600000002]
-layout_mode = 2
-theme_override_constants/separation = 6
-alignment = 1
-
-[node name="ModeButton" type="Button" parent="Root/BattleActionHud/ActionLayout" unique_id=600000003]
-custom_minimum_size = Vector2(88, 32)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "自动"
-
-[node name="StatusLabel" type="Label" parent="Root/BattleActionHud/ActionLayout" unique_id=600000004]
-custom_minimum_size = Vector2(150, 32)
+[node name="StatusLabel" type="Label" parent="Root/ExpeditionHud/PanelLayout" unique_id=600000307]
+custom_minimum_size = Vector2(216, 30)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.9, 0.66, 1)
 theme_override_colors/font_outline_color = Color(0.16, 0.1, 0.05, 1)
-theme_override_constants/outline_size = 2
-text = "战斗准备"
+theme_override_constants/outline_size = 1
+text = "正在自动寻找怪物"
+horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="AttackButton" type="Button" parent="Root/BattleActionHud/ActionLayout" unique_id=600000005]
-custom_minimum_size = Vector2(88, 32)
+[node name="ReturnHomeButton" type="Button" parent="Root/ExpeditionHud/PanelLayout" unique_id=600000302]
+custom_minimum_size = Vector2(216, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "普通攻击"
+text = "返回家园"
 
-[node name="DefendButton" type="Button" parent="Root/BattleActionHud/ActionLayout" unique_id=600000006]
-custom_minimum_size = Vector2(72, 32)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "防御"
+[node name="LoadingOverlay" type="ColorRect" parent="Root" unique_id=600000303]
+visible = false
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.04, 0.025, 0.015, 0.82)
 
-[node name="SkillButtonRow" type="HBoxContainer" parent="Root/BattleActionHud/ActionLayout" unique_id=600000007]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="ExitExpeditionButton" type="Button" parent="Root/BattleActionHud/ActionLayout" unique_id=600000008]
-custom_minimum_size = Vector2(72, 32)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "回家"
+[node name="LoadingLabel" type="Label" parent="Root/LoadingOverlay" unique_id=600000304]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -16.0
+offset_right = 100.0
+offset_bottom = 16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
+theme_override_colors/font_outline_color = Color(0.16, 0.1, 0.05, 1)
+theme_override_constants/outline_size = 2
+text = "加载中..."
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
 [connection signal="mouse_entered" from="Root/MenuButton" to="." method="_on_menu_button_mouse_entered"]

@@ -129,25 +129,11 @@ HUD 控制脚本：
 - `item-table.md`：物品、配方、灵石、技能、装备、敌人掉落表。
 - `project-structure.md`：项目结构说明。
 
-## 测试
-
-`tests/gameplay_system_test.gd` 覆盖：
-
-- 等级、突破、根骨、修为成长。
-- 丹方、批量炼丹、持续 Buff。
-- 存档与 HUD 面板位置。
-- 家园节点映射与 hover 描边。
-- HUD 场景节点绑定、背包格子、炼丹交互。
-- 角色场景与闲逛表现。
-- 装备槽位、阶位、词条、穿戴需求、强化、洗练。
-- 敌人模板、战斗伤害和五行减伤。
-
 ## 维护约定
 
 - 新增物品优先补 `DataTables.ITEM_DEFS` 和 `docs/item-table.md`。
-- 新增玩法先接入 `GameState` 结算，再接入 HUD 展示和测试。
+- 新增玩法先接入 `GameState` 结算，再接入 HUD 展示。
 - 涉及数值公式时同步更新 `docs/design.md`。
-- 涉及场景节点命名时同步更新 HUD/场景结构测试。
 
 ## 历练战斗补充
 

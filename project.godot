@@ -26,6 +26,10 @@ window/per_pixel_transparency/allowed=true
 
 project/assembly_name="guaji"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/funplay_mcp/plugin.cfg")
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

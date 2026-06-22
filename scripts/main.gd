@@ -13,6 +13,7 @@ var hud
 var home_map
 var battle_map
 var expedition_active := false
+var scene_transition_active := false
 
 
 func _ready() -> void:
@@ -39,7 +40,7 @@ func _on_home_node_selected(node_name: String) -> void:
 		or task_type == GameDefs.TaskType.ALCHEMY \
 		or task_type == GameDefs.TaskType.FIGHT:
 		hud.show_home_action_panel(task_type)
-		hud.refresh(game_state, combat, expedition_active)
+		hud.refresh(game_state)
 
 
 func _on_home_action_requested(task_type: int) -> void:
@@ -71,7 +72,9 @@ func _on_home_action_requested(task_type: int) -> void:
 		else:
 			hud.push_log("作物不足，炼丹失败")
 	elif task_type == GameDefs.TaskType.FIGHT:
-		_enter_expedition()
+		if hud != null:
+			hud.hide_home_ui()
+		_start_enter_expedition_transition()
 
 
 func _process(delta: float) -> void:
@@ -84,7 +87,7 @@ func _process(delta: float) -> void:
 		_finish_current_combat()
 	elif not expedition_active:
 		character.set_idle_roam()
-	hud.refresh(game_state, combat, expedition_active)
+	hud.refresh(game_state)
 	if home_map != null:
 		home_map.show_farm_slots(game_state.farm_slots)
 		home_map.update_progress_alerts(game_state)
@@ -103,7 +106,71 @@ func _enter_expedition() -> void:
 		battle_map.enter_expedition()
 	if character != null:
 		character.enter_expedition_run(Vector2(180, 170))
+	if hud != null:
+		hud.set_expedition_controls_visible(true)
 	_push_log("进入历练地图，开始寻找怪物")
+
+
+func _start_enter_expedition_transition() -> void:
+	if scene_transition_active:
+		return
+	_bind_scene_nodes()
+	if expedition_active:
+		_enter_expedition()
+		return
+	scene_transition_active = true
+	if hud != null:
+		hud.play_scene_transition("进入历练...")
+		await hud.scene_transition_midpoint
+		_enter_expedition()
+		await hud.scene_transition_finished
+	else:
+		_enter_expedition()
+	scene_transition_active = false
+
+
+func _on_expedition_exit_requested() -> void:
+	if scene_transition_active:
+		return
+	_start_exit_expedition_transition()
+
+
+func _start_exit_expedition_transition() -> void:
+	if scene_transition_active:
+		return
+	_bind_scene_nodes()
+	if not expedition_active:
+		return
+	scene_transition_active = true
+	if combat != null:
+		combat.clear()
+	if hud != null:
+		hud.play_scene_transition("返回家园...")
+		await hud.scene_transition_midpoint
+		_exit_expedition()
+		await hud.scene_transition_finished
+	else:
+		_exit_expedition()
+	scene_transition_active = false
+
+
+func _exit_expedition() -> void:
+	_bind_scene_nodes()
+	expedition_active = false
+	if combat != null:
+		combat.clear()
+	if battle_map != null:
+		battle_map.exit_expedition()
+	if home_map != null:
+		home_map.visible = true
+		home_map.show_farm_slots(game_state.farm_slots)
+		home_map.update_progress_alerts(game_state)
+	if character != null:
+		character.exit_expedition_run()
+	if hud != null:
+		hud.set_expedition_controls_visible(false)
+		hud.refresh(game_state)
+	_push_log("返回家园")
 
 
 func _on_monster_spawn_requested() -> void:
@@ -113,36 +180,6 @@ func _on_monster_spawn_requested() -> void:
 	if battle_map != null:
 		battle_map.set_combat_mode(true)
 	combat.begin_encounter(game_state, battle_map)
-
-
-func _on_combat_mode_toggle_requested() -> void:
-	_bind_scene_nodes()
-	if combat != null:
-		combat.request_toggle_player_mode()
-
-
-func _on_combat_action_requested(action_id: String, skill_id: String) -> void:
-	_bind_scene_nodes()
-	if combat != null:
-		combat.request_player_action(action_id, skill_id, game_state)
-
-
-func _on_expedition_exit_requested() -> void:
-	_bind_scene_nodes()
-	if not expedition_active:
-		return
-	expedition_active = false
-	if combat != null:
-		combat.clear()
-	if battle_map != null:
-		battle_map.exit_expedition()
-	if home_map != null:
-		home_map.visible = true
-	if character != null:
-		character.exit_expedition_run()
-	_push_log("结束历练，返回家园")
-	if hud != null:
-		hud.refresh(game_state, combat, expedition_active)
 
 
 func _finish_current_combat() -> void:
@@ -186,12 +223,6 @@ func _connect_scene_signals() -> void:
 		var action_callback := Callable(self, "_on_home_action_requested")
 		if not hud.home_action_requested.is_connected(action_callback):
 			hud.home_action_requested.connect(action_callback)
-		var combat_mode_callback := Callable(self, "_on_combat_mode_toggle_requested")
-		if not hud.combat_mode_toggle_requested.is_connected(combat_mode_callback):
-			hud.combat_mode_toggle_requested.connect(combat_mode_callback)
-		var combat_action_callback := Callable(self, "_on_combat_action_requested")
-		if not hud.combat_action_requested.is_connected(combat_action_callback):
-			hud.combat_action_requested.connect(combat_action_callback)
 		var expedition_exit_callback := Callable(self, "_on_expedition_exit_requested")
 		if not hud.expedition_exit_requested.is_connected(expedition_exit_callback):
 			hud.expedition_exit_requested.connect(expedition_exit_callback)
@@ -202,9 +233,6 @@ func _connect_scene_signals() -> void:
 		var combat_log_callback := Callable(hud, "push_log")
 		if not combat.log_added.is_connected(combat_log_callback):
 			combat.log_added.connect(combat_log_callback)
-		var damage_feedback_callback := Callable(hud, "show_damage_feedback")
-		if not combat.damage_feedback.is_connected(damage_feedback_callback):
-			combat.damage_feedback.connect(damage_feedback_callback)
 	var game_log_callback := Callable(self, "_push_log")
 	if not game_state.log_added.is_connected(game_log_callback):
 		game_state.log_added.connect(game_log_callback)
@@ -214,6 +242,9 @@ func _connect_scene_signals() -> void:
 
 
 func _setup_window() -> void:
+	if Engine.is_editor_hint() or OS.has_feature("headless") or DisplayServer.get_name() == "headless":
+		return
+
 	get_viewport().transparent_bg = true
 
 	if OS.get_name() == "Windows":

@@ -969,7 +969,7 @@ static func create_stack_item(item_id: String, count: int) -> Dictionary:
 
 
 static func create_skill(skill_id := "spark", obtain_source := "non_drop") -> Dictionary:
-	var skill := SKILL_DEFS.get(skill_id, SKILL_DEFS["spark"]).duplicate(true)
+	var skill: Dictionary = SKILL_DEFS.get(skill_id, SKILL_DEFS["spark"]).duplicate(true)
 	skill["obtain_source"] = obtain_source
 	return skill
 
