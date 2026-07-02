@@ -2,15 +2,18 @@ class_name SkillResolver
 extends RefCounted
 
 
-func resolve_skill(skill: Dictionary, game_state, combat_context := {}) -> Dictionary:
+func resolve_skill(skill: Dictionary, game_state: GameState, combat_context: Dictionary = {}) -> Dictionary:
 	if skill.is_empty():
 		return _failed_result("技能不存在")
 
 	var mp_cost := int(skill.get("mp_cost", 0))
-	if int(game_state.stats.get("mp", 0)) < mp_cost:
+	var member_id := str(combat_context.get("member_id", GameState.PLAYER_ID))
+	var member: Dictionary = game_state.selected_party_member_or_player(member_id)
+	var member_stats: Dictionary = member.get("stats", {})
+	if int(member_stats.get("mp", 0)) < mp_cost:
 		return _failed_result("法力不足")
 
-	if mp_cost > 0 and not game_state.spend_mp(mp_cost):
+	if mp_cost > 0 and not game_state.spend_mp_for(member_id, mp_cost):
 		return _failed_result("法力不足")
 
 	var total_attack := int(combat_context.get("total_attack", 0))

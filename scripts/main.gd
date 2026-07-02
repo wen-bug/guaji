@@ -1,8 +1,9 @@
 extends Node2D
 
-const GameStateScript = preload("res://scripts/game/game_state.gd")
-const SaveManagerScript = preload("res://scripts/game/save_manager.gd")
+const GameStateScript = preload("res://scripts/game/core/game_state.gd")
+const SaveManagerScript = preload("res://scripts/game/core/save_manager.gd")
 const WINDOW_SIZE := Vector2i(960, 480)
+const SCENE_VIEWPORT_SIZE := Vector2(960, 480)
 
 var game_state = GameStateScript.new()
 var save_manager = SaveManagerScript.new()
@@ -22,6 +23,7 @@ func _ready() -> void:
 	_setup_save_timer()
 
 	_bind_scene_nodes()
+	_apply_scene_viewport_size()
 	character.setup()
 
 	_connect_scene_signals()
@@ -34,7 +36,7 @@ func _ready() -> void:
 func _on_home_node_selected(node_name: String) -> void:
 	_bind_scene_nodes()
 	var task_type: int = home_map.task_type_for_node(node_name)
-	if task_type == GameDefs.TaskType.MEDITATE \
+	if task_type == GameDefs.TaskType.RECRUIT \
 		or task_type == GameDefs.TaskType.FARM \
 		or task_type == GameDefs.TaskType.FORGE \
 		or task_type == GameDefs.TaskType.ALCHEMY \
@@ -45,10 +47,9 @@ func _on_home_node_selected(node_name: String) -> void:
 
 func _on_home_action_requested(task_type: int) -> void:
 	_bind_scene_nodes()
-	if task_type == GameDefs.TaskType.MEDITATE:
-		game_state.heal(18, 14)
-		game_state.add_cultivation(8 + game_state.stats["level"])
-		game_state.add_task_experience(task_type, 5)
+	if task_type == GameDefs.TaskType.RECRUIT:
+		game_state.generate_recruit_candidates()
+		hud.show_home_action_panel(task_type)
 	elif task_type == GameDefs.TaskType.FARM:
 		hud.show_home_action_panel(task_type)
 	elif task_type == GameDefs.TaskType.FORGE:
@@ -95,6 +96,7 @@ func _process(delta: float) -> void:
 
 func _enter_expedition() -> void:
 	_bind_scene_nodes()
+	_apply_scene_viewport_size()
 	_connect_scene_signals()
 	if expedition_active:
 		_push_log("已经在历练中，等待下一次遇怪")
@@ -156,6 +158,7 @@ func _start_exit_expedition_transition() -> void:
 
 func _exit_expedition() -> void:
 	_bind_scene_nodes()
+	_apply_scene_viewport_size()
 	expedition_active = false
 	if combat != null:
 		combat.clear()
@@ -192,6 +195,11 @@ func _finish_current_combat() -> void:
 		character.enter_expedition_run(Vector2(180, 170))
 
 
+func _on_damage_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool) -> void:
+	if hud != null and hud.has_method("show_damage_popup"):
+		hud.show_damage_popup(amount, world_position, target_key, damage_type, is_heal)
+
+
 func _bind_scene_nodes() -> void:
 	if home_map == null:
 		home_map = get_node_or_null("Home")
@@ -203,6 +211,13 @@ func _bind_scene_nodes() -> void:
 		combat = get_node_or_null("CombatController")
 	if hud == null:
 		hud = get_node_or_null("Hud")
+
+
+func _apply_scene_viewport_size() -> void:
+	if home_map != null and home_map.has_method("set_scene_viewport_size"):
+		home_map.call("set_scene_viewport_size", SCENE_VIEWPORT_SIZE)
+	if battle_map != null and battle_map.has_method("set_scene_viewport_size"):
+		battle_map.call("set_scene_viewport_size", SCENE_VIEWPORT_SIZE)
 
 
 func _push_log(message: String) -> void:
@@ -233,6 +248,13 @@ func _connect_scene_signals() -> void:
 		var combat_log_callback := Callable(hud, "push_log")
 		if not combat.log_added.is_connected(combat_log_callback):
 			combat.log_added.connect(combat_log_callback)
+		var damage_popup_callback := Callable(self, "_on_damage_popup_requested")
+		if not combat.damage_popup_requested.is_connected(damage_popup_callback):
+			combat.damage_popup_requested.connect(damage_popup_callback)
+		if character != null:
+			var player_hit_callback := Callable(character, "play_hurt_feedback")
+			if not combat.player_hit_received.is_connected(player_hit_callback):
+				combat.player_hit_received.connect(player_hit_callback)
 	var game_log_callback := Callable(self, "_push_log")
 	if not game_state.log_added.is_connected(game_log_callback):
 		game_state.log_added.connect(game_log_callback)

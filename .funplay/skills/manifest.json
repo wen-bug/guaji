@@ -3,7 +3,7 @@
 	"core_tool_count": 73,
 	"endpoint": "http://127.0.0.1:8765/",
 	"full_tool_count": 123,
-	"generated_at": "2026-06-22 07:20:08",
+	"generated_at": "2026-06-25 13:03:09",
 	"name": "funplay-godot-project",
 	"skill_path": "res://.funplay/skills/funplay-godot-project.md",
 	"tool_profile": "core",

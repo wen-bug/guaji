@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://bknqjxi18ah22"]
+[gd_scene load_steps=6 format=3 uid="uid://c0t1hgwaosio5"]
 
-[ext_resource type="Script" path="res://scripts/game/combat_controller.gd" id="1_combat"]
+[ext_resource type="Script" uid="uid://virww324ont2" path="res://scripts/game/combat/combat_controller.gd" id="1_combat"]
 
 [sub_resource type="Animation" id="Animation_enemy_attack"]
 resource_name = "enemy_attack"

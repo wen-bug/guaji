@@ -123,7 +123,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_7lvwp")
 }],
-"loop": true,
+"loop": 1,
 "name": &"attack",
 "speed": 5.0
 }, {
@@ -152,7 +152,7 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_y3708")
 }],
-"loop": true,
+"loop": 1,
 "name": &"idle",
 "speed": 5.0
 }, {
@@ -172,13 +172,15 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_q0xa4")
 }],
-"loop": true,
+"loop": 1,
 "name": &"run",
 "speed": 5.0
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wek7f"]
 size = Vector2(119.5, 84.5)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dp13p"]
 
 [node name="Me" type="CharacterBody2D" unique_id=1184046710]
 z_index = 20
@@ -207,3 +209,9 @@ theme_override_colors/font_shadow_color = Color(0.02, 0.02, 0.03, 0.85)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 horizontal_alignment = 1
+
+[node name="attack" type="Area2D" parent="." unique_id=2053909642]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="attack" unique_id=1855910397]
+position = Vector2(28, 2)
+shape = SubResource("RectangleShape2D_dp13p")

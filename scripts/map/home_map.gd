@@ -4,28 +4,30 @@ extends Node2D
 signal home_node_selected(node_name: String)
 
 const OUTLINE_HIGHLIGHT_SHADER = preload("res://scripts/map/outline_highlight.gdshader")
-const NODE_MEDITATE := "meditate"
+const NODE_RECRUIT := "meditate"
 const NODE_FARMLAND := "farmland"
 const NODE_FORGE := "forge"
 const NODE_ALCHEMY := "alchemy"
 const NODE_FIGHT := "fight"
-const ACTION_NODE_NAMES := [NODE_MEDITATE, NODE_FORGE, NODE_ALCHEMY, NODE_FARMLAND, NODE_FIGHT]
+const ACTION_NODE_NAMES := [NODE_RECRUIT, NODE_FORGE, NODE_ALCHEMY, NODE_FARMLAND, NODE_FIGHT]
 const HIGHLIGHT_SCALE := Vector2(1.12, 1.12)
 const HIGHLIGHT_Z_OFFSET := 5
 const META_ORIGINAL_SCALE := "home_original_scale"
 const META_ORIGINAL_Z_INDEX := "home_original_z_index"
 const SHADER_PARAM_OUTLINE_ENABLED := "outline_enabled"
 const ALERT_TEXT := "!"
+const VIEWPORT_BOUNDS_NODE := "ViewportBounds"
 
 var active_crop_nodes: Array[Node2D] = []
 var alert_labels := {}
+var scene_viewport_size := Vector2(960, 480)
 var _is_setup := false
 
 
 static func task_type_for_node(node_name: String) -> int:
 	match node_name:
-		NODE_MEDITATE:
-			return GameDefs.TaskType.MEDITATE
+		NODE_RECRUIT:
+			return GameDefs.TaskType.RECRUIT
 		NODE_FARMLAND:
 			return GameDefs.TaskType.FARM
 		NODE_FORGE:
@@ -41,10 +43,16 @@ func _ready() -> void:
 	setup_home_map()
 
 
+func set_scene_viewport_size(viewport_size: Vector2) -> void:
+	scene_viewport_size = viewport_size
+	_apply_scene_viewport_bounds()
+
+
 func setup_home_map() -> void:
 	if _is_setup:
 		return
 	_is_setup = true
+	_apply_scene_viewport_bounds()
 	_setup_action_areas()
 	_setup_farm_slots()
 
@@ -83,6 +91,20 @@ func _setup_action_areas() -> void:
 
 func _setup_farm_slots() -> void:
 	pass
+
+
+func _apply_scene_viewport_bounds() -> void:
+	var bounds := get_node_or_null(VIEWPORT_BOUNDS_NODE) as ColorRect
+	if bounds == null:
+		bounds = ColorRect.new()
+		bounds.name = VIEWPORT_BOUNDS_NODE
+		bounds.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bounds.color = Color(0, 0, 0, 0)
+		bounds.z_index = -100
+		add_child(bounds)
+		move_child(bounds, 0)
+	bounds.position = Vector2.ZERO
+	bounds.size = scene_viewport_size
 
 
 func _connect_action_area(action_node: Node, action_name: String, connect_mouse_signals := true) -> void:
@@ -125,11 +147,11 @@ func _on_action_area_mouse_exited(action_name: String) -> void:
 
 
 func _on_meditate_area_mouse_entered() -> void:
-	_on_action_area_mouse_entered(NODE_MEDITATE)
+	_on_action_area_mouse_entered(NODE_RECRUIT)
 
 
 func _on_meditate_area_mouse_exited() -> void:
-	_on_action_area_mouse_exited(NODE_MEDITATE)
+	_on_action_area_mouse_exited(NODE_RECRUIT)
 
 
 func _on_alchemy_area_mouse_entered() -> void:

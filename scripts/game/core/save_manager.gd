@@ -1,7 +1,7 @@
 class_name SaveManager
 extends RefCounted
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const DEFAULT_SAVE_PATH := "user://save.cfg"
 
 var save_path := DEFAULT_SAVE_PATH

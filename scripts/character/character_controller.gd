@@ -27,6 +27,7 @@ var vertical_velocity := 0.0
 var rng := RandomNumberGenerator.new()
 var sprite: AnimatedSprite2D
 var talk_label: Label
+var hurt_tween: Tween
 
 
 func setup() -> void:
@@ -78,6 +79,21 @@ func exit_expedition_run() -> void:
 		talk_label.visible = false
 	_set_state(CharacterState.IDLE)
 	_reset_idle_timer()
+
+
+func play_hurt_feedback() -> void:
+	_bind_scene_nodes()
+	if sprite == null:
+		return
+	if hurt_tween != null:
+		hurt_tween.kill()
+		hurt_tween = null
+	var base_scale := sprite.scale
+	hurt_tween = create_tween()
+	hurt_tween.tween_property(sprite, "modulate", Color(1, 0.55, 0.55, 1), 0.05)
+	hurt_tween.tween_property(sprite, "modulate", Color(1, 1, 1, 1), 0.12)
+	hurt_tween.parallel().tween_property(sprite, "scale", base_scale * Vector2(1.04, 0.96), 0.05)
+	hurt_tween.parallel().tween_property(sprite, "scale", base_scale, 0.12)
 
 
 func _ready() -> void:

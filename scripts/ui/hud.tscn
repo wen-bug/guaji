@@ -1,120 +1,119 @@
 [gd_scene format=3 uid="uid://bncimxw76ytkf"]
 
 [ext_resource type="Script" uid="uid://gvdftb51q2gw" path="res://scripts/ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" uid="uid://b2o03po0j8x7j" path="res://scripts/ui/inventory_detail_view.gd" id="2_inventory_detail_view"]
+[ext_resource type="Script" uid="uid://etup5p2paolr" path="res://scripts/ui/damage_popup_manager.gd" id="3_damage_popup_manager"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.26, 0.19, 0.12, 0.97)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.8, 0.65, 0.36, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.17, 0.12, 0.07, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.42, 0.17, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.37, 0.26, 0.14, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.98, 0.84, 0.5, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.17, 0.14, 0.11, 0.76)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.34, 0.29, 0.23, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_focus"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0.32, 0.23, 0.13, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.88, 0.6, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.13, 0.09, 0.06, 0.92)
-border_color = Color(0.75, 0.58, 0.3, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
 content_margin_left = 10.0
 content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
-shadow_size = 2
+bg_color = Color(0.13, 0.09, 0.06, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.75, 0.58, 0.3, 0.96)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 shadow_color = Color(0, 0, 0, 0.35)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(0.26, 0.19, 0.12, 0.97)
-border_color = Color(0.8, 0.65, 0.36, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-content_margin_left = 10.0
-content_margin_top = 5.0
-content_margin_right = 10.0
-content_margin_bottom = 5.0
-shadow_size = 1
-shadow_color = Color(0, 0, 0, 0.3)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-bg_color = Color(0.37, 0.26, 0.14, 1)
-border_color = Color(0.98, 0.84, 0.5, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-content_margin_left = 10.0
-content_margin_top = 5.0
-content_margin_right = 10.0
-content_margin_bottom = 5.0
-shadow_size = 1
-shadow_color = Color(0, 0, 0, 0.3)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-bg_color = Color(0.17, 0.12, 0.07, 1)
-border_color = Color(0.58, 0.42, 0.17, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-content_margin_left = 10.0
-content_margin_top = 5.0
-content_margin_right = 10.0
-content_margin_bottom = 5.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
-bg_color = Color(0.17, 0.14, 0.11, 0.76)
-border_color = Color(0.34, 0.29, 0.23, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-content_margin_left = 10.0
-content_margin_top = 5.0
-content_margin_right = 10.0
-content_margin_bottom = 5.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_focus"]
-bg_color = Color(0.32, 0.23, 0.13, 1)
-border_color = Color(1, 0.88, 0.6, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-content_margin_left = 10.0
-content_margin_top = 5.0
-content_margin_right = 10.0
-content_margin_bottom = 5.0
+shadow_size = 2
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_title"]
-bg_color = Color(0.18, 0.12, 0.07, 0.9)
-border_color = Color(0.89, 0.75, 0.38, 1)
-border_width_left = 0
-border_width_top = 0
-border_width_right = 0
-border_width_bottom = 2
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 4.0
+bg_color = Color(0.18, 0.12, 0.07, 0.9)
+border_width_bottom = 2
+border_color = Color(0.89, 0.75, 0.38, 1)
 
 [node name="Hud" type="CanvasLayer" unique_id=466096065]
 script = ExtResource("1_hud")
@@ -135,8 +134,8 @@ offset_top = 6.0
 offset_right = 84.0
 offset_bottom = 38.0
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 
@@ -157,7 +156,6 @@ text = "菜单"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-
 [node name="WindowDragButton" type="Button" parent="Root" unique_id=600000201]
 layout_mode = 0
 offset_left = 90.0
@@ -165,11 +163,24 @@ offset_top = 6.0
 offset_right = 154.0
 offset_bottom = 38.0
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "拖动"
+
+[node name="DebugButton" type="Button" parent="Root" unique_id=1451459533]
+layout_mode = 0
+offset_left = 160.0
+offset_top = 6.0
+offset_right = 224.0
+offset_bottom = 38.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "调试"
 
 [node name="MenuPanel" type="PanelContainer" parent="Root" unique_id=1127247709]
 visible = false
@@ -188,8 +199,8 @@ theme_override_constants/separation = 6
 custom_minimum_size = Vector2(120, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "信息"
@@ -198,8 +209,8 @@ text = "信息"
 custom_minimum_size = Vector2(120, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "背包"
@@ -210,7 +221,7 @@ layout_mode = 0
 offset_left = 84.0
 offset_top = 6.0
 offset_right = 548.0
-offset_bottom = 366.0
+offset_bottom = 432.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/CharacterInfoPanel" unique_id=934941229]
@@ -224,21 +235,25 @@ theme_override_constants/separation = 4
 [node name="Title" type="Label" parent="Root/CharacterInfoPanel/PanelLayout/Header" unique_id=1810843250]
 custom_minimum_size = Vector2(340, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "信息"
 
 [node name="CloseButton" type="Button" parent="Root/CharacterInfoPanel/PanelLayout/Header" unique_id=52625212]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
+
+[node name="MemberList" type="ItemList" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=700000001]
+custom_minimum_size = Vector2(452, 74)
+layout_mode = 2
 
 [node name="AttributeTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1561382855]
 layout_mode = 2
@@ -299,18 +314,18 @@ theme_override_constants/separation = 4
 [node name="Title" type="Label" parent="Root/InventoryPanel/InventoryLayout/Header" unique_id=1160814890]
 custom_minimum_size = Vector2(360, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "背包"
 
 [node name="CloseButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/Header" unique_id=1399758147]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
@@ -323,8 +338,8 @@ theme_override_constants/separation = 3
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "技能书"
@@ -333,8 +348,8 @@ text = "技能书"
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "图纸"
@@ -343,8 +358,8 @@ text = "图纸"
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "装备"
@@ -353,8 +368,8 @@ text = "装备"
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "材料"
@@ -363,8 +378,8 @@ text = "材料"
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "作物"
@@ -373,8 +388,8 @@ text = "作物"
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "丹药"
@@ -384,16 +399,86 @@ custom_minimum_size = Vector2(420, 300)
 layout_mode = 2
 columns = 5
 
-[node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=1685661679]
+[node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root" unique_id=1685661679]
 visible = false
-custom_minimum_size = Vector2(420, 86)
-layout_mode = 2
+custom_minimum_size = Vector2(420, 132)
+layout_mode = 0
+offset_left = 528.0
+offset_top = 6.0
+offset_right = 948.0
+offset_bottom = 138.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+script = ExtResource("2_inventory_detail_view")
 
-[node name="DetailLabel" type="Label" parent="Root/InventoryPanel/InventoryLayout/InventoryItemDetailPanel" unique_id=579077130]
-custom_minimum_size = Vector2(410, 78)
+[node name="DetailLayout" type="HBoxContainer" parent="Root/InventoryItemDetailPanel" unique_id=579077130]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TargetColumn" type="VBoxContainer" parent="Root/InventoryItemDetailPanel/DetailLayout" unique_id=500000010]
+custom_minimum_size = Vector2(78, 120)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TargetRow" type="HBoxContainer" parent="Root/InventoryItemDetailPanel/DetailLayout/TargetColumn" unique_id=500000011]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="FarmIcon" type="ColorRect" parent="Root/InventoryItemDetailPanel/DetailLayout/TargetColumn/TargetRow" unique_id=500000012]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+color = Color(0.33, 0.74, 0.46, 0.6)
+
+[node name="AlchemyIcon" type="ColorRect" parent="Root/InventoryItemDetailPanel/DetailLayout/TargetColumn/TargetRow" unique_id=500000013]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+color = Color(0.45, 0.55, 0.92, 0.6)
+
+[node name="ForgeIcon" type="ColorRect" parent="Root/InventoryItemDetailPanel/DetailLayout/TargetColumn/TargetRow" unique_id=500000014]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+color = Color(0.88, 0.58, 0.25, 0.6)
+
+[node name="RecruitIcon" type="ColorRect" parent="Root/InventoryItemDetailPanel/DetailLayout/TargetColumn/TargetRow" unique_id=500000015]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+color = Color(0.56, 0.44, 0.85, 0.6)
+
+[node name="BattleIcon" type="ColorRect" parent="Root/InventoryItemDetailPanel/DetailLayout/TargetColumn/TargetRow" unique_id=500000016]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+color = Color(0.84, 0.32, 0.32, 0.6)
+
+[node name="DetailColumn" type="VBoxContainer" parent="Root/InventoryItemDetailPanel/DetailLayout" unique_id=500000017]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="TitleLabel" type="Label" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=168935905]
+custom_minimum_size = Vector2(320, 20)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.74, 1)
+theme_override_constants/outline_size = 1
+text = " "
+
+[node name="MetaLabel" type="Label" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000018]
+custom_minimum_size = Vector2(320, 18)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.82, 0.68, 1)
+autowrap_mode = 2
+
+[node name="DescriptionLabel" type="Label" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000019]
+custom_minimum_size = Vector2(320, 56)
 layout_mode = 2
 autowrap_mode = 2
+
+[node name="UseButton" type="Button" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000020]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+text = "使用"
+
+[node name="DetailSpacer" type="Control" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000021]
+custom_minimum_size = Vector2(320, 1)
+layout_mode = 2
 
 [node name="FarmPanel" type="PanelContainer" parent="Root" unique_id=1723889884]
 visible = false
@@ -415,33 +500,33 @@ theme_override_constants/separation = 4
 [node name="Title" type="Label" parent="Root/FarmPanel/PanelLayout/Header" unique_id=382341055]
 custom_minimum_size = Vector2(260, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "农田"
 
 [node name="CloseButton" type="Button" parent="Root/FarmPanel/PanelLayout/Header" unique_id=1548213224]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="SeedSlotButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=500000020]
+[node name="SeedSlotButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=1813538947]
 custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "选择种子"
 
-[node name="SeedPickerPanel" type="PanelContainer" parent="Root/FarmPanel/PanelLayout" unique_id=500000021]
+[node name="SeedPickerPanel" type="PanelContainer" parent="Root/FarmPanel/PanelLayout" unique_id=1895763485]
 visible = false
 custom_minimum_size = Vector2(300, 82)
 layout_mode = 2
@@ -459,8 +544,8 @@ layout_mode = 2
 custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "选择加速道具"
@@ -484,8 +569,8 @@ text = "当前倍率：x1.0"
 custom_minimum_size = Vector2(300, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "使用加速道具"
@@ -498,8 +583,8 @@ theme_override_constants/separation = 4
 custom_minimum_size = Vector2(96, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "种植"
@@ -508,8 +593,8 @@ text = "种植"
 custom_minimum_size = Vector2(96, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "收取"
@@ -518,8 +603,8 @@ text = "收取"
 custom_minimum_size = Vector2(96, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "一键收取"
@@ -561,77 +646,77 @@ theme_override_constants/separation = 4
 [node name="Title" type="Label" parent="Root/ForgePanel/PanelLayout/Header" unique_id=650285451]
 custom_minimum_size = Vector2(260, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "炼器"
 
 [node name="CloseButton" type="Button" parent="Root/ForgePanel/PanelLayout/Header" unique_id=1558048357]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="ModeRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=500000010]
+[node name="ModeRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1199746731]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ForgeCraftButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=500000011]
+[node name="ForgeCraftButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=302820078]
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "炼器"
 
-[node name="ForgeEnhanceButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=500000012]
+[node name="ForgeEnhanceButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=1030479746]
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "强化"
 
-[node name="ForgeRefineButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=500000013]
+[node name="ForgeRefineButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=1393956829]
 custom_minimum_size = Vector2(96, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "洗练"
 
-[node name="EquipmentSlotButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=500000014]
+[node name="EquipmentSlotButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=1796571504]
 custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "选择装备"
 
-[node name="EquipmentPickerPanel" type="PanelContainer" parent="Root/ForgePanel/PanelLayout" unique_id=500000015]
+[node name="EquipmentPickerPanel" type="PanelContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1248437895]
 visible = false
 custom_minimum_size = Vector2(300, 90)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="EquipmentList" type="ItemList" parent="Root/ForgePanel/PanelLayout/EquipmentPickerPanel" unique_id=500000016]
+[node name="EquipmentList" type="ItemList" parent="Root/ForgePanel/PanelLayout/EquipmentPickerPanel" unique_id=1488584626]
 custom_minimum_size = Vector2(292, 86)
 layout_mode = 2
 
-[node name="MaterialGrid" type="GridContainer" parent="Root/ForgePanel/PanelLayout" unique_id=500000017]
+[node name="MaterialGrid" type="GridContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1877475221]
 custom_minimum_size = Vector2(300, 132)
 layout_mode = 2
 columns = 2
@@ -645,8 +730,8 @@ autowrap_mode = 2
 custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "执行"
@@ -657,7 +742,7 @@ layout_mode = 2
 text = "进度：未开始"
 autowrap_mode = 2
 
-[node name="HintLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=500000018]
+[node name="HintLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=151186608]
 custom_minimum_size = Vector2(300, 42)
 layout_mode = 2
 text = "选择炼器方式"
@@ -683,18 +768,18 @@ theme_override_constants/separation = 4
 [node name="Title" type="Label" parent="Root/AlchemyPanel/PanelLayout/Header" unique_id=1141489705]
 custom_minimum_size = Vector2(260, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "炼丹"
 
 [node name="CloseButton" type="Button" parent="Root/AlchemyPanel/PanelLayout/Header" unique_id=838571275]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
@@ -703,8 +788,8 @@ text = "关闭"
 custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "选择图纸"
@@ -739,12 +824,12 @@ value = 1.0
 [node name="CraftButton" type="Button" parent="Root/AlchemyPanel/PanelLayout" unique_id=99072483]
 custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
-disabled = true
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+disabled = true
 text = "制作"
 
 [node name="ProgressLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=500000003]
@@ -759,56 +844,117 @@ layout_mode = 2
 text = "请选择图纸"
 autowrap_mode = 2
 
-[node name="MeditatePanel" type="PanelContainer" parent="Root" unique_id=20215362]
+[node name="RecruitPanel" type="PanelContainer" parent="Root" unique_id=20215362]
 visible = false
 layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
-offset_right = 606.0
-offset_bottom = 172.0
+offset_right = 812.0
+offset_bottom = 430.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/MeditatePanel" unique_id=1608779150]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/RecruitPanel" unique_id=1608779150]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/MeditatePanel/PanelLayout" unique_id=465688560]
+[node name="Header" type="HBoxContainer" parent="Root/RecruitPanel/PanelLayout" unique_id=465688560]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/MeditatePanel/PanelLayout/Header" unique_id=453284457]
-custom_minimum_size = Vector2(108, 24)
+[node name="Title" type="Label" parent="Root/RecruitPanel/PanelLayout/Header" unique_id=453284457]
+custom_minimum_size = Vector2(300, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
-text = "打坐"
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
+text = "招募"
 
-[node name="CloseButton" type="Button" parent="Root/MeditatePanel/PanelLayout/Header" unique_id=716705505]
+[node name="CloseButton" type="Button" parent="Root/RecruitPanel/PanelLayout/Header" unique_id=716705505]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="ActionDetail" type="Label" parent="Root/MeditatePanel/PanelLayout" unique_id=964218206]
-custom_minimum_size = Vector2(164, 56)
+[node name="ActionDetail" type="Label" parent="Root/RecruitPanel/PanelLayout" unique_id=964218206]
+custom_minimum_size = Vector2(360, 24)
 layout_mode = 2
 autowrap_mode = 2
 
-[node name="ExecuteButton" type="Button" parent="Root/MeditatePanel/PanelLayout" unique_id=2069067699]
-custom_minimum_size = Vector2(164, 28)
+[node name="CandidateList" type="ItemList" parent="Root/RecruitPanel/PanelLayout" unique_id=700000002]
+custom_minimum_size = Vector2(360, 108)
+layout_mode = 2
+
+[node name="RecruitButton" type="Button" parent="Root/RecruitPanel/PanelLayout" unique_id=2069067699]
+custom_minimum_size = Vector2(360, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "执行"
+text = "招募"
+
+[node name="ButtonRow" type="HBoxContainer" parent="Root/RecruitPanel/PanelLayout" unique_id=700000003]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="RefreshButton" type="Button" parent="Root/RecruitPanel/PanelLayout/ButtonRow" unique_id=700000004]
+custom_minimum_size = Vector2(176, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "刷新候选"
+
+[node name="PartyLabel" type="Label" parent="Root/RecruitPanel/PanelLayout" unique_id=700000005]
+custom_minimum_size = Vector2(360, 20)
+layout_mode = 2
+text = "队伍顺序"
+
+[node name="PartyList" type="ItemList" parent="Root/RecruitPanel/PanelLayout" unique_id=700000006]
+custom_minimum_size = Vector2(360, 96)
+layout_mode = 2
+
+[node name="PartyButtonRow" type="HBoxContainer" parent="Root/RecruitPanel/PanelLayout" unique_id=700000007]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MoveUpButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000008]
+custom_minimum_size = Vector2(116, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "上移"
+
+[node name="MoveDownButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000009]
+custom_minimum_size = Vector2(116, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "下移"
+
+[node name="DismissButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000010]
+custom_minimum_size = Vector2(116, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "离队"
 
 [node name="FightPanel" type="PanelContainer" parent="Root" unique_id=2124618921]
 visible = false
@@ -830,18 +976,18 @@ theme_override_constants/separation = 4
 [node name="Title" type="Label" parent="Root/FightPanel/PanelLayout/Header" unique_id=1009372602]
 custom_minimum_size = Vector2(108, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "打怪"
 
 [node name="CloseButton" type="Button" parent="Root/FightPanel/PanelLayout/Header" unique_id=1409196236]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
@@ -855,11 +1001,169 @@ autowrap_mode = 2
 custom_minimum_size = Vector2(164, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "进入历练"
+
+[node name="DebugPanel" type="PanelContainer" parent="Root" unique_id=592464434]
+visible = false
+layout_mode = 0
+offset_left = 160.0
+offset_top = 44.0
+offset_right = 520.0
+offset_bottom = 342.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/DebugPanel" unique_id=1259809172]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Root/DebugPanel/PanelLayout" unique_id=1464514111]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/DebugPanel/PanelLayout/Header" unique_id=439664334]
+custom_minimum_size = Vector2(280, 24)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
+theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
+text = "调试"
+
+[node name="CloseButton" type="Button" parent="Root/DebugPanel/PanelLayout/Header" unique_id=712119048]
+custom_minimum_size = Vector2(52, 24)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "关闭"
+
+[node name="AddItemTitle" type="Label" parent="Root/DebugPanel/PanelLayout" unique_id=1654176056]
+custom_minimum_size = Vector2(340, 20)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.87, 0.57, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
+theme_override_constants/outline_size = 1
+text = "添加物品"
+
+[node name="AddItemRow" type="HBoxContainer" parent="Root/DebugPanel/PanelLayout" unique_id=1942439307]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ItemOption" type="OptionButton" parent="Root/DebugPanel/PanelLayout/AddItemRow" unique_id=1684836085]
+custom_minimum_size = Vector2(188, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
+[node name="ItemAmountSpinBox" type="SpinBox" parent="Root/DebugPanel/PanelLayout/AddItemRow" unique_id=695356222]
+custom_minimum_size = Vector2(64, 30)
+layout_mode = 2
+min_value = 1.0
+max_value = 999.0
+value = 10.0
+
+[node name="AddItemButton" type="Button" parent="Root/DebugPanel/PanelLayout/AddItemRow" unique_id=549008583]
+custom_minimum_size = Vector2(84, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "添加物品"
+
+[node name="EquipmentTitle" type="Label" parent="Root/DebugPanel/PanelLayout" unique_id=668337559]
+custom_minimum_size = Vector2(340, 20)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.87, 0.57, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
+theme_override_constants/outline_size = 1
+text = "生成装备"
+
+[node name="EquipmentRow" type="HBoxContainer" parent="Root/DebugPanel/PanelLayout" unique_id=2101945510]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="EquipmentOption" type="OptionButton" parent="Root/DebugPanel/PanelLayout/EquipmentRow" unique_id=1660502338]
+custom_minimum_size = Vector2(128, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
+[node name="EquipmentLevelSpinBox" type="SpinBox" parent="Root/DebugPanel/PanelLayout/EquipmentRow" unique_id=47451740]
+custom_minimum_size = Vector2(62, 30)
+layout_mode = 2
+min_value = 1.0
+max_value = 999.0
+value = 1.0
+
+[node name="EquipmentRarityOption" type="OptionButton" parent="Root/DebugPanel/PanelLayout/EquipmentRow" unique_id=1273704843]
+custom_minimum_size = Vector2(70, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
+[node name="AddEquipmentButton" type="Button" parent="Root/DebugPanel/PanelLayout/EquipmentRow" unique_id=324329708]
+custom_minimum_size = Vector2(72, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "生成"
+
+[node name="StatTitle" type="Label" parent="Root/DebugPanel/PanelLayout" unique_id=58551711]
+custom_minimum_size = Vector2(340, 20)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.87, 0.57, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
+theme_override_constants/outline_size = 1
+text = "设置属性"
+
+[node name="StatRow" type="HBoxContainer" parent="Root/DebugPanel/PanelLayout" unique_id=539277640]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StatOption" type="OptionButton" parent="Root/DebugPanel/PanelLayout/StatRow" unique_id=557885092]
+custom_minimum_size = Vector2(170, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
+[node name="StatValueSpinBox" type="SpinBox" parent="Root/DebugPanel/PanelLayout/StatRow" unique_id=1012418909]
+custom_minimum_size = Vector2(82, 30)
+layout_mode = 2
+max_value = 999999.0
+value = 1.0
+
+[node name="SetStatButton" type="Button" parent="Root/DebugPanel/PanelLayout/StatRow" unique_id=1318997933]
+custom_minimum_size = Vector2(84, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "设置属性"
 
 [node name="InventoryMenu" type="PopupMenu" parent="Root" unique_id=197141140]
 oversampling_override = 1.0
@@ -884,10 +1188,10 @@ theme_override_constants/separation = 5
 [node name="Title" type="Label" parent="Root/ExpeditionHud/PanelLayout" unique_id=600000306]
 custom_minimum_size = Vector2(216, 24)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
 theme_override_constants/outline_size = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "历练中"
 horizontal_alignment = 1
 
@@ -905,11 +1209,21 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(216, 30)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "返回家园"
+
+[node name="DamagePopupLayer" type="Control" parent="Root" unique_id=600000401]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_damage_popup_manager")
 
 [node name="LoadingOverlay" type="ColorRect" parent="Root" unique_id=600000303]
 visible = false
@@ -920,7 +1234,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 color = Color(0.04, 0.025, 0.015, 0.82)
 
 [node name="LoadingLabel" type="Label" parent="Root/LoadingOverlay" unique_id=600000304]
@@ -943,8 +1256,8 @@ text = "加载中..."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
 [connection signal="mouse_entered" from="Root/MenuButton" to="." method="_on_menu_button_mouse_entered"]
 [connection signal="mouse_exited" from="Root/MenuButton" to="." method="_on_menu_button_mouse_exited"]
+[connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/CharacterInfoButton" to="." method="_open_character_info_panel"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/InventoryButton" to="." method="_open_inventory_panel"]
