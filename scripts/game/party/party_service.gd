@@ -1,29 +1,38 @@
 class_name PartyService
 extends RefCounted
 
-var game_state: GameState
+const PLAYER_ID := "player"
+const PARTY_MAX_SIZE := 4
+const RECRUIT_RESOURCE_ID := "spirit_stone"
+const RECRUIT_COST_SPIRIT_STONE := 1
+const LEVEL_ATTRIBUTE_POINTS := 5
+const RECRUIT_NAME_PARTS := ["青岚", "赤霄", "玄石", "白羽", "沧流", "云舟", "明河", "素问", "照夜", "归尘"]
+const RANDOM_POINT_TARGETS := ["attack", "defense", "root_bone", "max_hp", "max_mp", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+
+var game_state
 
 
-func _init(owner: GameState) -> void:
+func _init(owner) -> void:
 	game_state = owner
 
 
 func player_member() -> Dictionary:
 	return {
-		"id": GameState.PLAYER_ID,
+		"id": PLAYER_ID,
 		"name": "玩家",
 		"kind": "player",
 		"stats": game_state.stats,
 		"elements": game_state.elements,
 		"equipped": game_state.equipped,
 		"skills": game_state.skills,
+		"innate_traits": game_state.innate_traits,
 	}
 
 
 func growth_summary_for(member_id: String) -> String:
-	if member_id == GameState.PLAYER_ID or member_id.is_empty():
-		return "全随机"
 	var member: Dictionary = selected_party_member_or_player(member_id)
+	if member.is_empty():
+		return ""
 	return growth_summary_for_member_data(member)
 
 
@@ -46,8 +55,8 @@ func active_party_members() -> Array:
 
 
 func member_by_id(member_id: String) -> Dictionary:
-	if member_id == GameState.PLAYER_ID or member_id.is_empty():
-		return player_member()
+	if member_id == PLAYER_ID or member_id.is_empty():
+		return {}
 	for companion in game_state.companions:
 		if str(companion.get("id", "")) == member_id:
 			ensure_member_shape(companion)
@@ -60,13 +69,10 @@ func party_member_count() -> int:
 
 
 func selected_party_member_or_player(member_id: String) -> Dictionary:
-	var member: Dictionary = member_by_id(member_id)
-	if member.is_empty():
-		return player_member()
-	return member
+	return member_by_id(member_id)
 
 
-func generate_recruit_candidates(should_emit_signal := true) -> void:
+func generate_recruit_candidates(should_emit_signal: bool = true) -> void:
 	game_state.recruit_candidates.clear()
 	var used_names: Dictionary = {}
 	for companion in game_state.companions:
@@ -81,18 +87,18 @@ func generate_recruit_candidates(should_emit_signal := true) -> void:
 
 func recruit_candidate(candidate_id: String) -> bool:
 	ensure_party_state()
-	if game_state.party_order.size() >= GameState.PARTY_MAX_SIZE:
+	if game_state.party_order.size() >= PARTY_MAX_SIZE:
 		game_state.log_added.emit("队伍已满，最多四人")
 		return false
 	var candidate: Dictionary = candidate_by_id(candidate_id)
 	if candidate.is_empty():
 		game_state.log_added.emit("候选人不存在")
 		return false
-	if game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL) < GameState.RECRUIT_COST_MATERIAL:
-		game_state.log_added.emit("材料不足，招募需要 %d 个任意材料" % GameState.RECRUIT_COST_MATERIAL)
+	if recruit_stone_count() < recruit_cost():
+		game_state.log_added.emit("灵石不足，招募需要 %d 个灵石" % recruit_cost())
 		return false
-	if not game_state.spend_inventory_type(DataTables.ITEM_TYPE_MATERIAL, GameState.RECRUIT_COST_MATERIAL):
-		game_state.log_added.emit("材料不足，招募失败")
+	if not game_state.spend_resource(RECRUIT_RESOURCE_ID, recruit_cost()):
+		game_state.log_added.emit("灵石不足，招募失败")
 		return false
 	var companion: Dictionary = candidate.duplicate(true)
 	companion.erase("candidate_id")
@@ -109,13 +115,13 @@ func recruit_candidate(candidate_id: String) -> bool:
 
 func move_party_member(member_id: String, direction: int) -> bool:
 	ensure_party_state()
-	var index := game_state.party_order.find(member_id)
+	var index: int = game_state.party_order.find(member_id)
 	if index < 0:
 		return false
-	var target := clampi(index + direction, 0, game_state.party_order.size() - 1)
+	var target: int = clampi(index + direction, 0, game_state.party_order.size() - 1)
 	if target == index:
 		return false
-	var id := game_state.party_order[index]
+	var id: String = str(game_state.party_order[index])
 	game_state.party_order.remove_at(index)
 	game_state.party_order.insert(target, id)
 	game_state.changed.emit()
@@ -123,8 +129,8 @@ func move_party_member(member_id: String, direction: int) -> bool:
 
 
 func dismiss_companion(member_id: String) -> bool:
-	if member_id == GameState.PLAYER_ID:
-		game_state.log_added.emit("玩家不能离队")
+	if member_id == PLAYER_ID:
+		game_state.log_added.emit("角色不存在")
 		return false
 	for index in range(game_state.companions.size()):
 		var companion: Dictionary = game_state.companions[index]
@@ -141,11 +147,25 @@ func dismiss_companion(member_id: String) -> bool:
 
 
 func can_recruit() -> bool:
-	return game_state.party_order.size() < GameState.PARTY_MAX_SIZE and game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL) >= GameState.RECRUIT_COST_MATERIAL
+	return game_state.party_order.size() < PARTY_MAX_SIZE and recruit_stone_count() >= recruit_cost()
+
+
+func recruit_resource_id() -> String:
+	return RECRUIT_RESOURCE_ID
+
+
+func recruit_cost() -> int:
+	return RECRUIT_COST_SPIRIT_STONE
+
+
+func recruit_stone_count() -> int:
+	return game_state.inventory_item_count(RECRUIT_RESOURCE_ID)
 
 
 func add_exp_for_member(member_id: String, amount: int) -> void:
 	var member: Dictionary = selected_party_member_or_player(member_id)
+	if member.is_empty():
+		return
 	var member_stats: Dictionary = member.get("stats", {})
 	member_stats["exp"] = int(member_stats.get("exp", 0)) + amount
 	while int(member_stats.get("exp", 0)) >= int(member_stats.get("next_exp", 1)):
@@ -159,7 +179,7 @@ func add_exp_for_member(member_id: String, amount: int) -> void:
 
 func add_exp_to_party(amount: int) -> void:
 	for member in party_members():
-		add_exp_for_member(str(member.get("id", GameState.PLAYER_ID)), amount)
+		add_exp_for_member(str(member.get("id", PLAYER_ID)), amount)
 
 
 func ensure_party_state() -> void:
@@ -168,27 +188,23 @@ func ensure_party_state() -> void:
 	if game_state.task_exp.has("meditate"):
 		game_state.task_exp["recruit"] = max(int(game_state.task_exp.get("recruit", 0)), int(game_state.task_exp.get("meditate", 0)))
 	game_state.task_exp.erase("meditate")
-	if not game_state.party_order.has(GameState.PLAYER_ID):
-		game_state.party_order.insert(0, GameState.PLAYER_ID)
 	for index in range(game_state.companions.size() - 1, -1, -1):
 		var companion: Dictionary = game_state.companions[index]
 		ensure_member_shape(companion)
-		var companion_id := str(companion.get("id", ""))
-		if companion_id.is_empty() or companion_id == GameState.PLAYER_ID:
+		var companion_id: String = str(companion.get("id", ""))
+		if companion_id.is_empty() or companion_id == PLAYER_ID:
 			game_state.companions.remove_at(index)
 			continue
 		game_state.companions[index] = companion
 	var filtered: Array[String] = []
 	for raw_id in game_state.party_order:
-		var member_id := str(raw_id)
+		var member_id: String = str(raw_id)
 		if filtered.has(member_id):
 			continue
-		if member_id == GameState.PLAYER_ID or companion_exists(member_id):
+		if member_id != PLAYER_ID and companion_exists(member_id):
 			filtered.append(member_id)
 	game_state.party_order = filtered
-	if not game_state.party_order.has(GameState.PLAYER_ID):
-		game_state.party_order.insert(0, GameState.PLAYER_ID)
-	while game_state.party_order.size() > GameState.PARTY_MAX_SIZE:
+	while game_state.party_order.size() > PARTY_MAX_SIZE:
 		game_state.party_order.remove_at(game_state.party_order.size() - 1)
 	sync_equipped_ownership()
 
@@ -198,19 +214,19 @@ func ensure_member_shape(member: Dictionary) -> void:
 	member["name"] = str(member.get("name", "队友"))
 	member["kind"] = str(member.get("kind", "companion"))
 	var member_stats: Dictionary = member.get("stats", {})
-	var defaults := base_member_stats()
+	var defaults: Dictionary = base_member_stats()
 	for key in defaults.keys():
 		if not member_stats.has(key):
 			member_stats[key] = defaults[key]
 	member["stats"] = member_stats
 	var member_elements: Dictionary = member.get("elements", {})
-	var element_defaults := base_member_elements()
+	var element_defaults: Dictionary = base_member_elements()
 	for key in element_defaults.keys():
 		if not member_elements.has(key):
 			member_elements[key] = element_defaults[key]
 	member["elements"] = member_elements
 	var member_equipped: Dictionary = member.get("equipped", {})
-	var equipped_defaults := base_equipped_slots()
+	var equipped_defaults: Dictionary = base_equipped_slots()
 	for key in equipped_defaults.keys():
 		if not member_equipped.has(key):
 			member_equipped[key] = equipped_defaults[key]
@@ -219,6 +235,7 @@ func ensure_member_shape(member: Dictionary) -> void:
 	if member_skills.is_empty():
 		member_skills.append(DataTables.create_skill())
 	member["skills"] = member_skills
+	member["innate_traits"] = member.get("innate_traits", []) if member.get("innate_traits", []) is Array else []
 	member["growth_primary_stats"] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
 	clamp_member_runtime_stats(member)
 
@@ -271,7 +288,7 @@ func companion_exists(member_id: String) -> bool:
 
 
 func sync_equipped_ownership() -> void:
-	game_state.equipped = sanitize_equipped_for_member(GameState.PLAYER_ID, game_state.equipped)
+	game_state.equipped = sanitize_equipped_for_member(PLAYER_ID, game_state.equipped)
 	for companion_index in range(game_state.companions.size()):
 		var companion: Dictionary = game_state.companions[companion_index]
 		companion["equipped"] = sanitize_equipped_for_member(str(companion.get("id", "")), companion.get("equipped", {}))
@@ -279,12 +296,12 @@ func sync_equipped_ownership() -> void:
 
 
 func sanitize_equipped_for_member(member_id: String, member_equipped: Dictionary) -> Dictionary:
-	var result := base_equipped_slots()
+	var result: Dictionary = base_equipped_slots()
 	for slot in result.keys():
-		var instance_id := str(member_equipped.get(slot, ""))
+		var instance_id: String = str(member_equipped.get(slot, ""))
 		if instance_id.is_empty():
 			continue
-		var item := game_state.inventory_item_by_instance(instance_id)
+		var item: Dictionary = game_state.inventory_item_by_instance(instance_id)
 		if item.is_empty():
 			continue
 		var fallback_owner: String = member_id if bool(item.get("equipped", false)) else ""
@@ -299,8 +316,8 @@ func sanitize_equipped_for_member(member_id: String, member_equipped: Dictionary
 
 
 func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
-	var target_level := maxi(1, int(game_state.stats.get("level", 1)))
-	var candidate := {
+	var target_level: int = maxi(1, int(game_state.stats.get("level", 1)))
+	var candidate: Dictionary = {
 		"id": "companion_%d_%d" % [Time.get_ticks_usec(), game_state.rng.randi()],
 		"candidate_id": "candidate_%d_%d" % [index, game_state.rng.randi()],
 		"name": random_recruit_name(used_names),
@@ -309,20 +326,45 @@ func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
 		"elements": base_member_elements(),
 		"equipped": base_equipped_slots(),
 		"skills": [DataTables.create_skill()],
+		"innate_traits": random_basic_recruit_traits(),
 		"growth_primary_stats": random_growth_primary_stats(),
 	}
 	var candidate_stats: Dictionary = candidate["stats"]
 	candidate_stats["level"] = target_level
-	var point_count := maxi(0, (target_level - 1) * GameState.LEVEL_ATTRIBUTE_POINTS)
+	var point_count: int = maxi(0, (target_level - 1) * LEVEL_ATTRIBUTE_POINTS)
 	apply_companion_attribute_points_to(candidate, point_count)
 	candidate_stats["hp"] = candidate_stats["max_hp"]
 	candidate_stats["mp"] = candidate_stats["max_mp"]
 	return candidate
 
 
+func random_basic_recruit_traits() -> Array:
+	var recruit_level: int = 1
+	if game_state != null and game_state.has_method("building_level"):
+		recruit_level = int(game_state.call("building_level", "recruit"))
+	var max_count: int = DataTables.recruit_max_trait_count(recruit_level)
+	var trait_count: int = game_state.rng.randi_range(0, max_count)
+	var pool: Array = DataTables.BASIC_RECRUIT_TRAIT_IDS.duplicate()
+	var traits: Array = []
+	while traits.size() < trait_count and not pool.is_empty():
+		var index: int = game_state.rng.randi_range(0, pool.size() - 1)
+		var trait_id: String = str(pool[index])
+		pool.remove_at(index)
+		var definition: Dictionary = DataTables.INNATE_TRAIT_DEFS.get(trait_id, {})
+		traits.append({
+			"id": trait_id,
+			"name": str(definition.get("name", trait_id)),
+			"slot": "basic",
+			"rarity": "common",
+			"level": 1,
+			"awakened": false,
+		})
+	return traits
+
+
 func random_recruit_name(used_names: Dictionary) -> String:
 	for _attempt in range(16):
-		var name := "%s" % GameState.RECRUIT_NAME_PARTS[game_state.rng.randi_range(0, GameState.RECRUIT_NAME_PARTS.size() - 1)]
+		var name: String = "%s" % RECRUIT_NAME_PARTS[game_state.rng.randi_range(0, RECRUIT_NAME_PARTS.size() - 1)]
 		if not used_names.has(name):
 			return name
 	return "散修%d" % game_state.rng.randi_range(100, 999)
@@ -336,9 +378,9 @@ func candidate_by_id(candidate_id: String) -> Dictionary:
 
 
 func growth_summary_for_member_data(member: Dictionary) -> String:
-	if str(member.get("id", "")) == GameState.PLAYER_ID:
+	if str(member.get("id", "")) == PLAYER_ID:
 		return "全随机"
-	var primary_stats := normalized_growth_primary_stats(member.get("growth_primary_stats", []))
+	var primary_stats: Array[String] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
 	member["growth_primary_stats"] = primary_stats
 	return "主属性 %s" % attribute_list_text(primary_stats)
 
@@ -351,7 +393,6 @@ func ensure_recruit_candidate_growth() -> void:
 
 
 func migrate_free_points_to_auto_growth() -> void:
-	migrate_free_points_for_member(player_member())
 	for index in range(game_state.companions.size()):
 		var companion: Dictionary = game_state.companions[index]
 		migrate_free_points_for_member(companion)
@@ -364,7 +405,7 @@ func migrate_free_points_to_auto_growth() -> void:
 
 func migrate_free_points_for_member(member: Dictionary) -> void:
 	var member_stats: Dictionary = member.get("stats", {})
-	var free_points := maxi(0, int(member_stats.get("free_points", 0)))
+	var free_points: int = maxi(0, int(member_stats.get("free_points", 0)))
 	if free_points <= 0:
 		member_stats["free_points"] = 0
 		return
@@ -375,38 +416,38 @@ func migrate_free_points_for_member(member: Dictionary) -> void:
 func apply_random_attribute_points_to(member: Dictionary, point_count: int) -> Dictionary:
 	var gains: Dictionary = {}
 	for _index in range(point_count):
-		var target := str(GameState.RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, GameState.RANDOM_POINT_TARGETS.size() - 1)])
+		var target: String = str(RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, RANDOM_POINT_TARGETS.size() - 1)])
 		apply_attribute_point_to(member, target, gains)
 	return gains
 
 
 func apply_auto_attribute_points_to(member: Dictionary, point_count: int) -> Dictionary:
-	if str(member.get("id", "")) == GameState.PLAYER_ID:
+	if str(member.get("id", "")) == PLAYER_ID:
 		return apply_random_attribute_points_to(member, point_count)
 	return apply_companion_attribute_points_to(member, point_count)
 
 
 func apply_companion_attribute_points_to(member: Dictionary, point_count: int) -> Dictionary:
 	var gains: Dictionary = {}
-	var primary_stats := normalized_growth_primary_stats(member.get("growth_primary_stats", []))
+	var primary_stats: Array[String] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
 	member["growth_primary_stats"] = primary_stats
-	var primary_count := int(floor(float(maxi(0, point_count)) * 0.8))
+	var primary_count: int = int(floor(float(maxi(0, point_count)) * 0.8))
 	for _index in range(primary_count):
-		var target := str(primary_stats[game_state.rng.randi_range(0, primary_stats.size() - 1)])
+		var target: String = str(primary_stats[game_state.rng.randi_range(0, primary_stats.size() - 1)])
 		apply_attribute_point_to(member, target, gains)
 	for _index in range(maxi(0, point_count - primary_count)):
-		var target := str(GameState.RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, GameState.RANDOM_POINT_TARGETS.size() - 1)])
+		var target: String = str(RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, RANDOM_POINT_TARGETS.size() - 1)])
 		apply_attribute_point_to(member, target, gains)
 	return gains
 
 
 func random_growth_primary_stats() -> Array[String]:
 	var pool: Array[String] = []
-	for target in GameState.RANDOM_POINT_TARGETS:
+	for target in RANDOM_POINT_TARGETS:
 		pool.append(str(target))
 	var result: Array[String] = []
 	while result.size() < 3 and not pool.is_empty():
-		var index := game_state.rng.randi_range(0, pool.size() - 1)
+		var index: int = game_state.rng.randi_range(0, pool.size() - 1)
 		result.append(str(pool[index]))
 		pool.remove_at(index)
 	return result
@@ -416,13 +457,13 @@ func normalized_growth_primary_stats(raw_value) -> Array[String]:
 	var result: Array[String] = []
 	if raw_value is Array:
 		for target in raw_value:
-			var stat_id := str(target)
-			if GameState.RANDOM_POINT_TARGETS.has(stat_id) and not result.has(stat_id):
+			var stat_id: String = str(target)
+			if RANDOM_POINT_TARGETS.has(stat_id) and not result.has(stat_id):
 				result.append(stat_id)
 			if result.size() >= 3:
 				break
 	while result.size() < 3:
-		var candidate := str(GameState.RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, GameState.RANDOM_POINT_TARGETS.size() - 1)])
+		var candidate: String = str(RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, RANDOM_POINT_TARGETS.size() - 1)])
 		if not result.has(candidate):
 			result.append(candidate)
 	return result
@@ -445,7 +486,7 @@ func apply_attribute_point_to(member: Dictionary, target: String, gains: Diction
 		member_stats["max_mp"] = int(member_stats.get("max_mp", 0)) + 2
 		gains[target] = int(gains.get(target, 0)) + 2
 	elif target.begins_with(DataTables.ELEMENT_ATTRIBUTE_PREFIX):
-		var element_id := DataTables.element_id_from_attribute(target)
+		var element_id: String = DataTables.element_id_from_attribute(target)
 		member_elements[element_id] = int(member_elements.get(element_id, 0)) + 1
 		gains[target] = int(gains.get(target, 0)) + 1
 	else:
@@ -455,7 +496,7 @@ func apply_attribute_point_to(member: Dictionary, target: String, gains: Diction
 
 func grant_auto_level_points_for_member(member: Dictionary) -> void:
 	var member_stats: Dictionary = member.get("stats", {})
-	var gains := apply_auto_attribute_points_to(member, GameState.LEVEL_ATTRIBUTE_POINTS)
+	var gains: Dictionary = apply_auto_attribute_points_to(member, LEVEL_ATTRIBUTE_POINTS)
 	member_stats["free_points"] = 0
 	game_state.log_added.emit("%s等级 %d：自动加点 %s" % [
 		str(member.get("name", "成员")),

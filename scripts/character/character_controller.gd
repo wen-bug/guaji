@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 enum CharacterState { IDLE, ROAMING, TALKING, PAUSED, EXPEDITION_RUNNING }
 
+const CombatActorStatusScript = preload("res://scripts/game/combat/combat_actor_status.gd")
 const BASELINE_Y := 170.0
 const HOME_LEFT := 48.0
 const HOME_RIGHT := 676.0
@@ -28,6 +29,7 @@ var rng := RandomNumberGenerator.new()
 var sprite: AnimatedSprite2D
 var talk_label: Label
 var hurt_tween: Tween
+var combat_status: CombatActorStatus
 
 
 func setup() -> void:
@@ -94,6 +96,18 @@ func play_hurt_feedback() -> void:
 	hurt_tween.tween_property(sprite, "modulate", Color(1, 1, 1, 1), 0.12)
 	hurt_tween.parallel().tween_property(sprite, "scale", base_scale * Vector2(1.04, 0.96), 0.05)
 	hurt_tween.parallel().tween_property(sprite, "scale", base_scale, 0.12)
+
+
+func ensure_combat_status() -> CombatActorStatus:
+	if combat_status != null:
+		return combat_status
+	combat_status = get_node_or_null("CombatActorStatus") as CombatActorStatus
+	if combat_status == null:
+		combat_status = CombatActorStatusScript.new()
+		combat_status.name = "CombatActorStatus"
+		add_child(combat_status)
+	combat_status.visual_owner = self
+	return combat_status
 
 
 func _ready() -> void:

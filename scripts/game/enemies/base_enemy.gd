@@ -3,6 +3,7 @@ extends Node2D
 
 const DEFAULT_HP_BAR_WIDTH := 48.0
 const DEFAULT_ATTACK_LUNGE := 10.0
+const CombatActorStatusScript = preload("res://scripts/game/combat/combat_actor_status.gd")
 
 var enemy_data: Dictionary = {}
 var _combat_position := Vector2.ZERO
@@ -10,6 +11,7 @@ var _visual_node: Node2D = null
 var _hp_fill: ColorRect = null
 var _hurt_overlay: ColorRect = null
 var _feedback_tween: Tween = null
+var combat_status: CombatActorStatus
 
 
 func _ready() -> void:
@@ -21,6 +23,7 @@ func setup(data: Dictionary) -> void:
 	enemy_data = data.duplicate(true)
 	visible = true
 	_bind_nodes()
+	ensure_combat_status().bind_enemy(enemy_data, self)
 	_update_hp_bar()
 
 
@@ -52,7 +55,7 @@ func set_hit_points(current_hp: int, max_hp: int) -> void:
 	_update_hp_bar()
 
 
-func select_action(game_state: GameState) -> Dictionary:
+func select_action(game_state) -> Dictionary:
 	if enemy_data.is_empty():
 		return {}
 	var element_id := ""
@@ -99,6 +102,18 @@ func play_hurt_feedback() -> void:
 		_hurt_overlay.modulate.a = 0.7
 		_feedback_tween.tween_property(_hurt_overlay, "modulate:a", 0.0, 0.18)
 		_feedback_tween.tween_callback(_hide_hurt_overlay).set_delay(0.19)
+
+
+func ensure_combat_status() -> CombatActorStatus:
+	if combat_status != null:
+		return combat_status
+	combat_status = get_node_or_null("CombatActorStatus") as CombatActorStatus
+	if combat_status == null:
+		combat_status = CombatActorStatusScript.new()
+		combat_status.name = "CombatActorStatus"
+		add_child(combat_status)
+	combat_status.visual_owner = self
+	return combat_status
 
 
 func _bind_nodes() -> void:

@@ -486,7 +486,7 @@ layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
 offset_right = 750.0
-offset_bottom = 432.0
+offset_bottom = 470.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/FarmPanel" unique_id=1576174592]
@@ -515,6 +515,15 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
+
+[node name="WorkerOption" type="OptionButton" parent="Root/FarmPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 
 [node name="SeedSlotButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=1813538947]
 custom_minimum_size = Vector2(300, 34)
@@ -632,7 +641,7 @@ layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
 offset_right = 750.0
-offset_bottom = 388.0
+offset_bottom = 470.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/ForgePanel" unique_id=209043123]
@@ -661,6 +670,15 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
+
+[node name="WorkerOption" type="OptionButton" parent="Root/ForgePanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 
 [node name="ModeRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1199746731]
 layout_mode = 2
@@ -754,7 +772,7 @@ layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
 offset_right = 750.0
-offset_bottom = 388.0
+offset_bottom = 470.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/AlchemyPanel" unique_id=1772265639]
@@ -783,6 +801,15 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
+
+[node name="WorkerOption" type="OptionButton" parent="Root/AlchemyPanel/PanelLayout"]
+custom_minimum_size = Vector2(300, 30)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 
 [node name="RecipeSlotButton" type="Button" parent="Root/AlchemyPanel/PanelLayout" unique_id=1918234530]
 custom_minimum_size = Vector2(300, 34)

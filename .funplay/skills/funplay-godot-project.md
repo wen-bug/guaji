@@ -5,7 +5,7 @@ Use this project through the local Funplay MCP for Godot editor server.
 ## Connection
 
 - Endpoint: `http://127.0.0.1:8765/`
-- Active tool profile: `core`
+- Active tool profile: `full`
 - Debug logging: `false`
 - Tool counts: `73` core, `123` full
 

@@ -1,13 +1,15 @@
 class_name SkillResolver
 extends RefCounted
 
+const PLAYER_ID := "player"
 
-func resolve_skill(skill: Dictionary, game_state: GameState, combat_context: Dictionary = {}) -> Dictionary:
+
+func resolve_skill(skill: Dictionary, game_state, combat_context: Dictionary = {}) -> Dictionary:
 	if skill.is_empty():
 		return _failed_result("技能不存在")
 
-	var mp_cost := int(skill.get("mp_cost", 0))
-	var member_id := str(combat_context.get("member_id", GameState.PLAYER_ID))
+	var mp_cost: int = int(skill.get("mp_cost", 0))
+	var member_id: String = str(combat_context.get("member_id", PLAYER_ID))
 	var member: Dictionary = game_state.selected_party_member_or_player(member_id)
 	var member_stats: Dictionary = member.get("stats", {})
 	if int(member_stats.get("mp", 0)) < mp_cost:
@@ -16,8 +18,8 @@ func resolve_skill(skill: Dictionary, game_state: GameState, combat_context: Dic
 	if mp_cost > 0 and not game_state.spend_mp_for(member_id, mp_cost):
 		return _failed_result("法力不足")
 
-	var total_attack := int(combat_context.get("total_attack", 0))
-	var damage := int(total_attack * float(skill.get("damage_multiplier", 0.0)))
+	var total_attack: int = int(combat_context.get("total_attack", 0))
+	var damage: int = int(total_attack * float(skill.get("damage_multiplier", 0.0)))
 	return {
 		"success": true,
 		"skill_id": str(skill.get("id", "")),
@@ -28,6 +30,7 @@ func resolve_skill(skill: Dictionary, game_state: GameState, combat_context: Dic
 		"cooldown": float(skill.get("cooldown", 0.0)),
 		"release_distance": float(skill.get("release_distance", 0.0)),
 		"combat_buffs": skill.get("combat_buffs", []).duplicate(true),
+		"effects": skill.get("effects", []).duplicate(true),
 		"message": "释放%s" % str(skill.get("name", "技能")),
 	}
 
@@ -41,5 +44,6 @@ func _failed_result(message: String) -> Dictionary:
 		"cooldown": 0.0,
 		"release_distance": 0.0,
 		"combat_buffs": [],
+		"effects": [],
 		"message": message,
 	}

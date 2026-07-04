@@ -8,7 +8,7 @@
 - 双区块地图：家园负责恢复、种田、炼器、炼丹；历练入口负责打怪、经验、掉落和装备。
 - 家园交互：点击原 `meditate` 位置打开招募 HUD；点击 `farmland`、`forge`、`alchemy`、`fight` 打开对应 HUD 面板。
 - 背包系统：统一管理技能书、装备、材料、作物、丹药和图纸，主背包仅保留家园效率类物品的使用入口，支持丢弃、装备强化与洗练。
-- 成长系统：玩家和队友共享等级、熟练度、根骨、五行、装备词条和丹药 Buff 等数值规则。
+- 成长系统：玩家和队友共享等级、熟练度、根骨、五行、先天命格、装备词条和丹药 Buff 等数值规则。
 
 ## 地图与交互
 
@@ -52,11 +52,11 @@
 
 人物与装备可叠加的基础属性类型见 `docs/item-table.md` 的“人物与装备基础属性类型表”。普通属性来自 `GameState.stats`，五行属性来自 `GameState.elements`；装备使用同名 `stat` 写入 `base_attributes`、`enhanced_attributes` 和 `refine_affixes`。
 
-- `total_stat(stat) = stats[stat] + active_buff_bonus(stat) + equipped_attribute_bonus(stat)`
-- `total_element(element) = elements[element] + equipped_attribute_bonus("element_" + element)`
+- `total_stat(stat) = stats[stat] + active_buff_bonus(stat) + equipped_attribute_bonus(stat) + innate_trait_bonus(stat)`
+- `total_element(element) = elements[element] + equipped_attribute_bonus("element_" + element) + innate_trait_element_bonus(element)`
 - `element_power = sum(total_element(wood, fire, earth, metal, water))`
-- `total_attack = stats.attack + int(element_power * 0.15) + active_buff_bonus("attack") + equipped_attribute_bonus("attack")`
-- `total_defense = stats.defense + active_buff_bonus("defense") + equipped_attribute_bonus("defense")`
+- `total_attack = stats.attack + int(element_power * 0.15) + active_buff_bonus("attack") + equipped_attribute_bonus("attack") + innate_trait_bonus("attack")`
+- `total_defense = stats.defense + active_buff_bonus("defense") + equipped_attribute_bonus("defense") + innate_trait_bonus("defense")`
 - 主五行为 `total_element()` 数值最高的五行。
 
 ### 成长与突破
@@ -69,10 +69,25 @@
 - 招募候选人的等级等于当前玩家等级，刷新时随机抽取 3 个成长主属性，从 1 级基础模板开始按 80% 主属性、20% 全随机补齐初始属性点；招募后后续升级沿用该主属性成长。
 - 达到等级上限时，使用突破丹可提升阶段并使 `level_cap += 10`；若 `root_bone > level`，可免突破丹打开下一阶段。
 
+### 先天命格
+
+先天词条正式命名为“命格”，属于玩家和队友的先天特质。命格不与装备随机词条混用：装备词条负责短期替换、强化和洗练追求；命格负责角色身份、成长倾向、家园效率和自动战斗风格。
+
+- 玩家开局从 3 个主命格中选择 1 个。
+- 队友在招募候选人刷新时随机生成命格。基础候选人会按招募建筑等级获得 `0-n` 个基础命格：1-3 级最多 1 个，4-6 级最多 2 个，7-10 级最多 3 个。
+- 每个角色最多拥有 1 个主命格、1 个副命格和 0 到 1 个缺陷命格。
+- 普通候选人默认 1 个主命格；优秀候选人可拥有主命格和副命格；异禀候选人可拥有觉醒潜力或缺陷命格。
+- 命格第一版不允许普通洗练或频繁替换，只能在角色生成、玩家开局选择或后续突破觉醒时确定。
+
+第一版命格效果优先覆盖低耦合规则：升级成长权重、属性读取加成、炼器 `craft_bonus`、炼丹额外出丹概率、战斗经验、熟练度、材料掉落概率、普通攻击伤害、技能冷却和受伤减免。复杂行为触发器，例如低血护盾、治疗目标偏好、连击链、召唤物或跨成员光环，待基础命格系统稳定后再扩展。
+
+命格详细规则、推荐命格池、数据结构和觉醒规则见 `docs/innate-traits.md`。
+
 ### 根骨加成
 
-- 炼器/装备生成加成：`craft_bonus = int(total_root_bone * 0.2)`。
-- 炼丹额外出丹概率：`min(0.35, total_root_bone * 0.015)`。
+- 炼器/装备生成加成：`craft_bonus_for(member) = int(total_root_bone_for(member) * 0.2) + 命格修正`。
+- 炼丹额外出丹概率：`alchemy_extra_chance_for(member) = total_root_bone_for(member) * 0.015 + 命格修正`，最终按上限截断。
+- 种田收成加成：`farm_harvest_amount_for(member) = seed_yield + farm_level - 1 + int(total_root_bone_for(member) * 0.05) + 命格修正`。
 - 根骨高于当前等级且达到等级上限时，可免道具突破。
 
 ### 战斗
@@ -86,8 +101,16 @@
 - 元素减伤：`max(0, amount - int(total_element(element) * 0.35))`。
 - 敌人攻击可按 `element_attack_ratio` 随机附带自身五行。
 - 历练战斗在循环地图上进行，普通攻击需要满足攻击距离，技能需要满足释放距离。
-- `CombatController` 负责单场战斗推进、队伍成员独立冷却、掉血、掉落和动画触发；`CombatAI` 只负责成员出招选择；`GameState` 只负责数值结算和资源变更。
+- `CombatController` 负责单场战斗推进、队伍成员独立冷却、战斗内掉血、掉落和动画触发；`CombatAI` 只负责成员出招选择；`SkillResolver` 只产出技能基础结果和技能 `effects`；`GameState.take_damage_for()` 保留为非战斗兼容入口。
 - 木桩敌人默认走基础普攻，作为训练目标时保留低强度攻击与普通受击反馈。
+
+#### 战斗附加效果管线
+
+战斗内技能、装备、命格、敌人动作和临时状态统一使用 `effects` 字段。单条效果通用结构为：`trigger`、`kind`、`target`、`value`、`stat`、`element`、`duration_turns`、`chance`、`stack_key`、`max_stacks`。第一版触发阶段为 `attack_start`、`before_hit`、`on_hit`、`after_damage`、`on_kill`、`on_damaged`、`turn_start`、`turn_end`；效果类型为 `damage_percent`、`damage_flat`、`defense_ignore`、`element_attach`、`dot`、`hot`、`shield`、`heal`、`leech`、`buff_stat`、`debuff_stat`、`cooldown_percent`。
+
+`CombatEffectResolver` 只负责效果筛选、概率判定、状态叠加和事件生成，不播放动画、不直接操作 HUD。`CombatController` 按固定顺序调用：出手 `attack_start` → 入防御前 `before_hit` → 基础伤害与元素/弱点/防御 → 护盾吸收 → 有效伤害后的 `on_hit` → 扣血后的 `on_damaged` / `after_damage` → 死亡后的 `on_kill`。回合开始处理 DOT/HOT，回合结束递减持续 Buff。
+
+玩家和队友的战斗状态写入各自 combatant 的 `combat_effects`，敌人写入 `enemy.combat_effects`。旧 `combat_buffs` 仍保留兼容，属性读取会同时识别旧 Buff 与新 `buff_stat` / `debuff_stat` 效果。未命中、0 伤害或完全被护盾抵消时不触发 `on_hit`，但可以触发 `on_damaged`；DOT/HOT 不触发 `on_hit`；同 `stack_key` 按层数叠加，无 `stack_key` 的同类状态独立存在。同阶段多来源顺序固定为：技能效果 → 装备效果 → 命格效果 → 临时战斗状态。
 
 ### 掉落与装备掉落
 
@@ -102,12 +125,14 @@
 
 ### 生产与炼制
 
-- 种田自动选择背包中第一个作物作为种子，消耗 1 个，产量为 `seed_yield + farm_level - 1`。
-- 招募消耗 2 个任意 `material` 类型物品；刷新候选免费。炼器同样消耗 2 个任意材料，生成 1 件随机装备，并获得经验与炼器熟练度。
+- 家园建筑包含招募、农田、炼器、炼丹 4 个主动升级等级，等级上限为 10。升级消耗分别为灵石、草药、矿石、草药；旧 `farm_level` 只作为农田建筑等级的兼容显示字段。
+- 种田面板可选择执行队友。种植消耗 1 个种子，产量按农田等级、执行者根骨、装备、Buff 和命格计算，结果写入农田槽位，收取时经验给该执行者。农田等级同时缩短种植时间，时间倍率为 `max(0.55, 1.0 - 0.05 * (farm_level - 1))`。
+- 招募消耗灵石；刷新候选免费。招募等级影响候选人的基础命格数量上限。
+- 炼器面板可选择执行队友并启动单队列任务。开始时消耗材料，耗时 `max(20, 60 - 4 * (forge_level - 1))` 秒，完成后领取 1 件装备；炼器 6 级后每次领取 2 件装备。炼器等级每级提供 3% 额外装备阶位提升概率。
 - 炼丹面板只展示 `known_alchemy_recipes` 中的已学丹方。
-- 单个丹方最大可制作数量为所有材料 `floor(当前数量 / 单次需求)` 的最小值。
-- 批量炼丹消耗 `amount * 单次需求`，基础产物数量为 `amount`。
-- 每次制作独立判定额外出丹：若 `rng.randf() < alchemy_extra_chance()`，本次额外 `+1` 产物，不增加材料消耗。
+- 炼丹面板可选择执行队友。单个丹方最大可制作数量按执行者材料减免后的实际消耗计算。
+- 炼丹启动单队列任务。批量炼丹开始时消耗执行者修正后的材料数量，耗时 `max(8, 20 - (alchemy_level - 1)) * amount` 秒，完成后领取丹药。
+- 炼丹基础产物数量为 `amount`；炼丹 6 级后基础产物数量翻倍。每次制作独立判定额外出丹：若 `rng.randf() < alchemy_extra_chance_for(member) + 0.02 * (alchemy_level - 1)`，本次额外 `+1` 产物，不增加材料消耗；命格可额外提供固定产量或概率产量。
 - 相关炼丹与 Buff 结算仍在 `GameState` 中完成，不放入 HUD 或战斗控制器。
 
 ### 装备生成、穿戴与养成
@@ -149,13 +174,13 @@
 
 ## HUD 与存档
 
-HUD 包含菜单按钮、队伍成员信息、背包、种田、炼器、炼丹、招募、历练入口、历练返回和调试等弹窗或控制层。队伍成员信息可选择玩家或队友，展示属性、已穿戴装备和已学习技能；招募 HUD 显示候选人、材料成本、队伍顺序、上移/下移和离队操作。所有弹窗支持拖动，拖动位置写入 `user://save.cfg` 并在下次打开时恢复，超出视口时会 clamp 回可见区域。
+HUD 包含菜单按钮、队伍成员信息、背包、种田、炼器、炼丹、招募、历练入口、历练返回和调试等弹窗或控制层。队伍成员信息可选择玩家或队友，展示属性、先天命格、已穿戴装备和已学习技能；招募 HUD 显示候选人、命格摘要、材料成本、队伍顺序、上移/下移和离队操作。所有弹窗支持拖动，拖动位置写入 `user://save.cfg` 并在下次打开时恢复，超出视口时会 clamp 回可见区域。
 
 存档由 `SaveManager` 写入 `user://save.cfg`，包含版本号、游戏状态、HUD 面板位置和基础配置。缺失字段使用默认值，不阻塞启动。
 
 ## 扩展约定
 
-新增堆叠物品时优先在 `DataTables.ITEM_DEFS` 增加定义；新增技能同步扩展 `SKILL_DEFS`；新增装备模板同步扩展 `EQUIPMENT_DEFS`；新增敌人时先新增 `scripts/game/enemies/<enemy_id>/enemy.tscn` 和 `enemy.gd`，再补充 `DataTables.ENEMY_TEMPLATES` / `ENEMY_SCENE_PATHS`；新增词条同步扩展 `EQUIPMENT_ATTRIBUTE_DEFS`。
+新增堆叠物品时优先在 `DataTables.ITEM_DEFS` 增加定义；新增技能同步扩展 `SKILL_DEFS`；新增装备模板同步扩展 `EQUIPMENT_DEFS`；新增敌人时先新增 `scripts/game/enemies/<enemy_id>/enemy.tscn` 和 `enemy.gd`，再补充 `DataTables.ENEMY_TEMPLATES` / `ENEMY_SCENE_PATHS`；新增装备词条同步扩展 `EQUIPMENT_ATTRIBUTE_DEFS`；新增命格同步扩展 `INNATE_TRAIT_DEFS` 和 `docs/innate-traits.md`。
 后续可扩展：物品品质颜色和图标字串、配方 UI、商店、技能书掉落来源、丹药持续 Buff 的更多类型和叠加规则、农田升级消耗、种子选择 UI、强化失败率、词条锁定和保底机制。
 
 ## 历练地图、随机遇怪与循环战斗补充

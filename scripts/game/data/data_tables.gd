@@ -57,6 +57,24 @@ const TASK_ZONE_IDS := {
 	GameDefs.TaskType.FIGHT: "fight",
 }
 
+const BUILDING_DEFS := {
+	"recruit": {"name": "招募", "max_level": 10, "cost_item": "spirit_stone", "cost_offset": 0},
+	"forge": {"name": "炼器", "max_level": 10, "cost_item": "ore", "cost_offset": 1},
+	"alchemy": {"name": "炼丹", "max_level": 10, "cost_item": "herb", "cost_offset": 1},
+	"farm": {"name": "农田", "max_level": 10, "cost_item": "herb", "cost_offset": 0},
+}
+
+const BASIC_RECRUIT_TRAIT_IDS := [
+	"robust_body",
+	"sharp_edge",
+	"steady_guard",
+	"full_vigor",
+	"good_root",
+	"field_sense",
+	"craft_touch",
+	"pill_sense",
+]
+
 const SLOT_NAMES := {
 	"weapon": "武器",
 	"helmet": "头盔",
@@ -74,6 +92,13 @@ const EQUIPMENT_RARITY_NAMES := {
 	"t4": "四阶",
 	"t5": "五阶",
 }
+const EQUIPMENT_RARITY_WEIGHTS := {
+	"t1": 55,
+	"t2": 28,
+	"t3": 12,
+	"t4": 4,
+	"t5": 1,
+}
 
 const SPIRIT_STONE_QUALITY_ORDER := ["t1", "t2", "t3", "t4", "t5"]
 
@@ -81,7 +106,8 @@ const ITEM_DEFS := {
 	"herb": {"name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 60.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"rice": {"name": "灵米", "description": "基础作物与辅料。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 2, "growth_seconds": 90.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"mushroom": {"name": "灵菇", "description": "基础作物与辅料。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 120.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"ore": {"name": "矿石", "description": "通用炼器与招募材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"ore": {"name": "矿石", "description": "通用炼器材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"spirit_stone": {"name": "灵石", "description": "招募修士所需的通用灵石。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"recruit_currency": true}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"farm_speed_talisman": {"name": "丰收符", "description": "提升农田生长速度一段时间。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": true, "payload": {"farm_speed": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
 	"stat_stone_attack_t1": {"name": "攻击灵石·一阶", "description": "可用于强化攻击属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "attack", "quality": "t1", "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
 	"stat_stone_defense_t1": {"name": "防御灵石·一阶", "description": "可用于强化防御属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "defense", "quality": "t1", "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
@@ -98,9 +124,13 @@ const ITEM_DEFS := {
 }
 
 const SKILL_DEFS := {
-	"fireball": {"id": "fireball", "name": "火球术", "type": "damage", "element": "fire", "mp_cost": 8, "cooldown": 3.0, "damage_multiplier": 1.35, "release_distance": 120.0, "priority": 50, "trigger": ["always"], "combat_buffs": []},
-	"heal": {"id": "heal", "name": "回春术", "type": "heal", "element": "wood", "mp_cost": 6, "cooldown": 5.0, "damage_multiplier": 0.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": []},
-	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "element": "metal", "mp_cost": 12, "cooldown": 5.0, "damage_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": []},
+	"fireball": {"id": "fireball", "name": "火球术", "type": "damage", "element": "fire", "mp_cost": 8, "cooldown": 3.0, "damage_multiplier": 1.35, "release_distance": 120.0, "priority": 50, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"heal": {"id": "heal", "name": "回春术", "type": "heal", "element": "wood", "mp_cost": 6, "cooldown": 5.0, "damage_multiplier": 0.0, "heal_multiplier": 1.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
+	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "element": "metal", "mp_cost": 12, "cooldown": 5.0, "damage_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+}
+
+const ALCHEMY_RECIPE_DEFS := {
+	"pill": {"result_item_id": "pill", "materials": [{"item_id": "herb", "amount": 2}]},
 }
 
 const EQUIPMENT_DEFS := {
@@ -124,6 +154,80 @@ const EQUIPMENT_ATTRIBUTE_DEFS := [
 	{"stat": "element_metal"},
 	{"stat": "element_water"},
 ]
+
+const INNATE_TRAIT_DEFS := {
+	"robust_body": {
+		"name": "健体",
+		"description": "体魄稳健，气血更充足。",
+		"effects": [
+			{"kind": "stat_flat", "stat": "max_hp", "amount": 20},
+		],
+	},
+	"sharp_edge": {
+		"name": "锋芒",
+		"description": "出手锐利，攻击小幅提高。",
+		"effects": [
+			{"kind": "stat_flat", "stat": "attack", "amount": 2},
+		],
+	},
+	"steady_guard": {
+		"name": "稳守",
+		"description": "守势沉稳，防御小幅提高。",
+		"effects": [
+			{"kind": "stat_flat", "stat": "defense", "amount": 2},
+		],
+	},
+	"full_vigor": {
+		"name": "充沛",
+		"description": "灵力充沛，法力上限提高。",
+		"effects": [
+			{"kind": "stat_flat", "stat": "max_mp", "amount": 12},
+		],
+	},
+	"good_root": {
+		"name": "良根",
+		"description": "根骨良好，生产和成长潜力更高。",
+		"effects": [
+			{"kind": "stat_flat", "stat": "root_bone", "amount": 2},
+		],
+	},
+	"craft_hand": {
+		"name": "巧匠",
+		"description": "炼器时更容易引出材料灵性。",
+		"effects": [
+			{"kind": "craft_bonus_flat", "task": "forge", "amount": 1},
+			{"kind": "forge_rarity_upgrade_chance", "task": "forge", "value": 0.05},
+		],
+	},
+	"craft_touch": {
+		"name": "巧手",
+		"description": "手上有准头，炼器属性入口略有提高。",
+		"effects": [
+			{"kind": "craft_bonus_flat", "task": "forge", "amount": 1},
+		],
+	},
+	"pill_heart": {
+		"name": "丹心",
+		"description": "炼丹时更容易额外成丹。",
+		"effects": [
+			{"kind": "alchemy_extra_chance", "task": "alchemy", "value": 0.05},
+		],
+	},
+	"pill_sense": {
+		"name": "丹感",
+		"description": "对火候有感，炼丹额外出丹概率提高。",
+		"effects": [
+			{"kind": "alchemy_extra_chance", "task": "alchemy", "value": 0.04},
+		],
+	},
+	"field_sense": {
+		"name": "识田",
+		"description": "种田时略微提高收成。",
+		"effects": [
+			{"kind": "farm_harvest_bonus_flat", "task": "farm", "amount": 1},
+		],
+	},
+}
 
 const ENEMY_TEMPLATES := {
 	"training_dummy": {"id": "training_dummy", "name": "木桩", "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "drops": {}, "exp": 6, "use_drop": false, "is_training_dummy": true},
@@ -195,6 +299,9 @@ static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: Strin
 		"weak_element": str(template.get("weak_element", "fire")),
 		"element_attack_ratio": float(template.get("element_attack_ratio", 0.0)),
 		"drops": template.get("drops", {}).duplicate(true),
+		"effects": template.get("effects", []).duplicate(true),
+		"combat_effects": [],
+		"turn_start_processed": false,
 		"exp": int(template.get("exp", 5)) + enemy_level * 2,
 		"use_drop": bool(template.get("use_drop", true)),
 		"is_training_dummy": bool(template.get("is_training_dummy", false)),
@@ -214,7 +321,7 @@ static func enemy_scene_path(enemy_id: String) -> String:
 
 static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus: int = 0, obtain_source: String = "non_drop") -> Dictionary:
 	var template_id: String = str(EQUIPMENT_DEFS.keys()[rng.randi_range(0, EQUIPMENT_DEFS.size() - 1)])
-	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", "t1", obtain_source)
+	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", random_equipment_rarity(rng), obtain_source)
 
 
 static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
@@ -276,6 +383,42 @@ static func task_zone_id(task_type: int) -> String:
 
 static func task_name(task_type: int) -> String:
 	return TASK_ZONE_NAMES.get(task_type, "任务")
+
+
+static func building_name(building_id: String) -> String:
+	return str(BUILDING_DEFS.get(building_id, {}).get("name", building_id))
+
+
+static func building_max_level(building_id: String) -> int:
+	return int(BUILDING_DEFS.get(building_id, {}).get("max_level", 10))
+
+
+static func building_upgrade_cost(building_id: String, current_level: int) -> Dictionary:
+	var definition: Dictionary = BUILDING_DEFS.get(building_id, {})
+	if definition.is_empty():
+		return {}
+	var amount: int = maxi(1, current_level + int(definition.get("cost_offset", 0)))
+	return {"item_id": str(definition.get("cost_item", "")), "amount": amount}
+
+
+static func recruit_max_trait_count(level: int) -> int:
+	if level >= 7:
+		return 3
+	if level >= 4:
+		return 2
+	return 1
+
+
+static func forge_duration_seconds(level: int) -> float:
+	return max(20.0, 60.0 - 4.0 * float(maxi(1, level) - 1))
+
+
+static func alchemy_duration_seconds(level: int, amount: int) -> float:
+	return max(8.0, 20.0 - float(maxi(1, level) - 1)) * float(maxi(1, amount))
+
+
+static func farm_growth_multiplier(level: int) -> float:
+	return max(0.55, 1.0 - 0.05 * float(maxi(1, level) - 1))
 
 
 static func element_name(element_id: String) -> String:
@@ -353,6 +496,27 @@ static func equipment_rarity_name(rarity: String) -> String:
 	return EQUIPMENT_RARITY_NAMES.get(rarity, rarity)
 
 
+static func random_equipment_rarity(rng: RandomNumberGenerator) -> String:
+	var total_weight := 0
+	for rarity in EQUIPMENT_RARITY_ORDER:
+		total_weight += int(EQUIPMENT_RARITY_WEIGHTS.get(rarity, 0))
+	var roll := rng.randi_range(1, maxi(1, total_weight))
+	var cursor := 0
+	for rarity in EQUIPMENT_RARITY_ORDER:
+		cursor += int(EQUIPMENT_RARITY_WEIGHTS.get(rarity, 0))
+		if roll <= cursor:
+			return str(rarity)
+	return "t1"
+
+
+static func upgrade_equipment_rarity(rarity: String, steps: int) -> String:
+	var index := EQUIPMENT_RARITY_ORDER.find(rarity)
+	if index < 0:
+		index = 0
+	index = clampi(index + steps, 0, EQUIPMENT_RARITY_ORDER.size() - 1)
+	return str(EQUIPMENT_RARITY_ORDER[index])
+
+
 static func element_id_from_attribute(stat_id: String) -> String:
 	if stat_id.begins_with(ELEMENT_ATTRIBUTE_PREFIX):
 		return stat_id.trim_prefix(ELEMENT_ATTRIBUTE_PREFIX)
@@ -406,8 +570,8 @@ static func spirit_stone_enhance_amount(quality: String) -> int:
 
 
 static func alchemy_recipe_def(recipe_id: String) -> Dictionary:
-	return {"result_item_id": recipe_id, "materials": []}
+	return ALCHEMY_RECIPE_DEFS.get(recipe_id, {}).duplicate(true)
 
 
-static func alchemy_recipe_materials(_recipe_id: String) -> Array:
-	return []
+static func alchemy_recipe_materials(recipe_id: String) -> Array:
+	return ALCHEMY_RECIPE_DEFS.get(recipe_id, {}).get("materials", []).duplicate(true)

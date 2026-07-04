@@ -1,10 +1,12 @@
 class_name InventoryService
 extends RefCounted
 
-var game_state: GameState
+const PLAYER_ID := "player"
+
+var game_state
 
 
-func _init(owner: GameState) -> void:
+func _init(owner) -> void:
 	game_state = owner
 
 
@@ -20,8 +22,8 @@ func spend_inventory_type(type_id: String, amount: int) -> bool:
 	if inventory_total_for_type(type_id) < amount:
 		return false
 
-	var remaining := amount
-	var index := 0
+	var remaining: int = amount
+	var index: int = 0
 	while index < game_state.inventory.size() and remaining > 0:
 		var item: Dictionary = game_state.inventory[index]
 		if item.get("type", "") != type_id or not bool(item.get("stackable", false)):
@@ -40,11 +42,11 @@ func spend_inventory_type(type_id: String, amount: int) -> bool:
 	return true
 
 
-func add_inventory_item(item_id: String, amount: int, should_emit_signal := true) -> bool:
+func add_inventory_item(item_id: String, amount: int, should_emit_signal: bool = true) -> bool:
 	if amount <= 0:
 		return false
 
-	var definition := DataTables.item_definition(item_id)
+	var definition: Dictionary = DataTables.item_definition(item_id)
 	if definition.is_empty():
 		return false
 
@@ -83,7 +85,7 @@ func inventory_item_count(item_id: String) -> int:
 
 
 func inventory_total_for_type(type_id: String) -> int:
-	var total := 0
+	var total: int = 0
 	for item in game_state.inventory:
 		if item.get("type", "") == type_id:
 			total += int(item.get("count", 0))
@@ -98,7 +100,7 @@ func inventory_item_by_instance(instance_id: String) -> Dictionary:
 
 
 func is_inventory_item_usable(instance_id: String) -> bool:
-	var item := inventory_item_by_instance(instance_id)
+	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty():
 		return false
 	return DataTables.item_use_scope(str(item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME
@@ -109,11 +111,11 @@ func is_inventory_item_direct_usable(instance_id: String) -> bool:
 
 
 func use_inventory_item(instance_id: String) -> bool:
-	return use_inventory_item_for_member(instance_id, GameState.PLAYER_ID)
+	return use_inventory_item_for_member(instance_id, PLAYER_ID)
 
 
 func use_inventory_item_for_member(instance_id: String, member_id: String) -> bool:
-	var item := inventory_item_by_instance(instance_id)
+	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty():
 		return false
 

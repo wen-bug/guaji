@@ -1,0 +1,343 @@
+class_name CombatActorStatus
+extends Node
+
+signal combat_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool)
+signal hit_received(amount: int, damage_type: String)
+signal defeated(actor_id: String)
+
+const KIND_MEMBER := "member"
+const KIND_ENEMY := "enemy"
+const CombatActorStateMachineScript = preload("res://scripts/game/combat/combat_actor_state_machine.gd")
+
+var actor_id: String = ""
+var actor_name: String = ""
+var actor_kind: String = KIND_MEMBER
+var game_state = null
+var member_id: String = ""
+var data: Dictionary = {}
+var combat_store: Dictionary = {}
+var visual_owner: Node = null
+var temp_stats: Dictionary = {}
+var combat_buffs: Array = []
+var combat_effects: Array = []
+var skill_cooldowns: Dictionary = {}
+var pending_skill: Dictionary = {}
+var state_machine = CombatActorStateMachineScript.new()
+var popup_offset: Vector2 = Vector2(0, -24)
+
+
+func bind_member(owner_game_state, owner_member_id: String, owner_store: Dictionary = {}, owner_visual: Node = null) -> void:
+	game_state = owner_game_state
+	member_id = owner_member_id
+	actor_kind = KIND_MEMBER
+	actor_id = owner_member_id
+	visual_owner = owner_visual
+	combat_store = owner_store
+	data = _member_data()
+	actor_name = str(data.get("name", "成员"))
+	_sync_runtime_arrays_from_store()
+
+
+func bind_enemy(enemy_data: Dictionary, owner_visual: Node = null) -> void:
+	game_state = null
+	member_id = ""
+	actor_kind = KIND_ENEMY
+	data = enemy_data
+	actor_id = str(data.get("id", "enemy"))
+	actor_name = str(data.get("name", "敌人"))
+	visual_owner = owner_visual
+	_sync_runtime_arrays_from_store()
+
+
+func rebind_store(owner_store: Dictionary) -> void:
+	combat_store = owner_store
+	_sync_runtime_arrays_from_store()
+
+
+func combat_snapshot() -> Dictionary:
+	var stats: Dictionary = _stats()
+	return {
+		"id": actor_id,
+		"name": actor_name,
+		"kind": actor_kind,
+		"hp": int(stats.get("hp", data.get("hp", 0))),
+		"max_hp": total_stat("max_hp"),
+		"mp": int(stats.get("mp", data.get("mp", 0))),
+		"max_mp": total_stat("max_mp"),
+		"attack": total_stat("attack"),
+		"defense": total_stat("defense"),
+		"elements": _elements().duplicate(true),
+		"dominant_element": dominant_element(),
+		"weak_element": str(data.get("weak_element", "")),
+		"combat_buffs": combat_buffs.duplicate(true),
+		"combat_effects": combat_effects.duplicate(true),
+		"temp_stats": temp_stats.duplicate(true),
+		"position": combat_position(),
+	}
+
+
+func total_stat(stat_id: String) -> int:
+	var value: int = 0
+	if actor_kind == KIND_MEMBER and game_state != null:
+		if stat_id == "attack":
+			value = int(game_state.total_attack_for(member_id))
+		elif stat_id == "defense":
+			value = int(game_state.total_defense_for(member_id))
+		else:
+			value = int(game_state.total_stat_for(member_id, stat_id))
+	else:
+		value = int(data.get(stat_id, 0))
+	value += int(temp_stats.get(stat_id, 0))
+	value += _buff_stat_bonus(stat_id)
+	return max(0, value)
+
+
+func total_element(element_id: String) -> int:
+	if actor_kind == KIND_MEMBER and game_state != null:
+		return int(game_state.total_element_for(member_id, element_id))
+	return int(data.get("elements", {}).get(element_id, data.get(element_id, 0)))
+
+
+func dominant_element() -> String:
+	if actor_kind == KIND_MEMBER and game_state != null:
+		return game_state.dominant_element_for(member_id)
+	var best_id: String = ""
+	var best_value: int = -1
+	for element_id in DataTables.ELEMENT_IDS:
+		var value: int = total_element(str(element_id))
+		if value > best_value:
+			best_value = value
+			best_id = str(element_id)
+	return best_id
+
+
+func add_buff(buff: Dictionary) -> void:
+	if buff.is_empty():
+		return
+	var normalized: Dictionary = buff.duplicate(true)
+	normalized["remaining_turns"] = int(normalized.get("remaining_turns", normalized.get("turns", 1)))
+	normalized["fresh"] = bool(normalized.get("fresh", true))
+	combat_buffs.append(normalized)
+	_write_runtime_arrays_to_store()
+
+
+func add_status_effect(effect: Dictionary) -> void:
+	if effect.is_empty():
+		return
+	combat_effects.append(effect.duplicate(true))
+	_write_runtime_arrays_to_store()
+
+
+func tick_turn_start() -> Array:
+	var events: Array = []
+	for effect in combat_effects:
+		if not (effect is Dictionary):
+			continue
+		var amount: int = int(effect.get("value", effect.get("amount", 0))) * maxi(1, int(effect.get("stacks", 1)))
+		if amount <= 0:
+			continue
+		match str(effect.get("kind", "")):
+			"dot":
+				events.append(apply_damage(amount, str(effect.get("damage_type", "dot")), {"source": "dot"}))
+			"hot":
+				events.append(apply_heal(amount))
+	return events
+
+
+func tick_turn_end() -> Array:
+	var expired: Array = []
+	_tick_duration_array(combat_buffs, expired)
+	_tick_duration_array(combat_effects, expired)
+	_write_runtime_arrays_to_store()
+	return expired
+
+
+func spend_mp(amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if actor_kind != KIND_MEMBER or game_state == null:
+		return true
+	return game_state.spend_mp_for(member_id, amount)
+
+
+func apply_damage(amount: int, damage_type: String = "physical", source: Dictionary = {}) -> Dictionary:
+	var final_amount: int = max(0, amount)
+	var stats: Dictionary = _stats()
+	var old_hp: int = int(stats.get("hp", data.get("hp", 0)))
+	var new_hp: int = max(0, old_hp - final_amount)
+	_set_hp(new_hp)
+	var result: Dictionary = {
+		"type": "damage",
+		"actor_id": actor_id,
+		"actor_name": actor_name,
+		"amount": final_amount,
+		"damage_type": damage_type,
+		"old_hp": old_hp,
+		"new_hp": new_hp,
+		"is_dead": new_hp <= 0,
+		"source": source.duplicate(true),
+	}
+	if final_amount > 0:
+		show_combat_popup(result)
+		play_hit_reaction(result)
+		hit_received.emit(final_amount, damage_type)
+	if new_hp <= 0:
+		state_machine.set_state(CombatActorStateMachineScript.STATE_DEAD)
+		defeated.emit(actor_id)
+	_sync_visual_data()
+	return result
+
+
+func apply_heal(amount: int) -> Dictionary:
+	var final_amount: int = max(0, amount)
+	var stats: Dictionary = _stats()
+	var old_hp: int = int(stats.get("hp", data.get("hp", 0)))
+	var new_hp: int = min(total_stat("max_hp"), old_hp + final_amount)
+	_set_hp(new_hp)
+	var healed: int = new_hp - old_hp
+	var result: Dictionary = {
+		"type": "heal",
+		"actor_id": actor_id,
+		"actor_name": actor_name,
+		"amount": healed,
+		"damage_type": "heal",
+		"old_hp": old_hp,
+		"new_hp": new_hp,
+		"is_dead": false,
+	}
+	if healed > 0:
+		show_combat_popup(result)
+	_sync_visual_data()
+	return result
+
+
+func play_hit_reaction(result: Dictionary) -> void:
+	if visual_owner != null and visual_owner.has_method("play_hurt_feedback"):
+		visual_owner.call("play_hurt_feedback")
+		return
+	var parent_node: Node = get_parent()
+	if parent_node != null and parent_node.has_method("play_hurt_feedback"):
+		parent_node.call("play_hurt_feedback")
+
+
+func show_combat_popup(result: Dictionary) -> void:
+	var amount: int = int(result.get("amount", 0))
+	if amount <= 0:
+		return
+	var damage_type: String = str(result.get("damage_type", "physical"))
+	combat_popup_requested.emit(amount, combat_position() + popup_offset, actor_id, damage_type, damage_type == "heal")
+
+
+func combat_position() -> Vector2:
+	if not combat_store.is_empty() and combat_store.has("position"):
+		return combat_store.get("position", Vector2.ZERO)
+	if visual_owner != null:
+		if visual_owner.has_method("combat_position"):
+			return visual_owner.call("combat_position")
+		if visual_owner is Node2D:
+			return (visual_owner as Node2D).global_position
+	if get_parent() is Node2D:
+		return (get_parent() as Node2D).global_position
+	return Vector2.ZERO
+
+
+func is_alive() -> bool:
+	return int(_stats().get("hp", data.get("hp", 0))) > 0
+
+
+func _member_data() -> Dictionary:
+	if game_state == null:
+		return {}
+	return game_state.selected_party_member_or_player(member_id)
+
+
+func _stats() -> Dictionary:
+	if actor_kind == KIND_MEMBER:
+		data = _member_data()
+		return data.get("stats", {})
+	return data
+
+
+func _elements() -> Dictionary:
+	if actor_kind == KIND_MEMBER:
+		data = _member_data()
+		return data.get("elements", {})
+	return data.get("elements", {})
+
+
+func _set_hp(value: int) -> void:
+	if actor_kind == KIND_MEMBER:
+		var member: Dictionary = _member_data()
+		var stats: Dictionary = member.get("stats", {})
+		stats["hp"] = value
+		if game_state != null:
+			game_state.changed.emit()
+	else:
+		data["hp"] = value
+
+
+func _sync_runtime_arrays_from_store() -> void:
+	if not combat_store.is_empty():
+		combat_buffs = combat_store.get("combat_buffs", []).duplicate(true)
+		combat_effects = combat_store.get("combat_effects", []).duplicate(true)
+		skill_cooldowns = combat_store.get("skill_cooldowns", {}).duplicate(true)
+	elif actor_kind == KIND_ENEMY:
+		combat_effects = data.get("combat_effects", []).duplicate(true)
+
+
+func _write_runtime_arrays_to_store() -> void:
+	if not combat_store.is_empty():
+		combat_store["combat_buffs"] = combat_buffs
+		combat_store["combat_effects"] = combat_effects
+		combat_store["skill_cooldowns"] = skill_cooldowns
+	elif actor_kind == KIND_ENEMY:
+		data["combat_effects"] = combat_effects
+
+
+func _buff_stat_bonus(stat_id: String) -> int:
+	var value: int = 0
+	for buff in combat_buffs:
+		if not (buff is Dictionary):
+			continue
+		if str(buff.get("stat", "")) == stat_id:
+			value += int(buff.get("amount", buff.get("value", 0)))
+	for effect in combat_effects:
+		if not (effect is Dictionary):
+			continue
+		var kind: String = str(effect.get("kind", ""))
+		if kind != "buff_stat" and kind != "debuff_stat":
+			continue
+		if str(effect.get("stat", "")) != stat_id:
+			continue
+		var amount: int = int(effect.get("value", effect.get("amount", 0))) * maxi(1, int(effect.get("stacks", 1)))
+		if kind == "debuff_stat":
+			value -= abs(amount)
+		else:
+			value += amount
+	return value
+
+
+func _tick_duration_array(values: Array, expired: Array) -> void:
+	var index: int = 0
+	while index < values.size():
+		var item: Dictionary = values[index]
+		if bool(item.get("fresh", false)):
+			item.erase("fresh")
+			values[index] = item
+			index += 1
+			continue
+		if not item.has("remaining_turns"):
+			index += 1
+			continue
+		item["remaining_turns"] = int(item.get("remaining_turns", 0)) - 1
+		if int(item.get("remaining_turns", 0)) <= 0:
+			expired.append(item.duplicate(true))
+			values.remove_at(index)
+		else:
+			values[index] = item
+			index += 1
+
+
+func _sync_visual_data() -> void:
+	if visual_owner != null and actor_kind == KIND_ENEMY and visual_owner.has_method("sync_data"):
+		visual_owner.call("sync_data", data)

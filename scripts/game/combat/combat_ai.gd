@@ -13,11 +13,12 @@ const ACTION_TYPE_DEFENSE := "defense"
 const ACTION_TYPE_RESOURCE := "resource"
 const ACTION_TYPE_DAMAGE := "damage"
 const ACTION_TYPE_NORMAL_ATTACK := "normal_attack"
+const PLAYER_ID := "player"
 
 
-func select_player_action(game_state: GameState, player_range: float, distance_to_enemy: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, member: Dictionary = {}) -> Dictionary:
+func select_player_action(game_state, player_range: float, distance_to_enemy: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, member: Dictionary = {}) -> Dictionary:
 	var actor: Dictionary = member if not member.is_empty() else game_state.player_member()
-	var member_id := str(actor.get("id", GameState.PLAYER_ID))
+	var member_id: String = str(actor.get("id", PLAYER_ID))
 	var actor_stats: Dictionary = actor.get("stats", {})
 	var hp_ratio: float = float(actor_stats.get("hp", 0)) / max(1.0, float(game_state.total_stat_for(member_id, "max_hp")))
 	var mp_ratio: float = float(actor_stats.get("mp", 0)) / max(1.0, float(game_state.total_stat_for(member_id, "max_mp")))
@@ -57,7 +58,7 @@ func preferred_player_release_distance(action: Dictionary, player_range: float) 
 	return player_range
 
 
-func _find_best_available_action(game_state: GameState, action_type: String, hp_ratio: float, mp_ratio: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, player_range: float, distance_to_enemy: float, member: Dictionary = {}) -> Dictionary:
+func _find_best_available_action(game_state, action_type: String, hp_ratio: float, mp_ratio: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, player_range: float, distance_to_enemy: float, member: Dictionary = {}) -> Dictionary:
 	var actor: Dictionary = member if not member.is_empty() else game_state.player_member()
 	var actor_stats: Dictionary = actor.get("stats", {})
 	var candidates: Array[Dictionary] = []
