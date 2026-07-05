@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "herb"
+item_no = 1001
+type = "crop"
+display_name = "草药"
+icon_name = "herb"
+icon_path = "res://assets/items/herb.png"
+description = "通用炼丹材料，也可作为种子。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "none"
+payload = {"growth_seconds": 60.0, "seed_yield": 3}

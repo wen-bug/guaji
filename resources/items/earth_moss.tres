@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "earth_moss"
+item_no = 1026
+type = "crop"
+display_name = "厚土苔"
+icon_name = "earth_moss"
+icon_path = "res://assets/items/earth_moss.png"
+description = "蕴含土行厚重的五行作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "earth"
+payload = {"growth_seconds": 210.0, "seed_yield": 1}

@@ -12,6 +12,7 @@ const PLAYER_ID = "player"
 const PARTY_MAX_SIZE = 4
 const RECRUIT_RESOURCE_ID = "spirit_stone"
 const RECRUIT_COST_SPIRIT_STONE = 1
+const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const LEVEL_ATTRIBUTE_POINTS = 5
 const SAVE_SCHEMA_VERSION = 4
 const BUILDING_RECRUIT = "recruit"
@@ -105,14 +106,49 @@ func _init() -> void:
 	_ensure_party_state()
 	add_inventory_item(RECRUIT_RESOURCE_ID, 1, false)
 	add_inventory_item("herb", 4, false)
+	add_inventory_item("blade_grass", 1, false)
+	add_inventory_item("ironroot", 1, false)
+	add_inventory_item("blood_ginseng", 1, false)
+	add_inventory_item("spirit_lotus", 1, false)
+	add_inventory_item("bone_bamboo", 1, false)
+	add_inventory_item("woodvine", 1, false)
+	add_inventory_item("flame_flower", 1, false)
+	add_inventory_item("earth_moss", 1, false)
+	add_inventory_item("metal_reed", 1, false)
+	add_inventory_item("water_orchid", 1, false)
 	add_inventory_item("ore", 4, false)
-	add_inventory_item("stat_stone_attack_t1", 2, false)
-	add_inventory_item("stat_stone_defense_t1", 2, false)
-	add_inventory_item("spirit_stone_fire_t1", 2, false)
-	add_inventory_item("spirit_stone_earth_t1", 2, false)
+	add_inventory_item("spirit_stone_fire", 2, false)
+	add_inventory_item("spirit_stone_earth", 2, false)
 	add_inventory_item("farm_speed_talisman", 1, false)
 	add_inventory_item("recipe_pill", 1, false)
+	_add_test_inventory_items()
 	generate_recruit_candidates(false)
+
+
+func _add_test_inventory_items() -> void:
+	var item_ids: Array = DataTables.ITEM_DEFS.keys()
+	item_ids.sort()
+	for item_id in item_ids:
+		var current_count: int = inventory_item_count(str(item_id))
+		if current_count < TEST_INVENTORY_ITEM_MIN_COUNT:
+			add_inventory_item(str(item_id), TEST_INVENTORY_ITEM_MIN_COUNT - current_count, false)
+	var template_ids: Array = DataTables.EQUIPMENT_DEFS.keys()
+	template_ids.sort()
+	for template_id in template_ids:
+		if _has_inventory_equipment_template(str(template_id)):
+			continue
+		var equipment: Dictionary = DataTables.create_equipment_from_template(str(template_id), 1, rng, 0, "", "t1", "debug")
+		if not equipment.is_empty():
+			inventory.append(equipment)
+
+
+func _has_inventory_equipment_template(template_id: String) -> bool:
+	for item in inventory:
+		if not (item is Dictionary):
+			continue
+		if str(item.get("type", "")) == DataTables.ITEM_TYPE_EQUIPMENT and str(item.get("item_id", "")) == template_id:
+			return true
+	return false
 
 
 func to_save_data() -> Dictionary:
@@ -181,6 +217,7 @@ func load_save_data(data: Dictionary) -> void:
 	_ensure_production_jobs()
 	_ensure_farm_slots()
 	_sanitize_loaded_inventory()
+	_add_test_inventory_items()
 	_sanitize_active_buffs()
 	_sanitize_farm_speed_buffs()
 	_ensure_party_state()
@@ -406,6 +443,9 @@ func _sanitize_loaded_inventory() -> void:
 		if item_type == DataTables.ITEM_TYPE_EQUIPMENT:
 			_sanitize_loaded_equipment(item)
 		else:
+			if DataTables.item_definition(item_id).is_empty():
+				inventory.remove_at(index)
+				continue
 			_sanitize_loaded_stack_item(item)
 		inventory[index] = item
 
@@ -422,14 +462,22 @@ func _sanitize_loaded_stack_item(item: Dictionary) -> void:
 	item["usable"] = bool(item.get("usable", definition.get("usable", false)))
 	item["gain_target"] = str(item.get("gain_target", definition.get("gain_target", "none")))
 	item["obtain_source"] = str(item.get("obtain_source", "non_drop"))
+	item["item_no"] = int(item.get("item_no", DataTables.item_no(item_id)))
+	item["icon_name"] = str(item.get("icon_name", DataTables.item_icon_name(item_id)))
+	item["icon_path"] = str(item.get("icon_path", DataTables.item_icon_path(item_id)))
+	item["resource_path"] = str(item.get("resource_path", DataTables.item_resource_path(item_id)))
 
 
 func _sanitize_loaded_equipment(item: Dictionary) -> void:
+	var item_id: String = str(item.get("item_id", ""))
 	item["stackable"] = false
 	item["usable"] = bool(item.get("usable", true))
 	item["slot"] = str(item.get("slot", "weapon"))
 	item["rarity"] = str(item.get("rarity", "t1"))
 	item["equipment_level"] = maxi(1, int(item.get("equipment_level", 1)))
+	item["icon_name"] = str(item.get("icon_name", DataTables.equipment_icon_name(item_id)))
+	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id)))
+	item["resource_path"] = str(item.get("resource_path", DataTables.equipment_resource_path(item_id)))
 	item["base_attributes"] = _duplicate_array(item.get("base_attributes", []))
 	item["enhanced_attributes"] = _duplicate_array(item.get("enhanced_attributes", []))
 	item["refine_affixes"] = _duplicate_array(item.get("refine_affixes", []))
@@ -2108,18 +2156,17 @@ func _find_enhance_stone(item: Dictionary, cost: int) -> Dictionary:
 		var stat_id: String = attribute.get("stat", "")
 		if not stat_id.is_empty() and not base_stats.has(stat_id):
 			base_stats.append(stat_id)
-	for quality in DataTables.SPIRIT_STONE_QUALITY_ORDER:
-		for stat_id in base_stats:
-			var item_id: String = DataTables.enhance_stone_item_id(stat_id, quality)
-			if item_id.is_empty():
-				continue
-			if inventory_item_count(item_id) >= cost:
-				return {
-					"item_id": item_id,
-					"stat": stat_id,
-					"quality": quality,
-					"amount": DataTables.spirit_stone_enhance_amount(quality),
-				}
+	for stat_id in base_stats:
+		var item_id: String = DataTables.enhance_stone_item_id(stat_id)
+		if item_id.is_empty():
+			continue
+		if inventory_item_count(item_id) >= cost:
+			return {
+				"item_id": item_id,
+				"stat": stat_id,
+				"quality": "base",
+				"amount": DataTables.spirit_stone_enhance_amount(item_id),
+			}
 	return {}
 
 

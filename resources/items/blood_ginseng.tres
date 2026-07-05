@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "blood_ginseng"
+item_no = 1021
+type = "crop"
+display_name = "血参"
+icon_name = "blood_ginseng"
+icon_path = "res://assets/items/blood_ginseng.png"
+description = "补益气血的生命属性作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "max_hp"
+payload = {"growth_seconds": 240.0, "seed_yield": 1}

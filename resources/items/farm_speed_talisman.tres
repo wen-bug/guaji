@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "farm_speed_talisman"
+item_no = 1006
+type = "material"
+display_name = "丰收符"
+icon_name = "farm_speed_talisman"
+icon_path = "res://assets/items/farm_speed_talisman.png"
+description = "提升农田生长速度一段时间。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "none"
+payload = {"farm_speed": true}

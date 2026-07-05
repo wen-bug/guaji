@@ -15,8 +15,8 @@
     - `result_item_id`：产物 ID
     - `materials`：材料数组，每项包含 `item_id` 和 `amount`
   - 属性丹药使用已文档化材料：
-    - `attack_pill`: `blade_grass ×2`、`rice ×1`、`stat_stone_attack_t1 ×1`
-    - `fire_pill`: `flame_flower ×2`、`spirit_sand ×1`、`spirit_stone_fire_t1 ×1`
+    - `attack_pill`: `blade_grass ×2`、`herb ×1`、`spirit_stone ×1`
+    - `fire_pill`: `flame_flower ×2`、`spirit_sand ×1`、`spirit_stone_fire ×1`
     - 其他属性丹按 `docs/item-table.md` 的“属性丹药配方材料”表补齐。
   - 新增查询函数：
     - `DataTables.alchemy_recipe_def(recipe_id)`

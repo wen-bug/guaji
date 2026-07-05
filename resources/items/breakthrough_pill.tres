@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "breakthrough_pill"
+item_no = 1017
+type = "pill"
+display_name = "破境丹"
+icon_name = "breakthrough_pill"
+icon_path = "res://assets/items/breakthrough_pill.png"
+description = "达到等级上限时可突破。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "none"
+payload = {"breakthrough": true}

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SkillDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "fireball"
+display_name = "火球术"
+icon_name = "fireball"
+icon_path = "res://assets/skills/fireball.png"
+type = "damage"
+element = "fire"
+mp_cost = 8
+cooldown = 3.0
+release_distance = 120.0
+description = "火属性攻击技能。"

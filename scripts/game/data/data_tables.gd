@@ -12,6 +12,37 @@ const ITEM_TYPE_CROP := "crop"
 const ITEM_TYPE_PILL := "pill"
 const ITEM_TYPE_ALCHEMY_RECIPE := "alchemy_recipe"
 
+const ITEM_ICON_ROOT := "res://assets/items"
+const EQUIPMENT_ICON_ROOT := "res://assets/equipment"
+const ITEM_RESOURCE_ROOT := "res://resources/items"
+const EQUIPMENT_RESOURCE_ROOT := "res://resources/equipment"
+const SKILL_RESOURCE_ROOT := "res://resources/skills"
+
+const ITEM_ID_HERB := "herb"
+const ITEM_ID_BLADE_GRASS := "blade_grass"
+const ITEM_ID_IRONROOT := "ironroot"
+const ITEM_ID_BLOOD_GINSENG := "blood_ginseng"
+const ITEM_ID_SPIRIT_LOTUS := "spirit_lotus"
+const ITEM_ID_BONE_BAMBOO := "bone_bamboo"
+const ITEM_ID_WOODVINE := "woodvine"
+const ITEM_ID_FLAME_FLOWER := "flame_flower"
+const ITEM_ID_EARTH_MOSS := "earth_moss"
+const ITEM_ID_METAL_REED := "metal_reed"
+const ITEM_ID_WATER_ORCHID := "water_orchid"
+const ITEM_ID_ORE := "ore"
+const ITEM_ID_SPIRIT_STONE := "spirit_stone"
+const ITEM_ID_FARM_SPEED_TALISMAN := "farm_speed_talisman"
+const ITEM_ID_SPIRIT_STONE_FIRE := "spirit_stone_fire"
+const ITEM_ID_SPIRIT_STONE_EARTH := "spirit_stone_earth"
+const ITEM_ID_SPIRIT_STONE_WOOD := "spirit_stone_wood"
+const ITEM_ID_SPIRIT_STONE_METAL := "spirit_stone_metal"
+const ITEM_ID_SPIRIT_STONE_WATER := "spirit_stone_water"
+const ITEM_ID_REFINE_TALISMAN := "refine_talisman"
+const ITEM_ID_RECIPE_PILL := "recipe_pill"
+const ITEM_ID_PILL := "pill"
+const ITEM_ID_BREAKTHROUGH_PILL := "breakthrough_pill"
+const ITEM_ID_SKILL_FIREBALL := "skill_fireball"
+
 const ITEM_GAIN_TARGET_ORDER := ["attack", "defense", "max_hp", "max_mp", "root_bone", "wood", "fire", "earth", "metal", "water"]
 const ITEM_GAIN_TARGET_LABELS := {
 	"attack": "攻击",
@@ -100,27 +131,31 @@ const EQUIPMENT_RARITY_WEIGHTS := {
 	"t5": 1,
 }
 
-const SPIRIT_STONE_QUALITY_ORDER := ["t1", "t2", "t3", "t4", "t5"]
-
 const ITEM_DEFS := {
-	"herb": {"name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 60.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"rice": {"name": "灵米", "description": "基础作物与辅料。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 2, "growth_seconds": 90.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"mushroom": {"name": "灵菇", "description": "基础作物与辅料。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 120.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"ore": {"name": "矿石", "description": "通用炼器材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"spirit_stone": {"name": "灵石", "description": "招募修士所需的通用灵石。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"recruit_currency": true}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"farm_speed_talisman": {"name": "丰收符", "description": "提升农田生长速度一段时间。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": true, "payload": {"farm_speed": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"stat_stone_attack_t1": {"name": "攻击灵石·一阶", "description": "可用于强化攻击属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "attack", "quality": "t1", "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
-	"stat_stone_defense_t1": {"name": "防御灵石·一阶", "description": "可用于强化防御属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "defense", "quality": "t1", "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
-	"spirit_stone_fire_t1": {"name": "火灵石·一阶", "description": "可用于强化火行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_fire", "quality": "t1", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
-	"spirit_stone_earth_t1": {"name": "土灵石·一阶", "description": "可用于强化土行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_earth", "quality": "t1", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
-	"spirit_stone_wood_t1": {"name": "木灵石·一阶", "description": "可用于强化木行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_wood", "quality": "t1", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
-	"spirit_stone_metal_t1": {"name": "金灵石·一阶", "description": "可用于强化金行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_metal", "quality": "t1", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
-	"spirit_stone_water_t1": {"name": "水灵石·一阶", "description": "可用于强化水行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_water", "quality": "t1", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
-	"refine_talisman": {"name": "洗练符", "description": "用于装备洗练。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"recipe_pill": {"name": "调息丹方", "description": "学习后可炼制调息丹。", "type": ITEM_TYPE_ALCHEMY_RECIPE, "stackable": true, "usable": true, "payload": {"recipe_id": "pill"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"pill": {"name": "调息丹", "description": "恢复生命和法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp": 18, "mp": 12}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"breakthrough_pill": {"name": "破境丹", "description": "达到等级上限时可突破。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"breakthrough": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"skill_fireball": {"name": "火球术残卷", "description": "学习后获得火球术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "fireball"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"herb": {"item_no": 1001, "name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 60.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"ore": {"item_no": 1004, "name": "矿石", "description": "通用炼器材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"spirit_stone": {"item_no": 1005, "name": "灵石", "description": "招募修士与强化普通属性所需的通用灵石。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"recruit_currency": true, "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"farm_speed_talisman": {"item_no": 1006, "name": "丰收符", "description": "提升农田生长速度一段时间。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": true, "payload": {"farm_speed": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"spirit_stone_fire": {"item_no": 1009, "name": "火灵石", "description": "可用于强化火行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_fire", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
+	"spirit_stone_earth": {"item_no": 1010, "name": "土灵石", "description": "可用于强化土行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_earth", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
+	"spirit_stone_wood": {"item_no": 1011, "name": "木灵石", "description": "可用于强化木行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_wood", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
+	"spirit_stone_metal": {"item_no": 1012, "name": "金灵石", "description": "可用于强化金行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_metal", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
+	"spirit_stone_water": {"item_no": 1013, "name": "水灵石", "description": "可用于强化水行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_water", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
+	"refine_talisman": {"item_no": 1014, "name": "洗练符", "description": "用于装备洗练。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"recipe_pill": {"item_no": 1015, "name": "调息丹方", "description": "学习后可炼制调息丹。", "type": ITEM_TYPE_ALCHEMY_RECIPE, "stackable": true, "usable": true, "payload": {"recipe_id": "pill"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"pill": {"item_no": 1016, "name": "调息丹", "description": "恢复生命和法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp": 18, "mp": 12}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"breakthrough_pill": {"item_no": 1017, "name": "破境丹", "description": "达到等级上限时可突破。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"breakthrough": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"skill_fireball": {"item_no": 1018, "name": "火球术残卷", "description": "学习后获得火球术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "fireball"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"blade_grass": {"item_no": 1019, "name": "刃纹草", "description": "蕴含锋锐气息的攻击属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 180.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
+	"ironroot": {"item_no": 1020, "name": "铁根藤", "description": "根须坚韧的防御属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 180.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
+	"blood_ginseng": {"item_no": 1021, "name": "血参", "description": "补益气血的生命属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 240.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_hp"},
+	"spirit_lotus": {"item_no": 1022, "name": "灵泉莲", "description": "滋养法力的灵力属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 240.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_mp"},
+	"bone_bamboo": {"item_no": 1023, "name": "玉骨竹", "description": "淬炼根骨的根骨属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 360.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "root_bone"},
+	"woodvine": {"item_no": 1024, "name": "青木藤", "description": "蕴含木行生机的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 180.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
+	"flame_flower": {"item_no": 1025, "name": "赤焰花", "description": "蕴含火行炎力的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 210.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
+	"earth_moss": {"item_no": 1026, "name": "厚土苔", "description": "蕴含土行厚重的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 210.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
+	"metal_reed": {"item_no": 1027, "name": "玄金苇", "description": "蕴含金行肃杀的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 300.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
+	"water_orchid": {"item_no": 1028, "name": "玄水兰", "description": "蕴含水行润泽的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 240.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
 }
 
 const SKILL_DEFS := {
@@ -246,6 +281,183 @@ static func item_definition(item_id: String) -> Dictionary:
 	return ITEM_DEFS.get(item_id, {}).duplicate(true)
 
 
+static func item_no(item_id: String) -> int:
+	return int(ITEM_DEFS.get(item_id, {}).get("item_no", 0))
+
+
+static func item_id_from_no(no: int) -> String:
+	for item_id in ITEM_DEFS.keys():
+		if int(ITEM_DEFS[item_id].get("item_no", 0)) == no:
+			return str(item_id)
+	return ""
+
+
+static func item_icon_name(item_id: String) -> String:
+	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	return str(definition.get("icon_name", item_id))
+
+
+static func item_icon_path(item_id: String) -> String:
+	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	if definition.has("icon_path"):
+		return str(definition.get("icon_path", ""))
+	var icon_name: String = item_icon_name(item_id)
+	if icon_name.is_empty():
+		return ""
+	return "%s/%s.png" % [ITEM_ICON_ROOT, icon_name]
+
+
+static func equipment_icon_name(template_id: String) -> String:
+	var definition: Dictionary = EQUIPMENT_DEFS.get(template_id, {})
+	return str(definition.get("icon_name", template_id))
+
+
+static func equipment_icon_path(template_id: String) -> String:
+	var definition: Dictionary = EQUIPMENT_DEFS.get(template_id, {})
+	if definition.has("icon_path"):
+		return str(definition.get("icon_path", ""))
+	var icon_name: String = equipment_icon_name(template_id)
+	if icon_name.is_empty():
+		return ""
+	return "%s/%s.png" % [EQUIPMENT_ICON_ROOT, icon_name]
+
+
+static func item_resource_path(item_id: String) -> String:
+	if item_id.is_empty():
+		return ""
+	return "%s/%s.tres" % [ITEM_RESOURCE_ROOT, item_id]
+
+
+static func equipment_resource_path(template_id: String) -> String:
+	if template_id.is_empty():
+		return ""
+	return "%s/%s.tres" % [EQUIPMENT_RESOURCE_ROOT, template_id]
+
+
+static func skill_resource_path(skill_id: String) -> String:
+	if skill_id.is_empty():
+		return ""
+	return "%s/%s.tres" % [SKILL_RESOURCE_ROOT, skill_id]
+
+
+static func item_resource(item_id: String) -> Resource:
+	return _load_resource(item_resource_path(item_id))
+
+
+static func equipment_resource(template_id: String) -> Resource:
+	return _load_resource(equipment_resource_path(template_id))
+
+
+static func item_icon_texture(item_id: String) -> Texture2D:
+	return _icon_texture_from_resource(item_resource_path(item_id))
+
+
+static func equipment_icon_texture(template_id: String) -> Texture2D:
+	return _icon_texture_from_resource(equipment_resource_path(template_id))
+
+
+static func skill_icon_texture(skill_id: String) -> Texture2D:
+	return _icon_texture_from_resource(skill_resource_path(skill_id))
+
+
+static func item_display_name(item_id: String) -> String:
+	var resource: Resource = item_resource(item_id)
+	var display_name: String = _resource_string(resource, "display_name", "")
+	if not display_name.is_empty():
+		return display_name
+	return str(ITEM_DEFS.get(item_id, {}).get("name", item_id))
+
+
+static func item_display_description(item_id: String) -> String:
+	var resource: Resource = item_resource(item_id)
+	var description: String = _resource_string(resource, "description", "")
+	if not description.is_empty():
+		return description
+	return str(ITEM_DEFS.get(item_id, {}).get("description", ""))
+
+
+static func equipment_template_description(template_id: String) -> String:
+	var resource: Resource = equipment_resource(template_id)
+	var description: String = _resource_string(resource, "description", "")
+	if not description.is_empty():
+		return description
+	return str(EQUIPMENT_DEFS.get(template_id, {}).get("description", ""))
+
+
+static func inventory_display_name(item: Dictionary) -> String:
+	var item_id: String = str(item.get("item_id", ""))
+	if str(item.get("type", "")) == ITEM_TYPE_EQUIPMENT:
+		return str(item.get("name", item_id))
+	return item_display_name(item_id)
+
+
+static func inventory_display_description(item: Dictionary) -> String:
+	var item_id: String = str(item.get("item_id", ""))
+	if str(item.get("type", "")) == ITEM_TYPE_EQUIPMENT:
+		var instance_description: String = str(item.get("description", ""))
+		var template_description: String = equipment_template_description(item_id)
+		if instance_description.is_empty():
+			return template_description
+		if template_description.is_empty() or template_description == instance_description:
+			return instance_description
+		return "%s  %s" % [instance_description, template_description]
+	return item_display_description(item_id)
+
+
+static func inventory_icon_texture(item: Dictionary) -> Texture2D:
+	var item_id: String = str(item.get("item_id", ""))
+	var item_type: String = str(item.get("type", ""))
+	var default_resource_path: String = equipment_resource_path(item_id) if item_type == ITEM_TYPE_EQUIPMENT else item_resource_path(item_id)
+	var resource_path: String = str(item.get("resource_path", default_resource_path))
+	var resource: Resource = _load_resource(resource_path)
+	var texture: Texture2D = _texture_from_resource(resource)
+	if texture != null:
+		return texture
+	var default_icon_path: String = equipment_icon_path(item_id) if item_type == ITEM_TYPE_EQUIPMENT else item_icon_path(item_id)
+	var icon_path: String = _resource_string(resource, "icon_path", "")
+	if icon_path.is_empty():
+		icon_path = str(item.get("icon_path", default_icon_path))
+	return _texture_from_path(icon_path)
+
+
+static func _icon_texture_from_resource(path: String) -> Texture2D:
+	return _texture_from_resource(_load_resource(path))
+
+
+static func _load_resource(path: String) -> Resource:
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	return load(path)
+
+
+static func _texture_from_resource(resource: Resource) -> Texture2D:
+	if resource == null:
+		return null
+	var texture = resource.get("icon_texture")
+	if texture is Texture2D:
+		return texture
+	return null
+
+
+static func _texture_from_path(path: String) -> Texture2D:
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	var resource: Resource = load(path)
+	if resource is Texture2D:
+		return resource
+	return null
+
+
+static func _resource_string(resource: Resource, property_name: String, fallback: String = "") -> String:
+	if resource == null:
+		return fallback
+	var value = resource.get(property_name)
+	if value == null:
+		return fallback
+	var text: String = str(value)
+	return fallback if text.is_empty() else text
+
+
 static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 	var definition := item_definition(item_id)
 	if definition.is_empty():
@@ -262,6 +474,10 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 		"payload": definition.get("payload", {}).duplicate(true),
 		"obtain_source": "non_drop",
 		"gain_target": definition.get("gain_target", "none"),
+		"item_no": item_no(item_id),
+		"icon_name": item_icon_name(item_id),
+		"icon_path": item_icon_path(item_id),
+		"resource_path": item_resource_path(item_id),
 	}
 
 
@@ -333,6 +549,7 @@ static func create_equipment_from_template(template_id: String, level: int, rng:
 		rarity_index = 0
 	var rarity_name: String = str(EQUIPMENT_RARITY_NAMES.get(rarity, "一阶"))
 	var slot := str(template.get("slot", template_id))
+	var equipment_name: String = str(template.get("name", slot_name(slot)))
 	var equipment_level := maxi(1, level)
 	var base_attributes: Array = []
 	for attribute in template.get("base_attributes", []):
@@ -350,7 +567,7 @@ static func create_equipment_from_template(template_id: String, level: int, rng:
 	return {
 		"instance_id": "%s_%d_%d" % [template_id, Time.get_ticks_usec(), rng.randi()],
 		"item_id": template_id,
-		"name": "%s·%s" % [rarity_name, slot_name(slot)],
+		"name": "%s·%s" % [rarity_name, equipment_name],
 		"description": "%s等级装备" % rarity_name,
 		"type": ITEM_TYPE_EQUIPMENT,
 		"count": 1,
@@ -358,6 +575,9 @@ static func create_equipment_from_template(template_id: String, level: int, rng:
 		"usable": true,
 		"payload": {},
 		"obtain_source": obtain_source,
+		"icon_name": equipment_icon_name(template_id),
+		"icon_path": equipment_icon_path(template_id),
+		"resource_path": equipment_resource_path(template_id),
 		"slot": slot,
 		"rarity": rarity,
 		"equipment_level": equipment_level,
@@ -428,7 +648,7 @@ static func element_name(element_id: String) -> String:
 static func resource_name(resource_id: String) -> String:
 	var item: Dictionary = ITEM_DEFS.get(resource_id, {})
 	if not item.is_empty():
-		return str(item.get("name", resource_id))
+		return item_display_name(resource_id)
 	return resource_id
 
 
@@ -524,7 +744,11 @@ static func element_id_from_attribute(stat_id: String) -> String:
 
 
 static func is_farm_seed(item_id: String) -> bool:
-	return ITEM_DEFS.has(item_id) and item_id in ["herb", "rice", "mushroom"]
+	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	if str(definition.get("type", "")) != ITEM_TYPE_CROP:
+		return false
+	var payload: Dictionary = definition.get("payload", {})
+	return payload.has("seed_yield")
 
 
 static func is_farm_speed_item(item_id: String) -> bool:
@@ -547,26 +771,16 @@ static func farm_speed_item_duration(_item_id: String) -> float:
 	return 300.0
 
 
-static func enhance_stone_item_id(stat_id: String, quality: String) -> String:
+static func enhance_stone_item_id(stat_id: String) -> String:
 	if stat_id.begins_with(ELEMENT_ATTRIBUTE_PREFIX):
-		return "spirit_stone_%s_%s" % [element_id_from_attribute(stat_id), quality]
-	return "stat_stone_%s_%s" % [stat_id, quality]
+		return "spirit_stone_%s" % element_id_from_attribute(stat_id)
+	if ["attack", "defense", "max_hp", "max_mp", "root_bone"].has(stat_id):
+		return ITEM_ID_SPIRIT_STONE
+	return ""
 
 
-static func spirit_stone_enhance_amount(quality: String) -> int:
-	match quality:
-		"t1":
-			return 1
-		"t2":
-			return 2
-		"t3":
-			return 4
-		"t4":
-			return 7
-		"t5":
-			return 11
-		_:
-			return 1
+static func spirit_stone_enhance_amount(_item_id: String = "") -> int:
+	return 1
 
 
 static func alchemy_recipe_def(recipe_id: String) -> Dictionary:

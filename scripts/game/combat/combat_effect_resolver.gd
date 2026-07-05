@@ -102,25 +102,72 @@ func resolve_trigger(trigger: String, effects: Array, context: Dictionary, rng: 
 	return context
 
 
+func resolve_status_trigger(trigger: String, target: Dictionary, context: Dictionary, rng: RandomNumberGenerator, owner_role: String = "attacker") -> Dictionary:
+	if not TRIGGERS.has(trigger):
+		return context
+	var effects: Array = target.get("combat_effects", [])
+	var index: int = 0
+	while index < effects.size():
+		if not (effects[index] is Dictionary):
+			effects.remove_at(index)
+			continue
+		var effect: Dictionary = effects[index]
+		if str(effect.get("trigger", "")) != trigger:
+			index += 1
+			continue
+		if effect.has("uses") and int(effect.get("uses", 0)) <= 0:
+			effects.remove_at(index)
+			continue
+		var consume_on_trigger: bool = _consumes_on_trigger(effect)
+		var normalized: Array = normalize_effects([effect])
+		if normalized.is_empty():
+			if consume_on_trigger:
+				effects.remove_at(index)
+			else:
+				index += 1
+			continue
+		var resolved_effect: Dictionary = normalized[0]
+		if consume_on_trigger:
+			effect = _consume_status_use(effect)
+		var should_apply: bool = _chance_passed(resolved_effect, rng)
+		if should_apply:
+			_apply_effect(resolved_effect, trigger, context, owner_role)
+		if consume_on_trigger and int(effect.get("uses", 0)) <= 0:
+			effects.remove_at(index)
+		else:
+			effects[index] = effect
+			index += 1
+	target["combat_effects"] = effects
+	return context
+
+
 func add_status_effect(target: Dictionary, effect: Dictionary) -> Dictionary:
 	var status: Dictionary = _status_from_effect(effect)
 	if status.is_empty():
 		return {}
 	var effects: Array = target.get("combat_effects", [])
-	var stack_key: String = str(status.get("stack_key", ""))
-	if not stack_key.is_empty():
-		for index in range(effects.size()):
-			var existing: Dictionary = effects[index]
-			if str(existing.get("stack_key", "")) != stack_key:
-				continue
+	var status_key: String = _status_identity(status)
+	var stack_mode: String = str(status.get("stack_mode", "overwrite"))
+	for index in range(effects.size()):
+		if not (effects[index] is Dictionary):
+			continue
+		var existing: Dictionary = effects[index]
+		if _status_identity(existing) != status_key:
+			continue
+		if stack_mode == "stack":
 			var max_stacks: int = maxi(1, int(status.get("max_stacks", existing.get("max_stacks", 1))))
-			existing["stacks"] = mini(max_stacks, int(existing.get("stacks", 1)) + 1)
-			existing["remaining_turns"] = max(int(existing.get("remaining_turns", 0)), int(status.get("remaining_turns", 0)))
+			existing["stacks"] = mini(max_stacks, int(existing.get("stacks", 1)) + int(status.get("stacks", 1)))
+			if status.has("remaining_turns"):
+				existing["remaining_turns"] = max(int(existing.get("remaining_turns", 0)), int(status.get("remaining_turns", 0)))
 			if existing.has("amount") and status.has("amount"):
 				existing["amount"] = max(int(existing.get("amount", 0)), int(status.get("amount", 0)))
+				existing["value"] = int(existing.get("amount", existing.get("value", 0)))
 			effects[index] = existing
 			target["combat_effects"] = effects
 			return existing
+		effects[index] = status
+		target["combat_effects"] = effects
+		return status
 	effects.append(status)
 	target["combat_effects"] = effects
 	return status
@@ -287,29 +334,76 @@ func _target_role(effect: Dictionary, owner_role: String) -> String:
 
 
 func _status_from_effect(effect: Dictionary) -> Dictionary:
-	var kind: String = str(effect.get("kind", ""))
-	if not STATUS_KINDS.has(kind):
+	var normalized: Array = normalize_effects([effect])
+	if normalized.is_empty():
 		return {}
-	var status: Dictionary = effect.duplicate(true)
+	var status: Dictionary = normalized[0].duplicate(true)
+	var kind: String = str(status.get("kind", ""))
+	if not STATUS_KINDS.has(kind) and not _is_triggered_status(status):
+		return {}
 	status["kind"] = kind
 	if kind == "dot" or kind == "hot":
 		status["trigger"] = "turn_start"
-	else:
+	elif not _is_triggered_status(status):
 		status.erase("trigger")
-	status["value"] = int(status.get("value", status.get("amount", 0)))
+	if ["dot", "hot", "shield", "buff_stat", "debuff_stat", "damage_flat", "defense_ignore", "heal"].has(kind):
+		status["value"] = int(status.get("value", status.get("amount", 0)))
+	elif not status.has("value") and status.has("amount"):
+		status["value"] = status.get("amount", 0)
 	if kind == "shield":
 		status["amount"] = int(status.get("amount", status.get("value", 0)))
 	if kind == "debuff_stat":
 		status["value"] = abs(int(status.get("value", status.get("amount", 0))))
+	if bool(status.get("consume_on_trigger", false)) and not status.has("uses"):
+		status["uses"] = 1
+	if status.has("uses") and int(status.get("uses", 0)) <= 0:
+		return {}
 	if status.has("duration_turns") and not status.has("remaining_turns"):
 		status["remaining_turns"] = int(status.get("duration_turns", 1))
-	if not status.has("remaining_turns") and kind != "shield":
+	if not status.has("remaining_turns") and kind != "shield" and not _consumes_on_trigger(status):
 		status["remaining_turns"] = 1
 	if ["buff_stat", "debuff_stat", "shield"].has(kind):
 		status["fresh"] = true
 	if not status.has("stacks"):
 		status["stacks"] = 1
+	if not status.has("stack_mode"):
+		status["stack_mode"] = "overwrite"
 	return status
+
+
+func _is_triggered_status(effect: Dictionary) -> bool:
+	if bool(effect.get("consume_on_trigger", false)) or effect.has("uses"):
+		return true
+	return not str(effect.get("trigger", "")).is_empty() and (effect.has("duration_turns") or effect.has("remaining_turns"))
+
+
+func _status_identity(status: Dictionary) -> String:
+	var buff_id: String = str(status.get("buff_id", ""))
+	if not buff_id.is_empty():
+		return "buff_id:%s" % buff_id
+	var stack_key: String = str(status.get("stack_key", ""))
+	if not stack_key.is_empty():
+		return "stack_key:%s" % stack_key
+	var stat_or_element: String = str(status.get("stat", status.get("element", "")))
+	return "fallback:%s:%s:%s:%s:%s" % [
+		str(status.get("source_skill_id", "")),
+		str(status.get("kind", "")),
+		str(status.get("trigger", "")),
+		str(status.get("target", "")),
+		stat_or_element,
+	]
+
+
+func _consumes_on_trigger(effect: Dictionary) -> bool:
+	if bool(effect.get("consume_on_trigger", false)):
+		return true
+	return effect.has("uses") and int(effect.get("uses", 0)) > 0
+
+
+func _consume_status_use(effect: Dictionary) -> Dictionary:
+	var result: Dictionary = effect.duplicate(true)
+	result["uses"] = max(0, int(result.get("uses", 1)) - 1)
+	return result
 
 
 func _chance_passed(effect: Dictionary, rng: RandomNumberGenerator) -> bool:

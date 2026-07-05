@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "metal_reed"
+item_no = 1027
+type = "crop"
+display_name = "玄金苇"
+icon_name = "metal_reed"
+icon_path = "res://assets/items/metal_reed.png"
+description = "蕴含金行肃杀的五行作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "metal"
+payload = {"growth_seconds": 300.0, "seed_yield": 1}

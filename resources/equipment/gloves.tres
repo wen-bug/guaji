@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/equipment_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = "gloves"
+slot = "gloves"
+base_name = "护手"
+display_name = "护手"
+slot_label = "护手"
+icon_name = "gloves"
+icon_path = "res://assets/equipment/gloves.png"
+level_scale = 1.4
+base_attributes = [{"amount": 4, "stat": "attack"}, {"amount": 2, "stat": "defense"}]
+requirement_stat = "level"
+description = "护手装备模板，提供基础攻击与防御属性。"

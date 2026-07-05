@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://bun6pr2sfk0vb"]
+
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = "accessory"
+slot = "accessory"
+base_name = "饰品"
+display_name = "饰品"
+slot_label = "饰品"
+icon_name = "accessory"
+icon_path = "res://assets/equipment/accessory.png"
+level_scale = 1.0
+base_attributes = [{
+"amount": 2,
+"stat": "root_bone"
+}]
+requirement_stat = "level"
+description = "饰品装备模板，提供基础根骨属性。"

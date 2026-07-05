@@ -2,317 +2,238 @@
 
 ## 概览
 
-物品系统统一管理背包内可显示、可使用或可消耗的内容。当前覆盖六类物品：技能书、装备、材料、作物、丹药、炼丹图纸。
+本文档描述物品、背包、装备、炼丹、种田和商店的系统规则。具体已实现物品、配方、技能、装备模板、敌人掉落以 `docs/item-table.md` 和 `scripts/game/data/data_tables.gd` 为准。
 
-系统采用“双层模型”：
-- 静态定义 Resource 化：`ItemDef`、`EquipmentTemplate` 等定义描述不可变的物品和装备模板。
-- 背包实例轻量 Dictionary：运行时只保存数量、实例 ID、装备随机属性、强化、词条和临时状态。
+状态标记：
 
-新增物品时优先扩展 `DataTables.ITEM_DEFS`。新增装备模板扩展 `DataTables.EQUIPMENT_DEFS`，新增词条扩展 `DataTables.AFFIX_DEFS`。
+- 已实现：当前代码已有入口或数据支撑。
+- 规划：保留设计方向，但不能当作当前已上线能力。
+
+物品系统采用双层模型：
+
+- 已实现：静态定义集中在 `DataTables.ITEM_DEFS`、`EQUIPMENT_DEFS`、`SKILL_DEFS`、`ALCHEMY_RECIPE_DEFS` 等表。
+- 已实现：背包运行时实例使用轻量 `Dictionary`，保存数量、实例 ID、装备随机属性、强化、洗练和临时状态。
 
 ## 背包实例结构
 
 所有物品实例存放在 `GameState.inventory`。
 
-基础字段：
+已实现的基础字段：
+
 - `instance_id`：背包内唯一实例 ID。堆叠物品通常等于 `item_id`，装备为独立 ID。
-- `item_id`：静态定义 ID。
+- `item_id`：静态定义 ID，也是代码调用主键和默认美术素材名。
+- `item_no`：稳定整数编号，用于统计、导出和日志聚合；新增物品只追加编号，不复用、不重排。
+- `icon_name`：图标素材名，默认等于 `item_id`。
+- `icon_path`：图标资源路径，默认 `res://assets/items/<item_id>.png`。
 - `type`：物品分类。
 - `name`：显示名。
 - `description`：描述文本。
 - `count`：数量。装备固定为 1。
-- `usable`：是否允许右键使用。
+- `stackable`：是否堆叠。
+- `usable`：是否允许使用。
 - `payload`：分类专属数据。
-- `obtain_source`：来源标记，当前用 `drop` / `non_drop` 区分掉落和非掉落产物。
+- `obtain_source`：来源标记，当前用 `drop`、`non_drop`、`debug` 区分。
+- `gain_target`：成长或强化倾向，用于 UI 标签。
 
-装备额外字段：
+已实现的装备额外字段：
+
 - `slot`：基础槽位，可为 `weapon`、`helmet`、`armor`、`leggings`、`gloves`、`accessory`。
 - `equipped_by`：当前穿戴者成员 ID，空字符串表示未穿戴。
 - `equipped_slot`：实际穿戴槽位。饰品会落到 `accessory_1` 或 `accessory_2`。
-- `attack_bonus`：基础攻击加成。
-- `defense_bonus`：基础防御加成。
-- `element`：装备五行。
-- `rarity`：品质。
-- `equipped`：是否已装备。
-- `enhance_level`：强化等级。
-- `enhance_attack_bonus`：强化提供的攻击加成。
-- `enhance_defense_bonus`：强化提供的防御加成。
-- `affixes`：词条列表，每条包含 `id`、`name`、`stat`、`amount`。
-- `obtain_source`：来源标记，掉落装备记为 `drop`，炼器等非掉落装备记为 `non_drop`。
+- `rarity` / `equipment_level`：阶位与装备等级。
+- `base_attributes`：模板基础属性。
+- `affixes`：随机词条。
+- `enhanced_attributes`：普通强化加法属性。
+- `refine_affixes`：洗练百分比词条。
+- `enhance_count` / `refine_count`：强化和洗练次数。
+- `equip_requirement`：穿戴需求。
 
 ## 物品分类
+
+已实现分类：
 
 | 分类 | type | 是否可堆叠 | 是否可使用 | 当前用途 |
 | --- | --- | --- | --- | --- |
 | 技能书 | `skill_book` | 是 | 是 | 学习技能 |
-| 装备 | `equipment` | 否 | 是 | 穿戴、强化、加词条，影响属性 |
-| 材料 | `material` | 是 | 否 | 炼器、强化、加词条、家园操作消耗 |
+| 装备 | `equipment` | 否 | 是 | 穿戴、强化、洗练，影响属性 |
+| 材料 | `material` | 是 | 视定义 | 炼器、强化、洗练、招募和其他消耗 |
 | 作物 | `crop` | 是 | 否 | 炼丹材料，也可作为农田种子 |
-| 丹药 | `pill` | 是 | 是 | 一次性恢复、突破或持续 Buff |
+| 丹药 | `pill` | 是 | 是 | 恢复、突破或后续持续 Buff |
 | 图纸 | `alchemy_recipe` | 是 | 是 | 学习炼丹配方 |
 
-## 技能书
+## 使用与丢弃
 
-| item_id | 名称 | 对应技能 | 当前用途 |
-| --- | --- | --- | --- |
-| `skill_fireball` | 火球术残卷 | `fireball` | 学习火属性攻击技能 |
-| `skill_heal` | 回春术残卷 | `heal` | 学习治疗技能 |
-| `skill_thunder` | 雷击术残卷 | `thunder` | 学习高伤害技能 |
+已实现规则：
 
-技能书使用规则：
-- 未学习对应技能时，使用后加入 `GameState.skills` 并消耗 1 本。
-- 已学习时只提示，不消耗。
-- 学会后的技能实例也会带 `obtain_source`，用于区分掉落技能书和非掉落来源。
+- 技能书：未学习对应技能时，使用后加入成员技能并消耗 1 本；已学习时提示且不消耗。
+- 装备：使用后尝试穿戴到当前选中成员的对应槽位；同一装备只能由一名成员穿戴。
+- 丹药：一次性丹药立即结算；突破丹在达到等级上限时用于突破。
+- 图纸：使用后学习对应丹方，写入 `known_alchemy_recipes`，成功后消耗 1 张。
+- 材料与作物：默认不可直接使用，由家园、炼丹、炼器、强化和洗练流程消耗。
+- 堆叠物品丢弃时每次减少 1 个，数量归零后从背包移除。
+- 装备丢弃时直接移除实例；若正在装备，先卸下再移除。
+
+规划规则：
+
+- 持续丹药写入 `active_buffs` 并随时间扣减。
+- 战斗类物品可按 `use_scope` 区分家园、战斗和不可使用入口。
 
 ## 装备模板与槽位
 
-装备由 `EquipmentTemplate` 静态模板生成，进入背包时创建独立实例。生成时会随机五阶品质，并初始化模板基础属性、随机词条、强化和洗练字段。装备名称格式为 `<阶位名>·<槽位名>`，例如 `三阶·武器`。
+已实现模板包括武器、头盔、护甲、胫甲、护手和饰品。装备进入背包时创建独立实例，名称格式为 `<阶位名>·<装备模板名称>`。阶位名只属于运行时装备实例显示，不写入静态装备资源。
 
-五阶品质按慢热挂机节奏分布：`t1` 一阶 55%、`t2` 二阶 28%、`t3` 三阶 12%、`t4` 四阶 4%、`t5` 五阶 1%。阶级决定随机词条条数：一阶 1 条、二阶 2 条、三阶 3 条、四阶 4 条、五阶 5 条。
+装备模板资源：
 
-掉落装备统一使用 `element: neutral` 兼容旧字段。五行属性不再作为装备身份或强制基础属性，只作为随机词条写入 `affixes`。
-
-| 模板 item_id | 基础槽位 | 装备定位 |
-| --- | --- | --- |
-| `weapon` | `weapon` | 主要增加攻击 |
-| `helmet` | `helmet` | 主要增加生命和防御 |
-| `armor` | `armor` | 主要增加防御和生命 |
-| `leggings` | `leggings` | 主要增加防御和生命 |
-| `gloves` | `gloves` | 兼顾攻击和防御 |
-| `accessory` | `accessory` | 主要增加灵力和根骨 |
+- 已实现：每个 `EQUIPMENT_DEFS` 模板在 `resources/equipment/<template_id>.tres` 有对应 `EquipmentTemplate` 资源。
+- 已实现：装备 `.tres` 保留 `icon_texture: Texture2D` 空字段，方便在 Inspector 手动拖入图片。
+- 已实现：装备 `.tres` 补齐 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_name`、`icon_path`、`level_scale`、`base_attributes`、`requirement_stat` 和 `description`。
+- 已实现：装备默认图标路径为 `res://assets/equipment/<template_id>.png`；背包装备图标优先读取装备 `.tres` 的 `icon_texture`，再回退到实例 `icon_path` 和占位色块。
 
 实际穿戴槽位：
+
 - `weapon`：武器。
 - `helmet`：头盔。
 - `armor`：护甲。
-- `leggings`：腿甲。
+- `leggings`：胫甲。
 - `gloves`：护手。
 - `accessory_1`：饰品槽 1。
 - `accessory_2`：饰品槽 2。
 
 饰品穿戴规则：
+
 - 优先穿到空的 `accessory_1`。
 - `accessory_1` 已占用时，优先穿到空的 `accessory_2`。
 - 两个饰品槽都满时，默认替换 `accessory_1`。
-- 同一装备只能由一名成员穿戴；给其他成员穿戴时，会自动从旧成员身上卸下。
+- 给其他成员穿戴已装备物品时，会自动从旧成员身上卸下。
 
 属性统计规则：
-- `total_attack()` 遍历所有已装备实例，累计基础攻击、强化攻击和攻击类词条。
-- `total_defense()` 遍历所有已装备实例，累计基础防御、强化防御和防御类词条。
-- 最大生命、最大灵力、根骨和五行类词条通过对应属性读取入口叠加。
 
-## 装备强化与词条
+- 装备基础属性、强化属性和随机词条通过属性读取入口叠加。
+- 五行词条使用 `element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water`。
+- 穿戴时检查 `equip_requirement`；掉落或炼器获得装备时不检查门槛。
 
-装备和武器可以通过背包右键菜单操作：
-- `强化`：消耗材料，成功后 `enhance_level += 1`，按装备定位增加 `enhance_attack_bonus` 或 `enhance_defense_bonus`。第一版必定成功，不做失败率。
-- `加词条`：消耗材料，从 `AFFIX_DEFS` 中随机追加一个属性词条到 `affixes`。
+## 装备强化与洗练
 
-词条池第一版包含：
-- 攻击加成。
-- 防御加成。
-- 最大生命加成。
-- 最大灵力加成。
-- 根骨加成。
-- 单一五行加成。
+已实现规则：
 
-## 材料
+- 普通强化消耗装备已有基础属性对应的灵石。
+- 消耗数量为 `enhance_count + 1`。
+- 普通属性 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone` 消耗通用 `spirit_stone`；五行属性消耗对应五行灵石。
+- 当前静态物品 ID 不按阶级拆分，强化值统一为 `+1`；后续阶级通过动态显示或额外数据扩展。
+- 强化成功后向 `enhanced_attributes` 追加记录，并增加 `enhance_count`。
+- 洗练消耗 `refine_talisman`，消耗数量为 `refine_count + 1`。
+- 洗练成功后向 `refine_affixes` 追加百分比词条，并增加 `refine_count`。
 
-| item_id | 名称 | 获取方式 | 当前用途 |
-| --- | --- | --- | --- |
-| `ore` | 矿石 | 初始 4 个；战斗掉落 | 炼器、招募、强化 |
-| `spirit_sand` | 灵砂 | 战斗概率掉落 | 炼器、加词条 |
-| `beast_core` | 妖核 | 战斗概率掉落 | 高价值强化或后续配方 |
+规划规则：
 
-招募当前消耗 2 个任意材料，队伍满 4 人时不能继续招募。炼器当前消耗 2 个任意材料生成一件随机装备。根骨会为炼器结果提供 `int(root_bone * 0.2)` 的额外属性入口。
+- 强化失败率、词条锁定、保底机制和高阶灵石合成暂未实现。
+- 阵营装备和套装效果保留为规划设定，见 `docs/item-table.md`。
 
-## 作物与农田种子
+## 作物与种田
 
-| item_id | 名称 | 获取方式 | 当前用途 | seed_yield | 成熟时间 |
-| --- | --- | --- | --- | --- | ---: |
-| `herb` | 草药 | 初始 4 个；农田产出 | 通用炼丹材料、农田种子 | 3 | 60s |
-| `rice` | 灵米 | 农田产出 | 通用炼丹材料、农田种子 | 2 | 90s |
-| `mushroom` | 灵菇 | 农田产出 | 通用炼丹材料、农田种子 | 1 | 120s |
-| `blade_grass` | 刃纹草 | 攻击作物种子；农田产出 | 破军丹主材料 | 1 | 180s |
-| `ironroot` | 铁根藤 | 防御作物种子；农田产出 | 玄甲丹主材料 | 1 | 180s |
-| `blood_ginseng` | 血参 | 生命作物种子；农田产出 | 血元丹主材料 | 1 | 240s |
-| `spirit_lotus` | 灵泉莲 | 灵力作物种子；农田产出 | 灵泉丹主材料 | 1 | 240s |
-| `bone_bamboo` | 玉骨竹 | 根骨作物种子；农田产出 | 锻骨丹主材料 | 1 | 360s |
-| `woodvine` | 青木藤 | 木行作物种子；农田产出 | 青木丹主材料 | 1 | 180s |
-| `flame_flower` | 赤焰花 | 火行作物种子；农田产出 | 赤焰丹主材料 | 1 | 210s |
-| `earth_moss` | 厚土苔 | 土行作物种子；农田产出 | 厚土丹主材料 | 1 | 210s |
-| `metal_reed` | 玄金苇 | 金行作物种子；农田产出 | 玄金丹主材料 | 1 | 300s |
-| `water_orchid` | 玄水兰 | 水行作物种子；农田产出 | 玄水丹主材料 | 1 | 240s |
+已实现规则：
 
-种田操作规则：
-- 点击家园 `farmland` 节点打开种田 GUI，由面板直接结算。
-- 面板可选择玩家或队友作为执行者。
-- 自动寻找背包中第一个可用作物作为种子，也可在面板中指定种子。
-- 消耗 1 个作物种子。
+- 当前所有带 `seed_yield` payload 的 `crop` 都可作为农田种子，包括 `herb` 和 10 种属性作物。
+- 种田消耗 1 个作物种子。
 - 产量为 `seed_yield + farm_level - 1 + int(执行者总根骨 * 0.05) + 命格修正`。
-- `farm_level` 初始为 1，暂由种田熟练度阶段提升。
-- 若背包中没有作物种子，则操作失败并提示。
-- 农田显示使用 `farmland` 下 5 个 `Marker2D` 槽位，按 `crop` 模板复制作物节点；视觉显示最多 5 个，额外产量只进入背包。执行者信息写入农田槽位，收取经验归该执行者。
+- 农田等级缩短生长时间，倍率为 `max(0.55, 1.0 - 0.05 * (farm_level - 1))`。
+- 农田可使用 `farm_speed_talisman` 作为加速类材料入口。
 
-## 丹药与突破道具
+规划规则：
 
-丹药 `payload` 统一包含 `effect_mode`：
-- `instant`：一次性丹药，使用后立即结算 `hp`、`mp`、突破等效果。
-- `duration`：持续丹药，使用后加入 `active_buffs`，按剩余时间影响属性、恢复或生产/战斗加成。
+- 批量种植、作物外观差异和农田升级消耗继续保留为后续扩展。
 
-| item_id | 名称 | effect_mode | 获取方式 | 当前用途 |
-| --- | --- | --- | --- | --- |
-| `pill` | 调息丹 | `instant` | 调息丹方炼制 | 恢复生命和灵力 |
-| `life_pill` | 归元丹 | `instant` | 归元丹方炼制 | 恢复生命 |
-| `spirit_pill` | 聚灵丹 | `instant` | 聚灵丹方炼制 | 恢复灵力 |
-| `might_pill` | 壮气丹 | `duration` | 壮气丹方炼制 | 在持续时间内提供属性 Buff |
-| `breakthrough_pill` | 破境丹 | `instant` | 战斗或任务掉落 | 达到等级上限后突破下一阶段 |
-| `attack_pill` | 破军丹 | `duration` | 破军丹方炼制 | 300 秒攻击 +5 |
-| `defense_pill` | 玄甲丹 | `duration` | 玄甲丹方炼制 | 300 秒防御 +5 |
-| `life_boost_pill` | 血元丹 | `duration` | 血元丹方炼制 | 300 秒最大生命 +30 |
-| `mana_boost_pill` | 灵泉丹 | `duration` | 灵泉丹方炼制 | 300 秒最大灵力 +20 |
-| `root_bone_pill` | 锻骨丹 | `duration` | 锻骨丹方炼制 | 300 秒根骨 +2 |
-| `wood_pill` | 青木丹 | `duration` | 青木丹方炼制 | 300 秒木行 +5 |
-| `fire_pill` | 赤焰丹 | `duration` | 赤焰丹方炼制 | 300 秒火行 +5 |
-| `earth_pill` | 厚土丹 | `duration` | 厚土丹方炼制 | 300 秒土行 +5 |
-| `metal_pill` | 玄金丹 | `duration` | 玄金丹方炼制 | 300 秒金行 +5 |
-| `water_pill` | 玄水丹 | `duration` | 玄水丹方炼制 | 300 秒水行 +5 |
+## 炼丹与丹方
 
-破境丹规则：
-- 角色达到当前 10 级阶段上限时可使用。
-- 使用后消耗 1 个 `breakthrough_pill`，`stage += 1`，`level_cap += 10`。
-- 若角色尚未达到当前等级上限，则不消耗。
-- 若 `root_bone > level`，角色也可不消耗道具完成突破。
+已实现规则：
 
-持续 Buff 规则：
-- 使用持续丹药后写入 `GameState.active_buffs`。
-- 每帧由 `GameState.update_buffs(delta)` 扣减剩余时间。
-- 到期 Buff 自动移除。
-- 属性读取时通过 Buff 入口叠加对应加成。
+- 图纸物品类型为 `alchemy_recipe`，payload 中保存 `recipe_id`。
+- 使用图纸后学习丹方，炼丹面板只显示 `known_alchemy_recipes` 中已学丹方。
+- `ALCHEMY_RECIPE_DEFS` 定义丹方产物和材料。
+- 当前已实现丹方为调息丹：`pill = herb x2`。
+- 炼丹可按材料库存计算最大制作数量，批量扣除材料并添加产物。
+- 额外出丹概率通过执行者根骨和命格修正。
 
-## 炼丹图纸与丹方
+规划规则：
 
-图纸物品类型为 `alchemy_recipe`，归入背包“图纸”分类。
+- 归元丹、聚灵丹、壮气丹、属性丹、五行丹和对应属性作物仍是规划内容。
+- 材料减免、固定额外产物、概率额外产物和持续 Buff 叠加规则需要实现后再转为已实现。
 
-| item_id | 名称 | 学习产物 | 获取方式 |
-| --- | --- | --- | --- |
-| `recipe_pill` | 调息丹方 | `pill` | 初始背包 |
-| `recipe_life_pill` | 归元丹方 | `life_pill` | 战斗或任务掉落 |
-| `recipe_spirit_pill` | 聚灵丹方 | `spirit_pill` | 战斗或任务掉落 |
-| `recipe_might_pill` | 壮气丹方 | `might_pill` | 战斗或任务掉落 |
-| `recipe_attack_pill` | 破军丹方 | `attack_pill` | 攻击图纸掉落；对应刃纹草 |
-| `recipe_defense_pill` | 玄甲丹方 | `defense_pill` | 防御图纸掉落；对应铁根藤 |
-| `recipe_life_boost_pill` | 血元丹方 | `life_boost_pill` | 生命图纸掉落；对应血参 |
-| `recipe_mana_boost_pill` | 灵泉丹方 | `mana_boost_pill` | 灵力图纸掉落；对应灵泉莲 |
-| `recipe_root_bone_pill` | 锻骨丹方 | `root_bone_pill` | 根骨图纸掉落；对应玉骨竹 |
-| `recipe_wood_pill` | 青木丹方 | `wood_pill` | 木行图纸掉落；对应青木藤 |
-| `recipe_fire_pill` | 赤焰丹方 | `fire_pill` | 火行图纸掉落；对应赤焰花 |
-| `recipe_earth_pill` | 厚土丹方 | `earth_pill` | 土行图纸掉落；对应厚土苔 |
-| `recipe_metal_pill` | 玄金丹方 | `metal_pill` | 金行图纸掉落；对应玄金苇 |
-| `recipe_water_pill` | 玄水丹方 | `water_pill` | 水行图纸掉落；对应玄水兰 |
+## 商店
 
-属性丹药配方使用“属性作物 + 通用辅料 + 对应灵石”结构：破军丹消耗刃纹草 ×2、灵米 ×1、`stat_stone_attack_t1` ×1；玄甲丹消耗铁根藤 ×2、灵米 ×1、`stat_stone_defense_t1` ×1；血元丹消耗血参 ×2、草药 ×1、`stat_stone_max_hp_t1` ×1；灵泉丹消耗灵泉莲 ×2、灵菇 ×1、`stat_stone_max_mp_t1` ×1；锻骨丹消耗玉骨竹 ×2、妖核 ×1、`stat_stone_root_bone_t1` ×1。五行丹药消耗对应五行作物 ×2、通用辅料 ×1、对应 `spirit_stone_<element>_t1` ×1。
+规划：商店是家园随机补给入口，用来把灵石转化为材料、种子、丹药、图纸和少量稀有成长物品。当前文档保留规则，但若 `DataTables` 中没有商品池和存档字段，不应按已实现处理。
 
-图纸使用规则：
-- 使用后学习对应丹方，写入 `known_alchemy_recipes`。
-- 成功学习后消耗 1 张图纸。
+规划货架结构：
 
-炼丹操作规则：
-- 点击家园 `alchemy` 节点打开炼丹 GUI。
-- 面板可选择玩家或队友作为执行者。
-- 丹方列表只显示 `known_alchemy_recipes` 中已学习丹方。
-- 最大可制作数量为所有材料按执行者材料减免后可承担数量的最小值。
-- 批量炼丹按执行者修正后的材料数量扣除材料，基础产物数量为 `amount`。
-- 每次制作独立判定额外出丹，概率为 `total_root_bone_for(member) * 0.015 + 命格修正`，额外产物不增加材料消耗。
-- 命格可提供固定额外产物、概率额外产物或材料消耗降低；材料消耗最低为 1，避免完全免费炼制。
+- `slot_index`：槽位序号。
+- `item_id`：商品物品 ID。
+- `count`：购买后获得数量。
+- `price_item_id`：价格物品，第一版固定为 `spirit_stone`。
+- `price_amount`：价格数量。
+- `rarity`：商品稀有度，影响价格倍率和显示颜色。
+- `sold`：是否已购买。
+- `source`：固定为 `shop`，用于后续统计来源。
 
-## 右键菜单行为
+规划刷新规则：
 
-右键物品打开菜单。
+- 每轮随机刷新 6 个商品槽位。
+- 自动刷新间隔为 600 秒。
+- 手动刷新消耗 `spirit_stone x1`。
+- 已购买槽位在本轮保持售罄状态，直到下一次刷新。
+- 图纸池优先从尚未学习的丹方中抽取；若图纸池为空，回退到丹药或材料池。
 
-使用效果：
-- 技能书：未学习则学习并消耗 1 本；已学习则提示，不消耗。
-- 装备：穿戴到对应槽位；若目标槽位已有装备，则替换旧装备的穿戴状态。
-- 丹药：一次性丹药立即结算；持续丹药加入 `active_buffs`；破境丹触发等级上限突破。
-- 图纸：学习丹方并消耗 1 张；已学习则不消耗。
-- 材料与作物：当前不可直接使用。
+规划商品池：
 
-装备额外操作：
-- `强化`：消耗材料并提升强化等级和强化加成。
-- `加词条`：消耗材料并追加一个随机属性词条。
-
-丢弃效果：
-- 堆叠物品：每次丢弃 1 个，数量归零后从背包移除。
-- 装备：直接移除该装备实例；若正在装备，先卸下再移除。
+| 池 | 权重 | 商品方向 |
+| --- | ---: | --- |
+| `basic_material` | 40 | 草药、矿石、属性作物等基础材料和作物 |
+| `production_boost` | 20 | 丰收符、洗练符、强化灵石 |
+| `alchemy_recipe` | 15 | 已配置但未学习的丹方图纸 |
+| `pill` | 15 | 调息丹、破境丹和后续属性丹药 |
+| `rare` | 10 | 技能书、较高阶灵石、稀有图纸或特殊材料 |
 
 ## UI 表现
 
-背包由顶部“背包”按钮打开，显示为右侧浮层。
+已实现规则：
 
-浮层包含：
-- 分类切换：技能书、装备、材料、作物、丹药、图纸。
-- 物品列表：显示名称和数量；装备显示槽位、是否已装备、强化等级、攻防加成和词条。
-- 右键菜单：使用、丢弃；装备额外显示强化和加词条。
+- 背包由 HUD 打开，显示 5x5 格子。
+- 支持分类切换、悬浮详情、右键菜单和双击使用。
+- 装备显示槽位、穿戴状态、强化次数、基础属性和词条。
+- HUD 顶部资源摘要显示分类总量、角色等级阶段、农田等级和活跃 Buff 状态。
 
-HUD 顶部资源摘要显示分类总量：作物、材料、丹药、图纸，并显示角色等级阶段、农田等级和活跃 Buff 状态。
+规划规则：
+
+- 商店浮层包含随机货架、刷新倒计时、手动刷新按钮、商品详情和购买按钮。
+- 商品格显示图标占位、名称、数量、价格和售罄状态。
 
 ## DataTables 约定
 
 `DataTables` 提供统一入口，避免 UI、任务和背包逻辑手写重复字段：
+
+- `ITEM_ID_*`：物品代码主键常量，例如 `DataTables.ITEM_ID_HERB`。
 - `ITEM_DEFS`：通用静态物品定义。
+- `SKILL_DEFS`：技能定义。
+- `ALCHEMY_RECIPE_DEFS`：炼丹配方定义。
 - `EQUIPMENT_DEFS`：装备模板定义。
-- `AFFIX_DEFS`：装备词条池。
-- `ENEMY_TEMPLATES`：敌人静态数值定义和掉落配置。
+- `EQUIPMENT_ATTRIBUTE_DEFS`：装备随机词条池。
+- `ENEMY_TEMPLATES`：敌人静态数值和掉落配置。
 - `ENEMY_SCENE_PATHS`：敌人场景路径映射。
-- 堆叠物品创建：创建包含 `item_id`、`type`、`count`、`payload` 的轻量实例。
-- 装备创建：创建包含五阶品质、五行、强化字段和词条列表的独立实例。
-- 突破道具查询：通过 `breakthrough_pill` 的 payload 和角色阶段状态判断是否可突破。
+- `item_no(item_id)`：按 `item_id` 获取稳定统计编号。
+- `item_id_from_no(item_no)`：按统计编号反查 `item_id`。
+- `item_icon_name(item_id)`：获取图标素材名，默认等于 `item_id`。
+- `item_icon_path(item_id)`：获取图标资源路径，默认 `res://assets/items/<item_id>.png`。
+- `equipment_icon_name(template_id)`：获取装备图标素材名，默认等于装备模板 ID。
+- `equipment_icon_path(template_id)`：获取装备图标资源路径，默认 `res://assets/equipment/<template_id>.png`。
+- `item_icon_texture(item_id)` / `equipment_icon_texture(template_id)` / `skill_icon_texture(skill_id)`：优先从对应 `.tres` 读取手动配置的 `icon_texture`。
+
+调用示例：
+
+- `DataTables.item_definition(DataTables.ITEM_ID_HERB)`
+- `game_state.inventory_item_count(DataTables.ITEM_ID_HERB)`
+- `DataTables.item_no(DataTables.ITEM_ID_HERB)`
 
 ## 扩展约定
 
-后续可扩展：
-- 图标字段：`icon_path`。
-- 品质颜色和装备等级需求。
-- 丹方 UI、配方材料表、炼丹失败率。
-- 种子选择 UI、农田升级消耗、批量种植、不同作物外观。
-- 强化失败率、词条洗练、词条锁定、保底机制。
-- 持续 Buff 叠加规则和任务次数型 Buff。
-
-## 装备属性条目与灵石材料
-
-装备基础属性只来自装备模板自身设定，生成顺序为阶级 → 模板基础属性 → 随机词条。模板基础属性固定写入 `base_attributes`；五行、根骨、生命、灵力等随机变化写入 `affixes`。
-
-基础属性值公式为 `round((base + equipment_level * level_scale + craft_bonus) * rarity_multiplier)`，最低为 1。随机词条值沿用属性池公式：`round((random(min, max) + int(equipment_level * stat_level_scale) + craft_bonus) * rarity_multiplier)`。
-
-装备掉落规则：战斗胜利结算敌人掉落表后，独立以 35% 概率掉落 1 件装备；掉落装备的 `equipment_level` 等于敌人等级，槽位从装备模板中随机，阶位按装备阶位概率表随机。掉落装备获得不做属性门槛，只有穿戴时检查 `equip_requirement`。
-
-装备实例字段补充：
-- `equipment_level`：生成来源等级。炼器取玩家等级，掉落取敌人等级。
-- `equip_requirement`：穿戴需求。按装备模板的需求属性检查；需求值为 `max(1, equipment_level * rarity_tier)`。
-- `base_attributes`：基础属性数组，每条包含 `stat` 和 `amount`。
-- `enhanced_attributes`：普通强化数组，每条包含 `stat`、`amount`、`quality`。
-- `refine_affixes`：洗练百分比词条数组，每条包含 `stat` 和 `percent`。
-- `enhance_count`：普通强化次数，用于计算下一次灵石消耗。
-- `refine_count`：洗练次数，用于计算下一次洗练符消耗。
-- `obtain_source`：生成来源，掉落为 `drop`，炼器等非掉落为 `non_drop`。
-
-灵石属于材料分类，分为五行灵石和普通属性灵石。五行灵石采用 `spirit_stone_<element>_<tier>`，例如 `spirit_stone_fire_t1`；普通属性灵石采用 `stat_stone_<stat>_<tier>`，例如 `stat_stone_attack_t1`、`stat_stone_max_hp_t3`。灵石 payload 包含：
-- `stat`：对应的人物属性，例如 `element_fire` 或 `attack`。
-- `quality`：阶位，当前为 `t1`、`t2`、`t3`、`t4`、`t5`。
-- `enhance_amount`：该阶位提供的加法强化值，分别为 `1`、`2`、`4`、`7`、`11`。
-- `stone_group`：`element` 表示五行灵石，`stat` 表示普通属性灵石。
-
-普通属性灵石服务无属性/通用成长，支持 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone`。五行灵石服务元素成长，支持木火土金水。两类灵石掉落都按长期挂机设计：`t1` 高频，`t5` 极低概率周级惊喜。当前不提供合成系统。
-
-普通强化规则：
-- 右键装备选择“强化”。
-- 只能消耗装备已有基础属性对应的灵石：普通属性用 `stat_stone_*`，五行属性用 `spirit_stone_*`。
-- 自动优先使用高阶灵石，再按装备基础属性顺序选择可强化属性，顺序为 `t5 → t4 → t3 → t2 → t1`。
-- 消耗数量为 `enhance_count + 1`。
-- 成功后向 `enhanced_attributes` 追加一条加法强化记录，并增加 `enhance_count`。
-
-洗练规则：
-- 洗练材料为 `refine_talisman`，显示名为“洗练符”。
-- 右键装备选择“洗练”。
-- 消耗数量为 `refine_count + 1`。
-- 成功后随机抽取一项人物属性，向 `refine_affixes` 追加百分比词条，并增加 `refine_count`。
-- 洗练百分比只影响该装备贡献的对应属性，不直接修改人物基础属性。
+- 新增物品优先补 `DataTables.ITEM_ID_*`、`DataTables.ITEM_DEFS` 和稳定 `item_no`，再同步 `docs/item-table.md`。
+- 新增物品规则或交互流程同步更新本文档。
+- 新增规划设定时必须标注“规划”，实现后再移动到“已实现”段落。

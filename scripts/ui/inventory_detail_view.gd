@@ -2,6 +2,7 @@ class_name InventoryDetailView
 extends PanelContainer
 
 @onready var detail_layout: HBoxContainer = $DetailLayout
+@onready var target_column: VBoxContainer = $DetailLayout/TargetColumn
 @onready var target_row: HBoxContainer = $DetailLayout/TargetColumn/TargetRow
 @onready var title_label: Label = $DetailLayout/DetailColumn/TitleLabel
 @onready var meta_label: Label = $DetailLayout/DetailColumn/MetaLabel
@@ -9,8 +10,11 @@ extends PanelContainer
 @onready var use_button: Button = $DetailLayout/DetailColumn/UseButton
 
 var target_icons: Array[ColorRect] = []
+var detail_icon_placeholder: ColorRect = null
+var detail_icon_texture: TextureRect = null
 
 func setup() -> void:
+	_ensure_detail_icon()
 	_capture_target_icons()
 	visible = false
 
@@ -20,10 +24,12 @@ func show_item(item: Dictionary, game_state, mouse_position: Vector2, viewport_s
 		return
 	_position_panel(mouse_position, viewport_size)
 	visible = true
-	title_label.text = str(item.get("name", ""))
+	var target_id: String = str(item.get("gain_target", DataTables.item_gain_target(str(item.get("item_id", "")))))
+	title_label.text = DataTables.inventory_display_name(item)
 	meta_label.text = _item_meta_text(item, game_state)
 	description_label.text = _item_description_text(item)
-	_refresh_target_icons(str(item.get("gain_target", DataTables.item_gain_target(str(item.get("item_id", ""))))))
+	_refresh_detail_icon(DataTables.inventory_icon_texture(item), target_id)
+	_refresh_target_icons(target_id)
 	var can_use: bool = false
 	if game_state != null:
 		can_use = DataTables.item_use_scope(str(item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME and game_state.is_inventory_item_usable(str(item.get("instance_id", "")))
@@ -38,7 +44,39 @@ func hide_item() -> void:
 	description_label.text = ""
 	use_button.visible = false
 	use_button.disabled = true
+	_refresh_detail_icon(null, "")
 	_refresh_target_icons("")
+
+func _ensure_detail_icon() -> void:
+	if target_column == null or detail_icon_texture != null:
+		return
+	detail_icon_placeholder = ColorRect.new()
+	detail_icon_placeholder.name = "DetailIconPlaceholder"
+	detail_icon_placeholder.custom_minimum_size = Vector2(64, 64)
+	detail_icon_placeholder.color = Color(0.28, 0.23, 0.18, 0.75)
+	detail_icon_placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	target_column.add_child(detail_icon_placeholder)
+	target_column.move_child(detail_icon_placeholder, 0)
+	detail_icon_texture = TextureRect.new()
+	detail_icon_texture.name = "DetailIconTexture"
+	detail_icon_texture.custom_minimum_size = Vector2(64, 64)
+	detail_icon_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	detail_icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	detail_icon_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	target_column.add_child(detail_icon_texture)
+	target_column.move_child(detail_icon_texture, 1)
+
+
+func _refresh_detail_icon(texture: Texture2D, target_id: String) -> void:
+	_ensure_detail_icon()
+	if detail_icon_placeholder == null or detail_icon_texture == null:
+		return
+	var base_color: Color = DataTables.item_gain_target_color(target_id)
+	detail_icon_placeholder.color = Color(base_color.r * 0.65, base_color.g * 0.65, base_color.b * 0.65, 0.72)
+	detail_icon_texture.texture = texture
+	detail_icon_texture.visible = texture != null
+	detail_icon_placeholder.visible = texture == null
+
 
 func _capture_target_icons() -> void:
 	target_icons.clear()
@@ -87,7 +125,7 @@ func _item_meta_text(item: Dictionary, game_state) -> String:
 	return "  ".join(parts)
 
 func _item_description_text(item: Dictionary) -> String:
-	var description: String = str(item.get("description", ""))
+	var description: String = DataTables.inventory_display_description(item)
 	if item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		var details: Array[String] = []
 		details.append("攻击 %d" % int(item.get("attack_bonus", 0)))

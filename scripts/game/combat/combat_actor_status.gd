@@ -8,6 +8,7 @@ signal defeated(actor_id: String)
 const KIND_MEMBER := "member"
 const KIND_ENEMY := "enemy"
 const CombatActorStateMachineScript = preload("res://scripts/game/combat/combat_actor_state_machine.gd")
+const CombatEffectResolverScript = preload("res://scripts/game/combat/combat_effect_resolver.gd")
 
 var actor_id: String = ""
 var actor_name: String = ""
@@ -23,6 +24,7 @@ var combat_effects: Array = []
 var skill_cooldowns: Dictionary = {}
 var pending_skill: Dictionary = {}
 var state_machine = CombatActorStateMachineScript.new()
+var effect_resolver: CombatEffectResolver = CombatEffectResolverScript.new()
 var popup_offset: Vector2 = Vector2(0, -24)
 
 
@@ -52,6 +54,11 @@ func bind_enemy(enemy_data: Dictionary, owner_visual: Node = null) -> void:
 func rebind_store(owner_store: Dictionary) -> void:
 	combat_store = owner_store
 	_sync_runtime_arrays_from_store()
+
+
+func set_effect_resolver(resolver: CombatEffectResolver) -> void:
+	if resolver != null:
+		effect_resolver = resolver
 
 
 func combat_snapshot() -> Dictionary:
@@ -115,17 +122,34 @@ func add_buff(buff: Dictionary) -> void:
 	if buff.is_empty():
 		return
 	var normalized: Dictionary = buff.duplicate(true)
-	normalized["remaining_turns"] = int(normalized.get("remaining_turns", normalized.get("turns", 1)))
-	normalized["fresh"] = bool(normalized.get("fresh", true))
-	combat_buffs.append(normalized)
-	_write_runtime_arrays_to_store()
+	var source_skill_id: String = str(normalized.get("source_skill_id", ""))
+	for effect in effect_resolver.legacy_buffs_to_effects([normalized], source_skill_id):
+		add_status_effect(effect)
 
 
 func add_status_effect(effect: Dictionary) -> void:
 	if effect.is_empty():
 		return
-	combat_effects.append(effect.duplicate(true))
+	var store: Dictionary = _runtime_effect_store()
+	effect_resolver.add_status_effect(store, effect)
+	_apply_runtime_effect_store(store)
 	_write_runtime_arrays_to_store()
+
+
+func resolve_status_trigger(trigger: String, context: Dictionary, rng: RandomNumberGenerator, owner_role: String = "attacker") -> Dictionary:
+	var store: Dictionary = _runtime_effect_store()
+	effect_resolver.resolve_status_trigger(trigger, store, context, rng, owner_role)
+	_apply_runtime_effect_store(store)
+	_write_runtime_arrays_to_store()
+	return context
+
+
+func apply_shields(incoming_damage: int, context: Dictionary) -> int:
+	var store: Dictionary = _runtime_effect_store()
+	var remaining: int = effect_resolver.apply_shields(store, incoming_damage, context)
+	_apply_runtime_effect_store(store)
+	_write_runtime_arrays_to_store()
+	return remaining
 
 
 func tick_turn_start() -> Array:
@@ -292,6 +316,14 @@ func _write_runtime_arrays_to_store() -> void:
 		combat_store["skill_cooldowns"] = skill_cooldowns
 	elif actor_kind == KIND_ENEMY:
 		data["combat_effects"] = combat_effects
+
+
+func _runtime_effect_store() -> Dictionary:
+	return {"combat_effects": combat_effects.duplicate(true)}
+
+
+func _apply_runtime_effect_store(store: Dictionary) -> void:
+	combat_effects = store.get("combat_effects", []).duplicate(true)
 
 
 func _buff_stat_bonus(stat_id: String) -> int:

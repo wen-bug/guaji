@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://x3nwhvuj5duw"]
+
+[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://25tuhj4hrw3s" path="res://assets/items/spirit_stone.png" id="1_r607m"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5evft"]
+atlas = ExtResource("1_r607m")
+region = Rect2(28.547668, 93.24902, 165.99963, 217.87445)
+
+[resource]
+script = ExtResource("1")
+id = "spirit_stone_fire"
+item_no = 1009
+type = "material"
+display_name = "火灵石"
+icon_texture = SubResource("AtlasTexture_5evft")
+icon_name = "spirit_stone_fire"
+icon_path = "res://assets/items/spirit_stone_fire.png"
+description = "可用于强化火行属性。"
+use_scope = "none"
+gain_target = "fire"
+payload = {
+"enhance_amount": 1,
+"stat": "element_fire",
+"stone_group": "element"
+}

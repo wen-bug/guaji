@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "skill_fireball"
+item_no = 1018
+type = "skill_book"
+display_name = "火球术残卷"
+icon_name = "skill_fireball"
+icon_path = "res://assets/items/skill_fireball.png"
+description = "学习后获得火球术。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "none"
+payload = {"skill_id": "fireball"}

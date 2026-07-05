@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "spirit_lotus"
+item_no = 1022
+type = "crop"
+display_name = "灵泉莲"
+icon_name = "spirit_lotus"
+icon_path = "res://assets/items/spirit_lotus.png"
+description = "滋养法力的灵力属性作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "max_mp"
+payload = {"growth_seconds": 240.0, "seed_yield": 1}

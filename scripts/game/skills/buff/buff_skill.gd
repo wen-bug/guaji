@@ -18,3 +18,10 @@ func apply_marker(marker: String) -> void:
 		next_buff["source_skill_id"] = str(skill_data.get("id", ""))
 		target.add_buff(next_buff)
 		add_event({"type": "buff", "actor_id": target.actor_id, "buff": next_buff})
+	for effect in skill_data.get("effects", []):
+		if not (effect is Dictionary):
+			continue
+		var next_effect: Dictionary = effect.duplicate(true)
+		next_effect["source_skill_id"] = str(skill_data.get("id", ""))
+		target.add_status_effect(next_effect)
+		add_event({"type": "status", "actor_id": target.actor_id, "effect": next_effect})

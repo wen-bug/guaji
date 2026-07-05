@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "pill"
+item_no = 1016
+type = "pill"
+display_name = "调息丹"
+icon_name = "pill"
+icon_path = "res://assets/items/pill.png"
+description = "恢复生命和法力。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "none"
+payload = {"hp": 18, "mp": 12}

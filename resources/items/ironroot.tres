@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ironroot"
+item_no = 1020
+type = "crop"
+display_name = "铁根藤"
+icon_name = "ironroot"
+icon_path = "res://assets/items/ironroot.png"
+description = "根须坚韧的防御属性作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "defense"
+payload = {"growth_seconds": 180.0, "seed_yield": 1}

@@ -1,259 +1,270 @@
 # 详细物品表
 
-本文档是独立物品表，依据 `scripts/game/data/data_tables.gd` 当前数据整理，不覆盖 `docs/design.md` 的玩法说明。
+本文档是 `scripts/game/data/data_tables.gd` 的文档化索引。除“规划物品与装备设定”外，已实现内容必须与当前代码数据表一致。
 
-## 物品分类
+## 已实现：物品分类
 
-- `skill_book`：技能书，使用后学习技能。
-- `equipment`：装备，穿戴后提供属性加成。
-- `material`：材料，炼器、强化、洗练和掉落用途。
-- `crop`：作物，既可作为种子，也可作为炼丹材料。
-- `pill`：丹药，一次性丹药或持续丹药。
-- `alchemy_recipe`：炼丹图纸，使用后学习丹方。
-- `stone`：灵石，强化装备时消耗。
+| type | 中文分类 | 用途 |
+| --- | --- | --- |
+| `skill_book` | 技能书 | 使用后学习技能 |
+| `equipment` | 装备 | 穿戴、强化、洗练 |
+| `material` | 材料 | 消耗、强化、洗练、招募等 |
+| `crop` | 作物 | 农田种子和炼丹材料 |
+| `pill` | 丹药 | 恢复、突破或 Buff |
+| `alchemy_recipe` | 炼丹图纸 | 使用后学习丹方 |
 
-## 物品定义字段
+## 已实现：物品定义字段
 
-- `item_id`：物品唯一 ID。
+- `item_id`：物品唯一 ID，也是代码调用主键和默认美术素材名。
+- `item_no`：稳定整数编号，用于统计、导出和日志聚合；一经分配不复用、不重排。
 - `name`：显示名称。
 - `description`：描述文本。
 - `type`：物品类型。
 - `stackable`：是否堆叠。
 - `usable`：是否可直接使用。
 - `payload`：物品专属数据。
-- `obtain_source`：实例来源标记，掉落与非掉落产物统一用 `drop` / `non_drop` 区分。
+- `use_scope`：使用范围，当前为 `home`、`combat`、`none`。
+- `gain_target`：成长或强化倾向标签。
+- `icon_name` / `icon_path`：可选图标覆盖；默认由 `item_id` 推导。
 
-## 技能书
+## 已实现：物品编号与素材命名
 
-技能书使用后解锁对应技能；如果角色已学习，则不再消耗。
-学习后的技能实例保留来源标记，便于 UI 区分掉落来源和非掉落来源。
+代码中优先使用 `DataTables.ITEM_ID_*` 常量引用物品。数量统计仍按 `item_id` 聚合，可通过 `DataTables.item_no(item_id)` 获取稳定统计编号，或用 `DataTables.item_id_from_no(item_no)` 反查。
 
-## 装备
+美术图标默认按 `item_id` 命名并放在 `assets/items/` 下，例如 `herb` 对应 `res://assets/items/herb.png`。若没有对应文件，背包 UI 继续显示占位色块。
 
-装备分为武器、头盔、护甲、胫甲、护手和饰品。装备使用后会尝试穿戴到对应槽位，饰品槽优先填空槽，满槽时替换饰品 1。
-装备实例会带 `obtain_source`，掉落装备为 `drop`，炼器等非掉落装备为 `non_drop`。
+当前还生成了 `.tres` 图标承载资源：
 
-装备生成与养成字段包括：
+- 物品：`resources/items/<item_id>.tres`，字段来自 `ITEM_DEFS`，`icon_texture` 留空供 Inspector 手动设置。
+- 装备：`resources/equipment/<template_id>.tres`，字段来自 `EQUIPMENT_DEFS`，`icon_texture` 留空供 Inspector 手动设置。
+- 技能：`resources/skills/<skill_id>.tres`，字段来自 `SKILL_DEFS`，`icon_texture` 留空供 Inspector 手动设置。
 
-- `equipment_level`：装备等级。
-- `rarity_tier`：阶位。
-- `base_attributes`：基础属性。
-- `enhanced_attributes`：强化属性。
-- `refine_affixes`：洗练词条。
-- `equip_requirement`：穿戴需求。
+图标读取顺序：`.tres.icon_texture` -> `icon_path` 图片 -> UI 占位色块或文字。`DataTables` 仍是数据事实来源，`.tres` 只作为美术引用和可视化编辑承载。
 
-## 材料
+| item_no | item_id | 名称 | type | usable | gain_target | payload 摘要 |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1001 | `herb` | 草药 | `crop` | 否 | `none` | `seed_yield=3`, `growth_seconds=60` |
+| 1004 | `ore` | 矿石 | `material` | 否 | `none` | 通用炼器材料 |
+| 1005 | `spirit_stone` | 灵石 | `material` | 否 | `none` | 招募货币；强化普通属性，`enhance_amount=1` |
+| 1006 | `farm_speed_talisman` | 丰收符 | `material` | 是 | `none` | `farm_speed=true` |
+| 1009 | `spirit_stone_fire` | 火灵石 | `material` | 否 | `fire` | 强化 `element_fire`, `+1` |
+| 1010 | `spirit_stone_earth` | 土灵石 | `material` | 否 | `earth` | 强化 `element_earth`, `+1` |
+| 1011 | `spirit_stone_wood` | 木灵石 | `material` | 否 | `wood` | 强化 `element_wood`, `+1` |
+| 1012 | `spirit_stone_metal` | 金灵石 | `material` | 否 | `metal` | 强化 `element_metal`, `+1` |
+| 1013 | `spirit_stone_water` | 水灵石 | `material` | 否 | `water` | 强化 `element_water`, `+1` |
+| 1014 | `refine_talisman` | 洗练符 | `material` | 否 | `none` | 装备洗练材料 |
+| 1015 | `recipe_pill` | 调息丹方 | `alchemy_recipe` | 是 | `none` | 学习 `pill` 丹方 |
+| 1016 | `pill` | 调息丹 | `pill` | 是 | `none` | 恢复 `hp=18`, `mp=12` |
+| 1017 | `breakthrough_pill` | 破境丹 | `pill` | 是 | `none` | `breakthrough=true` |
+| 1018 | `skill_fireball` | 火球术残卷 | `skill_book` | 是 | `none` | 学习 `fireball` |
+| 1019 | `blade_grass` | 刃纹草 | `crop` | 否 | `attack` | `seed_yield=1`, `growth_seconds=180` |
+| 1020 | `ironroot` | 铁根藤 | `crop` | 否 | `defense` | `seed_yield=1`, `growth_seconds=180` |
+| 1021 | `blood_ginseng` | 血参 | `crop` | 否 | `max_hp` | `seed_yield=1`, `growth_seconds=240` |
+| 1022 | `spirit_lotus` | 灵泉莲 | `crop` | 否 | `max_mp` | `seed_yield=1`, `growth_seconds=240` |
+| 1023 | `bone_bamboo` | 玉骨竹 | `crop` | 否 | `root_bone` | `seed_yield=1`, `growth_seconds=360` |
+| 1024 | `woodvine` | 青木藤 | `crop` | 否 | `wood` | `seed_yield=1`, `growth_seconds=180` |
+| 1025 | `flame_flower` | 赤焰花 | `crop` | 否 | `fire` | `seed_yield=1`, `growth_seconds=210` |
+| 1026 | `earth_moss` | 厚土苔 | `crop` | 否 | `earth` | `seed_yield=1`, `growth_seconds=210` |
+| 1027 | `metal_reed` | 玄金苇 | `crop` | 否 | `metal` | `seed_yield=1`, `growth_seconds=300` |
+| 1028 | `water_orchid` | 玄水兰 | `crop` | 否 | `water` | `seed_yield=1`, `growth_seconds=240` |
 
-材料用于炼器、强化、洗练、战斗掉落和其他消耗项。
+`item_no` 1002、1003、1007 和 1008 曾用于已删除物品，后续不复用。
 
-常见材料包括：
+## 已实现：技能
 
-- 灵石。
-- 强化石。
-- 洗练符。
-- 炼器矿材。
-- 战斗掉落素材。
+| skill_id | 名称 | 类型 | 五行 | 蓝耗 | 冷却 | 释放距离 | 说明 |
+| --- | --- | --- | --- | ---: | ---: | ---: | --- |
+| `fireball` | 火球术 | `damage` | `fire` | 8 | 3.0 | 120 | 伤害倍率 1.35 |
+| `heal` | 回春术 | `heal` | `wood` | 6 | 5.0 | 96 | 血量低于 35% 时优先治疗 |
+| `thunder` | 雷击术 | `damage` | `metal` | 12 | 5.0 | 140 | 伤害倍率 1.75 |
 
-## 作物
+当前已实现的技能书物品只有 `skill_fireball`。`heal` 和 `thunder` 已在技能表中配置，但没有对应物品定义。
 
-作物既是农田种子，也可作为炼丹材料。种田时会自动消耗背包里第一个可用作物。
+## 已实现：炼丹配方
 
-## 丹药
+| recipe_id | 产物 | 材料 |
+| --- | --- | --- |
+| `pill` | `pill` 调息丹 | `herb x2` |
 
-丹药分为两类：
+更多丹方属于规划内容，见本文“规划物品与装备设定”。
 
-- 一次性丹药：使用后立即结算恢复、加成或突破效果。
-- 持续丹药：使用后写入 `active_buffs`，持续一段时间。
+## 已实现：装备模板
 
-## 炼丹图纸
+| template_id | 槽位 | 名称 | 基础属性 | level_scale |
+| --- | --- | --- | --- | ---: |
+| `weapon` | `weapon` | 武器 | `attack +8` | 2.2 |
+| `helmet` | `helmet` | 头盔 | `defense +5`, `max_hp +12` | 1.6 |
+| `armor` | `armor` | 护甲 | `defense +7`, `max_hp +18` | 2.0 |
+| `leggings` | `leggings` | 胫甲 | `defense +4`, `max_hp +10` | 1.5 |
+| `gloves` | `gloves` | 护手 | `attack +4`, `defense +2` | 1.4 |
+| `accessory` | `accessory` | 饰品 | `root_bone +2` | 1.0 |
 
-图纸使用后写入 `known_alchemy_recipes`。炼丹面板只显示已学丹方。
+对应装备资源：
 
-## 背包规则
+- `resources/equipment/weapon.tres`
+- `resources/equipment/helmet.tres`
+- `resources/equipment/armor.tres`
+- `resources/equipment/leggings.tres`
+- `resources/equipment/gloves.tres`
+- `resources/equipment/accessory.tres`
 
-- 背包采用 5×5 网格。
-- 悬浮时显示物品说明。
-- 双击只直接使用装备和丹药。
-- 图纸、技能书、材料和作物通过右键菜单或专用面板使用。
-- 堆叠物品优先合并，同类物品共享数量字段。
+装备 `.tres` 字段包括 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_texture`、`icon_name`、`icon_path`、`level_scale`、`base_attributes`、`requirement_stat` 和 `description`。资源内不写入 `一阶`、`二阶` 等阶位文本；阶位只在运行时装备实例名称中动态生成。
 
-## 装备穿戴规则
+装备生成公式：
 
-- 武器只穿戴到武器槽。
-- 头盔、护甲、胫甲、护手分别进入对应防具槽。
-- 饰品会优先填空槽，再替换饰品 1。
-- 穿戴时检查 `equip_requirement`。
-- 已穿戴装备参与属性总值计算。
+- 名称：`<阶位名>·<EQUIPMENT_DEFS.name>`。
+- 基础属性：`max(1, int((模板基础值 + equipment_level * level_scale + craft_bonus) * (1.0 + rarity_index * 0.08)))`
+- 随机词条：`max(1, int(random(1, 4) + equipment_level * 0.3 + craft_bonus))`
+- 穿戴需求：`level >= max(1, equipment_level * rarity_tier)`
 
-## 物品表维护
+## 已实现：装备阶位与词条池
 
-新增物品时优先补充 `DataTables.ITEM_DEFS`，再补充 UI 展示与掉落来源。新增丹方、装备或技能时应同步更新对应的工厂函数和测试用例。
+| rarity | 名称 | 权重 | 词条数量 |
+| --- | --- | ---: | ---: |
+| `t1` | 一阶 | 55 | 1 |
+| `t2` | 二阶 | 28 | 2 |
+| `t3` | 三阶 | 12 | 3 |
+| `t4` | 四阶 | 4 | 4 |
+| `t5` | 五阶 | 1 | 5 |
 
-## 数值平衡基准
+随机词条池：
 
-本节用于统一角色成长、装备阶位、武器基础属性与词条数值，方便后续在 `DataTables` 中实现。
+- `attack`
+- `defense`
+- `max_hp`
+- `max_mp`
+- `root_bone`
+- `element_wood`
+- `element_fire`
+- `element_earth`
+- `element_metal`
+- `element_water`
 
-### 角色等级属性点
+强化灵石规则：
 
-- 玩家和队友每升 1 级自动获得 `5` 点属性成长，不再手动分配。
-- 玩家 5 点全部从 `attack`、`defense`、`root_bone`、`max_hp`、`max_mp` 或五行属性中随机投入。
-- 伙伴在招募刷新时随机抽取 3 个成长主属性；每次升级固定 4 点从主属性中随机投入，1 点从全部属性中随机投入。
-- `max_hp` 每点 `+4`，`max_mp` 每点 `+2`，其余属性每点 `+1`。
-- 招募候选人等级等于当前玩家等级，并按自身成长主属性从 1 级模板补齐初始属性点。
+- 普通属性 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone` 消耗通用 `spirit_stone`。
+- 五行属性 `element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water` 消耗对应五行灵石。
+- 当前静态物品 ID 不按阶级拆分，强化值统一为 `+1`。
+- 后续阶级通过动态显示或额外数据扩展，不使用 `*_t1` 这类静态物品 ID；同类灵石默认共用同一素材图。
 
-### 先天命格数值基准
+## 已实现：命格数据索引
 
-先天命格不属于物品，但会影响角色成长、属性读取、家园效率和历练收益。完整规则见 `docs/innate-traits.md`。
+完整规则见 `docs/innate-traits.md`。当前 `DataTables.INNATE_TRAIT_DEFS` 中已实现：
 
-第一版命格品质与结构：
+| id | 名称 | 方向 | 效果摘要 |
+| --- | --- | --- | --- |
+| `robust_body` | 健体 | 生存 | `max_hp +20` |
+| `sharp_edge` | 锋芒 | 输出 | `attack +2` |
+| `steady_guard` | 稳守 | 防御 | `defense +2` |
+| `full_vigor` | 充沛 | 法力 | `max_mp +12` |
+| `good_root` | 良根 | 根骨 | `root_bone +2` |
+| `craft_hand` | 巧匠 | 炼器 | `craft_bonus +1`, 炼器升阶概率 +5% |
+| `craft_touch` | 巧手 | 炼器 | `craft_bonus +1` |
+| `pill_heart` | 丹心 | 炼丹 | 额外出丹概率 +5% |
+| `pill_sense` | 丹感 | 炼丹 | 额外出丹概率 +4% |
+| `field_sense` | 识田 | 种田 | 收成 +1 |
 
-| 品质 | 概率 | 命格结构 |
-| --- | ---: | --- |
-| 普通 | 70% | 1 个主命格 |
-| 优秀 | 25% | 1 个主命格 + 1 个副命格 |
-| 异禀 | 5% | 1 个主命格 + 1 个副命格 + 觉醒潜力；可带缺陷命格 |
+基础招募命格池当前为 `robust_body`、`sharp_edge`、`steady_guard`、`full_vigor`、`good_root`、`field_sense`、`craft_touch`、`pill_sense`。
 
-第一版命格数值建议：
+## 已实现：敌人与掉落
 
-| 效果类型 | 建议范围 |
-| --- | --- |
-| 单项成长权重 | `+1 ~ +3` 权重 |
-| 普通攻击伤害 | `+5% ~ +10%` |
-| 技能冷却 | `-5% ~ -8%` |
-| 受到伤害 | `-3% ~ -6%` |
-| 炼丹额外出丹概率 | `+3% ~ +5%` |
-| 炼器 `craft_bonus` | `+1` 或 `+10%` |
-| 材料掉落概率 | `+3% ~ +5%` |
-| 熟练度获得 | `+5% ~ +8%` |
-| 经验获得 | `+3% ~ +6%` |
+| enemy_id | 名称 | 五行 | 弱点 | 掉落 | 经验 | 说明 |
+| --- | --- | --- | --- | --- | ---: | --- |
+| `training_dummy` | 木桩 | `wood` | `fire` | 无 | `6 + level * 2` | 训练目标，`use_drop=false` |
+| `forest_wolf` | 林狼 | `wood` | `fire` | `herb`, 55%, 1-2 个 | `10 + level * 2` | 普通掉落敌人 |
 
-缺陷命格必须提供补偿方向，不能只给纯负面。负面幅度建议控制在 `-5% ~ -10%`，补偿幅度可略高于同类普通命格，但需要绑定明确条件或定位。
+敌人场景路径：
 
-### 初始基础属性
+- `training_dummy`：`res://scripts/game/enemies/training_dummy/enemy.tscn`
+- `forest_wolf`：`res://scripts/game/enemies/forest_wolf/enemy.tscn`
 
-- `attack = 10`
-- `defense = 8`
-- `max_hp = 120`
-- `accuracy = 10`
-- `evasion = 10`
-- `crit_rate = 5`
-- `attack_speed = 100`
-- 五行初始各 `5`
+## 已实现：维护规则
 
-### 属性换算规则
+- 新增物品时优先补充 `DataTables.ITEM_ID_*` 常量、`DataTables.ITEM_DEFS` 和稳定 `item_no`。
+- 新增编号只追加，不复用历史编号。
+- 新增图标资源时保持 `DataTables` 为事实来源，`.tres` 只承载 `icon_texture` 和可视化编辑字段。
+- 新增丹方同步补充 `ALCHEMY_RECIPE_DEFS`。
+- 新增装备模板同步补充 `EQUIPMENT_DEFS`、`resources/equipment/<template_id>.tres` 和默认图标路径。
+- 新增随机词条同步补充 `EQUIPMENT_ATTRIBUTE_DEFS`。
+- 新增技能同步补充 `SKILL_DEFS`，若要通过背包学习，还要新增对应技能书物品。
+- 新增敌人同步补充 `ENEMY_TEMPLATES`、`ENEMY_SCENE_PATHS` 和敌人场景目录。
 
-- `1 attack` = `+2` 伤害底值。
-- `1 defense` = `+1.5%` 等效减伤。
-- `1 max_hp` = `+10 HP`。
-- `1 accuracy` = `+1` 命中。
-- `1 evasion` = `+1` 闪避。
-- `1 crit_rate` = `+0.5%` 暴击率。
-- `1 crit_damage` = `+1%` 暴击伤害。
-- `1 attack_speed` = `+0.5%` 攻速。
-- `1 move_speed` = `+0.5%` 移速。
+## 规划物品与装备设定
 
-### 装备阶位倍率
+以下内容是规划设定，当前不代表 `DataTables` 已实现。
 
-- `t1`：基础属性倍率 `1.00`，词条数量 `1`，词条强度倍率 `1.00`。
-- `t2`：基础属性倍率 `1.15`，词条数量 `2`，词条强度倍率 `1.10`。
-- `t3`：基础属性倍率 `1.35`，词条数量 `3`，词条强度倍率 `1.25`。
-- `t4`：基础属性倍率 `1.60`，词条数量 `4`，词条强度倍率 `1.45`。
-- `t5`：基础属性倍率 `1.90`，词条数量 `5`，词条强度倍率 `1.70`。
+### 规划：属性丹
 
-### 武器基础属性模板
+| item_id | 名称 | 规划效果 |
+| --- | --- | --- |
+| `life_pill` | 归元丹 | 恢复生命 |
+| `spirit_pill` | 聚灵丹 | 恢复法力 |
+| `might_pill` | 壮气丹 | 持续属性 Buff |
+| `attack_pill` | 破军丹 | 攻击 Buff |
+| `defense_pill` | 玄甲丹 | 防御 Buff |
+| `life_boost_pill` | 血元丹 | 最大生命 Buff |
+| `mana_boost_pill` | 灵泉丹 | 最大法力 Buff |
+| `root_bone_pill` | 锻骨丹 | 根骨 Buff |
+| `wood_pill` | 青木丹 | 木行 Buff |
+| `fire_pill` | 赤焰丹 | 火行 Buff |
+| `earth_pill` | 厚土丹 | 土行 Buff |
+| `metal_pill` | 玄金丹 | 金行 Buff |
+| `water_pill` | 玄水丹 | 水行 Buff |
 
-武器按等级给出主副属性，便于统一掉落、炼器和阵营武器设计。
+规划配方结构为“属性作物 x2 + 通用辅料 x1 + 对应灵石 x1”。实现时必须先补齐丹药、图纸、丹方、UI 和测试。
 
-- 主属性基础值：`8 + equipment_level * 2.2`
-- 副属性基础值：`3 + equipment_level * 0.9`
-- 高阶武器可额外附带 1 个小词条
+### 规划：阵营武器
 
-### 词条数值范围
-
-- `1~10` 级：`+3 ~ +8`
-- `11~20` 级：`+8 ~ +16`
-- `21~30` 级：`+16 ~ +28`
-- `31~40` 级：`+28 ~ +45`
-- `41~50` 级：`+45 ~ +70`
-
-### 百分比词条范围
-
-- `t1`：`2% ~ 4%`
-- `t2`：`4% ~ 6%`
-- `t3`：`6% ~ 9%`
-- `t4`：`9% ~ 12%`
-- `t5`：`12% ~ 16%`
-
-### 阵营武器词条倾向
-
-- 儒家武器优先：`attack`、`accuracy`、`defense`、`max_hp`、`block_rate`、`buff_duration`。
-- 道家武器优先：`evasion`、`move_speed`、`crit_rate`、`penetration`、`element_damage`、`control_rate`。
-
-
-### 阵营武器清单
-
-以下武器作为文档级平衡参考，默认按武器槽使用，实际掉落和炼器可映射到现有 `equipment` 体系。
+阵营武器是武器模板的风格化扩展，仍遵循装备生成、强化、洗练与穿戴规则。
 
 | 武器 | 阵营 | 定位 | 主属性 | 副属性 | 词条倾向 |
 | --- | --- | --- | --- | --- | --- |
-| 礼剑 | 儒家 | 均衡近战 | `attack` | `accuracy`、`defense` | 稳定输出、命中、少量防御 |
-| 仁杖 | 儒家 | 辅助法器 | `max_hp` | `hp_regen`、`buff_duration` | 续航、治疗、护盾 |
-| 义简 | 儒家 | 快速短兵 | `attack_speed` | `crit_rate`、`counter_rate` | 高频打击、反击 |
-| 礼印 | 儒家 | 防守器具 | `defense` | `block_rate`、`damage_reduce` | 承伤、减伤、保护 |
-| 经卷 | 儒家 | 文法远程 | `spell_attack` | `accuracy`、`buff_duration` | 远程压制、增益延长 |
-| 拂尘 | 道家 | 轻灵近中程 | `evasion` | `move_speed`、`dot_damage` | 游击、持续伤害 |
-| 太极环 | 道家 | 攻守法器 | `defense` | `reflect_rate`、`element_balance` | 阴阳调和、反弹 |
-| 符箓 | 道家 | 远程术式 | `element_damage` | `control_rate`、`slow_rate` | 元素压制、控制 |
-| 青木杖 | 道家 | 自然法器 | `wood` | `hp_regen`、`heal_rate` | 续航、生机成长 |
-| 云剑 | 道家 | 高机动爆发 | `crit_rate` | `penetration`、`move_speed` | 爆发、穿透、机动 |
+| 礼剑 | 儒家 | 均衡近战 | `attack` | `accuracy`, `defense` | 稳定输出、命中 |
+| 仁杖 | 儒家 | 辅助法器 | `max_hp` | `hp_regen`, `buff_duration` | 续航、治疗、护盾 |
+| 义简 | 儒家 | 快速短兵 | `attack_speed` | `crit_rate`, `counter_rate` | 高频打击 |
+| 礼印 | 儒家 | 防守器具 | `defense` | `block_rate`, `damage_reduce` | 承伤、保护 |
+| 经卷 | 儒家 | 文法远程 | `spell_attack` | `accuracy`, `buff_duration` | 远程压制 |
+| 拂尘 | 道家 | 轻灵近中程 | `evasion` | `move_speed`, `dot_damage` | 游击、持续伤害 |
+| 太极环 | 道家 | 攻守法器 | `defense` | `reflect_rate`, `element_balance` | 阴阳调和 |
+| 符箓 | 道家 | 远程术式 | `element_damage` | `control_rate`, `slow_rate` | 元素压制 |
+| 青木杖 | 道家 | 自然法器 | `wood` | `hp_regen`, `heal_rate` | 续航、生机成长 |
+| 云剑 | 道家 | 高机动爆发 | `crit_rate` | `penetration`, `move_speed` | 爆发、穿透 |
 
-#### 武器基础值建议
+### 规划：阵营装备套装
 
-- 1~10 级：主属性 `18~30`，副属性 `8~14`。
-- 11~20 级：主属性 `31~52`，副属性 `14~24`。
-- 21~30 级：主属性 `53~78`，副属性 `24~34`。
-- 31~40 级：主属性 `79~108`，副属性 `34~46`。
-- 41~50 级：主属性 `109~142`，副属性 `46~60`。
+儒家正礼套：
 
-
-
-### 阵营装备套装清单
-
-两套装备为完整阵营套装，默认对应现有武器库搭配使用；数值基准与阶位倍率仍沿用本表前文的统一规则。
-
-#### 儒家正礼套
-
-| 装备 | 槽位 | 主属性 | 副属性 | 套装定位 |
+| 装备 | 槽位 | 主属性 | 副属性 | 定位 |
 | --- | --- | --- | --- | --- |
-| 正冠 | 头盔 | `defense` | `accuracy`、`max_hp` | 稳定承伤、提高命中 |
-| 礼袍 | 护甲 | `max_hp` | `defense`、`damage_reduce` | 提升生存、减伤 |
-| 守履 | 胫甲 | `defense` | `move_speed`、`block_rate` | 站稳阵线、格挡防守 |
-| 义护 | 护手 | `attack` | `accuracy`、`counter_rate` | 兼顾输出与反击 |
-| 仁佩 | 饰品 1 | `hp_regen` | `buff_duration`、`max_hp` | 续航与增益延长 |
-| 文璧 | 饰品 2 | `accuracy` | `spell_attack`、`buff_duration` | 提高文法命中与持续收益 |
+| 正冠 | 头盔 | `defense` | `accuracy`, `max_hp` | 稳定承伤 |
+| 礼袍 | 护甲 | `max_hp` | `defense`, `damage_reduce` | 生存减伤 |
+| 守履 | 胫甲 | `defense` | `move_speed`, `block_rate` | 格挡防守 |
+| 义护 | 护手 | `attack` | `accuracy`, `counter_rate` | 输出反击 |
+| 仁佩 | 饰品 | `hp_regen` | `buff_duration`, `max_hp` | 续航增益 |
+| 文璧 | 饰品 | `accuracy` | `spell_attack`, `buff_duration` | 文法命中 |
 
-**儒家正礼套效果**
-- 2 件：`defense +5%`
-- 4 件：`buff_duration +8%`
-- 6 件：受到伤害后短时间提高 `damage_reduce`
+道家清虚套：
 
-#### 道家清虚套
-
-| 装备 | 槽位 | 主属性 | 副属性 | 套装定位 |
+| 装备 | 槽位 | 主属性 | 副属性 | 定位 |
 | --- | --- | --- | --- | --- |
-| 云冠 | 头盔 | `evasion` | `move_speed`、`element_damage` | 提升闪避与灵动 |
-| 清袍 | 护甲 | `defense` | `evasion`、`reflect_rate` | 防御兼反弹 |
-| 逍遥履 | 胫甲 | `move_speed` | `evasion`、`slow_resist` | 高机动游走 |
-| 玄护 | 护手 | `crit_rate` | `penetration`、`attack_speed` | 爆发与穿透 |
-| 阴阳佩 | 饰品 1 | `element_balance` | `control_rate`、`element_damage` | 调和元素与控制 |
-| 太虚符 | 饰品 2 | `control_rate` | `slow_rate`、`crit_damage` | 控制强化与爆发补正 |
+| 云冠 | 头盔 | `evasion` | `move_speed`, `element_damage` | 闪避灵动 |
+| 清袍 | 护甲 | `defense` | `evasion`, `reflect_rate` | 防御反弹 |
+| 逍遥履 | 胫甲 | `move_speed` | `evasion`, `slow_resist` | 高机动 |
+| 玄护 | 护手 | `crit_rate` | `penetration`, `attack_speed` | 爆发穿透 |
+| 阴阳佩 | 饰品 | `element_balance` | `control_rate`, `element_damage` | 元素控制 |
+| 太虚符 | 饰品 | `control_rate` | `slow_rate`, `crit_damage` | 控制爆发 |
 
-**道家清虚套效果**
-- 2 件：`evasion +5%`
-- 4 件：`move_speed +8%`
-- 6 件：触发暴击或控制时提高 `element_damage`
+规划套装效果：
 
-#### 武器词条权重建议
+- 儒家 2 件：`defense +5%`；4 件：`buff_duration +8%`；6 件：受伤后短时间提高 `damage_reduce`。
+- 道家 2 件：`evasion +5%`；4 件：`move_speed +8%`；6 件：暴击或控制时提高 `element_damage`。
 
-- 儒家武器：`attack` 40%、`accuracy` 20%、`defense` 15%、`max_hp` 10%、功能词条 15%。
-- 道家武器：`crit_rate` 20%、`move_speed` 20%、`evasion` 15%、元素/控制 30%、功能词条 15%。
+### 规划：数值平衡基准
+
+这些数值用于后续扩展，不代表当前代码全部采用：
+
+- 玩家和队友每升 1 级自动获得 5 点属性成长。
+- 初始参考属性：`attack=10`、`defense=8`、`max_hp=120`、五行各 `5`。
+- 装备高阶可扩大基础属性倍率和百分比词条范围。
+- 儒家武器优先 `attack`、`accuracy`、`defense`、`max_hp`、`block_rate`、`buff_duration`。
+- 道家武器优先 `crit_rate`、`move_speed`、`evasion`、元素、控制和穿透。

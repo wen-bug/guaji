@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "flame_flower"
+item_no = 1025
+type = "crop"
+display_name = "赤焰花"
+icon_name = "flame_flower"
+icon_path = "res://assets/items/flame_flower.png"
+description = "蕴含火行炎力的五行作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "fire"
+payload = {"growth_seconds": 210.0, "seed_yield": 1}

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "recipe_pill"
+item_no = 1015
+type = "alchemy_recipe"
+display_name = "调息丹方"
+icon_name = "recipe_pill"
+icon_path = "res://assets/items/recipe_pill.png"
+description = "学习后可炼制调息丹。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "none"
+payload = {"recipe_id": "pill"}

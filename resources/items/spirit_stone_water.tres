@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://33p674r36t60"]
+
+[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://25tuhj4hrw3s" path="res://assets/items/spirit_stone.png" id="1_s7nc1"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_51ov2"]
+atlas = ExtResource("1_s7nc1")
+region = Rect2(808.72473, 89.800415, 209.57446, 215.79947)
+
+[resource]
+script = ExtResource("1")
+id = "spirit_stone_water"
+item_no = 1013
+type = "material"
+display_name = "水灵石"
+icon_texture = SubResource("AtlasTexture_51ov2")
+icon_name = "spirit_stone_water"
+icon_path = "res://assets/items/spirit_stone_water.png"
+description = "可用于强化水行属性。"
+use_scope = "none"
+gain_target = "water"
+payload = {
+"enhance_amount": 1,
+"stat": "element_water",
+"stone_group": "element"
+}

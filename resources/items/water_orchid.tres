@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "water_orchid"
+item_no = 1028
+type = "crop"
+display_name = "玄水兰"
+icon_name = "water_orchid"
+icon_path = "res://assets/items/water_orchid.png"
+description = "蕴含水行润泽的五行作物。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "water"
+payload = {"growth_seconds": 240.0, "seed_yield": 1}

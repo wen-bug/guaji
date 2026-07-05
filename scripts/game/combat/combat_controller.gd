@@ -371,12 +371,14 @@ func _actor_status_for_combatant(game_state, member: Dictionary, combatant: Dict
 			add_child(status)
 		_connect_actor_status(status)
 		party_actor_statuses[member_id] = status
+	status.set_effect_resolver(combat_effect_resolver)
 	status.bind_member(game_state, member_id, combatant, _visual_owner_for_member(member_id))
 	return status
 
 
 func _enemy_actor_status() -> CombatActorStatus:
 	if enemy_actor_status != null:
+		enemy_actor_status.set_effect_resolver(combat_effect_resolver)
 		enemy_actor_status.bind_enemy(enemy, current_enemy_node)
 		return enemy_actor_status
 	if current_enemy_node != null and current_enemy_node.has_method("ensure_combat_status"):
@@ -385,6 +387,7 @@ func _enemy_actor_status() -> CombatActorStatus:
 		enemy_actor_status = CombatActorStatusScript.new()
 		enemy_actor_status.name = "EnemyCombatActorStatus"
 		add_child(enemy_actor_status)
+	enemy_actor_status.set_effect_resolver(combat_effect_resolver)
 	enemy_actor_status.bind_enemy(enemy, current_enemy_node)
 	_connect_actor_status(enemy_actor_status)
 	return enemy_actor_status
@@ -447,11 +450,39 @@ func _run_skill_scene(caster: CombatActorStatus, targets: Array, skill: Dictiona
 		push_warning("技能场景缺少 SkillSceneBase 接口: %s" % scene_path)
 		return {"damage": 0, "events": []}
 	add_child(skill_node)
-	skill_node.setup(caster, targets, skill)
+	var scene_skill: Dictionary = skill.duplicate(true)
+	scene_skill["caster_static_effects"] = _static_effects_for_actor(caster)
+	scene_skill["target_static_effects"] = _static_effects_for_actor(targets[0])
+	skill_node.setup(caster, targets, scene_skill, combat_effect_resolver, _rng_for_skill_scene(caster, targets))
 	var result: Dictionary = skill_node.start_cast()
 	skill_node.queue_free()
 	_update_enemy_visual()
 	return result
+
+
+func _rng_for_skill_scene(caster: CombatActorStatus, targets: Array) -> RandomNumberGenerator:
+	if caster != null and caster.game_state != null:
+		return caster.game_state.rng
+	for target in targets:
+		if target is CombatActorStatus and (target as CombatActorStatus).game_state != null:
+			return (target as CombatActorStatus).game_state.rng
+	return null
+
+
+func _static_effects_for_actor(actor: CombatActorStatus) -> Array:
+	if actor == null:
+		return []
+	if actor.actor_kind == CombatActorStatus.KIND_MEMBER and actor.game_state != null:
+		var member: Dictionary = actor.game_state.member_by_id(actor.member_id)
+		if member.is_empty():
+			member = actor.game_state.selected_party_member_or_player(actor.member_id)
+		var effects: Array = []
+		effects.append_array(_equipment_effects_for_member(actor.game_state, member))
+		effects.append_array(_innate_combat_effects_for_member(actor.game_state, member))
+		return effects
+	if actor.actor_kind == CombatActorStatus.KIND_ENEMY:
+		return combat_effect_resolver.normalize_effects(enemy.get("effects", []))
+	return []
 
 
 func _member_damage(game_state, member_id: String, base_damage: int, attack_element: String = "") -> int:
@@ -686,7 +717,9 @@ func _run_enemy_turn(game_state) -> void:
 
 func _skill_from_enemy_action(enemy_action: Dictionary) -> Dictionary:
 	var element_id: String = str(enemy_action.get("element", ""))
-	return _basic_attack_skill(int(enemy_action.get("base_damage", enemy.get("attack", 1))) + _enemy_stat_bonus("attack"), element_id)
+	var skill: Dictionary = _basic_attack_skill(int(enemy_action.get("base_damage", enemy.get("attack", 1))) + _enemy_stat_bonus("attack"), element_id)
+	skill["effects"] = enemy_action.get("effects", []).duplicate(true)
+	return skill
 
 
 func _resolve_member_attack_against_enemy(game_state, member: Dictionary, attacker_store: Dictionary, base_damage: int, attack_element: String, source: String, skill_id: String, skill_effects: Array) -> Dictionary:
@@ -1167,6 +1200,7 @@ func _spawn_enemy_node(enemy_id: String) -> void:
 	current_enemy_node.setup(enemy)
 	current_enemy_node.set_combat_position(enemy_position)
 	enemy_actor_status = current_enemy_node.ensure_combat_status()
+	enemy_actor_status.set_effect_resolver(combat_effect_resolver)
 	enemy_actor_status.bind_enemy(enemy, current_enemy_node)
 	_connect_actor_status(enemy_actor_status)
 

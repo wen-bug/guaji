@@ -49,6 +49,8 @@ signal scene_transition_finished()
 const DRAG_MARGIN := 12.0
 const INVENTORY_SLOT_COUNT := 25
 const INVENTORY_DOUBLE_CLICK_MS := 350
+const INVENTORY_SLOT_SIZE := Vector2(78, 54)
+const INVENTORY_ICON_SIZE := Vector2(42, 42)
 const PANEL_FILL_COLOR := Color(0.13, 0.09, 0.06, 0.9)
 const PANEL_BORDER_COLOR := Color(0.72, 0.55, 0.28, 0.95)
 const TITLE_FILL_COLOR := Color(0.18, 0.12, 0.07, 0.88)
@@ -161,6 +163,7 @@ var category_buttons: Array[Button] = []
 var inventory_slot_buttons: Array[Button] = []
 var inventory_slot_instance_ids: Array[String] = []
 var inventory_slot_color_rects: Array[ColorRect] = []
+var inventory_slot_texture_rects: Array[TextureRect] = []
 var current_inventory_type: String = DataTables.ITEM_TYPE_EQUIPMENT
 var selected_inventory_instance_id: String = ""
 var hovered_inventory_instance_id: String = ""
@@ -524,14 +527,15 @@ func _refresh_character_skills(game_state) -> void:
 		character_skill_grid.add_child(_create_character_slot("技能", "未学习技能", ""))
 		return
 	for skill in member_skills:
+		var skill_id: String = str(skill.get("id", ""))
 		var element_id: String = str(skill.get("element", ""))
 		var source_text: String = DataTables.obtain_source_name(str(skill.get("obtain_source", "non_drop")))
 		var cooldown_text: String = "%0.1f" % float(skill.get("cooldown", 0.0))
 		var detail: String = "%s  冷却 %s秒  法力 %d  %s" % [DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0)), source_text]
-		character_skill_grid.add_child(_create_character_slot("技能", str(skill.get("name", "未命名技能")), detail))
+		character_skill_grid.add_child(_create_character_slot("技能", str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id)))
 
 
-func _create_character_slot(slot_label: String, item_name: String, detail_text: String) -> PanelContainer:
+func _create_character_slot(slot_label: String, item_name: String, detail_text: String, icon_texture: Texture2D = null) -> PanelContainer:
 	var slot: PanelContainer = PanelContainer.new()
 	slot.custom_minimum_size = Vector2(220, 48)
 	slot.add_theme_stylebox_override("panel", _create_panel_style(CARD_FILL_COLOR, CARD_BORDER_COLOR))
@@ -542,6 +546,10 @@ func _create_character_slot(slot_label: String, item_name: String, detail_text: 
 	var icon: TextureRect = TextureRect.new()
 	icon.name = "IconPlaceholder"
 	icon.custom_minimum_size = Vector2(34, 34)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = icon_texture
+	icon.visible = icon_texture != null
 	layout.add_child(icon)
 	var text_layout: VBoxContainer = VBoxContainer.new()
 	text_layout.name = "TextLayout"
@@ -1103,7 +1111,7 @@ func _populate_debug_equipment_options() -> void:
 	template_ids.sort()
 	for template_id in template_ids:
 		var template_data: Dictionary = DataTables.EQUIPMENT_DEFS.get(str(template_id), {})
-		var label: String = DataTables.slot_name(str(template_data.get("slot", template_id)))
+		var label: String = str(template_data.get("name", DataTables.slot_name(str(template_data.get("slot", template_id)))))
 		var index: int = debug_equipment_option.item_count
 		debug_equipment_option.add_item("%s (%s)" % [label, str(template_id)])
 		debug_equipment_option.set_item_metadata(index, str(template_id))
@@ -1578,12 +1586,13 @@ func _ensure_inventory_slots() -> void:
 	inventory_slot_buttons.clear()
 	inventory_slot_instance_ids.clear()
 	inventory_slot_color_rects.clear()
+	inventory_slot_texture_rects.clear()
 	for child in inventory_grid.get_children():
 		child.queue_free()
 	for index in range(INVENTORY_SLOT_COUNT):
 		var slot: Button = Button.new()
 		slot.name = "InventorySlot%d" % (index + 1)
-		slot.custom_minimum_size = Vector2(78, 54)
+		slot.custom_minimum_size = INVENTORY_SLOT_SIZE
 		slot.clip_contents = true
 		_style_inventory_slot_button(slot)
 		var layout: CenterContainer = CenterContainer.new()
@@ -1591,13 +1600,28 @@ func _ensure_inventory_slots() -> void:
 		layout.set_anchors_preset(Control.PRESET_FULL_RECT)
 		layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(layout)
+		var icon_frame: Control = Control.new()
+		icon_frame.name = "IconFrame"
+		icon_frame.custom_minimum_size = INVENTORY_ICON_SIZE
+		icon_frame.clip_contents = true
+		icon_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layout.add_child(icon_frame)
 		var icon: ColorRect = ColorRect.new()
 		icon.name = "IconBlock"
-		icon.custom_minimum_size = Vector2(42, 42)
+		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 		icon.color = INVENTORY_ICON_DIM_COLOR
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layout.add_child(icon)
+		icon_frame.add_child(icon)
 		inventory_slot_color_rects.append(icon)
+		var icon_texture: TextureRect = TextureRect.new()
+		icon_texture.name = "IconTexture"
+		icon_texture.set_anchors_preset(Control.PRESET_FULL_RECT)
+		icon_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_texture.visible = false
+		icon_frame.add_child(icon_texture)
+		inventory_slot_texture_rects.append(icon_texture)
 		slot.gui_input.connect(func(event, slot_index = index): _on_inventory_slot_gui_input(event, slot_index))
 		slot.mouse_entered.connect(func(slot_index = index): _on_inventory_slot_mouse_entered(slot_index))
 		slot.mouse_exited.connect(_on_inventory_slot_mouse_exited)
@@ -1620,16 +1644,26 @@ func _style_inventory_slot_button(slot: Button) -> void:
 func _update_inventory_slot(index: int, item: Dictionary) -> void:
 	var slot: Button = inventory_slot_buttons[index]
 	var icon_block: ColorRect = inventory_slot_color_rects[index] if index < inventory_slot_color_rects.size() else null
+	var icon_texture: TextureRect = inventory_slot_texture_rects[index] if index < inventory_slot_texture_rects.size() else null
 	if item.is_empty():
 		inventory_slot_instance_ids[index] = ""
 		if icon_block != null:
 			icon_block.color = INVENTORY_ICON_DIM_COLOR
+			icon_block.visible = false
+		if icon_texture != null:
+			icon_texture.texture = null
+			icon_texture.visible = false
 		slot.tooltip_text = ""
 		slot.disabled = true
 		return
 	inventory_slot_instance_ids[index] = str(item.get("instance_id", ""))
 	if icon_block != null:
 		icon_block.color = _inventory_slot_color(item)
+	if icon_texture != null:
+		icon_texture.texture = _load_inventory_icon_texture(item)
+		icon_texture.visible = icon_texture.texture != null
+		if icon_block != null:
+			icon_block.visible = icon_texture.texture == null
 	slot.tooltip_text = ""
 	slot.disabled = false
 
@@ -1640,6 +1674,10 @@ func _inventory_slot_color(item: Dictionary) -> Color:
 	if DataTables.item_use_scope(str(item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME:
 		return Color(color.r, color.g, color.b, 0.95)
 	return Color(color.r * 0.78, color.g * 0.78, color.b * 0.78, 0.88)
+
+
+func _load_inventory_icon_texture(item: Dictionary) -> Texture2D:
+	return DataTables.inventory_icon_texture(item)
 
 
 func _on_inventory_slot_gui_input(event: InputEvent, slot_index: int) -> void:
@@ -2220,11 +2258,10 @@ func _first_matching_enhance_stone_id(item: Dictionary, cost: int) -> String:
 		var stat_id: String = attribute.get("stat", "")
 		if not stat_id.is_empty() and not base_stats.has(stat_id):
 			base_stats.append(stat_id)
-	for quality in DataTables.SPIRIT_STONE_QUALITY_ORDER:
-		for stat_id in base_stats:
-			var item_id: String = DataTables.enhance_stone_item_id(stat_id, quality)
-			if not item_id.is_empty() and current_game_state.inventory_item_count(item_id) >= cost:
-				return item_id
+	for stat_id in base_stats:
+		var item_id: String = DataTables.enhance_stone_item_id(stat_id)
+		if not item_id.is_empty() and current_game_state.inventory_item_count(item_id) >= cost:
+			return item_id
 	return ""
 
 

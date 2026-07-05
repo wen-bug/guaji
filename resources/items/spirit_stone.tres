@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "spirit_stone"
+item_no = 1005
+type = "material"
+display_name = "灵石"
+icon_name = "spirit_stone"
+icon_path = "res://assets/items/spirit_stone.png"
+description = "招募修士与强化普通属性所需的通用灵石。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "none"
+payload = {"enhance_amount": 1, "recruit_currency": true, "stone_group": "stat"}

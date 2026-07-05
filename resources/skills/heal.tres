@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SkillDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "heal"
+display_name = "回春术"
+icon_name = "heal"
+icon_path = "res://assets/skills/heal.png"
+type = "heal"
+element = "wood"
+mp_cost = 6
+cooldown = 5.0
+release_distance = 96.0
+description = "木属性治疗技能。"

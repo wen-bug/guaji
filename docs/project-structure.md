@@ -22,7 +22,8 @@
 │   │   ├── data/
 │   │   │   ├── data_tables.gd
 │   │   │   ├── equipment_template.gd
-│   │   │   └── item_def.gd
+│   │   │   ├── item_def.gd
+│   │   │   └── skill_def.gd
 │   │   ├── inventory/
 │   │   │   └── inventory_service.gd
 │   │   ├── party/
@@ -66,6 +67,10 @@
 │       ├── hud.gd
 │       └── hud.tscn
 ├── docs/
+├── resources/
+│   ├── items/
+│   ├── equipment/
+│   └── skills/
 ├── AGENTS.md
 ├── PLAN.md
 └── project.godot
@@ -115,10 +120,31 @@
 - 丹方定义：结果物品和材料消耗。
 - 技能定义：技能 ID、名称、五行、冷却、蓝耗、伤害倍率。
 - 装备模板：武器、防具、饰品等装备生成基础。
+- 图标资源路径：物品、装备和技能 `.tres` 的约定路径与 `icon_texture` 读取入口。
 - 装备阶位、属性池、强化石和洗练词条定义。
-- 先天命格定义：命格 ID、名称、品质、槽位、描述和效果列表。
+- 先天命格定义：命格 ID、名称、描述和效果列表。
 - 敌人静态定义：敌人属性、等级、五行、弱点与掉落配置。
-- 工厂方法：创建堆叠物品、技能书、技能、敌人、装备和命格实例。
+- 工厂方法：创建堆叠物品、技能、敌人和装备实例。
+
+### `scripts/game/data/item_def.gd`
+
+物品 `.tres` 资源脚本，导出物品 ID、编号、名称、描述、分类、图标贴图、图标路径、使用范围、成长目标和 payload。当前作为美术引用和 Inspector 可视化编辑承载，不替代 `DataTables.ITEM_DEFS`。
+
+### `scripts/game/data/equipment_template.gd`
+
+装备模板 `.tres` 资源脚本，导出模板 ID、槽位、模板名称、槽位显示名、图标贴图、默认图标路径、基础属性、等级成长、需求属性和描述。资源内不写入阶位文本；阶位由运行时装备实例动态生成。
+
+### `scripts/game/data/skill_def.gd`
+
+技能 `.tres` 资源脚本，导出技能 ID、显示名、图标贴图、图标路径、类型、五行、蓝耗、冷却、释放距离和描述。当前用于技能格图标显示和 Inspector 手动配置图标。
+
+## 资源目录
+
+- `resources/items/`：物品资源，文件名为 `<item_id>.tres`。
+- `resources/equipment/`：装备模板资源，文件名为 `<template_id>.tres`，例如 `weapon.tres`。
+- `resources/skills/`：技能资源，文件名为 `<skill_id>.tres`。
+
+这些资源的 `icon_texture` 供手动拖图使用。运行时图标读取顺序为 `.tres.icon_texture`、默认 `icon_path` 图片、UI 占位。
 
 ### `scripts/game/inventory/inventory_service.gd`
 
@@ -172,7 +198,7 @@
 
 - 统一识别技能、装备、命格、敌人动作和临时状态上的 `effects`。
 - 按 `attack_start`、`before_hit`、`on_hit`、`after_damage`、`on_kill`、`on_damaged`、`turn_start`、`turn_end` 阶段筛选并判定 `chance`。
-- 生成伤害、治疗、状态叠加、护盾抵消和冷却修正事件。
+- 生成伤害、治疗、状态覆盖/叠加、一次性消耗、护盾抵消和冷却修正事件。
 - 不负责动画、伤害浮字、HUD 或掉落结算。
 
 ### `scripts/game/core/game_state.gd`
@@ -239,19 +265,22 @@ HUD 控制脚本：
 
 ## 文档目录
 
-- `design.md`：当前玩法设计与核心公式。
-- `innate-traits.md`：先天命格的定位、生成规则、推荐命格池、数据结构和觉醒规则。
-- `items.md`：物品、背包、装备、炼丹和炼器说明。
-- `item-table.md`：物品、配方、灵石、技能、装备、敌人掉落表。
-- `battle-expedition.md`：历练地图、随机遇怪、自动战斗、返回家园和加载过渡流程。
+- `design.md`：玩法总览、核心循环、成长公式、生产/战斗高层规则和跨系统跳转。
+- `items.md`：物品系统规则，包括背包实例、使用/丢弃、装备养成、种田、炼丹和规划商店。
+- `item-table.md`：`DataTables` 的事实索引，包括已实现物品、配方、技能、装备模板、命格索引、敌人与掉落；未来物品和套装只放在“规划”段落。
+- `innate-traits.md`：先天命格的已实现命格池、效果字段、规划生成规则、数值基准、缺陷命格和觉醒规则。
+- `battle-expedition.md`：历练地图、随机遇怪、自动战斗、战斗附加效果、返回家园和加载过渡流程。
 - `project-structure.md`：项目结构说明。
 
 ## 维护约定
 
-- 新增物品优先补 `DataTables.ITEM_DEFS` 和 `docs/item-table.md`。
-- 新增命格优先补 `DataTables.INNATE_TRAIT_DEFS` 和 `docs/innate-traits.md`。
-- 新增玩法先接入 `GameState` 结算，再决定是否需要独立决策模块或表现层。
-- 涉及数值公式时同步更新 `docs/design.md`。
+- 新增已实现物品、配方、技能、装备模板、敌人或掉落时，优先补 `DataTables`，再同步 `docs/item-table.md`。
+- 新增或调整物品、装备、技能图标字段时，同步 `resources/` 对应 `.tres` 和 `docs/item-table.md`。
+- 新增物品交互规则、背包行为、装备养成、炼丹、种田或商店规则时，同步 `docs/items.md`。
+- 新增命格优先补 `DataTables.INNATE_TRAIT_DEFS` 和 `docs/innate-traits.md`；若命格影响战斗 AI 或战斗效果，同步 `docs/battle-expedition.md`。
+- 新增玩法先接入 `GameState` 结算，再决定是否需要独立决策模块或表现层；只保留高层跨系统说明在 `docs/design.md`。
+- 涉及战斗流程、随机遇怪、`effects` 管线或返回家园流程时，同步 `docs/battle-expedition.md`。
+- 未实现设定必须标注为“规划”，不能写入已实现清单。
 - 调试入口只用于测试，允许修改正式存档；新增调试能力时同步标注中文日志。
 
 ## 历练战斗补充

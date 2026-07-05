@@ -1,9 +1,9 @@
 {
 	"agents_path": "res://AGENTS.md",
-	"core_tool_count": 73,
+	"core_tool_count": 78,
 	"endpoint": "http://127.0.0.1:8765/",
-	"full_tool_count": 123,
-	"generated_at": "2026-07-04 05:46:34",
+	"full_tool_count": 128,
+	"generated_at": "2026-07-05 07:50:39",
 	"name": "funplay-godot-project",
 	"skill_path": "res://.funplay/skills/funplay-godot-project.md",
 	"tool_profile": "full",
