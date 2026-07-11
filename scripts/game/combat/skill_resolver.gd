@@ -1,16 +1,13 @@
 class_name SkillResolver
 extends RefCounted
 
-const PLAYER_ID := "player"
-
-
 func resolve_skill(skill: Dictionary, game_state, combat_context: Dictionary = {}) -> Dictionary:
 	if skill.is_empty():
 		return _failed_result("技能不存在")
 
 	var mp_cost: int = int(skill.get("mp_cost", 0))
-	var member_id: String = str(combat_context.get("member_id", PLAYER_ID))
-	var member: Dictionary = game_state.selected_party_member_or_player(member_id)
+	var member_id: String = str(combat_context.get("member_id", ""))
+	var member: Dictionary = game_state.member_by_id(member_id)
 	var member_stats: Dictionary = member.get("stats", {})
 	if int(member_stats.get("mp", 0)) < mp_cost:
 		return _failed_result("法力不足")

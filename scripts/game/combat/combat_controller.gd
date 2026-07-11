@@ -3,1364 +3,791 @@ extends Node2D
 
 signal log_added(message: String)
 signal damage_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool)
-signal player_attack_started(action_type: String)
-signal player_hit_received(amount: int, damage_type: String)
-signal enemy_hit_received(amount: int, damage_type: String)
-signal enemy_attack_started(enemy_id: String)
 
-const PLAYER_TURN_WAIT := 1.1
-const ENEMY_TURN_WAIT := 1.4
-const DEFAULT_ATTACK_RANGE := 96.0
-const DEFAULT_ENEMY_ATTACK_RANGE := 88.0
-const DEFAULT_MOVE_STEP := 120.0
-const DEFAULT_RETREAT_DISTANCE := 72.0
-const DEFAULT_ENEMY_SPAWN_DELAY := 0.8
-const DEFAULT_ENEMY_POSITION := Vector2(866, 126)
-const CombatEffectResolverScript = preload("res://scripts/game/combat/combat_effect_resolver.gd")
-const CombatActorStatusScript = preload("res://scripts/game/combat/combat_actor_status.gd")
-const BASIC_ATTACK_SCENE := "res://scripts/game/skills/damage/basic_attack.tscn"
-const PLAYER_ID := "player"
+const STATE_READY := "READY"
+const STATE_APPROACH := "APPROACH"
+const STATE_ATTACK := "ATTACK"
+const STATE_RETURN := "RETURN"
+const STATE_RECOVERY := "RECOVERY"
+const STATE_DEFEATED := "DEFEATED"
+const STATE_VICTORY := "VICTORY"
+const PHASE_PARTY := "PARTY"
+const PHASE_ENEMY := "ENEMY"
+const RESULT_NONE := "none"
+const RESULT_VICTORY := "victory"
+const RESULT_DEFEAT := "defeat"
 
 const ACTION_SOURCE_SKILL := "skill"
 const ACTION_SOURCE_PILL := "pill"
 const ACTION_SOURCE_BASIC := "basic"
-const ACTION_TYPE_NORMAL_ATTACK := "normal_attack"
+const BASIC_ATTACK_SCENE := "res://scripts/game/skills/damage/basic_attack.tscn"
+const DEFAULT_ENEMY_POSITION := Vector2(866, 170)
+const DEFAULT_PARTY_POSITION := Vector2(736, 170)
+const PARTY_FORMATION_SPACING := Vector2(-68, 0)
+const POSITION_EPSILON := 2.0
+const DEFAULT_MOVE_SPEED := 120.0
 
-enum PlayerCombatState { RUNNING, APPROACHING, READY, ACTING, RECOVERING, VICTORY, DEFEATED, LEAVING }
-enum EnemyCombatState { SPAWNING, WAITING, APPROACHING, ACTING, RECOVERING, DEAD }
-
-var active: bool = false
-var finished: bool = false
+var active := false
+var finished := false
 var enemy: Dictionary = {}
-var player_state: int = PlayerCombatState.RUNNING
-var enemy_state: int = EnemyCombatState.WAITING
-var player_cooldown: float = 0.0
-var enemy_cooldown: float = 0.0
-var skill_cooldowns: Dictionary = {}
-var pill_cooldowns: Dictionary = {}
-var pill_group_cooldowns: Dictionary = {}
-var combat_buffs: Array = []
-var combat_effects: Array = []
-var party_combatants: Array[Dictionary] = []
-var player_action_resolving: bool = false
-var enemy_position: Vector2 = DEFAULT_ENEMY_POSITION
-var current_enemy_node: BaseEnemy = null
-var animation_player: AnimationPlayer
-var skill_resolver: SkillResolver = SkillResolver.new()
-var combat_ai: CombatAI = CombatAI.new()
-var pending_action: Dictionary = {}
-var pending_game_state = null
-var animation_action: Dictionary = {}
-var animation_game_state = null
-var animation_hit_applied: bool = false
-var battle_map: Node2D = null
-var combat_effect_resolver: CombatEffectResolver = CombatEffectResolverScript.new()
+var party_combatants: Array = []
+var party_actor_views: Dictionary = {}
 var party_actor_statuses: Dictionary = {}
+var current_enemy_node: BaseEnemy = null
 var enemy_actor_status: CombatActorStatus = null
-var player_range: float = DEFAULT_ATTACK_RANGE
-var enemy_range: float = DEFAULT_ENEMY_ATTACK_RANGE
-var player_move_speed: float = DEFAULT_MOVE_STEP
-var player_retreat_distance: float = DEFAULT_RETREAT_DISTANCE
-var enemy_move_speed: float = DEFAULT_MOVE_STEP
-var _player_position: Vector2 = Vector2.ZERO
-var _home_position: Vector2 = Vector2.ZERO
+var battle_map: Node2D = null
+var pending_game_state = null
+var combat_ai := CombatAI.new()
+var combat_effect_resolver := CombatEffectResolver.new()
+
+var _next_action_id := 1
+var _resolved_hits: Dictionary = {}
+var _marker_reservations: Dictionary = {}
+var _turn_phase := PHASE_PARTY
+var _party_turn_index := 0
+var _round_number := 1
+var _enemy_state := STATE_READY
+var _enemy_action_id := 0
+var _enemy_target_id := ""
+var _enemy_home_position := DEFAULT_ENEMY_POSITION
+var _enemy_death_waiting := false
+var _rewards_granted := false
+var _combat_result := RESULT_NONE
 
 
-func _ready() -> void:
-	_bind_scene_nodes()
-	_update_enemy_visual()
+func set_party_views(views: Dictionary) -> void:
+	party_actor_views = views.duplicate()
+	for member_id in party_actor_views.keys():
+		var actor: Node = party_actor_views.get(member_id)
+		if actor == null or not is_instance_valid(actor):
+			continue
+		var hit_callback := Callable(self, "_on_party_hit_candidate").bind(str(member_id))
+		if actor.has_signal("hit_candidate") and not actor.is_connected("hit_candidate", hit_callback):
+			actor.connect("hit_candidate", hit_callback)
+		var finished_callback := Callable(self, "_on_party_attack_finished").bind(str(member_id))
+		if actor.has_signal("attack_finished") and not actor.is_connected("attack_finished", finished_callback):
+			actor.connect("attack_finished", finished_callback)
 
 
 func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "") -> void:
-	_bind_scene_nodes()
-	battle_map = map_node if map_node != null else battle_map
-	if battle_map == null:
-		battle_map = get_parent() as Node2D
-	if game_state.active_party_members().is_empty():
+	clear()
+	pending_game_state = game_state
+	battle_map = map_node
+	var members: Array = game_state.active_party_members()
+	if members.is_empty():
 		log_added.emit("需要先招募角色")
-		clear()
 		return
-	_set_combat_positions()
-	enemy_position = DEFAULT_ENEMY_POSITION
-	enemy = DataTables.create_enemy(game_state.stats["level"], game_state.rng, enemy_id)
-	_ensure_combat_effects(enemy)
-	_spawn_enemy_node(str(enemy.get("id", DataTables.DEFAULT_ENEMY_ID)))
-	_setup_party_combatants(game_state)
+
+	var base_position := DEFAULT_PARTY_POSITION
+	if battle_map != null and battle_map.has_method("battle_player_position"):
+		base_position = battle_map.call("battle_player_position")
+	for index in range(members.size()):
+		var member: Dictionary = members[index]
+		var member_id: String = str(member.get("id", ""))
+		var actor: Node = party_actor_views.get(member_id)
+		if actor == null or not is_instance_valid(actor):
+			push_warning("参战成员缺少 ActorController: %s" % member_id)
+			continue
+		var formation := base_position + PARTY_FORMATION_SPACING * float(index)
+		actor.call("enter_combat", formation)
+		actor.call("set_formation_position", formation)
+		var combatant := {
+			"member_id": member_id,
+			"state": STATE_READY,
+			"position": formation,
+			"formation_position": formation,
+			"move_speed": DEFAULT_MOVE_SPEED,
+			"action_id": 0,
+			"pending_action": {},
+			"skill_cooldowns": {},
+			"pill_cooldowns": {},
+			"pill_group_cooldowns": {},
+			"combat_buffs": [],
+			"combat_effects": [],
+			"turn_started": false,
+		}
+		party_combatants.append(combatant)
+		var status: CombatActorStatus = actor.call("ensure_combat_status")
+		status.set_effect_resolver(combat_effect_resolver)
+		status.bind_member(game_state, member_id, combatant, actor)
+		_connect_status(status)
+		party_actor_statuses[member_id] = status
+
+	if party_combatants.is_empty():
+		log_added.emit("当前编队没有可用的战斗形象")
+		return
+
+	var resolved_enemy_id := DataTables.resolve_enemy_id(enemy_id)
+	enemy = DataTables.create_enemy(game_state.expedition_level(), game_state.rng, resolved_enemy_id)
+	enemy["combat_id"] = "enemy_1"
+	_spawn_enemy_node(resolved_enemy_id)
+	if current_enemy_node == null:
+		return
+	_enemy_home_position = DEFAULT_ENEMY_POSITION
+	current_enemy_node.set_combat_position(_enemy_home_position)
+	_turn_phase = PHASE_PARTY
+	_party_turn_index = 0
+	_round_number = 1
+	_enemy_state = STATE_READY
 	active = true
 	finished = false
-	player_state = PlayerCombatState.APPROACHING
-	enemy_state = EnemyCombatState.SPAWNING
-	player_cooldown = 0.0
-	enemy_cooldown = float(enemy.get("spawn_delay", DEFAULT_ENEMY_SPAWN_DELAY))
-	player_action_resolving = false
-	pending_action.clear()
-	pending_game_state = null
-	skill_cooldowns.clear()
-	pill_cooldowns.clear()
-	pill_group_cooldowns.clear()
-	combat_buffs.clear()
-	combat_effects.clear()
-	player_range = float(enemy.get("player_attack_range", DEFAULT_ATTACK_RANGE))
-	enemy_range = float(enemy.get("attack_range", DEFAULT_ENEMY_ATTACK_RANGE))
-	player_move_speed = float(enemy.get("player_move_speed", DEFAULT_MOVE_STEP))
-	enemy_move_speed = float(enemy.get("move_speed", DEFAULT_MOVE_STEP))
-	log_added.emit("遭遇%s，弱%s" % [enemy["name"], DataTables.element_name(enemy["weak_element"])] )
-	_update_enemy_visual()
+	log_added.emit("遭遇%s，弱%s" % [enemy.get("name", "敌人"), DataTables.element_name(str(enemy.get("weak_element", "")))])
 
 
 func tick(delta: float, game_state) -> void:
-	if not active or finished:
+	if not active or finished or _enemy_death_waiting:
 		return
-	_tick_party_combatants(delta, game_state)
-	_update_enemy_combat_state(delta, game_state)
-	_check_combat_result(game_state)
-	_update_enemy_visual()
+	pending_game_state = game_state
+	if _turn_phase == PHASE_PARTY:
+		_tick_current_party_turn(delta, game_state)
+	else:
+		_tick_enemy(delta)
+	_check_combat_result()
 
 
 func is_finished() -> bool:
 	return finished
 
 
+func combat_result() -> String:
+	return _combat_result
+
+
 func clear() -> void:
+	for combatant in party_combatants:
+		var actor := _party_actor(str(combatant.get("member_id", "")))
+		if actor != null:
+			actor.call("cancel_combat_action")
+	if current_enemy_node != null and is_instance_valid(current_enemy_node):
+		current_enemy_node.cancel_combat_action()
+		current_enemy_node.queue_free()
+	current_enemy_node = null
+	enemy_actor_status = null
+	party_actor_statuses.clear()
+	party_combatants.clear()
+	_marker_reservations.clear()
+	_resolved_hits.clear()
+	enemy.clear()
 	active = false
 	finished = false
-	enemy = {}
-	player_state = PlayerCombatState.LEAVING
-	enemy_state = EnemyCombatState.DEAD
-	player_cooldown = 0.0
-	enemy_cooldown = 0.0
-	player_action_resolving = false
-	pending_action.clear()
+	_combat_result = RESULT_NONE
+	_enemy_death_waiting = false
+	_rewards_granted = false
+	_enemy_action_id = 0
+	_enemy_target_id = ""
+	_turn_phase = PHASE_PARTY
+	_party_turn_index = 0
+	_round_number = 1
 	pending_game_state = null
-	animation_action.clear()
-	animation_game_state = null
-	animation_hit_applied = false
-	combat_buffs.clear()
-	combat_effects.clear()
-	party_combatants.clear()
-	party_actor_statuses.clear()
-	enemy_actor_status = null
-	battle_map = null
-	_clear_enemy_node()
-	_update_enemy_visual()
 
 
 func combat_status() -> Dictionary:
 	return {
 		"active": active,
 		"finished": finished,
-		"player_state": PlayerCombatState.keys()[player_state],
-		"enemy_state": EnemyCombatState.keys()[enemy_state],
-		"player_cooldown": player_cooldown,
-		"enemy_cooldown": enemy_cooldown,
-		"player_action_resolving": player_action_resolving,
-		"skill_cooldowns": skill_cooldowns.duplicate(true),
-		"pill_cooldowns": pill_cooldowns.duplicate(true),
-		"pill_group_cooldowns": pill_group_cooldowns.duplicate(true),
-		"pending_action": pending_action.duplicate(true),
-		"combat_buffs": combat_buffs.duplicate(true),
-		"combat_effects": combat_effects.duplicate(true),
-		"enemy_combat_effects": enemy.get("combat_effects", []).duplicate(true),
+		"result": _combat_result,
+		"turn_phase": _turn_phase,
+		"round": _round_number,
+		"party_turn_index": _party_turn_index,
+		"current_member_id": _current_party_member_id(),
+		"enemy_state": _enemy_state,
 		"party_combatants": party_combatants.duplicate(true),
-		"player_position": _player_position,
-		"enemy_position": enemy_position,
-		"distance_to_enemy": _distance_to_enemy(),
+		"enemy": enemy.duplicate(true),
+		"marker_reservations": _marker_reservations.duplicate(true),
 	}
 
 
-func combat_stat_bonus(stat_id: String) -> int:
-	var value: int = 0
-	if not combat_buffs.is_empty():
-		for buff in combat_buffs:
-			if str(buff.get("stat", "")) == stat_id:
-				value += int(buff.get("amount", 0))
-	value += combat_effect_resolver.stat_bonus_from_effects(combat_effects, stat_id)
-	return value
+func _tick_current_party_turn(delta: float, game_state) -> void:
+	if _party_turn_index < 0 or _party_turn_index >= party_combatants.size():
+		_begin_enemy_phase()
+		return
+	_tick_party_combatant(_party_turn_index, delta, game_state)
 
 
-func _combat_total_attack(game_state) -> int:
-	return int(game_state.total_attack()) + combat_stat_bonus("attack")
-
-
-func _setup_party_combatants(game_state) -> void:
-	party_combatants.clear()
-	var members: Array = game_state.party_members()
-	for index in range(members.size()):
-		var member: Dictionary = members[index]
-		var member_id: String = str(member.get("id", PLAYER_ID))
-		var position: Vector2 = _home_position - Vector2(float(index) * 42.0, 0.0)
-		party_combatants.append({
-			"member_id": member_id,
-			"name": str(member.get("name", "成员")),
-			"state": PlayerCombatState.APPROACHING,
-			"cooldown": 0.0,
-			"skill_cooldowns": {},
-			"pill_cooldowns": {},
-			"pill_group_cooldowns": {},
-			"combat_buffs": [],
-			"combat_effects": [],
-			"turn_start_processed": false,
-			"pending_action": {},
-			"position": position,
-			"home_position": position,
-			"range": float(enemy.get("player_attack_range", DEFAULT_ATTACK_RANGE)),
-			"move_speed": float(enemy.get("player_move_speed", DEFAULT_MOVE_STEP)),
-		})
-		var combatant: Dictionary = party_combatants[party_combatants.size() - 1]
-		_actor_status_for_combatant(game_state, member, combatant)
-	if not party_combatants.is_empty():
-		_player_position = party_combatants[0].get("position", _player_position)
-		_update_player_state()
-
-
-func _tick_party_combatants(delta: float, game_state) -> void:
-	for index in range(party_combatants.size()):
-		var combatant: Dictionary = party_combatants[index]
-		var member_id: String = str(combatant.get("member_id", PLAYER_ID))
-		var member: Dictionary = game_state.member_by_id(member_id)
-		if member.is_empty() or int(member.get("stats", {}).get("hp", 0)) <= 0:
-			combatant["state"] = PlayerCombatState.DEFEATED
-			party_combatants[index] = combatant
-			continue
-		_tick_combatant_cooldowns(combatant, delta)
-		if int(combatant.get("state", PlayerCombatState.READY)) == PlayerCombatState.RECOVERING:
-			combatant["cooldown"] = max(0.0, float(combatant.get("cooldown", 0.0)) - delta)
-			if float(combatant.get("cooldown", 0.0)) > 0.0:
-				party_combatants[index] = combatant
-				continue
-		_resolve_combatant_action(index, delta, game_state, member)
-
-
-func _tick_combatant_cooldowns(combatant: Dictionary, delta: float) -> void:
-	for key in ["skill_cooldowns", "pill_cooldowns", "pill_group_cooldowns"]:
-		var cooldowns: Dictionary = combatant.get(key, {})
-		for id in cooldowns.keys():
-			cooldowns[id] = max(0.0, float(cooldowns[id]) - delta)
-		combatant[key] = cooldowns
-
-
-func _resolve_combatant_action(index: int, delta: float, game_state, member: Dictionary) -> void:
+func _tick_party_combatant(index: int, delta: float, game_state) -> void:
 	var combatant: Dictionary = party_combatants[index]
-	if not bool(combatant.get("turn_start_processed", false)):
-		_process_combatant_turn_start(game_state, combatant, member)
-		combatant["turn_start_processed"] = true
-		if int(member.get("stats", {}).get("hp", 0)) <= 0:
-			combatant["state"] = PlayerCombatState.DEFEATED
+	var member_id: String = str(combatant.get("member_id", ""))
+	var member: Dictionary = game_state.member_by_id(member_id)
+	var actor := _party_actor(member_id)
+	if member.is_empty() or actor == null:
+		_cancel_party_action(combatant, true)
+		party_combatants[index] = combatant
+		_advance_party_turn()
+		return
+	if int(member.get("stats", {}).get("hp", 0)) <= 0:
+		_cancel_party_action(combatant, true)
+		actor.call("play_death_feedback")
+		party_combatants[index] = combatant
+		_advance_party_turn()
+		return
+
+	if not bool(combatant.get("turn_started", false)):
+		combatant["turn_started"] = true
+		_advance_turn_cooldowns(combatant)
+		var status: CombatActorStatus = party_actor_statuses.get(member_id)
+		if status != null:
+			status.tick_turn_start()
+		if not _member_alive(member_id):
+			_cancel_party_action(combatant, true)
+			actor.call("play_death_feedback")
 			party_combatants[index] = combatant
+			_advance_party_turn()
 			return
-		if int(enemy.get("hp", 0)) <= 0:
-			party_combatants[index] = combatant
-			return
-	var member_id: String = str(combatant.get("member_id", PLAYER_ID))
+
+	match str(combatant.get("state", STATE_READY)):
+		STATE_READY:
+			_begin_party_action(combatant, member, game_state)
+		STATE_APPROACH:
+			_tick_party_approach(combatant, actor, delta)
+		STATE_ATTACK:
+			pass
+		STATE_RETURN:
+			_tick_party_return(combatant, actor, delta)
+	party_combatants[index] = combatant
+
+
+func _begin_party_action(combatant: Dictionary, member: Dictionary, game_state) -> void:
+	if int(enemy.get("hp", 0)) <= 0:
+		return
 	var action: Dictionary = combat_ai.select_player_action(
 		game_state,
-		float(combatant.get("range", DEFAULT_ATTACK_RANGE)),
-		_distance_to_enemy_for(combatant),
+		float(enemy.get("player_attack_range", 96.0)),
+		_distance_to_enemy(combatant),
 		combatant.get("skill_cooldowns", {}),
 		combatant.get("pill_cooldowns", {}),
 		combatant.get("pill_group_cooldowns", {}),
 		member
 	)
 	if action.is_empty():
-		party_combatants[index] = combatant
+		_finish_party_turn(combatant)
 		return
-	var required_distance: float = combat_ai.preferred_player_release_distance(action, float(combatant.get("range", DEFAULT_ATTACK_RANGE)))
-	if _distance_to_enemy_for(combatant) > required_distance:
-		combatant["state"] = PlayerCombatState.APPROACHING
-		_move_combatant_toward_enemy(combatant, delta)
-		party_combatants[index] = combatant
+	if str(action.get("source", ACTION_SOURCE_BASIC)) != ACTION_SOURCE_BASIC:
+		_resolve_instant_party_action(combatant, member, action, game_state)
 		return
-	combatant["state"] = PlayerCombatState.ACTING
-	player_attack_started.emit(str(action.get("action_type", "")))
-	_apply_combatant_action_hit(game_state, member, combatant, action)
-	_finish_combatant_turn(combatant, action)
+	var member_id: String = str(combatant.get("member_id", ""))
+	var target_id: String = str(enemy.get("combat_id", "enemy_1"))
+	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
+	if attack_mode == DataTables.ATTACK_MODE_MELEE and not _reserve_marker(target_id, member_id):
+		return
+	var action_id := _allocate_action_id()
+	combatant["action_id"] = action_id
+	combatant["pending_action"] = action.duplicate(true)
+	combatant["state"] = STATE_APPROACH
+	_resolved_hits[action_id] = {}
+
+
+func _tick_party_approach(combatant: Dictionary, actor: Node, delta: float) -> void:
+	if current_enemy_node == null or int(enemy.get("hp", 0)) <= 0:
+		combatant["state"] = STATE_RETURN
+		return
+	var action: Dictionary = combatant.get("pending_action", {})
+	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
+	var target_position := current_enemy_node.melee_approach_position()
+	var reached := false
+	if attack_mode == DataTables.ATTACK_MODE_RANGED:
+		var release_distance: float = float(action.get("range", enemy.get("player_attack_range", 96.0)))
+		reached = _distance_to_enemy(combatant) <= release_distance
+		if not reached:
+			target_position = _ranged_approach_position(combatant, release_distance)
+			reached = _move_actor_toward(combatant, actor, target_position, delta)
+	else:
+		reached = _move_actor_toward(combatant, actor, target_position, delta)
+	if reached:
+		combatant["state"] = STATE_ATTACK
+		var visual_action: String = "ranged_attack" if attack_mode == DataTables.ATTACK_MODE_RANGED else "melee_attack"
+		actor.call("play_combat_action", visual_action, int(combatant.get("action_id", 0)))
+
+
+func _tick_party_return(combatant: Dictionary, actor: Node, delta: float) -> void:
+	var formation: Vector2 = combatant.get("formation_position", Vector2.ZERO)
+	if not _move_actor_toward(combatant, actor, formation, delta):
+		return
+	_release_markers_for(str(combatant.get("member_id", "")))
+	_finish_party_turn(combatant)
+
+
+func _finish_party_turn(combatant: Dictionary) -> void:
+	var member_id: String = str(combatant.get("member_id", ""))
+	var status: CombatActorStatus = party_actor_statuses.get(member_id)
+	if status != null:
+		status.tick_turn_end()
+	_resolved_hits.erase(int(combatant.get("action_id", 0)))
+	combatant["action_id"] = 0
+	combatant["pending_action"] = {}
+	combatant["state"] = STATE_RECOVERY
+	combatant["turn_started"] = false
+	_advance_party_turn()
+
+
+func _resolve_instant_party_action(combatant: Dictionary, member: Dictionary, action: Dictionary, game_state) -> void:
+	var source := str(action.get("source", ""))
+	if source == ACTION_SOURCE_SKILL:
+		_resolve_party_skill(combatant, member, action, game_state)
+	elif source == ACTION_SOURCE_PILL:
+		_resolve_party_pill(combatant, member, action, game_state)
+	_finish_party_turn(combatant)
+
+
+func _resolve_party_skill(combatant: Dictionary, member: Dictionary, action: Dictionary, game_state) -> void:
+	var skill: Dictionary = DataTables.create_skill(str(action.get("id", "")))
+	if skill.is_empty():
+		return
+	var member_id: String = str(member.get("id", ""))
+	var caster: CombatActorStatus = party_actor_statuses.get(member_id)
+	if caster == null or not caster.spend_mp(int(skill.get("mp_cost", 0))):
+		log_added.emit("%s法力不足" % member.get("name", "成员"))
+		return
+	var targets: Array = [caster]
+	if not ["heal", "defense", "resource"].has(str(skill.get("type", ""))):
+		targets = [enemy_actor_status]
+	var result := _run_skill_scene(caster, targets, skill, game_state.rng)
+	var cooldowns: Dictionary = combatant.get("skill_cooldowns", {})
+	cooldowns[str(skill.get("id", ""))] = _cooldown_turns(int(skill.get("cooldown", 0)), float(result.get("cooldown_multiplier", 1.0)))
+	combatant["skill_cooldowns"] = cooldowns
+	log_added.emit("%s释放%s" % [member.get("name", "成员"), skill.get("name", "技能")])
+	_check_combat_result()
+
+
+func _resolve_party_pill(combatant: Dictionary, member: Dictionary, action: Dictionary, game_state) -> void:
+	var instance_id := str(action.get("id", ""))
+	var item: Dictionary = game_state.inventory_item_by_instance(instance_id)
+	if item.is_empty() or not game_state.use_inventory_item_for_member(instance_id, str(member.get("id", ""))):
+		return
+	var cooldowns: Dictionary = combatant.get("pill_cooldowns", {})
+	cooldowns[str(item.get("item_id", ""))] = int(action.get("cooldown", 2))
+	combatant["pill_cooldowns"] = cooldowns
+	var group_id := str(action.get("cooldown_group", ""))
+	if not group_id.is_empty():
+		var groups: Dictionary = combatant.get("pill_group_cooldowns", {})
+		groups[group_id] = int(action.get("cooldown", 2))
+		combatant["pill_group_cooldowns"] = groups
+
+
+func _tick_enemy(delta: float) -> void:
+	if current_enemy_node == null or enemy_actor_status == null or int(enemy.get("hp", 0)) <= 0:
+		return
+	match _enemy_state:
+		STATE_READY:
+			_begin_enemy_action()
+		STATE_APPROACH:
+			_tick_enemy_approach(delta)
+		STATE_ATTACK:
+			pass
+		STATE_RETURN:
+			_tick_enemy_return(delta)
+
+
+func _begin_enemy_action() -> void:
+	enemy_actor_status.tick_turn_start()
+	if not enemy_actor_status.is_alive():
+		_check_combat_result()
+		return
+	var target_id := _first_alive_party_member_id()
+	if target_id.is_empty():
+		_check_combat_result()
+		return
+	if not _reserve_marker(target_id, str(enemy.get("combat_id", "enemy_1"))):
+		return
+	_enemy_target_id = target_id
+	_enemy_action_id = _allocate_action_id()
+	_resolved_hits[_enemy_action_id] = {}
+	_enemy_state = STATE_APPROACH
+
+
+func _tick_enemy_approach(delta: float) -> void:
+	var target := _party_actor(_enemy_target_id)
+	if target == null or not _member_alive(_enemy_target_id):
+		_enemy_state = STATE_RETURN
+		return
+	var target_position: Vector2 = target.call("melee_approach_position")
+	if _move_enemy_toward(target_position, delta):
+		_enemy_state = STATE_ATTACK
+		current_enemy_node.play_attack_feedback(_enemy_action_id)
+
+
+func _tick_enemy_return(delta: float) -> void:
+	if not _move_enemy_toward(_enemy_home_position, delta):
+		return
+	_release_markers_for(str(enemy.get("combat_id", "enemy_1")))
+	_resolved_hits.erase(_enemy_action_id)
+	_enemy_action_id = 0
+	_enemy_target_id = ""
+	enemy_actor_status.tick_turn_end()
+	_begin_next_round()
+
+
+func _on_party_hit_candidate(action_id: int, target_id: String, member_id: String) -> void:
+	if not active or _enemy_death_waiting or _turn_phase != PHASE_PARTY or member_id != _current_party_member_id():
+		return
+	var index := _combatant_index(member_id)
+	if index < 0:
+		return
+	var combatant: Dictionary = party_combatants[index]
+	if str(combatant.get("state", "")) != STATE_ATTACK or int(combatant.get("action_id", 0)) != action_id:
+		return
+	if target_id != str(enemy.get("combat_id", "enemy_1")) or not _claim_hit(action_id, target_id):
+		return
+	var caster: CombatActorStatus = party_actor_statuses.get(member_id)
+	if caster == null or enemy_actor_status == null:
+		return
+	_resolve_party_basic_attack(combatant, caster)
+
+
+func _on_party_attack_finished(action_id: int, member_id: String) -> void:
+	if _turn_phase != PHASE_PARTY or member_id != _current_party_member_id():
+		return
+	var index := _combatant_index(member_id)
+	if index < 0:
+		return
+	var combatant: Dictionary = party_combatants[index]
+	if int(combatant.get("action_id", 0)) != action_id:
+		return
+	var action: Dictionary = combatant.get("pending_action", {})
+	if str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE)) == DataTables.ATTACK_MODE_RANGED:
+		var target_id: String = str(enemy.get("combat_id", "enemy_1"))
+		if _claim_hit(action_id, target_id):
+			var caster: CombatActorStatus = party_actor_statuses.get(member_id)
+			if caster != null and enemy_actor_status != null:
+				_resolve_party_basic_attack(combatant, caster)
+	combatant["state"] = STATE_RETURN
 	party_combatants[index] = combatant
 
 
-func _apply_combatant_action_hit(game_state, member: Dictionary, combatant: Dictionary, action: Dictionary) -> void:
-	if str(action.get("source", "")) == ACTION_SOURCE_SKILL:
-		_resolve_combatant_skill_action(game_state, member, combatant, action)
-	elif str(action.get("source", "")) == ACTION_SOURCE_PILL:
-		_resolve_combatant_pill_action(game_state, member, combatant, action)
-	else:
-		_resolve_combatant_basic_attack(game_state, member, combatant)
-
-
-func _resolve_combatant_basic_attack(game_state, member: Dictionary, combatant: Dictionary) -> void:
-	var attacker: CombatActorStatus = _actor_status_for_combatant(game_state, member, combatant)
-	var target: CombatActorStatus = _enemy_actor_status()
-	var skill: Dictionary = _basic_attack_skill(_combatant_total_attack(game_state, combatant), "")
-	var result: Dictionary = _run_skill_scene(attacker, [target], skill)
-	log_added.emit("%s普通攻击命中%s，造成%d点伤害" % [member.get("name", "成员"), enemy.get("name", "敌人"), int(result.get("damage", 0))])
-
-
-func _resolve_combatant_skill_action(game_state, member: Dictionary, combatant: Dictionary, action: Dictionary) -> void:
-	var skill: Dictionary = DataTables.create_skill(str(action.get("id", "")))
-	if skill.is_empty():
-		log_added.emit("%s技能不存在" % member.get("name", "成员"))
+func _on_enemy_hit_candidate(action_id: int, target_id: String) -> void:
+	if not active or _turn_phase != PHASE_ENEMY or _enemy_state != STATE_ATTACK or action_id != _enemy_action_id or not _claim_hit(action_id, target_id):
 		return
-	var attacker: CombatActorStatus = _actor_status_for_combatant(game_state, member, combatant)
-	if not attacker.spend_mp(int(skill.get("mp_cost", 0))):
-		log_added.emit("%s法力不足" % member.get("name", "成员"))
+	var target: CombatActorStatus = party_actor_statuses.get(target_id)
+	if target == null or not target.is_alive():
 		return
-	var skill_id: String = str(skill.get("id", ""))
-	var cooldowns: Dictionary = combatant.get("skill_cooldowns", {})
-	var result: Dictionary = _run_skill_scene(attacker, _targets_for_skill(game_state, member, combatant, skill), skill)
-	cooldowns[skill_id] = float(skill.get("cooldown", 0.0)) * float(result.get("cooldown_multiplier", 1.0))
-	combatant["skill_cooldowns"] = cooldowns
-	log_added.emit("%s释放%s" % [member.get("name", "成员"), str(skill.get("name", "技能"))])
+	var action := current_enemy_node.select_action(pending_game_state)
+	var skill := _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))), str(action.get("element", "")))
+	var result := _run_skill_scene(enemy_actor_status, [target], skill, pending_game_state.rng)
+	log_added.emit("%s攻击%s，造成%d点伤害" % [enemy.get("name", "敌人"), target.actor_name, int(result.get("damage", 0))])
+	_check_combat_result()
 
 
-func _resolve_combatant_pill_action(game_state, member: Dictionary, combatant: Dictionary, action: Dictionary) -> void:
-	var member_id: String = str(member.get("id", PLAYER_ID))
-	var item: Dictionary = game_state.inventory_item_by_instance(str(action.get("id", "")))
-	if item.is_empty():
-		log_added.emit("丹药不存在")
+func _on_enemy_attack_finished(action_id: int) -> void:
+	if _turn_phase == PHASE_ENEMY and action_id == _enemy_action_id:
+		_enemy_state = STATE_RETURN
+
+
+func _on_actor_defeated(actor_id: String) -> void:
+	if actor_id == str(enemy.get("combat_id", "enemy_1")):
+		_start_enemy_death()
 		return
-	var old_hp: int = int(member.get("stats", {}).get("hp", 0))
-	if not game_state.use_inventory_item_for_member(str(item.get("instance_id", "")), member_id):
-		log_added.emit("%s丹药使用失败" % member.get("name", "成员"))
+	var index := _combatant_index(actor_id)
+	if index < 0:
 		return
-	var healed: int = int(member.get("stats", {}).get("hp", 0)) - old_hp
-	if healed > 0:
-		damage_popup_requested.emit(healed, combatant.get("position", _player_position), member_id, "heal", true)
-	var item_id: String = str(item.get("item_id", ""))
-	var cooldowns: Dictionary = combatant.get("pill_cooldowns", {})
-	cooldowns[item_id] = float(action.get("cooldown", 1.5))
-	combatant["pill_cooldowns"] = cooldowns
+	var combatant: Dictionary = party_combatants[index]
+	_cancel_party_action(combatant, true)
+	party_combatants[index] = combatant
+	var actor := _party_actor(actor_id)
+	if actor != null:
+		actor.call("play_death_feedback")
+	if _enemy_target_id == actor_id:
+		current_enemy_node.cancel_combat_action()
+		_enemy_state = STATE_RETURN
 
 
-func _finish_combatant_turn(combatant: Dictionary, action: Dictionary) -> void:
-	var member_id: String = str(combatant.get("member_id", PLAYER_ID))
-	var status: CombatActorStatus = party_actor_statuses.get(member_id, null)
-	if status != null:
-		status.tick_turn_end()
-	else:
-		_update_combatant_buff_turns(combatant)
-		combat_effect_resolver.tick_turn_end(combatant)
-	combatant["cooldown"] = PLAYER_TURN_WAIT
-	if str(action.get("source", "")) == ACTION_SOURCE_PILL:
-		combatant["cooldown"] = max(float(combatant.get("cooldown", 0.0)), 1.5)
-	combatant["state"] = PlayerCombatState.RECOVERING
-	combatant["turn_start_processed"] = false
-
-
-func _combatant_total_attack(game_state, combatant: Dictionary) -> int:
-	return int(game_state.total_attack_for(str(combatant.get("member_id", PLAYER_ID)))) + _combatant_stat_bonus(combatant, "attack")
-
-
-func _combatant_stat_bonus(combatant: Dictionary, stat_id: String) -> int:
-	var value: int = 0
-	for buff in combatant.get("combat_buffs", []):
-		if str(buff.get("stat", "")) == stat_id:
-			value += int(buff.get("amount", 0))
-	value += combat_effect_resolver.stat_bonus_from_effects(combatant.get("combat_effects", []), stat_id)
-	return value
-
-
-func _actor_status_for_combatant(game_state, member: Dictionary, combatant: Dictionary) -> CombatActorStatus:
-	var member_id: String = str(member.get("id", combatant.get("member_id", PLAYER_ID)))
-	var status: CombatActorStatus = party_actor_statuses.get(member_id, null)
-	if status == null:
-		var visual_owner: Node = _visual_owner_for_member(member_id)
-		if visual_owner != null and visual_owner.has_method("ensure_combat_status"):
-			status = visual_owner.call("ensure_combat_status")
-		else:
-			status = CombatActorStatusScript.new()
-			status.name = "CombatActorStatus_%s" % member_id
-			add_child(status)
-		_connect_actor_status(status)
-		party_actor_statuses[member_id] = status
-	status.set_effect_resolver(combat_effect_resolver)
-	status.bind_member(game_state, member_id, combatant, _visual_owner_for_member(member_id))
-	return status
-
-
-func _enemy_actor_status() -> CombatActorStatus:
-	if enemy_actor_status != null:
-		enemy_actor_status.set_effect_resolver(combat_effect_resolver)
-		enemy_actor_status.bind_enemy(enemy, current_enemy_node)
-		return enemy_actor_status
-	if current_enemy_node != null and current_enemy_node.has_method("ensure_combat_status"):
-		enemy_actor_status = current_enemy_node.call("ensure_combat_status")
-	else:
-		enemy_actor_status = CombatActorStatusScript.new()
-		enemy_actor_status.name = "EnemyCombatActorStatus"
-		add_child(enemy_actor_status)
-	enemy_actor_status.set_effect_resolver(combat_effect_resolver)
-	enemy_actor_status.bind_enemy(enemy, current_enemy_node)
-	_connect_actor_status(enemy_actor_status)
-	return enemy_actor_status
-
-
-func _connect_actor_status(status: CombatActorStatus) -> void:
-	var popup_callback: Callable = Callable(self, "_on_actor_combat_popup_requested")
-	if not status.combat_popup_requested.is_connected(popup_callback):
-		status.combat_popup_requested.connect(popup_callback)
-
-
-func _on_actor_combat_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool) -> void:
-	damage_popup_requested.emit(amount, world_position, target_key, damage_type, is_heal)
-
-
-func _visual_owner_for_member(member_id: String) -> Node:
-	if member_id != PLAYER_ID:
-		return null
-	var parent_node: Node = get_parent()
-	if parent_node == null:
-		return null
-	return parent_node.get_node_or_null("CharacterController")
-
-
-func _basic_attack_skill(base_damage: int, element_id: String = "") -> Dictionary:
-	return {
-		"id": "basic_attack",
-		"name": "普通攻击",
-		"type": "damage",
-		"scene_path": BASIC_ATTACK_SCENE,
-		"base_damage": base_damage,
-		"element": element_id,
-		"damage_marker": "impact",
-		"cooldown": 0.0,
-	}
-
-
-func _targets_for_skill(game_state, member: Dictionary, combatant: Dictionary, skill: Dictionary) -> Array:
-	match str(skill.get("type", "")):
-		"heal", "defense", "resource":
-			return [_actor_status_for_combatant(game_state, member, combatant)]
-		_:
-			return [_enemy_actor_status()]
-
-
-func _run_skill_scene(caster: CombatActorStatus, targets: Array, skill: Dictionary) -> Dictionary:
-	if caster == null or targets.is_empty() or targets[0] == null:
-		return {"damage": 0, "events": []}
-	var scene_path: String = str(skill.get("scene_path", BASIC_ATTACK_SCENE))
-	if scene_path.is_empty():
-		scene_path = BASIC_ATTACK_SCENE
-	var packed_scene: PackedScene = load(scene_path) as PackedScene
-	if packed_scene == null:
-		push_warning("技能场景加载失败: %s" % scene_path)
-		return {"damage": 0, "events": []}
-	var instance: Node = packed_scene.instantiate()
-	var skill_node: SkillSceneBase = instance as SkillSceneBase
-	if skill_node == null:
-		instance.queue_free()
-		push_warning("技能场景缺少 SkillSceneBase 接口: %s" % scene_path)
-		return {"damage": 0, "events": []}
-	add_child(skill_node)
-	var scene_skill: Dictionary = skill.duplicate(true)
-	scene_skill["caster_static_effects"] = _static_effects_for_actor(caster)
-	scene_skill["target_static_effects"] = _static_effects_for_actor(targets[0])
-	skill_node.setup(caster, targets, scene_skill, combat_effect_resolver, _rng_for_skill_scene(caster, targets))
-	var result: Dictionary = skill_node.start_cast()
-	skill_node.queue_free()
-	_update_enemy_visual()
-	return result
-
-
-func _rng_for_skill_scene(caster: CombatActorStatus, targets: Array) -> RandomNumberGenerator:
-	if caster != null and caster.game_state != null:
-		return caster.game_state.rng
-	for target in targets:
-		if target is CombatActorStatus and (target as CombatActorStatus).game_state != null:
-			return (target as CombatActorStatus).game_state.rng
-	return null
-
-
-func _static_effects_for_actor(actor: CombatActorStatus) -> Array:
-	if actor == null:
-		return []
-	if actor.actor_kind == CombatActorStatus.KIND_MEMBER and actor.game_state != null:
-		var member: Dictionary = actor.game_state.member_by_id(actor.member_id)
-		if member.is_empty():
-			member = actor.game_state.selected_party_member_or_player(actor.member_id)
-		var effects: Array = []
-		effects.append_array(_equipment_effects_for_member(actor.game_state, member))
-		effects.append_array(_innate_combat_effects_for_member(actor.game_state, member))
-		return effects
-	if actor.actor_kind == CombatActorStatus.KIND_ENEMY:
-		return combat_effect_resolver.normalize_effects(enemy.get("effects", []))
-	return []
-
-
-func _member_damage(game_state, member_id: String, base_damage: int, attack_element: String = "") -> int:
-	var damage: int = max(1, int(base_damage - enemy["defense"]))
-	var element_id: String = attack_element
-	if element_id.is_empty():
-		element_id = game_state.dominant_element_for(member_id)
-	damage += game_state.element_damage_bonus_for(member_id, element_id)
-	if element_id == enemy["weak_element"]:
-		damage += max(1, int(base_damage * 0.25)) + game_state.total_element_for(member_id, element_id)
-	return damage
-
-
-func _player_damage(game_state, base_damage: int, attack_element: String = "") -> int:
-	var damage: int = max(1, int(base_damage - enemy["defense"]))
-	var element_id: String = attack_element
-	if element_id.is_empty():
-		element_id = game_state.dominant_element()
-	damage += game_state.element_damage_bonus(element_id)
-	if element_id == enemy["weak_element"]:
-		damage += max(1, int(base_damage * 0.25)) + game_state.elements.get(element_id, 0)
-	return damage
-
-
-func _tick_skill_cooldowns(delta: float) -> void:
-	for skill_id in skill_cooldowns.keys():
-		skill_cooldowns[skill_id] = max(0.0, float(skill_cooldowns[skill_id]) - delta)
-	for item_id in pill_cooldowns.keys():
-		pill_cooldowns[item_id] = max(0.0, float(pill_cooldowns[item_id]) - delta)
-	for group_id in pill_group_cooldowns.keys():
-		pill_group_cooldowns[group_id] = max(0.0, float(pill_group_cooldowns[group_id]) - delta)
-
-
-func _update_player_combat_state(delta: float, game_state) -> void:
-	if player_state == PlayerCombatState.ACTING:
+func _start_enemy_death() -> void:
+	if _enemy_death_waiting:
 		return
-	if player_state == PlayerCombatState.RECOVERING:
-		player_cooldown = max(0.0, player_cooldown - delta)
-		if player_cooldown > 0.0:
-			return
-	player_state = PlayerCombatState.READY
-	_resolve_player_action(delta, game_state)
-
-
-func _update_enemy_combat_state(delta: float, game_state) -> void:
-	if enemy_state == EnemyCombatState.DEAD:
-		return
-	if enemy_state == EnemyCombatState.SPAWNING or enemy_state == EnemyCombatState.RECOVERING:
-		enemy_cooldown = max(0.0, enemy_cooldown - delta)
-		if enemy_cooldown > 0.0:
-			return
-	var target: Dictionary = _front_alive_combatant(game_state)
-	if target.is_empty():
-		return
-	if _distance_between(target.get("position", _player_position), enemy_position) > enemy_range:
-		enemy_state = EnemyCombatState.APPROACHING
-		_move_enemy_toward_combatant(target, delta)
-		return
-	enemy_state = EnemyCombatState.WAITING
-	_run_enemy_turn(game_state)
-
-
-func _check_combat_result(game_state) -> void:
-	if enemy.is_empty():
-		return
-	if int(enemy.get("hp", 0)) <= 0:
-		_finish_victory(game_state)
-		return
-	if _alive_combatants(game_state).is_empty():
-		_finish_defeat(game_state)
-
-
-func _resolve_player_action(delta: float, game_state) -> void:
-	var action: Dictionary = combat_ai.select_player_action(game_state, player_range, _distance_to_enemy(), skill_cooldowns, pill_cooldowns, pill_group_cooldowns)
-	if action.is_empty():
-		return
-	pending_action = action.duplicate(true)
-	var required_distance: float = combat_ai.preferred_player_release_distance(action, player_range)
-	if _distance_to_enemy() > required_distance:
-		player_state = PlayerCombatState.APPROACHING
-		_move_toward_enemy(delta)
-		return
-	player_state = PlayerCombatState.ACTING
-	_execute_pending_action(game_state)
-
-
-func _execute_pending_action(game_state) -> void:
-	if pending_action.is_empty() or pending_game_state != null and pending_game_state != game_state:
-		pending_game_state = game_state
-	var action: Dictionary = pending_action.duplicate(true)
-	pending_action.clear()
-	if action.is_empty():
-		return
-	var animation_name: String = _animation_name_for_action(action)
-	player_attack_started.emit(str(action.get("action_type", "")))
-	if not animation_name.is_empty() and animation_player != null and animation_player.has_animation(animation_name):
-		animation_action = action.duplicate(true)
-		animation_game_state = game_state
-		animation_hit_applied = false
-		animation_player.play(animation_name)
-		return
-	_apply_action_hit(game_state, action)
-	_finish_player_turn(action)
-
-
-func apply_queued_animation_hit() -> void:
-	if animation_hit_applied or animation_action.is_empty() or animation_game_state == null:
-		return
-	animation_hit_applied = true
-	_apply_action_hit(animation_game_state, animation_action)
-
-
-func _on_action_animation_finished(_animation_name: StringName) -> void:
-	if animation_action.is_empty():
-		return
-	if not animation_hit_applied:
-		apply_queued_animation_hit()
-	var action: Dictionary = animation_action.duplicate(true)
-	animation_action.clear()
-	animation_game_state = null
-	animation_hit_applied = false
-	_finish_player_turn(action)
-
-
-func trigger_animation_hit() -> void:
-	apply_queued_animation_hit()
-
-
-func _apply_action_hit(game_state, action: Dictionary) -> void:
-	if str(action.get("source", "")) == ACTION_SOURCE_SKILL:
-		_resolve_skill_action(game_state, action)
-	elif str(action.get("source", "")) == ACTION_SOURCE_PILL:
-		_resolve_pill_action(game_state, action)
-	else:
-		_resolve_basic_attack(game_state)
-
-
-func _animation_name_for_action(action: Dictionary) -> String:
-	match str(action.get("source", "")):
-		ACTION_SOURCE_SKILL:
-			return "skill_cast"
-		ACTION_SOURCE_BASIC:
-			return "normal_attack"
-		_:
-			return ""
-
-
-func _resolve_basic_attack(game_state) -> void:
-	var member: Dictionary = game_state.player_member()
-	var attacker_store: Dictionary = _legacy_player_combat_store()
-	var attacker: CombatActorStatus = _actor_status_for_combatant(game_state, member, attacker_store)
-	var result: Dictionary = _run_skill_scene(attacker, [_enemy_actor_status()], _basic_attack_skill(_combat_total_attack(game_state), ""))
-	combat_effects = attacker_store.get("combat_effects", [])
-	log_added.emit("普通攻击命中%s，造成%d点伤害" % [enemy.get("name", "敌人"), int(result.get("damage", 0))])
-
-
-func _resolve_skill_action(game_state, action: Dictionary) -> void:
-	var skill: Dictionary = DataTables.create_skill(str(action.get("id", "")))
-	if skill.is_empty():
-		log_added.emit("技能不存在")
-		return
-	var skill_id: String = str(skill.get("id", ""))
-	var member: Dictionary = game_state.player_member()
-	var attacker_store: Dictionary = _legacy_player_combat_store()
-	var attacker: CombatActorStatus = _actor_status_for_combatant(game_state, member, attacker_store)
-	if not attacker.spend_mp(int(skill.get("mp_cost", 0))):
-		log_added.emit("法力不足")
-		return
-	var effect_result: Dictionary = _run_skill_scene(attacker, _targets_for_skill(game_state, member, attacker_store, skill), skill)
-	combat_effects = attacker_store.get("combat_effects", [])
-	skill_cooldowns[skill_id] = float(skill.get("cooldown", 0.0)) * float(effect_result.get("cooldown_multiplier", 1.0))
-	log_added.emit("释放%s" % str(skill.get("name", "技能")))
-
-
-func _resolve_pill_action(game_state, action: Dictionary) -> void:
-	var item: Dictionary = game_state.inventory_item_by_instance(str(action.get("id", "")))
-	if item.is_empty():
-		log_added.emit("丹药不存在")
-		return
-	var old_hp: int = int(game_state.stats.get("hp", 0))
-	if not game_state.use_inventory_item(str(item.get("instance_id", ""))):
-		log_added.emit("丹药使用失败")
-		return
-	var healed: int = int(game_state.stats.get("hp", 0)) - old_hp
-	if healed > 0:
-		damage_popup_requested.emit(healed, _player_position, "player", "heal", true)
-	log_added.emit("使用%s" % item.get("name", "丹药"))
-
-
-func _finish_player_turn(action: Dictionary) -> void:
-	var store: Dictionary = _legacy_player_combat_store()
-	var status: CombatActorStatus = party_actor_statuses.get(PLAYER_ID, null)
-	if status != null:
-		status.tick_turn_end()
-	else:
-		_update_combat_buff_turns()
-		combat_effect_resolver.tick_turn_end(store)
-	combat_effects = store.get("combat_effects", [])
-	player_cooldown = PLAYER_TURN_WAIT
-	if str(action.get("source", "")) == ACTION_SOURCE_PILL:
-		player_cooldown = max(player_cooldown, 1.5)
-	player_state = PlayerCombatState.RECOVERING
-	player_action_resolving = false
-	pending_game_state = null
-
-
-func _run_enemy_turn(game_state) -> void:
-	if enemy.is_empty():
-		return
-	if not bool(enemy.get("turn_start_processed", false)):
-		_process_enemy_turn_start(game_state)
-		enemy["turn_start_processed"] = true
-		if int(enemy.get("hp", 0)) <= 0:
-			return
-	var target: Dictionary = _front_alive_combatant(game_state)
-	if target.is_empty():
-		return
-	enemy_state = EnemyCombatState.ACTING
-	enemy_attack_started.emit(str(enemy.get("id", "")))
-	if current_enemy_node != null:
-		current_enemy_node.play_attack_feedback()
-	var enemy_action: Dictionary = _select_enemy_action(game_state)
-	var target_member: Dictionary = game_state.member_by_id(str(target.get("member_id", PLAYER_ID)))
-	var target_status: CombatActorStatus = _actor_status_for_combatant(game_state, target_member, target)
-	_run_skill_scene(_enemy_actor_status(), [target_status], _skill_from_enemy_action(enemy_action))
-	_store_combatant(target)
-	_enemy_actor_status().tick_turn_end()
-	enemy_cooldown = float(enemy.get("turn_wait", ENEMY_TURN_WAIT))
-	enemy_state = EnemyCombatState.RECOVERING
-	enemy["turn_start_processed"] = false
-
-
-func _skill_from_enemy_action(enemy_action: Dictionary) -> Dictionary:
-	var element_id: String = str(enemy_action.get("element", ""))
-	var skill: Dictionary = _basic_attack_skill(int(enemy_action.get("base_damage", enemy.get("attack", 1))) + _enemy_stat_bonus("attack"), element_id)
-	skill["effects"] = enemy_action.get("effects", []).duplicate(true)
-	return skill
-
-
-func _resolve_member_attack_against_enemy(game_state, member: Dictionary, attacker_store: Dictionary, base_damage: int, attack_element: String, source: String, skill_id: String, skill_effects: Array) -> Dictionary:
-	_ensure_combat_effects(attacker_store)
-	_ensure_combat_effects(enemy)
-	var member_id: String = str(member.get("id", PLAYER_ID))
-	var result: Dictionary = combat_effect_resolver.create_hit_result(member_id, str(enemy.get("id", "enemy")), source, skill_id)
-	var context: Dictionary = _attack_context(result, attacker_store, enemy, "member", "enemy", member_id, "enemy", base_damage, attack_element)
-	var effects: Array = _gather_member_attack_effects(game_state, member, attacker_store, skill_effects)
-	combat_effect_resolver.resolve_trigger("attack_start", effects, context, game_state.rng, "attacker")
-	combat_effect_resolver.resolve_trigger("before_hit", effects, context, game_state.rng, "attacker")
-	_apply_combat_effect_events(game_state, context)
-	var final_damage: int = _calculate_member_to_enemy_damage(game_state, member_id, context)
-	if final_damage > 0:
-		final_damage = combat_effect_resolver.apply_shields(enemy, final_damage, context)
-	_emit_shield_popup_for_role(context, "defender")
-	context["final_damage"] = final_damage
-	result["blocked_by_shield"] = int(context.get("blocked_by_shield", 0))
-	result["element"] = str(context.get("element", ""))
-	result["damage_type"] = _damage_type_from_element(str(context.get("element", "")))
-	if final_damage > 0:
-		combat_effect_resolver.resolve_trigger("on_hit", effects, context, game_state.rng, "attacker")
-		_apply_damage_to_role(game_state, context, "defender", final_damage, str(result.get("damage_type", "physical")))
-		_apply_combat_effect_events(game_state, context)
-	if final_damage > 0 or int(context.get("blocked_by_shield", 0)) > 0:
-		var defender_effects: Array = combat_effect_resolver.normalize_effects(enemy.get("combat_effects", []))
-		combat_effect_resolver.resolve_trigger("on_damaged", defender_effects, context, game_state.rng, "defender")
-		combat_effect_resolver.resolve_trigger("after_damage", effects, context, game_state.rng, "attacker")
-		combat_effect_resolver.resolve_trigger("after_damage", defender_effects, context, game_state.rng, "defender")
-		_apply_combat_effect_events(game_state, context)
-	if int(enemy.get("hp", 0)) <= 0:
-		result["is_kill"] = true
-		combat_effect_resolver.resolve_trigger("on_kill", effects, context, game_state.rng, "attacker")
-		_apply_combat_effect_events(game_state, context)
-	result["final_damage"] = int(context.get("dealt_to_defender", final_damage))
-	result["healed"] = int(context.get("healed", 0))
-	result["applied_effects"] = context.get("applied_effects", []).duplicate(true)
-	result["cooldown_multiplier"] = float(context.get("cooldown_multiplier", 1.0))
-	_update_enemy_visual()
-	return result
-
-
-func _resolve_enemy_attack_against_combatant(game_state, enemy_action: Dictionary, target: Dictionary) -> Dictionary:
-	_ensure_combat_effects(enemy)
-	_ensure_combat_effects(target)
-	var target_id: String = str(target.get("member_id", PLAYER_ID))
-	var base_damage: int = int(enemy_action.get("base_damage", enemy.get("attack", 1))) + _enemy_stat_bonus("attack")
-	var result: Dictionary = combat_effect_resolver.create_hit_result(str(enemy.get("id", "enemy")), target_id, str(enemy_action.get("kind", ACTION_SOURCE_BASIC)), "")
-	var context: Dictionary = _attack_context(result, enemy, target, "enemy", "member", "enemy", target_id, base_damage, str(enemy_action.get("element", "")))
-	var effects: Array = _gather_enemy_attack_effects(enemy_action)
-	combat_effect_resolver.resolve_trigger("attack_start", effects, context, game_state.rng, "attacker")
-	combat_effect_resolver.resolve_trigger("before_hit", effects, context, game_state.rng, "attacker")
-	_apply_combat_effect_events(game_state, context)
-	var final_damage: int = _calculate_enemy_to_member_damage(game_state, target, context)
-	if final_damage > 0:
-		final_damage = combat_effect_resolver.apply_shields(target, final_damage, context)
-	_emit_shield_popup_for_role(context, "defender")
-	context["final_damage"] = final_damage
-	result["blocked_by_shield"] = int(context.get("blocked_by_shield", 0))
-	result["element"] = str(context.get("element", ""))
-	result["damage_type"] = _damage_type_from_element(str(context.get("element", "")))
-	if final_damage > 0:
-		combat_effect_resolver.resolve_trigger("on_hit", effects, context, game_state.rng, "attacker")
-		_apply_damage_to_role(game_state, context, "defender", final_damage, str(result.get("damage_type", "physical")))
-		_apply_combat_effect_events(game_state, context)
-	if final_damage > 0 or int(context.get("blocked_by_shield", 0)) > 0:
-		var defender_effects: Array = combat_effect_resolver.normalize_effects(target.get("combat_effects", []))
-		combat_effect_resolver.resolve_trigger("on_damaged", defender_effects, context, game_state.rng, "defender")
-		combat_effect_resolver.resolve_trigger("after_damage", effects, context, game_state.rng, "attacker")
-		combat_effect_resolver.resolve_trigger("after_damage", defender_effects, context, game_state.rng, "defender")
-		_apply_combat_effect_events(game_state, context)
-	var member: Dictionary = game_state.member_by_id(target_id)
-	if not member.is_empty() and int(member.get("stats", {}).get("hp", 0)) <= 0:
-		result["is_kill"] = true
-		combat_effect_resolver.resolve_trigger("on_kill", effects, context, game_state.rng, "attacker")
-		_apply_combat_effect_events(game_state, context)
-	result["final_damage"] = int(context.get("dealt_to_defender", final_damage))
-	result["healed"] = int(context.get("healed", 0))
-	result["applied_effects"] = context.get("applied_effects", []).duplicate(true)
-	return result
-
-
-func _attack_context(result: Dictionary, attacker_store: Dictionary, defender_store: Dictionary, attacker_kind: String, defender_kind: String, attacker_id: String, defender_id: String, base_damage: int, attack_element: String) -> Dictionary:
-	result["base_damage"] = base_damage
-	result["element"] = attack_element
-	return {
-		"hit_result": result,
-		"attacker_store": attacker_store,
-		"defender_store": defender_store,
-		"attacker_kind": attacker_kind,
-		"defender_kind": defender_kind,
-		"attacker_id": attacker_id,
-		"defender_id": defender_id,
-		"damage": maxi(0, base_damage),
-		"base_damage": maxi(0, base_damage),
-		"element": attack_element,
-		"defense_ignore": 0,
-		"final_damage": 0,
-		"blocked_by_shield": 0,
-		"cooldown_multiplier": 1.0,
-		"events": [],
-		"applied_effects": [],
-		"dealt_to_attacker": 0,
-		"dealt_to_defender": 0,
-		"healed": 0,
-	}
-
-
-func _calculate_member_to_enemy_damage(game_state, member_id: String, context: Dictionary) -> int:
-	var current_base: int = int(context.get("damage", 0))
-	if current_base <= 0:
-		return 0
-	var defense_ignore: int = int(context.get("defense_ignore", 0))
-	var defense: int = max(0, int(enemy.get("defense", 0)) + _enemy_stat_bonus("defense") - defense_ignore)
-	var damage: int = max(1, current_base - defense)
-	var element_id: String = str(context.get("element", ""))
-	if element_id.is_empty():
-		element_id = game_state.dominant_element_for(member_id)
-	context["element"] = element_id
-	damage += game_state.element_damage_bonus_for(member_id, element_id)
-	if element_id == str(enemy.get("weak_element", "")):
-		damage += max(1, int(current_base * 0.25)) + game_state.total_element_for(member_id, element_id)
-	return damage
-
-
-func _calculate_enemy_to_member_damage(game_state, target: Dictionary, context: Dictionary) -> int:
-	var current_base: int = int(context.get("damage", 0))
-	if current_base <= 0:
-		return 0
-	var target_id: String = str(target.get("member_id", PLAYER_ID))
-	var raw_damage: int = max(1, current_base - _combatant_stat_bonus(target, "defense"))
-	var defense: int = max(0, game_state.total_defense_for(target_id) - int(context.get("defense_ignore", 0)))
-	var final_damage: int = max(1, raw_damage - defense)
-	var element_id: String = str(context.get("element", ""))
-	if not element_id.is_empty():
-		final_damage = max(0, final_damage - int(game_state.total_element_for(target_id, element_id) * 0.35))
-	return final_damage
-
-
-func _apply_combat_effect_events(game_state, context: Dictionary) -> void:
-	var events: Array = context.get("events", [])
-	context["events"] = []
-	for event in events:
-		if not (event is Dictionary):
-			continue
-		var target_role: String = str(event.get("target_role", "defender"))
-		match str(event.get("kind", "")):
-			"status":
-				_apply_status_event(context, target_role, event.get("effect", {}))
-			"damage":
-				var effect_data: Dictionary = event.get("effect", {})
-				_apply_damage_to_role(game_state, context, target_role, int(event.get("amount", 0)), _damage_type_from_element(str(effect_data.get("element", ""))))
-			"heal":
-				_heal_role(game_state, context, target_role, int(event.get("amount", 0)))
-
-
-func _apply_status_event(context: Dictionary, target_role: String, effect) -> void:
-	if not (effect is Dictionary):
-		return
-	if target_role == "party_all":
-		for index in range(party_combatants.size()):
-			var combatant: Dictionary = party_combatants[index]
-			combat_effect_resolver.add_status_effect(combatant, effect)
-			party_combatants[index] = combatant
-		return
-	if target_role == "party_front":
-		if party_combatants.is_empty():
-			return
-		var front: Dictionary = party_combatants[0]
-		combat_effect_resolver.add_status_effect(front, effect)
-		party_combatants[0] = front
-		return
-	var target: Dictionary = _role_store(context, target_role)
-	if target.is_empty():
-		return
-	combat_effect_resolver.add_status_effect(target, effect)
-
-
-func _apply_damage_to_role(game_state, context: Dictionary, target_role: String, amount: int, damage_type: String) -> void:
-	if amount <= 0:
-		return
-	var kind: String = _role_kind(context, target_role)
-	var target_id: String = _role_id(context, target_role)
-	if kind == "enemy":
-		var current_hp: int = int(enemy.get("hp", 0))
-		enemy["hp"] = max(0, current_hp - amount)
-		damage_popup_requested.emit(amount, enemy_position, "enemy", damage_type, false)
-		enemy_hit_received.emit(amount, damage_type)
-		_play_enemy_hurt_feedback()
-	else:
-		var member: Dictionary = game_state.selected_party_member_or_player(target_id)
-		var stats: Dictionary = member.get("stats", {})
-		stats["hp"] = max(0, int(stats.get("hp", 0)) - amount)
-		damage_popup_requested.emit(amount, _role_position(context, target_role), target_id, damage_type, false)
-		if target_id == PLAYER_ID:
-			player_hit_received.emit(amount, damage_type)
-		game_state.changed.emit()
-	var key: String = "dealt_to_%s" % target_role
-	context[key] = int(context.get(key, 0)) + amount
-
-
-func _heal_role(game_state, context: Dictionary, target_role: String, amount: int) -> void:
-	if amount <= 0:
-		return
-	var kind: String = _role_kind(context, target_role)
-	var target_id: String = _role_id(context, target_role)
-	if kind == "enemy":
-		var old_hp: int = int(enemy.get("hp", 0))
-		enemy["hp"] = min(int(enemy.get("max_hp", old_hp)), old_hp + amount)
-		var healed: int = int(enemy.get("hp", 0)) - old_hp
-		if healed > 0:
-			damage_popup_requested.emit(healed, enemy_position, "enemy", "heal", true)
-			context["healed"] = int(context.get("healed", 0)) + healed
-	else:
-		var healed_result: Dictionary = game_state.heal_member(target_id, amount, 0)
-		var healed_amount: int = int(healed_result.get("hp", 0))
-		if healed_amount > 0:
-			damage_popup_requested.emit(healed_amount, _role_position(context, target_role), target_id, "heal", true)
-			context["healed"] = int(context.get("healed", 0)) + healed_amount
-
-
-func _process_combatant_turn_start(game_state, combatant: Dictionary, member: Dictionary) -> void:
-	_ensure_combat_effects(combatant)
-	var status: CombatActorStatus = _actor_status_for_combatant(game_state, member, combatant)
-	status.tick_turn_start()
-
-
-func _process_enemy_turn_start(_game_state) -> void:
-	_ensure_combat_effects(enemy)
-	var status: CombatActorStatus = _enemy_actor_status()
-	status.tick_turn_start()
-
-
-func _emit_shield_popup_for_role(context: Dictionary, target_role: String) -> void:
-	var blocked: int = int(context.get("blocked_by_shield", 0))
-	if blocked <= 0:
-		return
-	var target_key: String = "enemy" if _role_kind(context, target_role) == "enemy" else _role_id(context, target_role)
-	damage_popup_requested.emit(blocked, _role_position(context, target_role), target_key, "shield", false)
-
-
-func _role_store(context: Dictionary, role: String) -> Dictionary:
-	return context.get("%s_store" % role, {})
-
-
-func _role_kind(context: Dictionary, role: String) -> String:
-	return str(context.get("%s_kind" % role, "member"))
-
-
-func _role_id(context: Dictionary, role: String) -> String:
-	return str(context.get("%s_id" % role, PLAYER_ID))
-
-
-func _role_position(context: Dictionary, role: String) -> Vector2:
-	if _role_kind(context, role) == "enemy":
-		return enemy_position
-	var store: Dictionary = _role_store(context, role)
-	return store.get("position", _player_position)
-
-
-func _gather_member_attack_effects(game_state, member: Dictionary, combatant: Dictionary, skill_effects: Array) -> Array:
-	var effects: Array = []
-	effects.append_array(combat_effect_resolver.normalize_effects(skill_effects))
-	effects.append_array(_equipment_effects_for_member(game_state, member))
-	effects.append_array(_innate_combat_effects_for_member(game_state, member))
-	effects.append_array(combat_effect_resolver.normalize_effects(combatant.get("combat_effects", [])))
-	return effects
-
-
-func _gather_enemy_attack_effects(enemy_action: Dictionary) -> Array:
-	var effects: Array = []
-	effects.append_array(combat_effect_resolver.normalize_effects(enemy_action.get("effects", [])))
-	effects.append_array(combat_effect_resolver.normalize_effects(enemy.get("effects", [])))
-	effects.append_array(combat_effect_resolver.normalize_effects(enemy.get("combat_effects", [])))
-	return effects
-
-
-func _equipment_effects_for_member(game_state, member: Dictionary) -> Array:
-	var effects: Array = []
-	var member_equipped: Dictionary = member.get("equipped", {})
-	for slot in member_equipped.keys():
-		var item: Dictionary = game_state.inventory_item_by_instance(str(member_equipped.get(slot, "")))
-		if item.is_empty():
-			continue
-		effects.append_array(combat_effect_resolver.normalize_effects(item.get("effects", [])))
-		for affix in item.get("affixes", []):
-			if affix is Dictionary:
-				effects.append_array(combat_effect_resolver.normalize_effects(affix.get("effects", [])))
-	return effects
-
-
-func _innate_combat_effects_for_member(game_state, member: Dictionary) -> Array:
-	var raw_effects: Array = []
-	if game_state.has_method("_innate_trait_effects_for_member"):
-		raw_effects = game_state.call("_innate_trait_effects_for_member", member)
-	return combat_effect_resolver.normalize_effects(raw_effects)
-
-
-func _enemy_stat_bonus(stat_id: String) -> int:
-	return combat_effect_resolver.stat_bonus_from_effects(enemy.get("combat_effects", []), stat_id)
-
-
-func _legacy_player_combat_store() -> Dictionary:
-	return {
-		"member_id": PLAYER_ID,
-		"combat_buffs": combat_buffs,
-		"combat_effects": combat_effects,
-		"position": _player_position,
-	}
-
-
-func _ensure_combat_effects(target: Dictionary) -> void:
-	if not target.has("combat_effects") or not (target.get("combat_effects", []) is Array):
-		target["combat_effects"] = []
-
-
-func _store_combatant(combatant: Dictionary) -> void:
-	var member_id: String = str(combatant.get("member_id", ""))
-	if member_id.is_empty():
-		return
+	_enemy_death_waiting = true
 	for index in range(party_combatants.size()):
-		if str(party_combatants[index].get("member_id", "")) == member_id:
-			party_combatants[index] = combatant
-			return
+		var combatant: Dictionary = party_combatants[index]
+		if str(combatant.get("state", "")) != STATE_DEFEATED:
+			var actor := _party_actor(str(combatant.get("member_id", "")))
+			if actor != null:
+				actor.call("cancel_combat_action")
+			combatant["state"] = STATE_RECOVERY
+		party_combatants[index] = combatant
+	_marker_reservations.clear()
+	if current_enemy_node != null:
+		current_enemy_node.cancel_combat_action()
+		current_enemy_node.play_death_feedback()
+	else:
+		_on_enemy_death_finished()
 
 
-func _apply_skill_combat_buffs_from_defs(buff_defs: Array, source_skill_id: String) -> void:
-	for buff_def in buff_defs:
-		var stat_id: String = str(buff_def.get("stat", ""))
-		if stat_id.is_empty():
-			continue
-		combat_buffs.append({
-			"stat": stat_id,
-			"amount": int(buff_def.get("amount", 0)),
-			"remaining_turns": int(buff_def.get("turns", 1)),
-			"source_skill_id": source_skill_id,
-			"fresh": true,
-		})
-
-
-func _apply_skill_combat_buffs_to_combatant(combatant: Dictionary, buff_defs: Array, source_skill_id: String) -> void:
-	var buffs: Array = combatant.get("combat_buffs", [])
-	for buff_def in buff_defs:
-		var stat_id: String = str(buff_def.get("stat", ""))
-		if stat_id.is_empty():
-			continue
-		buffs.append({
-			"stat": stat_id,
-			"amount": int(buff_def.get("amount", 0)),
-			"remaining_turns": int(buff_def.get("turns", 1)),
-			"source_skill_id": source_skill_id,
-			"fresh": true,
-		})
-	combatant["combat_buffs"] = buffs
-
-
-func _update_combat_buff_turns() -> void:
-	var index: int = 0
-	while index < combat_buffs.size():
-		var buff: Dictionary = combat_buffs[index]
-		if bool(buff.get("fresh", false)):
-			buff.erase("fresh")
-			combat_buffs[index] = buff
-			index += 1
-			continue
-		buff["remaining_turns"] = int(buff.get("remaining_turns", 0)) - 1
-		if int(buff.get("remaining_turns", 0)) <= 0:
-			combat_buffs.remove_at(index)
-		else:
-			combat_buffs[index] = buff
-			index += 1
-
-
-func _update_combatant_buff_turns(combatant: Dictionary) -> void:
-	var buffs: Array = combatant.get("combat_buffs", [])
-	var index: int = 0
-	while index < buffs.size():
-		var buff: Dictionary = buffs[index]
-		if bool(buff.get("fresh", false)):
-			buff.erase("fresh")
-			buffs[index] = buff
-			index += 1
-			continue
-		buff["remaining_turns"] = int(buff.get("remaining_turns", 0)) - 1
-		if int(buff.get("remaining_turns", 0)) <= 0:
-			buffs.remove_at(index)
-		else:
-			buffs[index] = buff
-			index += 1
-	combatant["combat_buffs"] = buffs
-
-
-func _find_skill(skill_id: String, skills: Array) -> Dictionary:
-	for skill in skills:
-		if str(skill.get("id", "")) == skill_id:
-			return skill
-	return {}
-
-
-func _damage_enemy(amount: int, damage_type: String = "physical") -> void:
-	var current_hp: int = int(enemy.get("hp", 0))
-	enemy["hp"] = max(0, current_hp - amount)
-	damage_popup_requested.emit(amount, enemy_position, "enemy", damage_type, false)
-	enemy_hit_received.emit(amount, damage_type)
-	_play_enemy_hurt_feedback()
-	_update_enemy_visual()
-
-
-func _damage_type_from_element(element_id: String) -> String:
-	if element_id.is_empty():
-		return "physical"
-	return "element_%s" % element_id
-
-
-func _finish_victory(game_state) -> void:
-	finished = true
+func _on_enemy_death_finished() -> void:
+	if not _enemy_death_waiting:
+		return
+	_grant_victory_rewards()
+	_combat_result = RESULT_VICTORY
+	_enemy_death_waiting = false
 	active = false
-	player_state = PlayerCombatState.VICTORY
-	enemy_state = EnemyCombatState.DEAD
-	combat_buffs.clear()
-	combat_effects.clear()
+	finished = true
 	for combatant in party_combatants:
-		combatant["combat_effects"] = []
-		combatant["state"] = PlayerCombatState.VICTORY
-	game_state.add_exp_to_party(enemy["exp"])
-	_resolve_drops(game_state)
-	if bool(enemy.get("use_drop", true)) and game_state.rng.randf() > 0.65:
-		game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", game_state.stats["level"])), game_state.rng, game_state.craft_bonus(), "drop"))
-	log_added.emit("击败%s" % enemy["name"])
-	_update_enemy_visual()
+		if str(combatant.get("state", "")) != STATE_DEFEATED:
+			combatant["state"] = STATE_VICTORY
+
+
+func _grant_victory_rewards() -> void:
+	if _rewards_granted or pending_game_state == null:
+		return
+	_rewards_granted = true
+	var exp_amount := int(enemy.get("exp", 0))
+	pending_game_state.add_expedition_exp(exp_amount)
+	for combatant in party_combatants:
+		pending_game_state.add_exp_for_member(str(combatant.get("member_id", "")), exp_amount)
+	_resolve_drops(pending_game_state)
+	if bool(enemy.get("use_drop", true)) and pending_game_state.rng.randf() < float(enemy.get("equipment_drop_chance", 0.0)):
+		pending_game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", pending_game_state.expedition_level())), pending_game_state.rng, pending_game_state.craft_bonus(), "drop"))
+	log_added.emit("击败%s，账号历练 +%d" % [enemy.get("name", "敌人"), exp_amount])
 
 
 func _resolve_drops(game_state) -> void:
 	if not bool(enemy.get("use_drop", true)):
 		return
-	var drops: Dictionary = enemy.get("drops", {})
-	for item_id in drops.keys():
-		var drop_def: Dictionary = drops[item_id]
+	for item_id in enemy.get("drops", {}).keys():
+		var drop_def: Dictionary = enemy.get("drops", {}).get(item_id, {})
 		if game_state.rng.randf() > float(drop_def.get("chance", 1.0)):
 			continue
-		var min_amount: int = int(drop_def.get("min", 1))
-		var max_amount: int = int(drop_def.get("max", min_amount))
-		game_state.gain_resource(item_id, game_state.rng.randi_range(min_amount, max_amount))
+		var low := int(drop_def.get("min", 1))
+		var high := int(drop_def.get("max", low))
+		game_state.gain_resource(str(item_id), game_state.rng.randi_range(low, high))
 
 
-func _finish_defeat(game_state) -> void:
-	finished = true
-	active = false
-	player_state = PlayerCombatState.DEFEATED
-	combat_buffs.clear()
-	combat_effects.clear()
-	for member in game_state.party_members():
-		var member_stats: Dictionary = member.get("stats", {})
-		member_stats["hp"] = 1
-		member_stats["mp"] = 0
-	for combatant in party_combatants:
-		combatant["combat_effects"] = []
-		combatant["state"] = PlayerCombatState.DEFEATED
-	log_added.emit("战斗失败，队伍需要恢复")
-	_update_enemy_visual()
+func _check_combat_result() -> void:
+	if int(enemy.get("hp", 0)) <= 0:
+		_start_enemy_death()
+		return
+	if _first_alive_party_member_id().is_empty():
+		if current_enemy_node != null:
+			current_enemy_node.cancel_combat_action()
+		active = false
+		finished = true
+		_combat_result = RESULT_DEFEAT
+		log_added.emit("队伍全灭")
 
 
 func _spawn_enemy_node(enemy_id: String) -> void:
-	_clear_enemy_node()
-	var scene_path: String = DataTables.enemy_scene_path(enemy_id)
-	var packed_scene: PackedScene = load(scene_path) as PackedScene
-	if packed_scene == null:
-		push_warning("敌人场景加载失败: %s" % scene_path)
+	var scene_path := DataTables.enemy_scene_path(enemy_id)
+	var packed := load(scene_path) as PackedScene
+	if packed == null:
+		push_error("敌人模板加载失败: %s" % scene_path)
 		return
-	var instance: Node = packed_scene.instantiate()
-	var enemy_node: BaseEnemy = instance as BaseEnemy
-	if enemy_node == null:
-		instance.queue_free()
-		push_warning("敌人场景缺少 BaseEnemy 接口: %s" % scene_path)
+	current_enemy_node = packed.instantiate() as BaseEnemy
+	if current_enemy_node == null:
+		push_error("敌人模板根节点必须继承 BaseEnemy: %s" % scene_path)
 		return
-	add_child(enemy_node)
-	current_enemy_node = enemy_node
+	add_child(current_enemy_node)
 	current_enemy_node.setup(enemy)
-	current_enemy_node.set_combat_position(enemy_position)
+	current_enemy_node.hit_candidate.connect(_on_enemy_hit_candidate)
+	current_enemy_node.attack_finished.connect(_on_enemy_attack_finished)
+	current_enemy_node.death_finished.connect(_on_enemy_death_finished)
 	enemy_actor_status = current_enemy_node.ensure_combat_status()
 	enemy_actor_status.set_effect_resolver(combat_effect_resolver)
 	enemy_actor_status.bind_enemy(enemy, current_enemy_node)
-	_connect_actor_status(enemy_actor_status)
+	_connect_status(enemy_actor_status)
 
 
-func _clear_enemy_node() -> void:
-	if current_enemy_node != null:
-		current_enemy_node.queue_free()
-		current_enemy_node = null
-	enemy_actor_status = null
+func _connect_status(status: CombatActorStatus) -> void:
+	if not status.combat_popup_requested.is_connected(_on_combat_popup_requested):
+		status.combat_popup_requested.connect(_on_combat_popup_requested)
+	if not status.defeated.is_connected(_on_actor_defeated):
+		status.defeated.connect(_on_actor_defeated)
 
 
-func _select_enemy_action(game_state) -> Dictionary:
-	if current_enemy_node != null:
-		var node_action: Dictionary = current_enemy_node.select_action(game_state)
-		if not node_action.is_empty():
-			return node_action
-	var element_id: String = ""
-	if game_state != null and game_state.rng.randf() < float(enemy.get("element_attack_ratio", 0.0)):
-		element_id = str(enemy.get("element", ""))
-	return {
-		"kind": "basic_attack",
-		"base_damage": int(enemy.get("attack", 1)),
-		"element": element_id,
-	}
+func _on_combat_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool) -> void:
+	damage_popup_requested.emit(amount, world_position, target_key, damage_type, is_heal)
 
 
-func _bind_scene_nodes() -> void:
-	if animation_player == null:
-		animation_player = get_node_or_null("AnimationPlayer") as AnimationPlayer
-		if animation_player != null:
-			var callback: Callable = Callable(self, "_on_action_animation_finished")
-			if not animation_player.animation_finished.is_connected(callback):
-				animation_player.animation_finished.connect(callback)
-			_ensure_animation_hit_tracks()
+func _basic_attack_skill(base_damage: int, element_id: String) -> Dictionary:
+	var attack: Dictionary = DataTables.create_basic_attack(DataTables.ATTACK_MODE_MELEE, base_damage)
+	attack["element"] = element_id
+	return attack
 
 
-func _update_enemy_visual() -> void:
-	_bind_scene_nodes()
-	var should_show: bool = active and not enemy.is_empty()
-	if current_enemy_node != null:
-		current_enemy_node.visible = should_show
-	if not should_show:
-		return
-	if current_enemy_node != null:
-		current_enemy_node.set_combat_position(enemy_position)
-		current_enemy_node.sync_data(enemy)
+func _resolve_party_basic_attack(combatant: Dictionary, caster: CombatActorStatus) -> void:
+	var action: Dictionary = combatant.get("pending_action", {})
+	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
+	var attack: Dictionary = DataTables.create_basic_attack(attack_mode, caster.total_stat("attack"))
+	var result := _run_skill_scene(caster, [enemy_actor_status], attack, pending_game_state.rng)
+	log_added.emit("%s使用%s命中%s，造成%d点伤害" % [
+		caster.actor_name,
+		attack.get("name", "普通攻击"),
+		enemy.get("name", "敌人"),
+		int(result.get("damage", 0)),
+	])
+	_check_combat_result()
 
 
-func _set_combat_positions() -> void:
-	var map_node: Node = battle_map if battle_map != null else get_parent() as Node
-	if map_node != null and map_node.has_method("battle_player_position"):
-		_player_position = map_node.call("battle_player_position")
-		_home_position = _player_position
-	else:
-		_player_position = Vector2(736, 170)
-		_home_position = Vector2(736, 170)
-
-
-func _distance_to_enemy() -> float:
-	return abs(_player_position.x - enemy_position.x)
-
-
-func _distance_to_enemy_for(combatant: Dictionary) -> float:
-	return _distance_between(combatant.get("position", _player_position), enemy_position)
-
-
-func _distance_between(a: Vector2, b: Vector2) -> float:
-	return abs(a.x - b.x)
-
-
-func _alive_combatants(game_state) -> Array:
-	var result: Array = []
-	for combatant in party_combatants:
-		var member_id: String = str(combatant.get("member_id", PLAYER_ID))
-		var member: Dictionary = game_state.member_by_id(member_id)
-		if not member.is_empty() and int(member.get("stats", {}).get("hp", 0)) > 0:
-			result.append(combatant)
+func _run_skill_scene(caster: CombatActorStatus, targets: Array, skill: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	if caster == null or targets.is_empty() or targets[0] == null:
+		return {"damage": 0, "events": []}
+	var path := str(skill.get("scene_path", BASIC_ATTACK_SCENE))
+	var packed := load(path) as PackedScene
+	if packed == null:
+		push_warning("技能场景加载失败: %s" % path)
+		return {"damage": 0, "events": []}
+	var scene := packed.instantiate() as SkillSceneBase
+	if scene == null:
+		return {"damage": 0, "events": []}
+	add_child(scene)
+	scene.setup(caster, targets, skill, combat_effect_resolver, rng)
+	var result: Dictionary = scene.start_cast().duplicate(true)
+	scene.queue_free()
 	return result
 
 
-func _front_alive_combatant(game_state) -> Dictionary:
-	for combatant in party_combatants:
-		var member_id: String = str(combatant.get("member_id", PLAYER_ID))
-		var member: Dictionary = game_state.member_by_id(member_id)
-		if not member.is_empty() and int(member.get("stats", {}).get("hp", 0)) > 0:
-			return combatant
-	return {}
-
-
-func _move_toward_enemy(delta: float) -> void:
-	var distance: float = player_move_speed * delta
-	if _player_position.x < enemy_position.x:
-		_player_position.x = minf(enemy_position.x, _player_position.x + distance)
-	else:
-		_player_position.x = maxf(enemy_position.x, _player_position.x - distance)
-	_update_player_state()
-
-
-func _move_combatant_toward_enemy(combatant: Dictionary, delta: float) -> void:
-	var position: Vector2 = combatant.get("position", _player_position)
-	var distance: float = float(combatant.get("move_speed", DEFAULT_MOVE_STEP)) * delta
-	if position.x < enemy_position.x:
-		position.x = minf(enemy_position.x, position.x + distance)
-	else:
-		position.x = maxf(enemy_position.x, position.x - distance)
+func _move_actor_toward(combatant: Dictionary, actor: Node, target: Vector2, delta: float) -> bool:
+	var position: Vector2 = combatant.get("position", actor.call("combat_position"))
+	var speed := float(combatant.get("move_speed", DEFAULT_MOVE_SPEED))
+	position = position.move_toward(target, speed * delta)
 	combatant["position"] = position
-	if str(combatant.get("member_id", PLAYER_ID)) == PLAYER_ID:
-		_player_position = position
-		_update_player_state()
+	actor.call("set_combat_position", position)
+	return position.distance_to(target) <= POSITION_EPSILON
 
 
-func _move_enemy_toward_player(delta: float) -> void:
-	var distance: float = enemy_move_speed * delta
-	if enemy_position.x < _player_position.x:
-		enemy_position.x = minf(_player_position.x, enemy_position.x + distance)
-	else:
-		enemy_position.x = maxf(_player_position.x, enemy_position.x - distance)
-	_update_enemy_visual()
+func _ranged_approach_position(combatant: Dictionary, release_distance: float) -> Vector2:
+	var enemy_position: Vector2 = current_enemy_node.combat_position()
+	var actor_position: Vector2 = combatant.get("position", Vector2.ZERO)
+	var direction: Vector2 = actor_position.direction_to(enemy_position) * -1.0
+	if direction == Vector2.ZERO:
+		direction = Vector2.LEFT
+	return enemy_position + direction * max(0.0, release_distance)
 
 
-func _move_enemy_toward_combatant(combatant: Dictionary, delta: float) -> void:
-	var target_position: Vector2 = combatant.get("position", _player_position)
-	var distance: float = enemy_move_speed * delta
-	if enemy_position.x < target_position.x:
-		enemy_position.x = minf(target_position.x, enemy_position.x + distance)
-	else:
-		enemy_position.x = maxf(target_position.x, enemy_position.x - distance)
-	_update_enemy_visual()
+func _move_enemy_toward(target: Vector2, delta: float) -> bool:
+	if current_enemy_node == null:
+		return false
+	var position := current_enemy_node.combat_position()
+	position = position.move_toward(target, float(enemy.get("move_speed", DEFAULT_MOVE_SPEED)) * delta)
+	current_enemy_node.set_combat_position(position)
+	current_enemy_node.play_run()
+	return position.distance_to(target) <= POSITION_EPSILON
 
 
-func _update_player_state() -> void:
-	if battle_map != null and battle_map.has_method("set_player_combat_position"):
-		battle_map.call("set_player_combat_position", _player_position)
+func _advance_turn_cooldowns(combatant: Dictionary) -> void:
+	for key in ["skill_cooldowns", "pill_cooldowns", "pill_group_cooldowns"]:
+		var values: Dictionary = combatant.get(key, {})
+		for id in values.keys():
+			values[id] = maxi(0, int(values[id]) - 1)
+		combatant[key] = values
 
 
-func _ensure_animation_hit_tracks() -> void:
-	_ensure_animation_hit_track("normal_attack", 0.09)
-	_ensure_animation_hit_track("skill_cast", 0.12)
+func _cooldown_turns(base_turns: int, multiplier: float = 1.0) -> int:
+	return maxi(0, ceili(float(maxi(0, base_turns)) * maxf(0.0, multiplier)))
 
 
-func _ensure_animation_hit_track(animation_name: String, hit_time: float) -> void:
-	if animation_player == null or not animation_player.has_animation(animation_name):
-		return
-	var animation: Animation = animation_player.get_animation(animation_name)
-	for track_index in range(animation.get_track_count()):
-		if animation.track_get_type(track_index) == Animation.TYPE_METHOD and animation.track_get_path(track_index) == NodePath("."):
-			for key_index in range(animation.track_get_key_count(track_index)):
-				var key_value: Dictionary = animation.track_get_key_value(track_index, key_index)
-				if str(key_value.get("method", "")) == "apply_queued_animation_hit":
-					return
-	var method_track: int = animation.add_track(Animation.TYPE_METHOD)
-	animation.track_set_path(method_track, NodePath("."))
-	animation.track_insert_key(method_track, hit_time, {"method": "apply_queued_animation_hit", "args": []})
+func _advance_party_turn() -> void:
+	_party_turn_index += 1
+	while _party_turn_index < party_combatants.size():
+		var combatant: Dictionary = party_combatants[_party_turn_index]
+		var member_id := str(combatant.get("member_id", ""))
+		if _member_alive(member_id):
+			combatant["state"] = STATE_READY
+			combatant["turn_started"] = false
+			party_combatants[_party_turn_index] = combatant
+			return
+		combatant["state"] = STATE_DEFEATED
+		combatant["turn_started"] = false
+		party_combatants[_party_turn_index] = combatant
+		_party_turn_index += 1
+	_begin_enemy_phase()
 
 
-func _play_enemy_hurt_feedback() -> void:
-	if current_enemy_node != null:
-		current_enemy_node.play_hurt_feedback()
-		return
+func _begin_enemy_phase() -> void:
+	_turn_phase = PHASE_ENEMY
+	_enemy_state = STATE_READY
+	_enemy_action_id = 0
+	_enemy_target_id = ""
 
 
-func _force_player_hurt_feedback() -> void:
-	player_hit_received.emit(0, "physical")
+func _begin_next_round() -> void:
+	_round_number += 1
+	_turn_phase = PHASE_PARTY
+	_party_turn_index = 0
+	_marker_reservations.clear()
+	for index in range(party_combatants.size()):
+		var combatant: Dictionary = party_combatants[index]
+		var member_id := str(combatant.get("member_id", ""))
+		combatant["turn_started"] = false
+		combatant["state"] = STATE_READY if _member_alive(member_id) else STATE_DEFEATED
+		party_combatants[index] = combatant
+	while _party_turn_index < party_combatants.size() and not _member_alive(str(party_combatants[_party_turn_index].get("member_id", ""))):
+		_party_turn_index += 1
+	if _party_turn_index >= party_combatants.size():
+		_check_combat_result()
+
+
+func _current_party_member_id() -> String:
+	if _turn_phase != PHASE_PARTY or _party_turn_index < 0 or _party_turn_index >= party_combatants.size():
+		return ""
+	return str(party_combatants[_party_turn_index].get("member_id", ""))
+
+
+func _reserve_marker(target_id: String, attacker_id: String) -> bool:
+	var owner := str(_marker_reservations.get(target_id, ""))
+	if not owner.is_empty() and owner != attacker_id:
+		return false
+	_marker_reservations[target_id] = attacker_id
+	return true
+
+
+func _release_markers_for(attacker_id: String) -> void:
+	for target_id in _marker_reservations.keys().duplicate():
+		if str(_marker_reservations.get(target_id, "")) == attacker_id:
+			_marker_reservations.erase(target_id)
+
+
+func _claim_hit(action_id: int, target_id: String) -> bool:
+	var hits: Dictionary = _resolved_hits.get(action_id, {})
+	if hits.has(target_id):
+		return false
+	hits[target_id] = true
+	_resolved_hits[action_id] = hits
+	return true
+
+
+func _cancel_party_action(combatant: Dictionary, defeated: bool) -> void:
+	var member_id := str(combatant.get("member_id", ""))
+	var actor := _party_actor(member_id)
+	if actor != null:
+		actor.call("cancel_combat_action")
+	_release_markers_for(member_id)
+	_resolved_hits.erase(int(combatant.get("action_id", 0)))
+	combatant["action_id"] = 0
+	combatant["pending_action"] = {}
+	combatant["state"] = STATE_DEFEATED if defeated else STATE_RETURN
+
+
+func _allocate_action_id() -> int:
+	var result := _next_action_id
+	_next_action_id += 1
+	if _next_action_id <= 0:
+		_next_action_id = 1
+	return result
+
+
+func _combatant_index(member_id: String) -> int:
+	for index in range(party_combatants.size()):
+		if str(party_combatants[index].get("member_id", "")) == member_id:
+			return index
+	return -1
+
+
+func _party_actor(member_id: String) -> Node:
+	var actor: Node = party_actor_views.get(member_id)
+	return actor if actor != null and is_instance_valid(actor) else null
+
+
+func _member_alive(member_id: String) -> bool:
+	var status: CombatActorStatus = party_actor_statuses.get(member_id)
+	return status != null and status.is_alive()
+
+
+func _first_alive_party_member_id() -> String:
+	for combatant in party_combatants:
+		var member_id := str(combatant.get("member_id", ""))
+		if _member_alive(member_id):
+			return member_id
+	return ""
+
+
+func _distance_to_enemy(combatant: Dictionary) -> float:
+	if current_enemy_node == null:
+		return INF
+	var combatant_position: Vector2 = combatant.get("position", Vector2.ZERO)
+	return combatant_position.distance_to(current_enemy_node.combat_position())

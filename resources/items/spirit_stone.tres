@@ -1,6 +1,11 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://d3itcc4nf8qck"]
 
-[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://n7rpyp3cxlkf" path="res://assets/items/ls.png" id="1_r30am"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_c7lud"]
+atlas = ExtResource("1_r30am")
+region = Rect2(170.09998, 151.9, 437.40002, 494.1)
 
 [resource]
 script = ExtResource("1")
@@ -8,11 +13,13 @@ id = "spirit_stone"
 item_no = 1005
 type = "material"
 display_name = "灵石"
+icon_texture = SubResource("AtlasTexture_c7lud")
 icon_name = "spirit_stone"
 icon_path = "res://assets/items/spirit_stone.png"
 description = "招募修士与强化普通属性所需的通用灵石。"
-stackable = true
-usable = false
 use_scope = "none"
-gain_target = "none"
-payload = {"enhance_amount": 1, "recruit_currency": true, "stone_group": "stat"}
+payload = {
+"enhance_amount": 1,
+"recruit_currency": true,
+"stone_group": "stat"
+}

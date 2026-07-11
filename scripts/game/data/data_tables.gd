@@ -41,7 +41,11 @@ const ITEM_ID_REFINE_TALISMAN := "refine_talisman"
 const ITEM_ID_RECIPE_PILL := "recipe_pill"
 const ITEM_ID_PILL := "pill"
 const ITEM_ID_BREAKTHROUGH_PILL := "breakthrough_pill"
-const ITEM_ID_SKILL_FIREBALL := "skill_fireball"
+
+const ATTACK_MODE_MELEE := "melee"
+const ATTACK_MODE_RANGED := "ranged"
+const ATTACK_MODES := [ATTACK_MODE_MELEE, ATTACK_MODE_RANGED]
+const RANGED_BASIC_ATTACK_ID := "fireball"
 
 const ITEM_GAIN_TARGET_ORDER := ["attack", "defense", "max_hp", "max_mp", "root_bone", "wood", "fire", "earth", "metal", "water"]
 const ITEM_GAIN_TARGET_LABELS := {
@@ -132,7 +136,7 @@ const EQUIPMENT_RARITY_WEIGHTS := {
 }
 
 const ITEM_DEFS := {
-	"herb": {"item_no": 1001, "name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 60.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"herb": {"item_no": 1001, "name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 600.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"ore": {"item_no": 1004, "name": "矿石", "description": "通用炼器材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"spirit_stone": {"item_no": 1005, "name": "灵石", "description": "招募修士与强化普通属性所需的通用灵石。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"recruit_currency": true, "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"farm_speed_talisman": {"item_no": 1006, "name": "丰收符", "description": "提升农田生长速度一段时间。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": true, "payload": {"farm_speed": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
@@ -145,23 +149,26 @@ const ITEM_DEFS := {
 	"recipe_pill": {"item_no": 1015, "name": "调息丹方", "description": "学习后可炼制调息丹。", "type": ITEM_TYPE_ALCHEMY_RECIPE, "stackable": true, "usable": true, "payload": {"recipe_id": "pill"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
 	"pill": {"item_no": 1016, "name": "调息丹", "description": "恢复生命和法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp": 18, "mp": 12}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
 	"breakthrough_pill": {"item_no": 1017, "name": "破境丹", "description": "达到等级上限时可突破。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"breakthrough": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"skill_fireball": {"item_no": 1018, "name": "火球术残卷", "description": "学习后获得火球术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "fireball"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blade_grass": {"item_no": 1019, "name": "刃纹草", "description": "蕴含锋锐气息的攻击属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 180.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
-	"ironroot": {"item_no": 1020, "name": "铁根藤", "description": "根须坚韧的防御属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 180.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
-	"blood_ginseng": {"item_no": 1021, "name": "血参", "description": "补益气血的生命属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 240.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_hp"},
-	"spirit_lotus": {"item_no": 1022, "name": "灵泉莲", "description": "滋养法力的灵力属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 240.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_mp"},
-	"bone_bamboo": {"item_no": 1023, "name": "玉骨竹", "description": "淬炼根骨的根骨属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 360.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "root_bone"},
-	"woodvine": {"item_no": 1024, "name": "青木藤", "description": "蕴含木行生机的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 180.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
-	"flame_flower": {"item_no": 1025, "name": "赤焰花", "description": "蕴含火行炎力的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 210.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
-	"earth_moss": {"item_no": 1026, "name": "厚土苔", "description": "蕴含土行厚重的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 210.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
-	"metal_reed": {"item_no": 1027, "name": "玄金苇", "description": "蕴含金行肃杀的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 300.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
-	"water_orchid": {"item_no": 1028, "name": "玄水兰", "description": "蕴含水行润泽的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 240.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
+	"blade_grass": {"item_no": 1019, "name": "刃纹草", "description": "蕴含锋锐气息的攻击属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
+	"ironroot": {"item_no": 1020, "name": "铁根藤", "description": "根须坚韧的防御属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
+	"blood_ginseng": {"item_no": 1021, "name": "血参", "description": "补益气血的生命属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_hp"},
+	"spirit_lotus": {"item_no": 1022, "name": "灵泉莲", "description": "滋养法力的灵力属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_mp"},
+	"bone_bamboo": {"item_no": 1023, "name": "玉骨竹", "description": "淬炼根骨的根骨属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1800.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "root_bone"},
+	"woodvine": {"item_no": 1024, "name": "青木藤", "description": "蕴含木行生机的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
+	"flame_flower": {"item_no": 1025, "name": "赤焰花", "description": "蕴含火行炎力的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1050.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
+	"earth_moss": {"item_no": 1026, "name": "厚土苔", "description": "蕴含土行厚重的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1050.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
+	"metal_reed": {"item_no": 1027, "name": "玄金苇", "description": "蕴含金行肃杀的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1500.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
+	"water_orchid": {"item_no": 1028, "name": "玄水兰", "description": "蕴含水行润泽的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
 }
 
 const SKILL_DEFS := {
-	"fireball": {"id": "fireball", "name": "火球术", "type": "damage", "element": "fire", "mp_cost": 8, "cooldown": 3.0, "damage_multiplier": 1.35, "release_distance": 120.0, "priority": 50, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"heal": {"id": "heal", "name": "回春术", "type": "heal", "element": "wood", "mp_cost": 6, "cooldown": 5.0, "damage_multiplier": 0.0, "heal_multiplier": 1.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
-	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "element": "metal", "mp_cost": 12, "cooldown": 5.0, "damage_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"heal": {"id": "heal", "name": "回春术", "type": "heal", "element": "wood", "mp_cost": 6, "cooldown": 5, "damage_multiplier": 0.0, "heal_multiplier": 1.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
+	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "element": "metal", "mp_cost": 12, "cooldown": 5, "damage_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+}
+
+const BASIC_ATTACK_DEFS := {
+	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "element": "", "mp_cost": 0, "cooldown": 0.0, "release_distance": 0.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
+	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "release_distance": 120.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
 }
 
 const ALCHEMY_RECIPE_DEFS := {
@@ -265,8 +272,8 @@ const INNATE_TRAIT_DEFS := {
 }
 
 const ENEMY_TEMPLATES := {
-	"training_dummy": {"id": "training_dummy", "name": "木桩", "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "drops": {}, "exp": 6, "use_drop": false, "is_training_dummy": true},
-	"forest_wolf": {"id": "forest_wolf", "name": "林狼", "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.2, "drops": {"herb": {"chance": 0.55, "min": 1, "max": 2}}, "exp": 10, "use_drop": true, "is_training_dummy": false},
+	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "drops": {}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
+	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.2, "drops": {"herb": {"chance": 0.55, "min": 1, "max": 2}, "ore": {"chance": 0.30, "min": 1, "max": 1}, "spirit_stone": {"chance": 0.10, "min": 1, "max": 1}}, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
 }
 
 const ENEMY_SCENE_PATHS := {
@@ -481,13 +488,22 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 	}
 
 
-static func create_skill(skill_id: String = "fireball", obtain_source: String = "non_drop") -> Dictionary:
+static func create_skill(skill_id: String, obtain_source: String = "non_drop") -> Dictionary:
 	var definition: Dictionary = SKILL_DEFS.get(skill_id, {})
 	if definition.is_empty():
 		return {}
 	var skill: Dictionary = definition.duplicate(true)
 	skill["obtain_source"] = obtain_source
 	return skill
+
+
+static func create_basic_attack(attack_mode: String, base_damage: int = 0) -> Dictionary:
+	var resolved_mode: String = attack_mode if ATTACK_MODES.has(attack_mode) else ATTACK_MODE_MELEE
+	var attack: Dictionary = BASIC_ATTACK_DEFS[resolved_mode].duplicate(true)
+	attack["type"] = "normal_attack"
+	attack["base_damage"] = maxi(0, base_damage)
+	attack["damage_marker"] = "impact"
+	return attack
 
 
 static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: String = DEFAULT_ENEMY_ID) -> Dictionary:
@@ -499,6 +515,7 @@ static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: Strin
 	var defense: int = int(template.get("defense", 0)) + enemy_level / 3
 	return {
 		"id": str(template.get("id", resolved_enemy_id)),
+		"visual_id": str(template.get("visual_id", "enemy_default")),
 		"name": str(template.get("name", "敌人")),
 		"level": enemy_level,
 		"hp": max_hp,
@@ -630,11 +647,11 @@ static func recruit_max_trait_count(level: int) -> int:
 
 
 static func forge_duration_seconds(level: int) -> float:
-	return max(20.0, 60.0 - 4.0 * float(maxi(1, level) - 1))
+	return max(300.0, 900.0 - 60.0 * float(maxi(1, level) - 1))
 
 
 static func alchemy_duration_seconds(level: int, amount: int) -> float:
-	return max(8.0, 20.0 - float(maxi(1, level) - 1)) * float(maxi(1, amount))
+	return max(180.0, 600.0 - 45.0 * float(maxi(1, level) - 1)) * float(maxi(1, amount))
 
 
 static func farm_growth_multiplier(level: int) -> float:

@@ -18,7 +18,7 @@ func setup() -> void:
 	_capture_target_icons()
 	visible = false
 
-func show_item(item: Dictionary, game_state, mouse_position: Vector2, viewport_size: Vector2) -> void:
+func show_item(item: Dictionary, game_state, mouse_position: Vector2, viewport_size: Vector2, member_id: String = "") -> void:
 	if item.is_empty():
 		hide_item()
 		return
@@ -26,13 +26,15 @@ func show_item(item: Dictionary, game_state, mouse_position: Vector2, viewport_s
 	visible = true
 	var target_id: String = str(item.get("gain_target", DataTables.item_gain_target(str(item.get("item_id", "")))))
 	title_label.text = DataTables.inventory_display_name(item)
-	meta_label.text = _item_meta_text(item, game_state)
+	meta_label.text = _item_meta_text(item, game_state, member_id)
 	description_label.text = _item_description_text(item)
 	_refresh_detail_icon(DataTables.inventory_icon_texture(item), target_id)
 	_refresh_target_icons(target_id)
 	var can_use: bool = false
 	if game_state != null:
 		can_use = DataTables.item_use_scope(str(item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME and game_state.is_inventory_item_usable(str(item.get("instance_id", "")))
+		if str(item.get("type", "")) in [DataTables.ITEM_TYPE_EQUIPMENT, DataTables.ITEM_TYPE_SKILL_BOOK, DataTables.ITEM_TYPE_PILL] and member_id.is_empty():
+			can_use = false
 	use_button.visible = can_use
 	use_button.disabled = not can_use
 	use_button.text = "使用" if can_use else ""
@@ -98,7 +100,7 @@ func _refresh_target_icons(target_id: String) -> void:
 		else:
 			icon.color = Color(base_color.r * 0.55, base_color.g * 0.55, base_color.b * 0.55, 0.45)
 
-func _item_meta_text(item: Dictionary, game_state) -> String:
+func _item_meta_text(item: Dictionary, game_state, member_id: String = "") -> String:
 	var parts: Array[String] = [
 		"类型：%s" % DataTables.item_type_name(str(item.get("type", ""))),
 		"数量：%d" % max(1, int(item.get("count", 0))),
@@ -109,8 +111,8 @@ func _item_meta_text(item: Dictionary, game_state) -> String:
 	if item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		parts.append("槽位：%s" % DataTables.slot_name(str(item.get("slot", ""))))
 		parts.append("等级：%d" % int(item.get("equipment_level", 1)))
-		if game_state != null:
-			var requirement_text: String = game_state.equipment_requirement_text(item)
+		if game_state != null and not member_id.is_empty():
+			var requirement_text: String = game_state.equipment_requirement_text_for(item, member_id)
 			if not requirement_text.is_empty():
 				parts.append("需求：%s" % requirement_text)
 		parts.append("强化 +%d" % int(item.get("enhance_count", 0)))

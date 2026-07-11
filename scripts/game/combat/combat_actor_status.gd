@@ -45,7 +45,7 @@ func bind_enemy(enemy_data: Dictionary, owner_visual: Node = null) -> void:
 	member_id = ""
 	actor_kind = KIND_ENEMY
 	data = enemy_data
-	actor_id = str(data.get("id", "enemy"))
+	actor_id = str(data.get("combat_id", data.get("id", "enemy")))
 	actor_name = str(data.get("name", "敌人"))
 	visual_owner = owner_visual
 	_sync_runtime_arrays_from_store()
@@ -272,7 +272,7 @@ func is_alive() -> bool:
 func _member_data() -> Dictionary:
 	if game_state == null:
 		return {}
-	return game_state.selected_party_member_or_player(member_id)
+	return game_state.member_by_id(member_id)
 
 
 func _stats() -> Dictionary:

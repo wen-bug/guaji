@@ -1,35 +1,43 @@
 class_name BaseEnemy
 extends Node2D
 
-const DEFAULT_HP_BAR_WIDTH := 48.0
-const DEFAULT_ATTACK_LUNGE := 10.0
+signal hit_candidate(action_id: int, target_id: String)
+signal attack_finished(action_id: int)
+signal death_finished
+
 const CombatActorStatusScript = preload("res://scripts/game/combat/combat_actor_status.gd")
+const DEFAULT_VISUAL_ID := "enemy_default"
+const ENEMY_VISUAL_ROOT := "res://scripts/actors/visuals/enemies"
 
 var enemy_data: Dictionary = {}
+var visual_id := DEFAULT_VISUAL_ID
 var _combat_position := Vector2.ZERO
-var _visual_node: Node2D = null
-var _hp_fill: ColorRect = null
-var _hurt_overlay: ColorRect = null
-var _feedback_tween: Tween = null
+var visual_root: Node2D
+var combat_visual: CombatVisual
 var combat_status: CombatActorStatus
+var _death_started := false
 
 
 func _ready() -> void:
 	_bind_nodes()
-	_update_hp_bar()
 
 
 func setup(data: Dictionary) -> void:
-	enemy_data = data.duplicate(true)
+	enemy_data = data
+	visual_id = str(enemy_data.get("visual_id", enemy_data.get("id", DEFAULT_VISUAL_ID)))
+	if visual_id.is_empty():
+		visual_id = DEFAULT_VISUAL_ID
 	visible = true
+	_death_started = false
 	_bind_nodes()
+	_load_combat_visual()
 	ensure_combat_status().bind_enemy(enemy_data, self)
-	_update_hp_bar()
+	_sync_visual_data()
 
 
 func sync_data(data: Dictionary) -> void:
-	enemy_data = data.duplicate(true)
-	_update_hp_bar()
+	enemy_data = data
+	_sync_visual_data()
 
 
 func runtime_data() -> Dictionary:
@@ -46,13 +54,19 @@ func set_combat_position(value: Vector2) -> void:
 
 
 func combat_position() -> Vector2:
-	return _combat_position
+	return global_position
 
 
-func set_hit_points(current_hp: int, max_hp: int) -> void:
-	enemy_data["hp"] = current_hp
-	enemy_data["max_hp"] = max_hp
-	_update_hp_bar()
+func melee_approach_position() -> Vector2:
+	return combat_visual.melee_approach_position() if combat_visual != null else global_position
+
+
+func hit_position() -> Vector2:
+	return combat_visual.hit_position() if combat_visual != null else global_position
+
+
+func effect_position() -> Vector2:
+	return combat_visual.effect_position() if combat_visual != null else global_position
 
 
 func select_action(game_state) -> Dictionary:
@@ -63,51 +77,60 @@ func select_action(game_state) -> Dictionary:
 		element_id = str(enemy_data.get("element", ""))
 	return {
 		"kind": "basic_attack",
+		"source": "basic",
 		"base_damage": int(enemy_data.get("attack", 1)),
 		"element": element_id,
 	}
 
 
-func play_attack_feedback() -> void:
-	_bind_nodes()
-	var target_node: Node2D = _feedback_target()
-	if target_node == null:
-		return
-	_reset_feedback_tween()
-	var origin: Vector2 = target_node.position
-	var direction: float = -1.0 if _combat_position.x >= 0.0 else 1.0
-	_feedback_tween = create_tween()
-	_feedback_tween.tween_property(target_node, "position", origin + Vector2(DEFAULT_ATTACK_LUNGE * direction, 0.0), 0.08)
-	_feedback_tween.tween_property(target_node, "position", origin, 0.12)
+func play_idle() -> void:
+	if combat_visual != null:
+		combat_visual.play_idle()
+
+
+func play_walk() -> void:
+	if combat_visual != null:
+		combat_visual.play_walk()
+
+
+func play_run() -> void:
+	if combat_visual != null:
+		combat_visual.play_run()
+
+
+func play_attack_feedback(action_id: int = 0) -> void:
+	if combat_visual != null:
+		combat_visual.play_melee_attack(action_id)
+
+
+func play_ranged_attack_feedback(action_id: int = 0) -> void:
+	if combat_visual != null:
+		combat_visual.play_ranged_attack(action_id)
 
 
 func play_hurt_feedback() -> void:
-	_bind_nodes()
-	var target_node: Node2D = _feedback_target()
-	if target_node == null:
+	if combat_visual != null:
+		combat_visual.play_hurt()
+
+
+func play_death_feedback() -> void:
+	if _death_started:
 		return
-	_reset_feedback_tween()
-	var target_item: CanvasItem = target_node as CanvasItem
-	var origin: Vector2 = target_node.position
-	_feedback_tween = create_tween()
-	_feedback_tween.set_parallel(true)
-	_feedback_tween.tween_property(target_node, "position", origin + Vector2(5.0, 0.0), 0.05)
-	_feedback_tween.tween_property(target_node, "position", origin - Vector2(4.0, 0.0), 0.1).set_delay(0.05)
-	_feedback_tween.tween_property(target_node, "position", origin, 0.06).set_delay(0.15)
-	if target_item != null:
-		_feedback_tween.tween_property(target_item, "modulate", Color(1.0, 0.45, 0.45, 1.0), 0.05)
-		_feedback_tween.tween_property(target_item, "modulate", Color.WHITE, 0.16).set_delay(0.05)
-	if _hurt_overlay != null:
-		_hurt_overlay.visible = true
-		_hurt_overlay.modulate.a = 0.7
-		_feedback_tween.tween_property(_hurt_overlay, "modulate:a", 0.0, 0.18)
-		_feedback_tween.tween_callback(_hide_hurt_overlay).set_delay(0.19)
+	_death_started = true
+	if combat_visual != null:
+		combat_visual.play_death()
+	else:
+		death_finished.emit()
+
+
+func cancel_combat_action() -> void:
+	if combat_visual != null:
+		combat_visual.cancel_action()
 
 
 func ensure_combat_status() -> CombatActorStatus:
-	if combat_status != null:
-		return combat_status
-	combat_status = get_node_or_null("CombatActorStatus") as CombatActorStatus
+	if combat_status == null:
+		combat_status = get_node_or_null("CombatActorStatus") as CombatActorStatus
 	if combat_status == null:
 		combat_status = CombatActorStatusScript.new()
 		combat_status.name = "CombatActorStatus"
@@ -116,42 +139,73 @@ func ensure_combat_status() -> CombatActorStatus:
 	return combat_status
 
 
-func _bind_nodes() -> void:
-	if _visual_node == null:
-		_visual_node = get_node_or_null("Visual") as Node2D
-	if _hp_fill == null:
-		_hp_fill = get_node_or_null("HPBack/HPFill") as ColorRect
-	if _hurt_overlay == null:
-		_hurt_overlay = get_node_or_null("HurtOverlay") as ColorRect
-
-
-func _feedback_target() -> Node2D:
-	if _visual_node != null:
-		return _visual_node
-	return self
-
-
-func _update_hp_bar() -> void:
-	if _hp_fill == null or enemy_data.is_empty():
+func _load_combat_visual() -> void:
+	if combat_visual != null:
+		combat_visual.queue_free()
+		combat_visual = null
+	var scene_path := "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, _safe_visual_id(visual_id)]
+	if not ResourceLoader.exists(scene_path):
+		push_warning("敌人形象不存在，使用默认形象: %s" % scene_path)
+		scene_path = "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, DEFAULT_VISUAL_ID]
+	var packed := load(scene_path) as PackedScene
+	if packed == null:
+		push_error("默认敌人形象加载失败: %s" % scene_path)
 		return
-	var current_hp: float = float(enemy_data.get("hp", 0))
-	var max_hp: float = max(1.0, float(enemy_data.get("max_hp", 1)))
-	var ratio: float = clamp(current_hp / max_hp, 0.0, 1.0)
-	_hp_fill.size.x = DEFAULT_HP_BAR_WIDTH * ratio
+	var instance := packed.instantiate()
+	combat_visual = instance as CombatVisual
+	if combat_visual == null:
+		instance.queue_free()
+		push_error("敌人形象根节点必须使用 CombatVisual: %s" % scene_path)
+		return
+	var contract_issue := combat_visual.contract_error()
+	if not contract_issue.is_empty() and not scene_path.ends_with("/%s.tscn" % DEFAULT_VISUAL_ID):
+		push_warning("敌人形象接口不完整（%s），使用默认形象: %s" % [contract_issue, scene_path])
+		combat_visual.free()
+		scene_path = "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, DEFAULT_VISUAL_ID]
+		packed = load(scene_path) as PackedScene
+		combat_visual = packed.instantiate() as CombatVisual if packed != null else null
+	if combat_visual == null:
+		push_error("默认敌人形象加载失败: %s" % scene_path)
+		return
+	contract_issue = combat_visual.contract_error()
+	if not contract_issue.is_empty():
+		combat_visual.free()
+		combat_visual = null
+		push_error("默认敌人形象接口不完整（%s）: %s" % [contract_issue, scene_path])
+		return
+	visual_root.add_child(combat_visual)
+	combat_visual.configure_identity(str(enemy_data.get("combat_id", "enemy")), CombatHurtbox.TEAM_ENEMY)
+	combat_visual.hit_candidate.connect(_on_visual_hit_candidate)
+	combat_visual.attack_finished.connect(_on_visual_attack_finished)
+	combat_visual.death_finished.connect(_on_visual_death_finished)
+	combat_visual.play_idle()
 
 
-func _reset_feedback_tween() -> void:
-	if _feedback_tween != null:
-		_feedback_tween.kill()
-		_feedback_tween = null
-	var target_node: Node2D = _feedback_target()
-	if target_node != null:
-		target_node.position = _visual_node.position if _visual_node != null else _combat_position
-		var target_item: CanvasItem = target_node as CanvasItem
-		if target_item != null:
-			target_item.modulate = Color.WHITE
+func _sync_visual_data() -> void:
+	if combat_visual != null and not enemy_data.is_empty():
+		combat_visual.set_hit_points(int(enemy_data.get("hp", 0)), int(enemy_data.get("max_hp", 1)))
 
 
-func _hide_hurt_overlay() -> void:
-	if _hurt_overlay != null:
-		_hurt_overlay.visible = false
+func _safe_visual_id(value: String) -> String:
+	var result := ""
+	for character in value:
+		if character.is_valid_identifier() or character == "_" or character.is_valid_int():
+			result += character
+	return result if not result.is_empty() else DEFAULT_VISUAL_ID
+
+
+func _on_visual_hit_candidate(action_id: int, target_id: String) -> void:
+	hit_candidate.emit(action_id, target_id)
+
+
+func _on_visual_attack_finished(action_id: int) -> void:
+	attack_finished.emit(action_id)
+
+
+func _on_visual_death_finished() -> void:
+	death_finished.emit()
+
+
+func _bind_nodes() -> void:
+	if visual_root == null:
+		visual_root = get_node_or_null("VisualRoot") as Node2D

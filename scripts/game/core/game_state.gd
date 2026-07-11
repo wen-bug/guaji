@@ -8,13 +8,13 @@ const FARM_SLOT_COUNT = 5
 const FARM_STATUS_EMPTY = "empty"
 const FARM_STATUS_GROWING = "growing"
 const FARM_STATUS_READY = "ready"
-const PLAYER_ID = "player"
 const PARTY_MAX_SIZE = 4
 const RECRUIT_RESOURCE_ID = "spirit_stone"
 const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
+const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 4
+const SAVE_SCHEMA_VERSION = 5
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -26,30 +26,10 @@ const RECRUIT_NAME_PARTS = ["青岚", "赤霄", "玄石", "白羽", "沧流", "�
 const RANDOM_POINT_TARGETS = ["attack", "defense", "root_bone", "max_hp", "max_mp", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var stats: Dictionary = {
-	"level": 1,
-	"level_cap": 10,
-	"stage": 1,
-	"root_bone": 5,
-	"farm_level": 1,
-	"exp": 0,
-	"next_exp": 40,
-	"free_points": 0,
-	"hp": 80,
-	"max_hp": 80,
-	"mp": 40,
-	"max_mp": 40,
-	"attack": 8,
-	"defense": 2,
-	"cultivation": 0,
-	"next_cultivation": 30,
-}
-var elements: Dictionary = {
-	"wood": 1,
-	"fire": 1,
-	"earth": 1,
-	"metal": 1,
-	"water": 1,
+var account_progression: Dictionary = {
+	"expedition_level": 1,
+	"expedition_exp": 0,
+	"next_expedition_exp": 40,
 }
 var task_exp: Dictionary = {
 	"recruit": 0,
@@ -60,17 +40,6 @@ var task_exp: Dictionary = {
 }
 var inventory: Array = []
 var inventory_service: InventoryService
-var equipped: Dictionary = {
-	"weapon": "",
-	"helmet": "",
-	"armor": "",
-	"leggings": "",
-	"gloves": "",
-	"accessory_1": "",
-	"accessory_2": "",
-}
-var skills: Array = [DataTables.create_skill()]
-var innate_traits: Array = []
 var known_alchemy_recipes: Array = []
 var companions: Array = []
 var party_order: Array = []
@@ -101,28 +70,21 @@ func _init() -> void:
 	party_service = PartyService.new(self)
 	rng.randomize()
 	_ensure_building_state()
+	_ensure_account_progression()
 	_ensure_production_jobs()
 	_ensure_farm_slots()
 	_ensure_party_state()
 	add_inventory_item(RECRUIT_RESOURCE_ID, 1, false)
-	add_inventory_item("herb", 4, false)
-	add_inventory_item("blade_grass", 1, false)
-	add_inventory_item("ironroot", 1, false)
-	add_inventory_item("blood_ginseng", 1, false)
-	add_inventory_item("spirit_lotus", 1, false)
-	add_inventory_item("bone_bamboo", 1, false)
-	add_inventory_item("woodvine", 1, false)
-	add_inventory_item("flame_flower", 1, false)
-	add_inventory_item("earth_moss", 1, false)
-	add_inventory_item("metal_reed", 1, false)
-	add_inventory_item("water_orchid", 1, false)
-	add_inventory_item("ore", 4, false)
-	add_inventory_item("spirit_stone_fire", 2, false)
-	add_inventory_item("spirit_stone_earth", 2, false)
-	add_inventory_item("farm_speed_talisman", 1, false)
+	add_inventory_item("herb", 1, false)
 	add_inventory_item("recipe_pill", 1, false)
-	_add_test_inventory_items()
+	_seed_test_inventory_if_enabled()
 	generate_recruit_candidates(false)
+
+
+func _seed_test_inventory_if_enabled() -> void:
+	if not bool(ProjectSettings.get_setting(TEST_INVENTORY_SETTING, false)):
+		return
+	_add_test_inventory_items()
 
 
 func _add_test_inventory_items() -> void:
@@ -155,13 +117,9 @@ func to_save_data() -> Dictionary:
 	return {
 		"schema_version": SAVE_SCHEMA_VERSION,
 		"rng": _rng_save_data(),
-		"stats": stats.duplicate(true),
-		"elements": elements.duplicate(true),
+		"account_progression": account_progression.duplicate(true),
 		"task_exp": task_exp.duplicate(true),
 		"inventory": inventory.duplicate(true),
-		"equipped": equipped.duplicate(true),
-		"skills": skills.duplicate(true),
-		"innate_traits": innate_traits.duplicate(true),
 		"known_alchemy_recipes": known_alchemy_recipes.duplicate(),
 		"companions": companions.duplicate(true),
 		"party_order": party_order.duplicate(),
@@ -181,16 +139,11 @@ func load_save_data(data: Dictionary) -> void:
 
 	var loaded_schema_version: int = int(data.get("schema_version", 1))
 	_load_rng_state(data.get("rng", {}))
-	_load_dictionary_values(stats, data.get("stats", {}))
-	_load_dictionary_values(elements, data.get("elements", {}))
+	if data.has("account_progression"):
+		_load_dictionary_values(account_progression, data.get("account_progression", {}))
 	_load_dictionary_values(task_exp, data.get("task_exp", {}))
 	if data.has("inventory"):
 		inventory = _duplicate_array(data.get("inventory", []))
-	_load_dictionary_values(equipped, data.get("equipped", {}))
-	if data.has("skills"):
-		skills = _duplicate_array(data.get("skills", skills))
-	if data.has("innate_traits"):
-		innate_traits = _duplicate_array(data.get("innate_traits", []))
 	if data.has("known_alchemy_recipes"):
 		known_alchemy_recipes.clear()
 		for recipe_id in data.get("known_alchemy_recipes", []):
@@ -214,10 +167,17 @@ func load_save_data(data: Dictionary) -> void:
 	if data.has("production_jobs"):
 		_load_dictionary_values(production_jobs, data.get("production_jobs", {}))
 	_ensure_building_state()
+	if loaded_schema_version < 5:
+		account_progression = {
+			"expedition_level": 1,
+			"expedition_exp": maxi(0, int(task_exp.get("fight", 0))),
+			"next_expedition_exp": 40,
+		}
+	_ensure_account_progression()
 	_ensure_production_jobs()
 	_ensure_farm_slots()
 	_sanitize_loaded_inventory()
-	_add_test_inventory_items()
+	_seed_test_inventory_if_enabled()
 	_sanitize_active_buffs()
 	_sanitize_farm_speed_buffs()
 	_ensure_party_state()
@@ -329,8 +289,6 @@ func upgrade_building(building_id: String) -> bool:
 		log_added.emit("%s不足，升级需要 %s x%d" % [DataTables.resource_name(item_id), DataTables.resource_name(item_id), amount])
 		return false
 	building_levels[building_id] = current_level + 1
-	if building_id == BUILDING_FARM:
-		stats["farm_level"] = int(building_levels[BUILDING_FARM])
 	log_added.emit("%s等级提升至 %d" % [DataTables.building_name(building_id), int(building_levels[building_id])])
 	changed.emit()
 	return true
@@ -376,10 +334,44 @@ func _duplicate_array(value) -> Array:
 func _ensure_building_state() -> void:
 	for building_id in DataTables.BUILDING_DEFS.keys():
 		var level: int = int(building_levels.get(building_id, 1))
-		if str(building_id) == BUILDING_FARM:
-			level = max(level, int(stats.get("farm_level", 1)))
 		building_levels[building_id] = clampi(level, 1, DataTables.building_max_level(str(building_id)))
-	stats["farm_level"] = int(building_levels.get(BUILDING_FARM, 1))
+
+
+func _ensure_account_progression() -> void:
+	account_progression["expedition_level"] = maxi(1, int(account_progression.get("expedition_level", 1)))
+	account_progression["expedition_exp"] = maxi(0, int(account_progression.get("expedition_exp", 0)))
+	account_progression["next_expedition_exp"] = maxi(1, int(account_progression.get("next_expedition_exp", 40)))
+	while int(account_progression["expedition_exp"]) >= int(account_progression["next_expedition_exp"]):
+		account_progression["expedition_exp"] = int(account_progression["expedition_exp"]) - int(account_progression["next_expedition_exp"])
+		account_progression["expedition_level"] = int(account_progression["expedition_level"]) + 1
+		account_progression["next_expedition_exp"] = 40 + (int(account_progression["expedition_level"]) - 1) * 20
+
+
+func expedition_level() -> int:
+	return maxi(1, int(account_progression.get("expedition_level", 1)))
+
+
+func add_expedition_exp(amount: int) -> void:
+	if amount <= 0:
+		return
+	account_progression["expedition_exp"] = int(account_progression.get("expedition_exp", 0)) + amount
+	var old_level := expedition_level()
+	_ensure_account_progression()
+	if expedition_level() > old_level:
+		log_added.emit("历练等级提升至 %d" % expedition_level())
+	changed.emit()
+
+
+func recover_party_after_defeat(ratio: float = 0.5) -> void:
+	var recovery_ratio: float = clampf(ratio, 0.0, 1.0)
+	for member in party_members():
+		var member_id: String = str(member.get("id", ""))
+		var member_stats: Dictionary = member.get("stats", {})
+		var max_hp: int = maxi(1, total_stat_for(member_id, "max_hp"))
+		var max_mp: int = maxi(0, total_stat_for(member_id, "max_mp"))
+		member_stats["hp"] = maxi(1, ceili(float(max_hp) * recovery_ratio))
+		member_stats["mp"] = clampi(ceili(float(max_mp) * recovery_ratio), 0, max_mp)
+	changed.emit()
 
 
 func _ensure_production_jobs() -> void:
@@ -399,6 +391,8 @@ func _ensure_production_jobs() -> void:
 		job["elapsed_seconds"] = max(0.0, float(job.get("elapsed_seconds", 0.0)))
 		job["duration_seconds"] = max(1.0, float(job.get("duration_seconds", 1.0)))
 		job["member_id"] = str(job.get("member_id", ""))
+		if member_by_id(str(job.get("member_id", ""))).is_empty():
+			job["member_id"] = ""
 		job["member_name"] = str(job.get("member_name", "成员"))
 		production_jobs[building_id] = job
 		_set_production_progress_state(str(building_id), job)
@@ -486,6 +480,10 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	item["refine_count"] = maxi(0, int(item.get("refine_count", 0)))
 	item["equipped"] = bool(item.get("equipped", false))
 	item["equipped_by"] = str(item.get("equipped_by", ""))
+	if str(item.get("equipped_by", "")) == "player":
+		item["equipped"] = false
+		item["equipped_by"] = ""
+		item.erase("equipped_slot")
 	item["equip_requirement"] = item.get("equip_requirement", {}) if item.get("equip_requirement", {}) is Dictionary else {}
 	_update_equipment_compat_bonuses(item)
 
@@ -501,7 +499,8 @@ func _sanitize_active_buffs() -> void:
 		buff["stat"] = str(buff.get("stat", ""))
 		buff["amount"] = int(buff.get("amount", 0))
 		buff["remaining"] = float(buff.get("remaining", 0.0))
-		if str(buff.get("item_id", "")).is_empty() or str(buff.get("stat", "")).is_empty() or float(buff.get("remaining", 0.0)) <= 0.0:
+		buff["member_id"] = str(buff.get("member_id", ""))
+		if str(buff.get("item_id", "")).is_empty() or str(buff.get("stat", "")).is_empty() or float(buff.get("remaining", 0.0)) <= 0.0 or member_by_id(str(buff.get("member_id", ""))).is_empty():
 			active_buffs.remove_at(index)
 			continue
 		active_buffs[index] = buff
@@ -522,10 +521,6 @@ func _sanitize_farm_speed_buffs() -> void:
 		farm_speed_buffs[index] = buff
 
 
-func player_member() -> Dictionary:
-	return party_service.player_member()
-
-
 func growth_summary_for(member_id: String) -> String:
 	return party_service.growth_summary_for(member_id)
 
@@ -544,10 +539,6 @@ func member_by_id(member_id: String) -> Dictionary:
 
 func party_member_count() -> int:
 	return party_service.party_member_count()
-
-
-func selected_party_member_or_player(member_id: String) -> Dictionary:
-	return party_service.selected_party_member_or_player(member_id)
 
 
 func generate_recruit_candidates(should_emit_signal: bool = true) -> void:
@@ -586,36 +577,43 @@ func has_party_member() -> bool:
 	return party_member_count() > 0
 
 
+func default_party_member_id() -> String:
+	var members: Array = party_members()
+	if members.is_empty():
+		return ""
+	return str(members[0].get("id", ""))
+
+
 func total_attack_for(member_id: String) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	return _total_attack_for_member(member)
 
 
 func total_defense_for(member_id: String) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	return _total_defense_for_member(member)
 
 
 func total_stat_for(member_id: String, stat_id: String) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	return _total_stat_for_member(member, stat_id)
 
 
 func total_element_for(member_id: String, element_id: String) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	return _total_element_for_member(member, element_id)
 
 
 func element_summary_for(member_id: String) -> String:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return "木0 火0 土0 金0 水0"
 	return "木%d 火%d 土%d 金%d 水%d" % [
@@ -628,7 +626,7 @@ func element_summary_for(member_id: String) -> String:
 
 
 func dominant_element_for(member_id: String) -> String:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return ""
 	return _dominant_element_for_member(member)
@@ -647,7 +645,7 @@ func reduce_element_damage_for(member_id: String, element_id: String, amount: in
 
 
 func take_damage_for(member_id: String, amount: int, element_id: String = "") -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	var member_stats: Dictionary = member.get("stats", {})
@@ -660,7 +658,7 @@ func take_damage_for(member_id: String, amount: int, element_id: String = "") ->
 
 
 func spend_mp_for(member_id: String, amount: int) -> bool:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return false
 	var member_stats: Dictionary = member.get("stats", {})
@@ -672,7 +670,7 @@ func spend_mp_for(member_id: String, amount: int) -> bool:
 
 
 func heal_member(member_id: String, hp_amount: int, mp_amount: int) -> Dictionary:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return {"hp": 0, "mp": 0}
 	var member_stats: Dictionary = member.get("stats", {})
@@ -698,7 +696,7 @@ func add_exp_to_party(amount: int) -> void:
 
 
 func equipped_item_for(member_id: String, slot: String):
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return {}
 	var member_equipped: Dictionary = member.get("equipped", {})
@@ -715,7 +713,7 @@ func equip_item_for_member(instance_id: String, member_id: String) -> bool:
 	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty() or item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
 		return false
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
@@ -733,7 +731,7 @@ func equip_item_for_member(instance_id: String, member_id: String) -> bool:
 	if not previous_id.is_empty():
 		_unequip_if_needed(previous_id)
 	item["equipped"] = true
-	item["equipped_by"] = str(member.get("id", PLAYER_ID))
+	item["equipped_by"] = str(member.get("id", ""))
 	item["equipped_slot"] = slot
 	member_equipped[slot] = instance_id
 	log_added.emit("%s穿戴%s" % [member.get("name", "成员"), item.get("name", "装备")])
@@ -753,7 +751,7 @@ func equipment_requirement_current_value_for(item: Dictionary, member_id: String
 	var stat_id: String = str(requirement.get("stat", ""))
 	if stat_id.is_empty():
 		return 0
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	var excluded_slot: String = str(target_slot)
@@ -903,10 +901,9 @@ func _dominant_element_for_member(member: Dictionary) -> String:
 
 func _stat_bonus_for_member(member: Dictionary, stat_id: String) -> int:
 	var value: int = 0
-	if str(member.get("id", "")) == PLAYER_ID:
-		for buff in active_buffs:
-			if buff.get("stat", "") == stat_id:
-				value += int(buff.get("amount", 0))
+	for buff in active_buffs:
+		if str(buff.get("member_id", "")) == str(member.get("id", "")) and buff.get("stat", "") == stat_id:
+			value += int(buff.get("amount", 0))
 	value += _trait_stat_flat_bonus_for_member(member, stat_id)
 	for item in _equipped_items_for_member(member):
 		value += _item_affix_bonus(item, stat_id)
@@ -978,30 +975,30 @@ func _clamp_member_runtime_stats(member: Dictionary) -> void:
 
 
 func total_attack() -> int:
-	return total_attack_for(PLAYER_ID)
+	return total_attack_for(default_party_member_id())
 
 
 func total_defense() -> int:
-	return total_defense_for(PLAYER_ID)
+	return total_defense_for(default_party_member_id())
 
 
 func total_stat(stat_id: String) -> int:
-	return total_stat_for(PLAYER_ID, stat_id)
+	return total_stat_for(default_party_member_id(), stat_id)
 
 
 func total_element(element_id: String) -> int:
-	return total_element_for(PLAYER_ID, element_id)
+	return total_element_for(default_party_member_id(), element_id)
 
 
 func element_power() -> int:
 	var value: int = 0
-	for element_id in elements.keys():
+	for element_id in DataTables.ELEMENT_IDS:
 		value += total_element(element_id)
 	return value
 
 
 func dominant_element() -> String:
-	return dominant_element_for(PLAYER_ID)
+	return dominant_element_for(default_party_member_id())
 
 
 func cultivation_gain(base_amount: int) -> int:
@@ -1009,37 +1006,37 @@ func cultivation_gain(base_amount: int) -> int:
 
 
 func craft_bonus() -> int:
-	return craft_bonus_for(PLAYER_ID)
+	return craft_bonus_for(default_party_member_id())
 
 
 func craft_bonus_for(member_id: String) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
-	var base_bonus: int = int(total_stat_for(str(member.get("id", PLAYER_ID)), "root_bone") * 0.2)
+	var base_bonus: int = int(total_stat_for(str(member.get("id", "")), "root_bone") * 0.2)
 	var flat_bonus: int = int(_production_effect_value(member, ["craft_bonus_flat", "forge_craft_bonus_flat"], "forge"))
 	var percent_bonus: float = _production_effect_value(member, ["craft_bonus_percent", "forge_craft_bonus_percent"], "forge")
 	return maxi(0, int(floor(float(base_bonus + flat_bonus) * (1.0 + percent_bonus))))
 
 
 func alchemy_extra_chance() -> float:
-	return alchemy_extra_chance_for(PLAYER_ID)
+	return alchemy_extra_chance_for(default_party_member_id())
 
 
 func alchemy_extra_chance_for(member_id: String) -> float:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0.0
-	var root_chance: float = float(total_stat_for(str(member.get("id", PLAYER_ID)), "root_bone")) * 0.015
+	var root_chance: float = float(total_stat_for(str(member.get("id", "")), "root_bone")) * 0.015
 	var trait_chance: float = _production_effect_value(member, ["alchemy_extra_chance", "alchemy_extra_yield_chance"], "alchemy")
 	return float(clamp(root_chance + trait_chance, 0.0, 0.85))
 
 
 func production_member_summary(member_id: String, task_id: String) -> String:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return "暂无角色"
-	var resolved_id: String = str(member.get("id", PLAYER_ID))
+	var resolved_id: String = str(member.get("id", ""))
 	var root_bone: int = total_stat_for(resolved_id, "root_bone")
 	if task_id == "forge":
 		return "%s  根骨%d  炼器加成+%d" % [str(member.get("name", "成员")), root_bone, craft_bonus_for(resolved_id)]
@@ -1051,10 +1048,10 @@ func production_member_summary(member_id: String, task_id: String) -> String:
 
 
 func forge_material_cost_for(member_id: String) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
-	return _production_material_cost(2, 1, member, "forge")
+	return _production_material_cost(4, 1, member, "forge")
 
 
 func can_craft_equipment_for_member(member_id: String) -> bool:
@@ -1062,10 +1059,12 @@ func can_craft_equipment_for_member(member_id: String) -> bool:
 	if str(job.get("status", PRODUCTION_STATUS_IDLE)) != PRODUCTION_STATUS_IDLE:
 		return false
 	var cost: int = forge_material_cost_for(member_id)
-	return cost > 0 and inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL) >= cost
+	return cost > 0 and inventory_item_count(DataTables.ITEM_ID_ORE) >= cost
 
 
-func craft_equipment_for_member(member_id: String = PLAYER_ID) -> bool:
+func craft_equipment_for_member(member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
 	var job: Dictionary = production_jobs.get(BUILDING_FORGE, {})
 	if str(job.get("status", PRODUCTION_STATUS_IDLE)) == PRODUCTION_STATUS_CLAIMABLE:
 		return claim_forge_job()
@@ -1081,14 +1080,14 @@ func start_forge_job(member_id: String) -> bool:
 	if existing_status == PRODUCTION_STATUS_CLAIMABLE:
 		log_added.emit("已有炼器结果可领取")
 		return false
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
-	var resolved_id: String = str(member.get("id", PLAYER_ID))
+	var resolved_id: String = str(member.get("id", ""))
 	var cost: int = forge_material_cost_for(resolved_id)
-	if not spend_inventory_type(DataTables.ITEM_TYPE_MATERIAL, cost):
-		log_added.emit("材料不足，炼器需要 %d 个任意材料" % cost)
+	if not spend_resource(DataTables.ITEM_ID_ORE, cost):
+		log_added.emit("矿石不足，炼器需要 %d 个矿石" % cost)
 		return false
 	var level: int = building_level(BUILDING_FORGE)
 	var output_count: int = 2 if level >= 6 else 1
@@ -1099,7 +1098,7 @@ func start_forge_job(member_id: String) -> bool:
 		"duration_seconds": DataTables.forge_duration_seconds(level),
 		"member_id": resolved_id,
 		"member_name": str(member.get("name", "成员")),
-		"member_level": int(member.get("stats", {}).get("level", stats.get("level", 1))),
+		"member_level": int(member.get("stats", {}).get("level", 1)),
 		"craft_bonus": craft_bonus_for(resolved_id),
 		"output_count": output_count,
 		"rarity_upgrade_chance": 0.03 * float(level - 1),
@@ -1127,7 +1126,7 @@ func claim_forge_job() -> bool:
 			rarity = DataTables.upgrade_equipment_rarity(rarity, 1)
 		var equipment: Dictionary = DataTables.create_equipment_from_template(
 			str(DataTables.EQUIPMENT_DEFS.keys()[rng.randi_range(0, DataTables.EQUIPMENT_DEFS.size() - 1)]),
-			int(job.get("member_level", stats.get("level", 1))),
+			int(job.get("member_level", 1)),
 			rng,
 			int(job.get("craft_bonus", 0)),
 			"",
@@ -1146,7 +1145,7 @@ func claim_forge_job() -> bool:
 
 
 func equipment_rarity_for_member(member_id: String) -> String:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	var rarity: String = DataTables.random_equipment_rarity(rng)
 	if member.is_empty():
 		return rarity
@@ -1163,15 +1162,15 @@ func equipment_rarity_for_member(member_id: String) -> String:
 
 
 func element_damage_bonus(element_id: String) -> int:
-	return element_damage_bonus_for(PLAYER_ID, element_id)
+	return element_damage_bonus_for(default_party_member_id(), element_id)
 
 
 func reduce_element_damage(element_id: String, amount: int) -> int:
-	return reduce_element_damage_for(PLAYER_ID, element_id, amount)
+	return reduce_element_damage_for(default_party_member_id(), element_id, amount)
 
 
 func reduce_physical_damage(amount: int) -> int:
-	return reduce_physical_damage_for(PLAYER_ID, amount)
+	return reduce_physical_damage_for(default_party_member_id(), amount)
 
 
 func physical_resistance() -> int:
@@ -1183,38 +1182,23 @@ func element_resistance(element_id: String) -> int:
 
 
 func heal(hp_amount: int, mp_amount: int) -> void:
-	stats["hp"] = min(total_stat("max_hp"), stats["hp"] + hp_amount)
-	stats["mp"] = min(total_stat("max_mp"), stats["mp"] + mp_amount)
-	changed.emit()
+	heal_member(default_party_member_id(), hp_amount, mp_amount)
 
 
 func spend_mp(amount: int) -> bool:
-	if stats["mp"] < amount:
-		return false
-	stats["mp"] -= amount
-	changed.emit()
-	return true
+	return spend_mp_for(default_party_member_id(), amount)
 
 
 func take_damage(amount: int, element_id: String = "") -> void:
-	take_damage_for(PLAYER_ID, amount, element_id)
+	take_damage_for(default_party_member_id(), amount, element_id)
 
 
 func add_exp(amount: int) -> void:
-	add_exp_for_member(PLAYER_ID, amount)
+	add_exp_for_member(default_party_member_id(), amount)
 
 
 func add_cultivation(amount: int) -> void:
-	var final_amount: int = cultivation_gain(amount)
-	stats["cultivation"] += final_amount
-	log_added.emit("修为 +%d" % final_amount)
-	while stats["cultivation"] >= stats["next_cultivation"]:
-		if not _ensure_level_cap_open():
-			break
-		stats["cultivation"] -= stats["next_cultivation"]
-		stats["next_cultivation"] = int(stats["next_cultivation"] * 1.35) + 15
-		_level_up()
-	changed.emit()
+	add_exp_for_member(default_party_member_id(), cultivation_gain(amount))
 
 
 func add_task_experience(task_type: int, amount: int) -> void:
@@ -1260,16 +1244,24 @@ func debug_add_equipment(template_id: String, level: int, rarity: String) -> boo
 	return true
 
 
-func debug_set_stat(stat_id: String, value: int) -> bool:
-	if stats.has(stat_id):
-		stats[stat_id] = _debug_clamped_stat_value(stat_id, value)
-	elif elements.has(stat_id):
-		elements[stat_id] = maxi(0, value)
+func debug_set_stat(stat_id: String, value: int, member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		log_added.emit("调试设置失败：当前没有编队角色")
+		return false
+	var member_stats: Dictionary = member.get("stats", {})
+	var member_elements: Dictionary = member.get("elements", {})
+	if member_stats.has(stat_id):
+		member_stats[stat_id] = _debug_clamped_stat_value(stat_id, value)
+	elif member_elements.has(stat_id):
+		member_elements[stat_id] = maxi(0, value)
 	else:
 		log_added.emit("调试设置失败：未知属性 %s" % stat_id)
 		return false
 	_clamp_runtime_stats()
-	log_added.emit("调试设置：%s = %d" % [DataTables.attribute_display_name(stat_id), _debug_stat_value(stat_id)])
+	log_added.emit("调试设置：%s = %d" % [DataTables.attribute_display_name(stat_id), _debug_stat_value(stat_id, member_id)])
 	changed.emit()
 	return true
 
@@ -1307,13 +1299,7 @@ func inventory_item_by_instance(instance_id: String) -> Dictionary:
 
 
 func equipped_item(slot: String):
-	var instance_id: String = equipped.get(slot, "")
-	if instance_id.is_empty():
-		return {}
-	var item: Dictionary = inventory_item_by_instance(instance_id)
-	if item.is_empty():
-		return {}
-	return item
+	return equipped_item_for(default_party_member_id(), slot)
 
 
 func is_inventory_item_usable(instance_id: String) -> bool:
@@ -1352,13 +1338,7 @@ func resource_summary() -> String:
 
 
 func element_summary() -> String:
-	return "木%d 火%d 土%d 金%d 水%d" % [
-		elements["wood"],
-		elements["fire"],
-		elements["earth"],
-		elements["metal"],
-		elements["water"],
-	]
+	return element_summary_for(default_party_member_id())
 
 
 func _debug_clamped_stat_value(stat_id: String, value: int) -> int:
@@ -1368,27 +1348,25 @@ func _debug_clamped_stat_value(stat_id: String, value: int) -> int:
 	return maxi(0, value)
 
 
-func _debug_stat_value(stat_id: String) -> int:
-	if stats.has(stat_id):
-		return int(stats.get(stat_id, 0))
-	if elements.has(stat_id):
-		return int(elements.get(stat_id, 0))
+func _debug_stat_value(stat_id: String, member_id: String = "") -> int:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		return 0
+	var member_stats: Dictionary = member.get("stats", {})
+	var member_elements: Dictionary = member.get("elements", {})
+	if member_stats.has(stat_id):
+		return int(member_stats.get(stat_id, 0))
+	if member_elements.has(stat_id):
+		return int(member_elements.get(stat_id, 0))
 	return 0
 
 
 func _clamp_runtime_stats() -> void:
 	_ensure_building_state()
-	stats["level"] = maxi(1, int(stats.get("level", 1)))
-	stats["level_cap"] = maxi(1, int(stats.get("level_cap", 1)))
-	stats["stage"] = maxi(1, int(stats.get("stage", 1)))
-	stats["farm_level"] = building_level(BUILDING_FARM)
-	stats["next_exp"] = maxi(1, int(stats.get("next_exp", 1)))
-	stats["next_cultivation"] = maxi(1, int(stats.get("next_cultivation", 1)))
-	stats["free_points"] = maxi(0, int(stats.get("free_points", 0)))
-	stats["max_hp"] = maxi(1, int(stats.get("max_hp", 1)))
-	stats["max_mp"] = maxi(1, int(stats.get("max_mp", 1)))
-	stats["hp"] = clampi(int(stats.get("hp", 0)), 0, total_stat("max_hp"))
-	stats["mp"] = clampi(int(stats.get("mp", 0)), 0, total_stat("max_mp"))
+	for member in companions:
+		_clamp_member_runtime_stats(member)
 
 
 func task_exp_for(task_type: int) -> int:
@@ -1408,7 +1386,7 @@ func can_equip_item(item: Dictionary) -> bool:
 		return false
 	if item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
 		return false
-	var member: Dictionary = selected_party_member_or_player(PLAYER_ID)
+	var member: Dictionary = member_by_id(default_party_member_id())
 	if member.is_empty():
 		return false
 	var slot: String = _equipment_slot_for_member(item, member)
@@ -1416,32 +1394,29 @@ func can_equip_item(item: Dictionary) -> bool:
 
 
 func equipment_requirement_met(item: Dictionary, target_slot: String = "") -> bool:
-	return equipment_requirement_met_for(item, PLAYER_ID, target_slot)
+	return equipment_requirement_met_for(item, default_party_member_id(), target_slot)
 
 
 func equipment_requirement_current_value(item: Dictionary, target_slot: String = "") -> int:
-	return equipment_requirement_current_value_for(item, PLAYER_ID, target_slot)
+	return equipment_requirement_current_value_for(item, default_party_member_id(), target_slot)
 
 
 func equipment_requirement_text(item: Dictionary) -> String:
-	return equipment_requirement_text_for(item, PLAYER_ID)
+	return equipment_requirement_text_for(item, default_party_member_id())
 
 
 func _equip_item(item: Dictionary) -> bool:
-	return equip_item_for_member(str(item.get("instance_id", "")), PLAYER_ID)
+	return equip_item_for_member(str(item.get("instance_id", "")), default_party_member_id())
 
 
 func _equipment_slot_for_item(item: Dictionary) -> String:
-	var member: Dictionary = selected_party_member_or_player(PLAYER_ID)
+	var member: Dictionary = member_by_id(default_party_member_id())
 	if member.is_empty():
 		return str(item.get("slot", "weapon"))
 	return _equipment_slot_for_member(item, member)
 
 
 func _unequip_if_needed(instance_id: String) -> void:
-	for slot in equipped.keys():
-		if equipped[slot] == instance_id:
-			equipped[slot] = ""
 	for companion in companions:
 		var companion_equipped: Dictionary = companion.get("equipped", {})
 		for slot in companion_equipped.keys():
@@ -1454,25 +1429,36 @@ func _unequip_if_needed(instance_id: String) -> void:
 		item.erase("equipped_slot")
 
 
-func _use_skill_book(item: Dictionary) -> bool:
+func _use_skill_book(item: Dictionary, member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		log_added.emit("需要先招募角色")
+		return false
 	var skill_id: String = item.get("payload", {}).get("skill_id", "")
 	if skill_id.is_empty():
 		return false
 
-	if _knows_skill(skill_id):
+	if _knows_skill(skill_id, member_id):
 		log_added.emit("已经学会%s" % DataTables.create_skill(skill_id)["name"])
 		return false
 
 	var skill: Dictionary = DataTables.create_skill(skill_id, str(item.get("payload", {}).get("obtain_source", "non_drop")))
-	skills.append(skill)
+	var member_skills: Array = member.get("skills", [])
+	member_skills.append(skill)
+	member["skills"] = member_skills
 	_remove_inventory_count(item["item_id"], 1)
 	log_added.emit("学会%s" % skill["name"])
 	changed.emit()
 	return true
 
 
-func _knows_skill(skill_id: String) -> bool:
-	for skill in skills:
+func _knows_skill(skill_id: String, member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
+	for skill in member.get("skills", []):
 		if skill.get("id", "") == skill_id:
 			return true
 	return false
@@ -1493,7 +1479,7 @@ func _use_alchemy_recipe(item: Dictionary) -> bool:
 
 
 func _use_pill(item: Dictionary) -> bool:
-	return _use_pill_for_member(item, PLAYER_ID)
+	return _use_pill_for_member(item, default_party_member_id())
 
 
 func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
@@ -1502,7 +1488,7 @@ func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
 		return _use_breakthrough_item(item, member_id)
 	if payload.get("effect_mode", "instant") == "duration":
 		var duration: float = float(payload.get("duration", 0.0))
-		var existing_buff: Dictionary = _active_buff_for_item(str(item["item_id"]))
+		var existing_buff: Dictionary = _active_buff_for_item(str(item["item_id"]), member_id)
 		if existing_buff.is_empty():
 			active_buffs.append({
 				"item_id": item["item_id"],
@@ -1510,6 +1496,7 @@ func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
 				"stat": payload.get("stat", ""),
 				"amount": int(payload.get("amount", 0)),
 				"remaining": duration,
+				"member_id": member_id,
 			})
 		else:
 			existing_buff["remaining"] = float(existing_buff.get("remaining", 0.0)) + duration
@@ -1520,7 +1507,7 @@ func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
 
 	var hp_amount: int = int(payload.get("hp", 0))
 	var mp_amount: int = int(payload.get("mp", 0))
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
@@ -1541,7 +1528,7 @@ func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
 
 
 func _use_breakthrough_item(item: Dictionary, member_id: String) -> bool:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
@@ -1592,9 +1579,11 @@ func first_empty_farm_slot_index() -> int:
 	return -1
 
 
-func plant_farm_slot(slot_index: int, crop_id: String, member_id: String = PLAYER_ID) -> bool:
+func plant_farm_slot(slot_index: int, crop_id: String, member_id: String = "") -> bool:
 	_ensure_farm_slots()
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
@@ -1609,7 +1598,7 @@ func plant_farm_slot(slot_index: int, crop_id: String, member_id: String = PLAYE
 	if not spend_resource(crop_id, 1):
 		log_added.emit("种子不足")
 		return false
-	var resolved_id: String = str(member.get("id", PLAYER_ID))
+	var resolved_id: String = str(member.get("id", ""))
 	var harvest_amount: int = farm_harvest_amount_for(crop_id, resolved_id, true)
 	farm_slots[slot_index] = {
 		"status": FARM_STATUS_GROWING,
@@ -1626,11 +1615,13 @@ func plant_farm_slot(slot_index: int, crop_id: String, member_id: String = PLAYE
 	return true
 
 
-func farm_harvest_amount_for(crop_id: String, member_id: String = PLAYER_ID, roll_extra: bool = false) -> int:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+func farm_harvest_amount_for(crop_id: String, member_id: String = "", roll_extra: bool = false) -> int:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
-	var resolved_id: String = str(member.get("id", PLAYER_ID))
+	var resolved_id: String = str(member.get("id", ""))
 	var farm_level: int = building_level(BUILDING_FARM)
 	var amount: int = DataTables.crop_seed_yield(crop_id) + farm_level - 1
 	amount += _farm_root_bonus_for(resolved_id)
@@ -1645,9 +1636,9 @@ func _farm_root_bonus_for(member_id: String) -> int:
 	return int(total_stat_for(member_id, "root_bone") * 0.05)
 
 
-func _active_buff_for_item(item_id: String) -> Dictionary:
+func _active_buff_for_item(item_id: String, member_id: String = "") -> Dictionary:
 	for buff in active_buffs:
-		if str(buff.get("item_id", "")) == item_id:
+		if str(buff.get("item_id", "")) == item_id and str(buff.get("member_id", "")) == member_id:
 			return buff
 	return {}
 
@@ -1685,8 +1676,9 @@ func claim_farm_slot(slot_index: int) -> bool:
 		return false
 	add_inventory_item(crop_id, amount, false)
 	farm_slots[slot_index] = _empty_farm_slot()
-	var worker_id: String = str(slot.get("worker_id", PLAYER_ID))
-	add_exp_for_member(worker_id, 2)
+	var worker_id: String = str(slot.get("worker_id", ""))
+	if not worker_id.is_empty():
+		add_exp_for_member(worker_id, 2)
 	add_task_experience(GameDefs.TaskType.FARM, 5)
 	log_added.emit("收取%s x%d" % [DataTables.resource_name(crop_id), amount])
 	_refresh_farm_progress_state()
@@ -1851,7 +1843,9 @@ func _ensure_farm_slots() -> void:
 			slot["status"] = status
 			slot["crop_id"] = str(slot.get("crop_id", ""))
 			slot["worker_id"] = str(slot.get("worker_id", ""))
-			var worker: Dictionary = selected_party_member_or_player(str(slot.get("worker_id", "")))
+			var worker: Dictionary = member_by_id(str(slot.get("worker_id", "")))
+			if worker.is_empty():
+				slot["worker_id"] = ""
 			slot["worker_name"] = str(slot.get("worker_name", worker.get("name", "未知角色")))
 			slot["elapsed_seconds"] = float(slot.get("elapsed_seconds", 0.0))
 			slot["growth_seconds"] = max(1.0, float(slot.get("growth_seconds", DataTables.crop_growth_seconds(str(slot.get("crop_id", ""))))))
@@ -1894,10 +1888,12 @@ func random_known_alchemy_recipe() -> String:
 	return str(known_alchemy_recipes[rng.randi_range(0, known_alchemy_recipes.size() - 1)])
 
 
-func alchemy_max_craft_count(recipe_id: String, member_id: String = PLAYER_ID) -> int:
+func alchemy_max_craft_count(recipe_id: String, member_id: String = "") -> int:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
 	if recipe_id.is_empty():
 		return 0
-	if selected_party_member_or_player(member_id).is_empty():
+	if member_by_id(member_id).is_empty():
 		return 0
 
 	var materials: Array = DataTables.alchemy_recipe_materials(recipe_id)
@@ -1914,14 +1910,18 @@ func alchemy_max_craft_count(recipe_id: String, member_id: String = PLAYER_ID) -
 	return max_count
 
 
-func craft_alchemy_recipe(recipe_id: String, amount: int, member_id: String = PLAYER_ID) -> bool:
+func craft_alchemy_recipe(recipe_id: String, amount: int, member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
 	var job: Dictionary = production_jobs.get(BUILDING_ALCHEMY, {})
 	if str(job.get("status", PRODUCTION_STATUS_IDLE)) == PRODUCTION_STATUS_CLAIMABLE:
 		return claim_alchemy_job()
 	return start_alchemy_job(recipe_id, amount, member_id)
 
 
-func start_alchemy_job(recipe_id: String, amount: int, member_id: String = PLAYER_ID) -> bool:
+func start_alchemy_job(recipe_id: String, amount: int, member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
 	var existing_job: Dictionary = production_jobs.get(BUILDING_ALCHEMY, {})
 	var existing_status: String = str(existing_job.get("status", PRODUCTION_STATUS_IDLE))
 	if existing_status == PRODUCTION_STATUS_RUNNING:
@@ -1943,11 +1943,11 @@ func start_alchemy_job(recipe_id: String, amount: int, member_id: String = PLAYE
 	if result_item_id.is_empty() or materials.is_empty():
 		log_added.emit("丹方无效")
 		return false
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
-	var resolved_id: String = str(member.get("id", PLAYER_ID))
+	var resolved_id: String = str(member.get("id", ""))
 	if alchemy_max_craft_count(recipe_id, resolved_id) < amount:
 		log_added.emit("炼丹材料不足")
 		return false
@@ -2004,10 +2004,12 @@ func claim_alchemy_job() -> bool:
 	return true
 
 
-func alchemy_material_cost_for(item_id: String, base_amount: int, craft_amount: int, member_id: String = PLAYER_ID) -> int:
+func alchemy_material_cost_for(item_id: String, base_amount: int, craft_amount: int, member_id: String = "") -> int:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
 	if item_id.is_empty() or base_amount <= 0 or craft_amount <= 0:
 		return 0
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return 0
 	return _production_material_cost(base_amount, craft_amount, member, "alchemy")
@@ -2081,12 +2083,8 @@ func add_equipment_affix(instance_id: String) -> bool:
 
 
 func _equipped_items() -> Array:
-	var items: Array = []
-	for slot in equipped.keys():
-		var item: Dictionary = equipped_item(slot)
-		if not item.is_empty():
-			items.append(item)
-	return items
+	var member: Dictionary = member_by_id(default_party_member_id())
+	return _equipped_items_for_member(member) if not member.is_empty() else []
 
 
 func _stat_bonus(stat_id: String) -> int:
@@ -2115,22 +2113,15 @@ func _equipment_attribute_bonus(stat_id: String) -> int:
 
 
 func _total_requirement_stat_excluding_slot(stat_id: String, excluded_slot: String) -> int:
-	if stat_id.begins_with(DataTables.ELEMENT_ATTRIBUTE_PREFIX):
-		var element_id: String = DataTables.element_id_from_attribute(stat_id)
-		return int(elements.get(element_id, 0)) + _equipment_attribute_bonus_excluding_slot(stat_id, excluded_slot)
-	return int(stats.get(stat_id, 0)) + _stat_bonus(stat_id) + _equipment_attribute_bonus_excluding_slot(stat_id, excluded_slot)
+	var member: Dictionary = member_by_id(default_party_member_id())
+	if member.is_empty():
+		return 0
+	return _total_requirement_stat_excluding_slot_for(member, stat_id, excluded_slot)
 
 
 func _equipment_attribute_bonus_excluding_slot(stat_id: String, excluded_slot: String) -> int:
-	var value: int = 0
-	for slot in equipped.keys():
-		if slot == excluded_slot:
-			continue
-		var item: Dictionary = equipped_item(slot)
-		if item.is_empty():
-			continue
-		value += _item_equipment_attribute_value(item, stat_id)
-	return value
+	var member: Dictionary = member_by_id(default_party_member_id())
+	return _equipment_attribute_bonus_excluding_slot_for(member, stat_id, excluded_slot) if not member.is_empty() else 0
 
 
 func _item_equipment_attribute_value(item: Dictionary, stat_id: String) -> int:
@@ -2186,7 +2177,7 @@ func _sum_enhanced_attribute(item: Dictionary, stat_id: String) -> int:
 
 
 func _update_farm_level() -> void:
-	stats["farm_level"] = building_level(BUILDING_FARM)
+	pass
 
 
 func _grant_auto_level_points_for_member(member: Dictionary) -> void:
@@ -2194,19 +2185,19 @@ func _grant_auto_level_points_for_member(member: Dictionary) -> void:
 
 
 func try_breakthrough() -> bool:
-	return _try_breakthrough_for_member(player_member())
+	return _try_breakthrough_for_member(member_by_id(default_party_member_id()))
 
 
 func _ensure_level_cap_open() -> bool:
-	return _ensure_level_cap_open_for_member(player_member())
+	return _ensure_level_cap_open_for_member(member_by_id(default_party_member_id()))
 
 
 func _unlock_next_stage() -> void:
-	_unlock_next_stage_for_member(player_member())
+	_unlock_next_stage_for_member(member_by_id(default_party_member_id()))
 
 
 func _level_up() -> void:
-	_level_up_member(player_member())
+	_level_up_member(member_by_id(default_party_member_id()))
 
 
 func _level_up_member(member: Dictionary) -> void:

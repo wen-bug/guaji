@@ -1,8 +1,6 @@
 class_name InventoryService
 extends RefCounted
 
-const PLAYER_ID := "player"
-
 var game_state
 
 
@@ -111,7 +109,7 @@ func is_inventory_item_direct_usable(instance_id: String) -> bool:
 
 
 func use_inventory_item(instance_id: String) -> bool:
-	return use_inventory_item_for_member(instance_id, PLAYER_ID)
+	return use_inventory_item_for_member(instance_id, game_state.default_party_member_id())
 
 
 func use_inventory_item_for_member(instance_id: String, member_id: String) -> bool:
@@ -126,7 +124,7 @@ func use_inventory_item_for_member(instance_id: String, member_id: String) -> bo
 		DataTables.ITEM_TYPE_EQUIPMENT:
 			return game_state.equip_item_for_member(instance_id, member_id)
 		DataTables.ITEM_TYPE_SKILL_BOOK:
-			return game_state._use_skill_book(item)
+			return game_state._use_skill_book(item, member_id)
 		DataTables.ITEM_TYPE_ALCHEMY_RECIPE:
 			return game_state._use_alchemy_recipe(item)
 		DataTables.ITEM_TYPE_PILL:

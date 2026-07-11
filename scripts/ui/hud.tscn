@@ -195,7 +195,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="CharacterInfoButton" type="Button" parent="Root/MenuPanel/MenuLayout" unique_id=516247957]
+[node name="MemberInfoButton" type="Button" parent="Root/MenuPanel/MenuLayout" unique_id=516247957]
 custom_minimum_size = Vector2(120, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
@@ -215,25 +215,25 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "背包"
 
-[node name="CharacterInfoPanel" type="PanelContainer" parent="Root" unique_id=38338302]
+[node name="MemberInfoPanel" type="PanelContainer" parent="Root" unique_id=38338302]
 visible = false
 layout_mode = 0
 offset_left = 84.0
-offset_top = 6.0
-offset_right = 548.0
-offset_bottom = 432.0
+offset_top = 44.0
+offset_right = 524.0
+offset_bottom = 384.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
-[node name="PanelLayout" type="VBoxContainer" parent="Root/CharacterInfoPanel" unique_id=934941229]
+[node name="PanelLayout" type="VBoxContainer" parent="Root/MemberInfoPanel" unique_id=934941229]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Header" type="HBoxContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1563610925]
+[node name="Header" type="HBoxContainer" parent="Root/MemberInfoPanel/PanelLayout" unique_id=1563610925]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Title" type="Label" parent="Root/CharacterInfoPanel/PanelLayout/Header" unique_id=1810843250]
-custom_minimum_size = Vector2(340, 24)
+[node name="Title" type="Label" parent="Root/MemberInfoPanel/PanelLayout/Header" unique_id=1810843250]
+custom_minimum_size = Vector2(366, 24)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
@@ -241,7 +241,7 @@ theme_override_constants/outline_size = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_title")
 text = "信息"
 
-[node name="CloseButton" type="Button" parent="Root/CharacterInfoPanel/PanelLayout/Header" unique_id=52625212]
+[node name="CloseButton" type="Button" parent="Root/MemberInfoPanel/PanelLayout/Header" unique_id=52625212]
 custom_minimum_size = Vector2(52, 24)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
@@ -251,48 +251,88 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="MemberList" type="ItemList" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=700000001]
-custom_minimum_size = Vector2(452, 74)
+[node name="MemberList" type="ItemList" parent="Root/MemberInfoPanel/PanelLayout" unique_id=700000001]
+custom_minimum_size = Vector2(424, 38)
 layout_mode = 2
+max_columns = 4
+same_column_width = true
+fixed_column_width = 100
+fixed_icon_size = Vector2i(0, 0)
 
-[node name="AttributeTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1561382855]
+[node name="ContentRow" type="HBoxContainer" parent="Root/MemberInfoPanel/PanelLayout"]
+custom_minimum_size = Vector2(424, 258)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.87, 0.57, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
-theme_override_constants/outline_size = 1
-text = "属性"
+theme_override_constants/separation = 8
 
-[node name="AttributeGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=174227289]
+[node name="PortraitPanel" type="PanelContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow"]
+custom_minimum_size = Vector2(136, 258)
 layout_mode = 2
-theme_override_constants/h_separation = 12
+theme_override_styles/panel = SubResource("StyleBoxFlat_title")
+
+[node name="PortraitLayout" type="VBoxContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PortraitViewportContainer" type="SubViewportContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout"]
+custom_minimum_size = Vector2(128, 218)
+layout_mode = 2
+stretch = true
+mouse_filter = 2
+
+[node name="PortraitViewport" type="SubViewport" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(128, 218)
+render_target_update_mode = 4
+
+[node name="PortraitRoot" type="Node2D" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport"]
+position = Vector2(64, 104)
+
+[node name="PortraitName" type="Label" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout"]
+custom_minimum_size = Vector2(128, 24)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
+horizontal_alignment = 1
+text = "暂无角色"
+text_overrun_behavior = 3
+
+[node name="InfoTabs" type="TabContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow"]
+custom_minimum_size = Vector2(280, 258)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="属性" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="AttributeGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性" unique_id=174227289]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 3
 columns = 2
 
-[node name="EquipmentTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1435669809]
+[node name="装备" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.87, 0.57, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
-theme_override_constants/outline_size = 1
-text = "装备"
+horizontal_scroll_mode = 0
 
-[node name="EquipmentGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=2044326899]
+[node name="EquipmentGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备" unique_id=2044326899]
 layout_mode = 2
-theme_override_constants/h_separation = 6
+size_flags_horizontal = 3
 theme_override_constants/v_separation = 6
-columns = 2
+columns = 1
 
-[node name="SkillTitle" type="Label" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=54302961]
+[node name="技能" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.87, 0.57, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
-theme_override_constants/outline_size = 1
-text = "技能"
+horizontal_scroll_mode = 0
 
-[node name="SkillGrid" type="GridContainer" parent="Root/CharacterInfoPanel/PanelLayout" unique_id=1617409243]
+[node name="SkillGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/技能" unique_id=1617409243]
 layout_mode = 2
-theme_override_constants/h_separation = 6
+size_flags_horizontal = 3
 theme_override_constants/v_separation = 6
-columns = 2
+columns = 1
 
 [node name="InventoryPanel" type="PanelContainer" parent="Root" unique_id=1318300020]
 visible = false
@@ -1286,5 +1326,5 @@ vertical_alignment = 1
 [connection signal="mouse_entered" from="Root/MenuButton" to="." method="_on_menu_button_mouse_entered"]
 [connection signal="mouse_exited" from="Root/MenuButton" to="." method="_on_menu_button_mouse_exited"]
 [connection signal="pressed" from="Root/MenuButton" to="." method="_toggle_menu"]
-[connection signal="pressed" from="Root/MenuPanel/MenuLayout/CharacterInfoButton" to="." method="_open_character_info_panel"]
+[connection signal="pressed" from="Root/MenuPanel/MenuLayout/MemberInfoButton" to="." method="_open_member_info_panel"]
 [connection signal="pressed" from="Root/MenuPanel/MenuLayout/InventoryButton" to="." method="_open_inventory_panel"]

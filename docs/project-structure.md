@@ -11,9 +11,18 @@
 ├── main.tscn
 ├── scripts/
 │   ├── main.gd
-│   ├── character/
-│   │   ├── me.tscn
-│   │   └── character_controller.gd
+│   ├── actors/
+│   │   ├── actor.tscn
+│   │   ├── actor_controller.gd
+│   │   └── visuals/
+│   │       ├── combat_visual.gd
+│   │       ├── combat_hitbox.gd
+│   │       ├── combat_hurtbox.gd
+│   │       ├── party/actor_default.tscn
+│   │       └── enemies/
+│   │           ├── enemy_default.tscn
+│   │           ├── forest_wolf.tscn
+│   │           └── training_dummy.tscn
 │   ├── game/
 │   │   ├── core/
 │   │   │   ├── game_defs.gd
@@ -51,6 +60,7 @@
 │   │   │       └── buff_skill.tscn
 │   │   ├── enemies/
 │   │   │   ├── base_enemy.gd
+│   │   │   ├── enemy_template.tscn
 │   │   │   ├── forest_wolf/
 │   │   │   │   ├── enemy.gd
 │   │   │   │   └── enemy.tscn
@@ -71,6 +81,9 @@
 │   ├── items/
 │   ├── equipment/
 │   └── skills/
+├── assets/
+│   ├── actors/
+│   └── items/
 ├── AGENTS.md
 ├── PLAN.md
 └── project.godot
@@ -88,6 +101,7 @@
 - 根据 HUD 请求直接执行招募或进入历练；种田、炼器、炼丹由 HUD 选择执行者后调用 `GameState` 生产接口结算。
 - 处理家园和历练地图之间的加载遮罩过渡。
 - 每帧更新 Buff、农田、自动战斗状态并刷新 HUD。
+- 正常退出或窗口关闭时强制保存尚未写入的状态。
 
 ## 核心脚本
 
@@ -97,20 +111,24 @@
 
 ### `scripts/game/core/game_state.gd`
 
-游戏状态门面，集中保存玩家数据并协调各玩法服务：
+游戏状态门面，集中保存账号、招募成员和玩法数据并协调各服务：
 
 - 基础属性：等级、经验、生命、法力、攻击、防御、根骨、阶段、等级上限。
 - 五行属性：木、火、土、金、水。
-- 队伍：通过 `PartyService` 管理玩家、队友、招募候选人、队伍顺序和最多 4 人限制。
+- 账号历练：保存独立等级与经验，决定敌人、新候选和掉落等级。
+- 队伍：通过 `PartyService` 管理招募成员、候选人、队伍顺序和最多 4 人限制，不存在固定主角。
 - 熟练度：招募、种田、炼器、炼丹、战斗。
 - 背包：通过 `InventoryService` 管理堆叠物品、装备实例、使用、丢弃、消耗。
 - 装备：穿戴、槽位、穿戴需求、强化、洗练、词条、属性加成。
 - 技能：已学习技能与技能书使用。
 - 丹方：已学习丹方、最大制作数量和批量炼丹。
 - Buff：持续丹药效果、每帧更新与属性叠加。
-- 成长与生产：玩家与队友经验升级、自动属性成长、伙伴成长主属性、先天命格、突破道具、根骨突破，以及种田、炼器、炼丹的执行者根骨/命格加成。
+- 成长与生产：各角色经验升级、自动属性成长、成长主属性、先天命格、突破道具、根骨突破，以及种田、炼器、炼丹的执行者根骨/命格加成。
 - 调试：提供添加物品、生成装备、直接设置基础属性的测试方法。
 - 存档：`to_save_data()` / `load_save_data(data)`。
+- 战败恢复：全灭返回家园前按总上限恢复队伍生命和法力。
+- 委托边界：背包规则交给 `InventoryService`，队伍和成长交给 `PartyService`。
+- 禁止职责：不处理战斗 AI、战斗动画、伤害浮字或窗口表现。
 
 ### `scripts/game/data/data_tables.gd`
 
@@ -159,29 +177,35 @@
 
 队伍与成员业务服务：
 
-- 统一玩家、队友和招募候选人的成员数据结构。
+- 统一招募成员和候选人的成员数据结构，并补齐稳定的 `visual_id`。
 - 维护队伍顺序、队伍人数、招募、移动和离队。
 - 处理成员自动成长、先天命格生成、升级、突破和旧存档加点迁移。
 
-### `scripts/game/enemies/<enemy_id>/`
+### `scripts/game/enemies/`
 
-每个敌人按怪物名或稳定英文 ID 独立放在自己的目录：
+`enemy_template.tscn` 只承载敌人数据、状态、血量、AI 和形象装配入口，不包含具体 Sprite、Marker 或碰撞块。森林狼和木桩继承该模板，只保留模板 ID、数值与特殊 AI。
+
+每个敌人按稳定英文 ID 保留自己的数据场景：
 
 - `enemy.tscn`：该敌人的独立场景节点。
 - `enemy.gd`：该敌人的独立脚本。
-- `CombatController` 只通过统一接口实例化敌人，不再依赖具体怪物的内部节点结构。
+- `BaseEnemy` 根据 `visual_id` 从 `scripts/actors/visuals/enemies/` 装配形象，并转发动画和碰撞信号。
 
 ### `scripts/game/combat/combat_controller.gd`
 
 单场战斗控制器：
 
 - 创建敌人并启动战斗。
-- 按队伍 HUD 顺序生成成员站位，所有存活成员独立冷却并自动出招。
+- 按 `party_order` 生成成员站位，并以严格回合指针逐个执行玩家成员，之后才执行敌人回合。
+- 单名成员使用 `READY -> APPROACH -> ATTACK -> RETURN -> RECOVERY` 状态，预约目标 Marker 后接敌；攻击动画和归位完全结束后才轮到下一名。
+- 普通攻击只接受形象 Hitbox 与敌方 Hurtbox 的碰撞信号，每个行动对每个目标只结算一次。
 - 处理技能冷却与技能伤害。
 - 按阶段调用 `CombatEffectResolver` 处理攻击、受击、护盾、DOT/HOT、吸血、Buff/Debuff 和击杀触发。
 - 敌人按独立目录组织，木桩和普通怪物各自拥有自己的场景与脚本。
 - 更新敌人血条与受击表现。
 - 战斗胜利时结算经验、敌人掉落表和独立装备掉落。
+- 对外提供 `none`、`victory`、`defeat` 战斗结果；全灭本身不结算奖励。
+- 技能和丹药冷却按角色自身回合递减，修正后的回合数向上取整。
 - 不提供自动/手动切换、攻击、防御、技能按钮等手动战斗入口。
 
 ### `scripts/game/combat/combat_ai.gd`
@@ -201,31 +225,28 @@
 - 生成伤害、治疗、状态覆盖/叠加、一次性消耗、护盾抵消和冷却修正事件。
 - 不负责动画、伤害浮字、HUD 或掉落结算。
 
-### `scripts/game/core/game_state.gd`
-
-`GameState` 继续承担全局结算与服务门面：
-
-- 属性、五行、成长、熟练度、存档数据。
-- 背包与队伍规则分别委托给 `InventoryService` 和 `PartyService`。
-- 学习技能、学习丹方、炼丹、炼器、强化和洗练。
-- 普通受击、回血、Buff 更新和大部分资源结算。
-- 不负责战斗 AI 选招和战斗表现动画。
-
 ### `scripts/game/core/save_manager.gd`
 
-统一存档管理器，使用 `user://save.cfg` 保存版本、游戏状态、HUD 面板位置和基础配置。测试可传入临时路径避免污染真实存档。
+统一存档管理器，使用 `user://save.cfg` 保存版本、游戏状态、HUD 面板位置和基础配置。缺少有效游戏段或解析失败时回退默认新档；测试可传入临时路径避免污染真实存档。
 
-### `scripts/character/character_controller.gd`
+### `scripts/actors/actor_controller.gd`
 
-角色控制与表现状态机：
+场景角色表现控制与状态机：
 
 - `IDLE`：家园待机。
-- `ROAMING`：家园范围内闲逛，播放 `run`。
+- `ROAMING`：家园范围内闲逛，播放 `walk`。
 - `TALKING`：显示一句短对白，播放 `idle`。
-- `EXPEDITION_RUN`：历练地图跑图，播放 `run`。
+- `EXPEDITION_RUNNING`：历练地图跑图，播放 `run`。
+- `COMBAT_READY`：战斗待机，播放 `idle`。
+- `COMBAT_MOVING`：按战斗逻辑位置移动，播放 `run`。
+- `COMBAT_ACTING`：执行战斗动作，近战播放非循环 `melee_attack`，远程普通攻击播放 `ranged_attack`。
 - `PAUSED`：暂停表现，播放 `idle`。
 
-角色场景 `me.tscn` 根节点为 `CharacterBody2D`，子节点包含 `Sprite`、`CollisionShape2D` 和 `TalkLabel`。
+家园和战斗共用 `actor.tscn`，根节点为 `CharacterBody2D`，只保留 `VisualRoot` 与 `TalkLabel`。`ActorController` 根据成员 `visual_id` 从 `scripts/actors/visuals/party/<visual_id>.tscn` 装配完整形象；缺失或契约不完整时降级到 `actor_default`。
+
+每个 `CombatVisual` 自行维护 Sprite/AnimatedSprite、AnimationPlayer、Hurtbox、AttackHitbox、近战 `Marker2D`、`HitSocket` 和 `EffectSocket`。后续新增形象只需创建满足统一接口的新场景，不修改角色数值、AI 或控制器。
+
+人物形象统一预留 `idle`、`walk`、`run`、`melee_attack`、`ranged_attack`、`death` 和 `level_up` 动画。旧形象的 `attack` 仍作为近战兼容名；缺少 `walk` 时回退到 `run`。远程动作不会开启近战 Hitbox，动画结束时由控制器结算远程普通攻击；当前火球术作为 `attack_mode=ranged` 的零蓝耗普通攻击。
 
 ### `scripts/map/home_map.gd`
 
@@ -242,8 +263,7 @@
 历练地图脚本：
 
 - 默认隐藏，进入历练时显示，退出历练时隐藏。
-- 维护 `Sky`、远景层和地面层，使用主场景下发的统一视口尺寸。
-- 通过两层横向循环滚动表现跑图。
+- 作为透明历练层使用，不绘制独立背景。
 - 维护随机遇怪计时，发出 `monster_spawn_requested`。
 - 战斗结束后重新安排下一次遇怪。
 
@@ -259,6 +279,7 @@ HUD 控制脚本：
 - 招募 HUD：显示候选人、命格摘要、材料成本、队伍顺序、上移/下移和队友离队。
 - 炼丹面板的已学丹方选择、材料槽、数量选择和批量制作。
 - 历练控制 HUD：显示 `返回家园`，仅用于结束当前历练并回到家园。
+- 战斗伤害和治疗通过 `DamagePopupManager` 显示浮字。
 - 加载遮罩：家园进入历练、历练返回家园时播放淡入/淡出过渡。
 - 调试 HUD：常驻 `调试` 按钮，支持添加物品、生成装备、直接设置基础属性。
 - 弹窗拖动、位置保存与视口内 clamp。
@@ -285,7 +306,7 @@ HUD 控制脚本：
 
 ## 历练战斗补充
 
-- `scripts/map/battle_map.tscn`：历练地图场景，默认隐藏；进入打怪历练后显示，提供远景与地面两层循环滚动背景。
+- `scripts/map/battle_map.tscn`：历练地图场景，默认隐藏；进入打怪历练后显示，作为透明历练层承载刷怪和战斗坐标。
 - `scripts/map/battle_map.gd`：历练地图控制器，维护随机刷怪计时，发出 `monster_spawn_requested`，并在战斗结束后重新安排下一次遇怪。
 - `scripts/game/combat/combat_controller.gd`：单场自动战斗控制器，只处理当前遇怪战斗，不负责怪物刷新频率。
 - `scripts/ui/hud.gd`：提供 `ExpeditionHud` 返回入口和 `LoadingOverlay` 加载过渡，不恢复手动战斗控件。

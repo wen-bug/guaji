@@ -43,7 +43,7 @@
 
 | item_no | item_id | 名称 | type | usable | gain_target | payload 摘要 |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 1001 | `herb` | 草药 | `crop` | 否 | `none` | `seed_yield=3`, `growth_seconds=60` |
+| 1001 | `herb` | 草药 | `crop` | 否 | `none` | `seed_yield=3`, `growth_seconds=600` |
 | 1004 | `ore` | 矿石 | `material` | 否 | `none` | 通用炼器材料 |
 | 1005 | `spirit_stone` | 灵石 | `material` | 否 | `none` | 招募货币；强化普通属性，`enhance_amount=1` |
 | 1006 | `farm_speed_talisman` | 丰收符 | `material` | 是 | `none` | `farm_speed=true` |
@@ -56,29 +56,36 @@
 | 1015 | `recipe_pill` | 调息丹方 | `alchemy_recipe` | 是 | `none` | 学习 `pill` 丹方 |
 | 1016 | `pill` | 调息丹 | `pill` | 是 | `none` | 恢复 `hp=18`, `mp=12` |
 | 1017 | `breakthrough_pill` | 破境丹 | `pill` | 是 | `none` | `breakthrough=true` |
-| 1018 | `skill_fireball` | 火球术残卷 | `skill_book` | 是 | `none` | 学习 `fireball` |
-| 1019 | `blade_grass` | 刃纹草 | `crop` | 否 | `attack` | `seed_yield=1`, `growth_seconds=180` |
-| 1020 | `ironroot` | 铁根藤 | `crop` | 否 | `defense` | `seed_yield=1`, `growth_seconds=180` |
-| 1021 | `blood_ginseng` | 血参 | `crop` | 否 | `max_hp` | `seed_yield=1`, `growth_seconds=240` |
-| 1022 | `spirit_lotus` | 灵泉莲 | `crop` | 否 | `max_mp` | `seed_yield=1`, `growth_seconds=240` |
-| 1023 | `bone_bamboo` | 玉骨竹 | `crop` | 否 | `root_bone` | `seed_yield=1`, `growth_seconds=360` |
-| 1024 | `woodvine` | 青木藤 | `crop` | 否 | `wood` | `seed_yield=1`, `growth_seconds=180` |
-| 1025 | `flame_flower` | 赤焰花 | `crop` | 否 | `fire` | `seed_yield=1`, `growth_seconds=210` |
-| 1026 | `earth_moss` | 厚土苔 | `crop` | 否 | `earth` | `seed_yield=1`, `growth_seconds=210` |
-| 1027 | `metal_reed` | 玄金苇 | `crop` | 否 | `metal` | `seed_yield=1`, `growth_seconds=300` |
-| 1028 | `water_orchid` | 玄水兰 | `crop` | 否 | `water` | `seed_yield=1`, `growth_seconds=240` |
+| 1019 | `blade_grass` | 刃纹草 | `crop` | 否 | `attack` | `seed_yield=1`, `growth_seconds=900` |
+| 1020 | `ironroot` | 铁根藤 | `crop` | 否 | `defense` | `seed_yield=1`, `growth_seconds=900` |
+| 1021 | `blood_ginseng` | 血参 | `crop` | 否 | `max_hp` | `seed_yield=1`, `growth_seconds=1200` |
+| 1022 | `spirit_lotus` | 灵泉莲 | `crop` | 否 | `max_mp` | `seed_yield=1`, `growth_seconds=1200` |
+| 1023 | `bone_bamboo` | 玉骨竹 | `crop` | 否 | `root_bone` | `seed_yield=1`, `growth_seconds=1800` |
+| 1024 | `woodvine` | 青木藤 | `crop` | 否 | `wood` | `seed_yield=1`, `growth_seconds=900` |
+| 1025 | `flame_flower` | 赤焰花 | `crop` | 否 | `fire` | `seed_yield=1`, `growth_seconds=1050` |
+| 1026 | `earth_moss` | 厚土苔 | `crop` | 否 | `earth` | `seed_yield=1`, `growth_seconds=1050` |
+| 1027 | `metal_reed` | 玄金苇 | `crop` | 否 | `metal` | `seed_yield=1`, `growth_seconds=1500` |
+| 1028 | `water_orchid` | 玄水兰 | `crop` | 否 | `water` | `seed_yield=1`, `growth_seconds=1200` |
 
-`item_no` 1002、1003、1007 和 1008 曾用于已删除物品，后续不复用。
+`item_no` 1002、1003、1007、1008 和 1018 曾用于已删除物品，后续不复用。
+
+## 已实现：普通攻击
+
+| attack_mode | 名称 | 五行 | 蓝耗 | 冷却（角色回合） | 释放距离 | 说明 |
+| --- | --- | --- | ---: | ---: | ---: | --- |
+| `melee` | 普通攻击 | 无 | 0 | 0 | 敌方近战点 | 使用近战动画和 Hitbox 命中 |
+| `ranged` | 火球术 | `fire` | 0 | 0 | 120 | 远程角色的普通攻击，不属于技能列表 |
 
 ## 已实现：技能
 
-| skill_id | 名称 | 类型 | 五行 | 蓝耗 | 冷却 | 释放距离 | 说明 |
+| skill_id | 名称 | 类型 | 五行 | 蓝耗 | 冷却（角色回合） | 释放距离 | 说明 |
 | --- | --- | --- | --- | ---: | ---: | ---: | --- |
-| `fireball` | 火球术 | `damage` | `fire` | 8 | 3.0 | 120 | 伤害倍率 1.35 |
-| `heal` | 回春术 | `heal` | `wood` | 6 | 5.0 | 96 | 血量低于 35% 时优先治疗 |
-| `thunder` | 雷击术 | `damage` | `metal` | 12 | 5.0 | 140 | 伤害倍率 1.75 |
+| `heal` | 回春术 | `heal` | `wood` | 6 | 5 | 96 | 血量低于 35% 时优先治疗 |
+| `thunder` | 雷击术 | `damage` | `metal` | 12 | 5 | 140 | 伤害倍率 1.75 |
 
-当前已实现的技能书物品只有 `skill_fireball`。`heal` 和 `thunder` 已在技能表中配置，但没有对应物品定义。
+冷却在角色每次获得自身回合时递减 1；百分比修正后的冷却向上取整。
+
+当前没有已实现的技能书物品。`heal` 和 `thunder` 已在技能表中配置，但没有对应物品定义。
 
 ## 已实现：炼丹配方
 
@@ -170,13 +177,26 @@
 
 | enemy_id | 名称 | 五行 | 弱点 | 掉落 | 经验 | 说明 |
 | --- | --- | --- | --- | --- | ---: | --- |
-| `training_dummy` | 木桩 | `wood` | `fire` | 无 | `6 + level * 2` | 训练目标，`use_drop=false` |
-| `forest_wolf` | 林狼 | `wood` | `fire` | `herb`, 55%, 1-2 个 | `10 + level * 2` | 普通掉落敌人 |
+| `training_dummy` | 木桩 | `wood` | `fire` | 无 | `6 + level * 2` | 训练目标，`use_drop=false`，装备 0% |
+| `forest_wolf` | 林狼 | `wood` | `fire` | 草药 55%（1-2）、矿石 30%（1）、灵石 10%（1） | `10 + level * 2` | 独立装备掉落 5% |
 
 敌人场景路径：
 
 - `training_dummy`：`res://scripts/game/enemies/training_dummy/enemy.tscn`
 - `forest_wolf`：`res://scripts/game/enemies/forest_wolf/enemy.tscn`
+
+## 已实现：开局、建筑与生产节奏
+
+正式新档物资为 `spirit_stone x1`、`herb x1`、`recipe_pill x1`。项目设置 `game/development/seed_test_inventory` 默认为 `false`，开启后才补齐测试物品和基础装备。
+
+| 建筑 | 1 级升级消耗 | 升级成本 | 1 级生产时间 | 满级附近生产时间 |
+| --- | --- | --- | ---: | ---: |
+| 招募 | `spirit_stone x1` | 当前等级个灵石 | 即时 | 即时 |
+| 农田 | `herb x1` | 当前等级个草药 | 草药 600 秒 | 基础时间的 55% |
+| 炼器 | `ore x2` | 当前等级 + 1 个矿石 | 900 秒 | 360 秒 |
+| 炼丹 | `herb x2` | 当前等级 + 1 个草药 | 每份 600 秒 | 每份 195 秒 |
+
+炼器任务基础消耗 `ore x4`，受执行者材料减免效果影响但最低为 1。生产时间只在程序运行时推进，不补算离线时间。
 
 ## 已实现：维护规则
 

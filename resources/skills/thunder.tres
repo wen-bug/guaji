@@ -11,6 +11,6 @@ icon_path = "res://assets/skills/thunder.png"
 type = "damage"
 element = "metal"
 mp_cost = 12
-cooldown = 5.0
+cooldown = 5
 release_distance = 140.0
 description = "金属性高伤害技能。"

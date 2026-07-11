@@ -11,6 +11,6 @@ icon_path = "res://assets/skills/heal.png"
 type = "heal"
 element = "wood"
 mp_cost = 6
-cooldown = 5.0
+cooldown = 5
 release_distance = 96.0
 description = "木属性治疗技能。"

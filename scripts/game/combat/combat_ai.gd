@@ -13,12 +13,11 @@ const ACTION_TYPE_DEFENSE := "defense"
 const ACTION_TYPE_RESOURCE := "resource"
 const ACTION_TYPE_DAMAGE := "damage"
 const ACTION_TYPE_NORMAL_ATTACK := "normal_attack"
-const PLAYER_ID := "player"
-
-
 func select_player_action(game_state, player_range: float, distance_to_enemy: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, member: Dictionary = {}) -> Dictionary:
-	var actor: Dictionary = member if not member.is_empty() else game_state.player_member()
-	var member_id: String = str(actor.get("id", PLAYER_ID))
+	var actor: Dictionary = member
+	if actor.is_empty():
+		return {}
+	var member_id: String = str(actor.get("id", ""))
 	var actor_stats: Dictionary = actor.get("stats", {})
 	var hp_ratio: float = float(actor_stats.get("hp", 0)) / max(1.0, float(game_state.total_stat_for(member_id, "max_hp")))
 	var mp_ratio: float = float(actor_stats.get("mp", 0)) / max(1.0, float(game_state.total_stat_for(member_id, "max_mp")))
@@ -39,12 +38,15 @@ func select_player_action(game_state, player_range: float, distance_to_enemy: fl
 	if not damage_action.is_empty():
 		return damage_action
 
+	var attack_mode: String = str(actor.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
+	var basic_attack: Dictionary = DataTables.create_basic_attack(attack_mode)
 	return {
 		"source": ACTION_SOURCE_BASIC,
 		"action_type": ACTION_TYPE_NORMAL_ATTACK,
-		"id": "",
+		"id": str(basic_attack.get("id", "basic_attack")),
+		"attack_mode": str(basic_attack.get("attack_mode", DataTables.ATTACK_MODE_MELEE)),
 		"priority": 0,
-		"range": player_range,
+		"range": max(player_range, float(basic_attack.get("release_distance", 0.0))),
 		"cooldown_group": "",
 	}
 
@@ -55,11 +57,13 @@ func preferred_player_release_distance(action: Dictionary, player_range: float) 
 	if str(action.get("source", "")) == ACTION_SOURCE_SKILL:
 		var skill: Dictionary = DataTables.create_skill(str(action.get("id", "")))
 		return _skill_release_distance(skill, player_range)
-	return player_range
+	return max(player_range, float(action.get("range", player_range)))
 
 
 func _find_best_available_action(game_state, action_type: String, hp_ratio: float, mp_ratio: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, player_range: float, distance_to_enemy: float, member: Dictionary = {}) -> Dictionary:
-	var actor: Dictionary = member if not member.is_empty() else game_state.player_member()
+	var actor: Dictionary = member
+	if actor.is_empty():
+		return {}
 	var actor_stats: Dictionary = actor.get("stats", {})
 	var candidates: Array[Dictionary] = []
 	for skill in actor.get("skills", []):
@@ -113,7 +117,7 @@ func _pill_action_from_item(item: Dictionary, requested_type: String) -> Diction
 		"priority": _pill_priority(action_type),
 		"range": 0.0,
 		"cooldown_group": cooldown_group,
-		"cooldown": 1.5,
+		"cooldown": 2,
 	}
 
 

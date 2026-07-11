@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://cv1rim3ygege" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" uid="uid://db6vp4e3v8842" path="res://scripts/map/home.tscn" id="2_home"]
-[ext_resource type="PackedScene" uid="uid://cwirw4gov00ty" path="res://scripts/character/me.tscn" id="3_character"]
 [ext_resource type="PackedScene" uid="uid://bncimxw76ytkf" path="res://scripts/ui/hud.tscn" id="4_hud"]
 [ext_resource type="PackedScene" uid="uid://c0t1hgwaosio5" path="res://scripts/game/combat/combat_controller.tscn" id="5_combat"]
 [ext_resource type="PackedScene" uid="uid://bdl5feyi8qwb7" path="res://scripts/map/battle_map.tscn" id="6_battle_map"]
@@ -14,7 +13,7 @@ script = ExtResource("1_main")
 
 [node name="BattleMap" parent="." unique_id=341873934 instance=ExtResource("6_battle_map")]
 
-[node name="CharacterController" parent="." unique_id=1371328457 instance=ExtResource("3_character")]
+[node name="PartyActors" type="Node2D" parent="." unique_id=1371328457]
 
 [node name="CombatController" parent="." unique_id=1286905905 instance=ExtResource("5_combat")]
 

@@ -18,6 +18,8 @@ func load_data() -> Dictionary:
 	var config: ConfigFile = ConfigFile.new()
 	if config.load(save_path) != OK:
 		return {}
+	if not config.has_section("game"):
+		return {}
 
 	return {
 		"version": int(config.get_value("meta", "version", 0)),

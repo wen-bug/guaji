@@ -1,9 +1,11 @@
-[gd_scene format=3 uid="uid://cwirw4gov00ty"]
+[gd_scene format=3 uid="uid://c6lnkt5o7k01s"]
 
 [ext_resource type="Texture2D" uid="uid://b7cj87o2qywn" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Bear/Bear_Attack.png" id="1_wek7f"]
 [ext_resource type="Texture2D" uid="uid://datm11b243yvy" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Bear/Bear_Idle.png" id="2_1ll4j"]
 [ext_resource type="Texture2D" uid="uid://bg45u07aub478" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Bear/Bear_Run.png" id="3_i12ut"]
-[ext_resource type="Script" uid="uid://c0ra5wb773s50" path="res://scripts/character/character_controller.gd" id="4_character"]
+[ext_resource type="Script" uid="uid://blrmqly87w7my" path="res://scripts/actors/visuals/combat_visual.gd" id="4_visual"]
+[ext_resource type="Script" uid="uid://b83ysfj06wr2u" path="res://scripts/actors/visuals/combat_hurtbox.gd" id="5_hurtbox"]
+[ext_resource type="Script" uid="uid://csc5dqblf8etq" path="res://scripts/actors/visuals/combat_hitbox.gd" id="6_hitbox"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ibxir"]
 atlas = ExtResource("1_wek7f")
@@ -123,8 +125,40 @@ animations = [{
 "duration": 1.0,
 "texture": SubResource("AtlasTexture_7lvwp")
 }],
-"loop": 1,
-"name": &"attack",
+"loop": 0,
+"name": &"melee_attack",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ibxir")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_2a0hk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gmrbr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_202xx")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ixn10")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7dikf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0xrdo")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_1ihxk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7lvwp")
+}],
+"loop": 0,
+"name": &"ranged_attack",
 "speed": 5.0
 }, {
 "frames": [{
@@ -175,43 +209,98 @@ animations = [{
 "loop": 1,
 "name": &"run",
 "speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_i1uov")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_3sm26")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5cvq8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fvgnk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q0xa4")
+}],
+"loop": 1,
+"name": &"walk",
+"speed": 3.5
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wek7f"]
 size = Vector2(119.5, 84.5)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dp13p"]
+size = Vector2(52, 40)
 
-[node name="Me" type="CharacterBody2D" unique_id=1184046710]
+[sub_resource type="Animation" id="Animation_actor_death"]
+resource_name = "death"
+length = 0.42
+tracks/0/type = "value"
+tracks/0/path = NodePath("Sprite:scale")
+tracks/0/keys = {"times": PackedFloat32Array(0, 0.42), "transitions": PackedFloat32Array(1, 1), "update": 0, "values": [Vector2(0.28, 0.28), Vector2(0.32, 0.04)]}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Sprite:modulate:a")
+tracks/1/keys = {"times": PackedFloat32Array(0, 0.42), "transitions": PackedFloat32Array(1, 1), "update": 0, "values": [1.0, 0.0]}
+
+[sub_resource type="Animation" id="Animation_actor_level_up"]
+resource_name = "level_up"
+length = 0.55
+tracks/0/type = "value"
+tracks/0/path = NodePath("Sprite:scale")
+tracks/0/keys = {"times": PackedFloat32Array(0, 0.22, 0.55), "transitions": PackedFloat32Array(1, 1, 1), "update": 0, "values": [Vector2(0.28, 0.28), Vector2(0.34, 0.34), Vector2(0.28, 0.28)]}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Sprite:modulate")
+tracks/1/keys = {"times": PackedFloat32Array(0, 0.22, 0.55), "transitions": PackedFloat32Array(1, 1, 1), "update": 0, "values": [Color(1, 1, 1, 1), Color(1, 0.82, 0.3, 1), Color(1, 1, 1, 1)]}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_actor"]
+_data = {
+&"death": SubResource("Animation_actor_death"),
+&"level_up": SubResource("Animation_actor_level_up")
+}
+
+[node name="CombatVisual" type="Node2D" unique_id=1423674620]
 z_index = 20
-script = ExtResource("4_character")
+script = ExtResource("4_visual")
 
 [node name="Sprite" type="AnimatedSprite2D" parent="." unique_id=211079620]
 position = Vector2(1, 0)
 scale = Vector2(0.28, 0.28)
 sprite_frames = SubResource("SpriteFrames_dbx47")
-animation = &"attack"
-frame_progress = 0.17845885
+animation = &"run"
+frame = 1
+frame_progress = 0.85617024
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=365309188]
+[node name="Hurtbox" type="Area2D" parent="." unique_id=2010501351]
+script = ExtResource("5_hurtbox")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox" unique_id=365309188]
 position = Vector2(1.4, 0.56)
 scale = Vector2(0.28, 0.28)
 shape = SubResource("RectangleShape2D_wek7f")
 
-[node name="TalkLabel" type="Label" parent="." unique_id=1122479711]
-visible = false
-offset_left = -58.0
-offset_top = -96.0
-offset_right = 66.0
-offset_bottom = -74.0
-theme_override_colors/font_color = Color(1, 0.96, 0.78, 1)
-theme_override_colors/font_shadow_color = Color(0.02, 0.02, 0.03, 0.85)
-theme_override_constants/shadow_offset_x = 1
-theme_override_constants/shadow_offset_y = 1
-horizontal_alignment = 1
+[node name="AttackHitbox" type="Area2D" parent="." unique_id=2053909642]
+monitoring = false
+script = ExtResource("6_hitbox")
 
-[node name="attack" type="Area2D" parent="." unique_id=2053909642]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="attack" unique_id=1855910397]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox" unique_id=1855910397]
 position = Vector2(28, 2)
 shape = SubResource("RectangleShape2D_dp13p")
+
+[node name="Marker2D" type="Marker2D" parent="." unique_id=684392931]
+position = Vector2(22, 0)
+
+[node name="HitSocket" type="Marker2D" parent="." unique_id=1333512857]
+position = Vector2(0, -10)
+
+[node name="EffectSocket" type="Marker2D" parent="." unique_id=389491372]
+position = Vector2(20, -12)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1584478507]
+libraries = {
+&"": SubResource("AnimationLibrary_actor")
+}

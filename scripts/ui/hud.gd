@@ -9,7 +9,6 @@ const MENU_EQUIP := 5
 const FORGE_MODE_CRAFT := "craft"
 const FORGE_MODE_ENHANCE := "enhance"
 const FORGE_MODE_REFINE := "refine"
-const PLAYER_ID := "player"
 const PARTY_MAX_SIZE := 4
 const INVENTORY_CATEGORIES := [
 	{"type": DataTables.ITEM_TYPE_SKILL_BOOK, "label": "技能书", "node": "SkillBookButton"},
@@ -24,7 +23,6 @@ const DEBUG_STAT_OPTIONS := [
 	{"id": "level_cap", "label": "等级上限"},
 	{"id": "stage", "label": "阶段"},
 	{"id": "root_bone", "label": "根骨"},
-	{"id": "farm_level", "label": "农田等级"},
 	{"id": "exp", "label": "经验"},
 	{"id": "next_exp", "label": "下级经验"},
 	{"id": "hp", "label": "气血"},
@@ -51,6 +49,8 @@ const INVENTORY_SLOT_COUNT := 25
 const INVENTORY_DOUBLE_CLICK_MS := 350
 const INVENTORY_SLOT_SIZE := Vector2(78, 54)
 const INVENTORY_ICON_SIZE := Vector2(42, 42)
+const PARTY_VISUAL_ROOT := "res://scripts/actors/visuals/party"
+const DEFAULT_PARTY_VISUAL_ID := "actor_default"
 const PANEL_FILL_COLOR := Color(0.13, 0.09, 0.06, 0.9)
 const PANEL_BORDER_COLOR := Color(0.72, 0.55, 0.28, 0.95)
 const TITLE_FILL_COLOR := Color(0.18, 0.12, 0.07, 0.88)
@@ -74,17 +74,19 @@ const INVENTORY_ICON_DIM_COLOR := Color(0.32, 0.28, 0.22, 1.0)
 const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 
 @onready var menu_panel: PanelContainer = $Root/MenuPanel
-@onready var character_info_panel: PanelContainer = $Root/CharacterInfoPanel
+@onready var member_info_panel: PanelContainer = $Root/MemberInfoPanel
 @onready var inventory_panel: PanelContainer = $Root/InventoryPanel
 @onready var farm_panel: PanelContainer = $Root/FarmPanel
 @onready var forge_panel: PanelContainer = $Root/ForgePanel
 @onready var alchemy_panel: PanelContainer = $Root/AlchemyPanel
 @onready var recruit_panel: PanelContainer = $Root/RecruitPanel
 @onready var fight_panel: PanelContainer = $Root/FightPanel
-@onready var character_member_list: ItemList = $Root/CharacterInfoPanel/PanelLayout/MemberList
-@onready var character_attribute_grid: GridContainer = $Root/CharacterInfoPanel/PanelLayout/AttributeGrid
-@onready var character_equipment_grid: GridContainer = $Root/CharacterInfoPanel/PanelLayout/EquipmentGrid
-@onready var character_skill_grid: GridContainer = $Root/CharacterInfoPanel/PanelLayout/SkillGrid
+@onready var member_info_member_list: ItemList = $Root/MemberInfoPanel/PanelLayout/MemberList
+@onready var member_info_attribute_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性/AttributeGrid
+@onready var member_info_equipment_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备/EquipmentGrid
+@onready var member_info_skill_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/技能/SkillGrid
+@onready var member_info_portrait_root: Node2D = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport/PortraitRoot
+@onready var member_info_portrait_name: Label = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitName
 @onready var inventory_grid: GridContainer = $Root/InventoryPanel/InventoryLayout/InventoryGrid
 @onready var inventory_detail_view: InventoryDetailView = $Root/InventoryItemDetailPanel
 @onready var damage_popup_layer: DamagePopupManager = $Root/DamagePopupLayer
@@ -203,7 +205,7 @@ var scene_transition_tween: Tween = null
 
 func _ready() -> void:
 
-	$Root/CharacterInfoPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): character_info_panel.visible = false)
+	$Root/MemberInfoPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): member_info_panel.visible = false)
 	$Root/InventoryPanel/InventoryLayout/Header/CloseButton.pressed.connect(func(): inventory_panel.visible = false)
 	$Root/FarmPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): farm_panel.visible = false)
 	$Root/ForgePanel/PanelLayout/Header/CloseButton.pressed.connect(func(): forge_panel.visible = false)
@@ -364,14 +366,14 @@ func refresh(game_state) -> void:
 		selected_party_member_id = _first_party_member_id()
 	if current_game_state != null and current_game_state.member_by_id(selected_recruit_party_member_id).is_empty():
 		selected_recruit_party_member_id = selected_party_member_id
-	_refresh_character_info(game_state)
+	_refresh_member_info(game_state)
 
 	if inventory_panel.visible:
 		_refresh_inventory()
 	if alchemy_panel.visible:
 		_refresh_alchemy_panel()
-	if character_info_panel.visible:
-		_refresh_character_info(current_game_state)
+	if member_info_panel.visible:
+		_refresh_member_info(current_game_state)
 	if recruit_panel.visible:
 		_refresh_recruit_panel()
 	_refresh_visible_action_details()
@@ -392,51 +394,100 @@ func _first_party_member_id() -> String:
 	return str(members[0].get("id", ""))
 
 
-func _refresh_character_info(game_state) -> void:
-	_refresh_character_member_list(game_state)
-	_refresh_character_attributes(game_state)
-	_refresh_character_equipment(game_state)
-	_refresh_character_skills(game_state)
+func _refresh_member_info(game_state) -> void:
+	_refresh_member_info_member_list(game_state)
+	_refresh_member_info_portrait(game_state)
+	_refresh_member_info_attributes(game_state)
+	_refresh_member_info_equipment(game_state)
+	_refresh_member_info_skills(game_state)
 
 
-func _refresh_character_member_list(game_state) -> void:
-	if character_member_list == null or game_state == null:
+func _refresh_member_info_member_list(game_state) -> void:
+	if member_info_member_list == null or game_state == null:
 		return
-	character_member_list.clear()
+	member_info_member_list.clear()
 	var selected_index := 0
 	var members: Array = game_state.party_members()
 	if members.is_empty():
-		var empty_index: int = character_member_list.add_item("暂无角色")
-		character_member_list.set_item_metadata(empty_index, "")
-		character_member_list.select(empty_index)
+		var empty_index: int = member_info_member_list.add_item("暂无角色")
+		member_info_member_list.set_item_metadata(empty_index, "")
+		member_info_member_list.select(empty_index)
 		selected_party_member_id = ""
 		return
 	for index in range(members.size()):
 		var member: Dictionary = members[index]
-		var member_id: String = str(member.get("id", PLAYER_ID))
+		var member_id: String = str(member.get("id", ""))
 		var member_stats: Dictionary = member.get("stats", {})
-		var label := "%d. %s  Lv.%d  %d/%d" % [
-			index + 1,
+		var label := "%s  Lv.%d" % [
 			str(member.get("name", "成员")),
 			int(member_stats.get("level", 1)),
-			int(member_stats.get("hp", 0)),
-			game_state.total_stat_for(member_id, "max_hp"),
 		]
-		var item_index := character_member_list.add_item(label)
-		character_member_list.set_item_metadata(item_index, member_id)
+		var item_index := member_info_member_list.add_item(label)
+		member_info_member_list.set_item_metadata(item_index, member_id)
 		if member_id == selected_party_member_id:
 			selected_index = item_index
-	if character_member_list.item_count > 0:
-		character_member_list.select(selected_index)
+	if member_info_member_list.item_count > 0:
+		member_info_member_list.select(selected_index)
 
 
-func _refresh_character_attributes(game_state) -> void:
-	_clear_control_children(character_attribute_grid)
-	var member: Dictionary = game_state.selected_party_member_or_player(selected_party_member_id)
+func _refresh_member_info_portrait(game_state) -> void:
+	if member_info_portrait_root == null or member_info_portrait_name == null or game_state == null:
+		return
+	var member: Dictionary = game_state.member_by_id(selected_party_member_id)
+	if member.is_empty():
+		member_info_portrait_name.text = "暂无角色"
+		_clear_member_info_portrait()
+		return
+
+	member_info_portrait_name.text = str(member.get("name", "成员"))
+	var visual_id: String = _safe_party_visual_id(str(member.get("visual_id", DEFAULT_PARTY_VISUAL_ID)))
+	if member_info_portrait_root.get_child_count() > 0:
+		var current_visual: Node = member_info_portrait_root.get_child(0)
+		if str(current_visual.get_meta("visual_id", "")) == visual_id:
+			return
+	_clear_member_info_portrait()
+
+	var scene_path := "%s/%s.tscn" % [PARTY_VISUAL_ROOT, visual_id]
+	if not ResourceLoader.exists(scene_path):
+		visual_id = DEFAULT_PARTY_VISUAL_ID
+		scene_path = "%s/%s.tscn" % [PARTY_VISUAL_ROOT, visual_id]
+	var packed := load(scene_path) as PackedScene
+	if packed == null:
+		return
+	var visual := packed.instantiate() as Node2D
+	if visual == null:
+		return
+	member_info_portrait_root.add_child(visual)
+	visual.set_meta("visual_id", visual_id)
+	visual.position = Vector2.ZERO
+	visual.scale = Vector2(2.4, 2.4)
+	if visual.has_method("play_idle"):
+		visual.call_deferred("play_idle")
+
+
+func _clear_member_info_portrait() -> void:
+	if member_info_portrait_root == null:
+		return
+	for child in member_info_portrait_root.get_children():
+		member_info_portrait_root.remove_child(child)
+		child.queue_free()
+
+
+func _safe_party_visual_id(value: String) -> String:
+	var result := ""
+	for character in value:
+		if character.is_valid_identifier() or character == "_" or character.is_valid_int():
+			result += character
+	return result if not result.is_empty() else DEFAULT_PARTY_VISUAL_ID
+
+
+func _refresh_member_info_attributes(game_state) -> void:
+	_clear_control_children(member_info_attribute_grid)
+	var member: Dictionary = game_state.member_by_id(selected_party_member_id)
 	if member.is_empty():
 		_add_attribute_row("角色", "暂无角色")
 		return
-	var member_id: String = str(member.get("id", PLAYER_ID))
+	var member_id: String = str(member.get("id", ""))
 	var member_stats: Dictionary = member.get("stats", {})
 	_add_attribute_row("姓名", str(member.get("name", "成员")))
 	_add_attribute_row("等级", "%d  阶段 %d/%d" % [int(member_stats.get("level", 1)), int(member_stats.get("stage", 1)), int(member_stats.get("level_cap", 10))])
@@ -453,17 +504,19 @@ func _refresh_character_attributes(game_state) -> void:
 
 func _add_attribute_row(label_text: String, value_text: String) -> void:
 	var value_label: Label = Label.new()
-	value_label.custom_minimum_size = Vector2(330, 18)
+	value_label.custom_minimum_size = Vector2(184, 18)
+	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	value_label.text = value_text
 	_add_attribute_control_row(label_text, value_label)
 
 
 func _add_attribute_control_row(label_text: String, value_control: Control) -> void:
 	var name_label: Label = Label.new()
-	name_label.custom_minimum_size = Vector2(72, 18)
+	name_label.custom_minimum_size = Vector2(56, 18)
 	name_label.text = label_text
-	character_attribute_grid.add_child(name_label)
-	character_attribute_grid.add_child(value_control)
+	member_info_attribute_grid.add_child(name_label)
+	member_info_attribute_grid.add_child(value_control)
 
 
 func _create_panel_style(fill_color: Color, border_color: Color, border_width: int = 1, corner_radius: int = 6, left_margin: float = 8.0, top_margin: float = 6.0, right_margin: float = 8.0, bottom_margin: float = 6.0, shadow_size: int = 2, shadow_color: Color = Color(0, 0, 0, 0.28)) -> StyleBoxFlat:
@@ -491,10 +544,10 @@ func _create_button_style(fill_color: Color, border_color: Color) -> StyleBoxFla
 	return _create_panel_style(fill_color, border_color, 1, 6, 10.0, 5.0, 10.0, 5.0, 1, Color(0, 0, 0, 0.3))
 
 
-func _refresh_character_equipment(game_state) -> void:
-	_clear_control_children(character_equipment_grid)
+func _refresh_member_info_equipment(game_state) -> void:
+	_clear_control_children(member_info_equipment_grid)
 	if game_state == null or game_state.member_by_id(selected_party_member_id).is_empty():
-		character_equipment_grid.add_child(_create_character_slot("装备", "暂无角色", ""))
+		member_info_equipment_grid.add_child(_create_member_info_slot("装备", "暂无角色", ""))
 		return
 	var slots: Array[Dictionary] = [
 		{"slot": "weapon", "label": "武器"},
@@ -513,31 +566,31 @@ func _refresh_character_equipment(game_state) -> void:
 		if not item.is_empty():
 			item_name = str(item.get("name", "装备"))
 			detail = "等级 %d  %s" % [int(item.get("equipment_level", 1)), DataTables.equipment_rarity_name(str(item.get("rarity", "t1")))]
-		character_equipment_grid.add_child(_create_character_slot(str(slot_def.get("label", slot_id)), item_name, detail))
+		member_info_equipment_grid.add_child(_create_member_info_slot(str(slot_def.get("label", slot_id)), item_name, detail))
 
 
-func _refresh_character_skills(game_state) -> void:
-	_clear_control_children(character_skill_grid)
-	var member: Dictionary = game_state.selected_party_member_or_player(selected_party_member_id)
+func _refresh_member_info_skills(game_state) -> void:
+	_clear_control_children(member_info_skill_grid)
+	var member: Dictionary = game_state.member_by_id(selected_party_member_id)
 	if member.is_empty():
-		character_skill_grid.add_child(_create_character_slot("技能", "暂无角色", ""))
+		member_info_skill_grid.add_child(_create_member_info_slot("技能", "暂无角色", ""))
 		return
 	var member_skills: Array = member.get("skills", [])
 	if member_skills.is_empty():
-		character_skill_grid.add_child(_create_character_slot("技能", "未学习技能", ""))
+		member_info_skill_grid.add_child(_create_member_info_slot("技能", "未学习技能", ""))
 		return
 	for skill in member_skills:
 		var skill_id: String = str(skill.get("id", ""))
 		var element_id: String = str(skill.get("element", ""))
 		var source_text: String = DataTables.obtain_source_name(str(skill.get("obtain_source", "non_drop")))
-		var cooldown_text: String = "%0.1f" % float(skill.get("cooldown", 0.0))
-		var detail: String = "%s  冷却 %s秒  法力 %d  %s" % [DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0)), source_text]
-		character_skill_grid.add_child(_create_character_slot("技能", str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id)))
+		var cooldown_text: String = str(int(skill.get("cooldown", 0)))
+		var detail: String = "%s  冷却 %s回合  法力 %d  %s" % [DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0)), source_text]
+		member_info_skill_grid.add_child(_create_member_info_slot("技能", str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id)))
 
 
-func _create_character_slot(slot_label: String, item_name: String, detail_text: String, icon_texture: Texture2D = null) -> PanelContainer:
+func _create_member_info_slot(slot_label: String, item_name: String, detail_text: String, icon_texture: Texture2D = null) -> PanelContainer:
 	var slot: PanelContainer = PanelContainer.new()
-	slot.custom_minimum_size = Vector2(220, 48)
+	slot.custom_minimum_size = Vector2(264, 48)
 	slot.add_theme_stylebox_override("panel", _create_panel_style(CARD_FILL_COLOR, CARD_BORDER_COLOR))
 	var layout: HBoxContainer = HBoxContainer.new()
 	layout.name = "SlotLayout"
@@ -553,16 +606,19 @@ func _create_character_slot(slot_label: String, item_name: String, detail_text: 
 	layout.add_child(icon)
 	var text_layout: VBoxContainer = VBoxContainer.new()
 	text_layout.name = "TextLayout"
+	text_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_layout.add_theme_constant_override("separation", 1)
 	layout.add_child(text_layout)
 	var name_label: Label = Label.new()
 	name_label.name = "NameLabel"
 	name_label.text = "%s：%s" % [slot_label, item_name]
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_label.add_theme_color_override("font_color", Color(1, 0.93, 0.74, 1))
 	text_layout.add_child(name_label)
 	var detail_label: Label = Label.new()
 	detail_label.name = "DetailLabel"
 	detail_label.text = detail_text
+	detail_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text_layout.add_child(detail_label)
 	return slot
 
@@ -633,12 +689,12 @@ func _toggle_menu() -> void:
 	menu_panel.visible = next_visible
 
 
-func _open_character_info_panel() -> void:
+func _open_member_info_panel() -> void:
 	_ensure_menu_panel_refs()
 	_close_popup_panels()
 	menu_panel.visible = false
-	_apply_saved_panel_position(character_info_panel)
-	character_info_panel.visible = true
+	_apply_saved_panel_position(member_info_panel)
+	member_info_panel.visible = true
 
 
 func _open_inventory_panel() -> void:
@@ -662,8 +718,8 @@ func _toggle_debug_panel() -> void:
 func _ensure_menu_panel_refs() -> void:
 	if menu_panel == null:
 		menu_panel = $Root/MenuPanel
-	if character_info_panel == null:
-		character_info_panel = $Root/CharacterInfoPanel
+	if member_info_panel == null:
+		member_info_panel = $Root/MemberInfoPanel
 	if inventory_panel == null:
 		inventory_panel = $Root/InventoryPanel
 	if farm_panel == null:
@@ -676,14 +732,18 @@ func _ensure_menu_panel_refs() -> void:
 		recruit_panel = $Root/RecruitPanel
 	if fight_panel == null:
 		fight_panel = $Root/FightPanel
-	if character_member_list == null:
-		character_member_list = $Root/CharacterInfoPanel/PanelLayout/MemberList
-	if character_attribute_grid == null:
-		character_attribute_grid = $Root/CharacterInfoPanel/PanelLayout/AttributeGrid
-	if character_equipment_grid == null:
-		character_equipment_grid = $Root/CharacterInfoPanel/PanelLayout/EquipmentGrid
-	if character_skill_grid == null:
-		character_skill_grid = $Root/CharacterInfoPanel/PanelLayout/SkillGrid
+	if member_info_member_list == null:
+		member_info_member_list = $Root/MemberInfoPanel/PanelLayout/MemberList
+	if member_info_attribute_grid == null:
+		member_info_attribute_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性/AttributeGrid
+	if member_info_equipment_grid == null:
+		member_info_equipment_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备/EquipmentGrid
+	if member_info_skill_grid == null:
+		member_info_skill_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/技能/SkillGrid
+	if member_info_portrait_root == null:
+		member_info_portrait_root = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport/PortraitRoot
+	if member_info_portrait_name == null:
+		member_info_portrait_name = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitName
 	if inventory_grid == null:
 		inventory_grid = $Root/InventoryPanel/InventoryLayout/InventoryGrid
 	if inventory_detail_view == null:
@@ -978,8 +1038,8 @@ func _connect_recruit_controls() -> void:
 	party_move_up_button.pressed.connect(func(): _on_party_move_pressed(-1))
 	party_move_down_button.pressed.connect(func(): _on_party_move_pressed(1))
 	party_dismiss_button.pressed.connect(_on_party_dismiss_pressed)
-	if character_member_list != null:
-		character_member_list.item_selected.connect(_on_character_member_selected)
+	if member_info_member_list != null:
+		member_info_member_list.item_selected.connect(_on_member_info_member_selected)
 	recruit_controls_connected = true
 
 
@@ -997,7 +1057,7 @@ func _connect_debug_controls() -> void:
 func _draggable_panels() -> Array[Control]:
 	return [
 		menu_panel,
-		character_info_panel,
+		member_info_panel,
 		inventory_panel,
 		farm_panel,
 		forge_panel,
@@ -1162,7 +1222,7 @@ func _on_debug_set_stat_pressed() -> void:
 		return
 	var stat_id: String = _selected_option_metadata(debug_stat_option)
 	var value: int = int(debug_stat_value_spinbox.value)
-	if current_game_state.debug_set_stat(stat_id, value):
+	if current_game_state.debug_set_stat(stat_id, value, selected_party_member_id):
 		_refresh_after_debug_change()
 
 
@@ -1176,7 +1236,7 @@ func _selected_option_metadata(option: OptionButton) -> String:
 func _refresh_after_debug_change() -> void:
 	if current_game_state == null:
 		return
-	_refresh_character_info(current_game_state)
+	_refresh_member_info(current_game_state)
 	if inventory_panel.visible:
 		_refresh_inventory()
 	if forge_panel.visible:
@@ -1214,7 +1274,7 @@ func _viewport_size() -> Vector2:
 
 
 func _close_popup_panels() -> void:
-	for panel_path in ["Root/CharacterInfoPanel", "Root/InventoryPanel", "Root/FarmPanel", "Root/ForgePanel", "Root/AlchemyPanel", "Root/RecruitPanel", "Root/FightPanel", "Root/DebugPanel"]:
+	for panel_path in ["Root/MemberInfoPanel", "Root/InventoryPanel", "Root/FarmPanel", "Root/ForgePanel", "Root/AlchemyPanel", "Root/RecruitPanel", "Root/FightPanel", "Root/DebugPanel"]:
 		var panel: Control = get_node_or_null(panel_path) as Control
 		if panel != null:
 			panel.visible = false
@@ -1260,7 +1320,14 @@ func _refresh_action_detail(task_type: int) -> void:
 	elif task_type == GameDefs.TaskType.FIGHT:
 		var fight_button: Button = get_node_or_null("Root/FightPanel/PanelLayout/ExecuteButton") as Button
 		var has_member: bool = current_game_state.has_party_member()
-		fight_detail.text = "进入历练地图\n随机遇怪并自动战斗" if has_member else "需要先招募角色"
+		if has_member:
+			fight_detail.text = "账号历练 %d级  %d/%d\n随机遇怪并自动战斗" % [
+				current_game_state.expedition_level(),
+				int(current_game_state.account_progression.get("expedition_exp", 0)),
+				int(current_game_state.account_progression.get("next_expedition_exp", 1)),
+			]
+		else:
+			fight_detail.text = "需要先招募角色"
 		if fight_button != null:
 			fight_button.disabled = not has_member
 
@@ -1405,7 +1472,7 @@ func _refresh_recruit_party_list() -> void:
 		return
 	for index in range(members.size()):
 		var member: Dictionary = members[index]
-		var member_id: String = str(member.get("id", PLAYER_ID))
+		var member_id: String = str(member.get("id", ""))
 		var member_stats: Dictionary = member.get("stats", {})
 		var label := "%d. %s  Lv.%d  血%d/%d 法%d/%d" % [
 			index + 1,
@@ -1452,7 +1519,7 @@ func _on_recruit_pressed() -> void:
 			selected_recruit_party_member_id = selected_party_member_id
 		selected_recruit_candidate_id = ""
 		_refresh_recruit_panel()
-		_refresh_character_info(current_game_state)
+		_refresh_member_info(current_game_state)
 		if inventory_panel.visible:
 			_refresh_inventory()
 
@@ -1471,17 +1538,17 @@ func _on_recruit_party_member_selected(index: int) -> void:
 	selected_recruit_party_member_id = str(party_list.get_item_metadata(index))
 	selected_party_member_id = selected_recruit_party_member_id
 	_refresh_recruit_panel()
-	_refresh_character_info(current_game_state)
+	_refresh_member_info(current_game_state)
 
 
-func _on_character_member_selected(index: int) -> void:
-	if current_game_state == null or character_member_list == null:
+func _on_member_info_member_selected(index: int) -> void:
+	if current_game_state == null or member_info_member_list == null:
 		return
-	if index < 0 or index >= character_member_list.item_count:
+	if index < 0 or index >= member_info_member_list.item_count:
 		return
-	selected_party_member_id = str(character_member_list.get_item_metadata(index))
+	selected_party_member_id = str(member_info_member_list.get_item_metadata(index))
 	selected_recruit_party_member_id = selected_party_member_id
-	_refresh_character_info(current_game_state)
+	_refresh_member_info(current_game_state)
 	if inventory_panel.visible:
 		_refresh_inventory()
 
@@ -1491,7 +1558,7 @@ func _on_party_move_pressed(direction: int) -> void:
 		return
 	if current_game_state.move_party_member(selected_recruit_party_member_id, direction):
 		_refresh_recruit_panel()
-		_refresh_character_info(current_game_state)
+		_refresh_member_info(current_game_state)
 
 
 func _on_party_dismiss_pressed() -> void:
@@ -1501,7 +1568,7 @@ func _on_party_dismiss_pressed() -> void:
 		selected_party_member_id = _first_party_member_id()
 		selected_recruit_party_member_id = selected_party_member_id
 		_refresh_recruit_panel()
-		_refresh_character_info(current_game_state)
+		_refresh_member_info(current_game_state)
 		if inventory_panel.visible:
 			_refresh_inventory()
 
@@ -1536,7 +1603,7 @@ func _refresh_inventory_detail(item: Dictionary) -> void:
 	if inventory_detail_view != null:
 		var mouse_position: Vector2 = get_viewport().get_mouse_position()
 		var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-		inventory_detail_view.show_item(item, current_game_state, mouse_position, viewport_size)
+		inventory_detail_view.show_item(item, current_game_state, mouse_position, viewport_size, selected_party_member_id)
 
 
 func _on_inventory_detail_use_pressed() -> void:
@@ -1783,8 +1850,8 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 		_refresh_forge_panel()
 	if alchemy_panel.visible:
 		_refresh_alchemy_panel()
-	if character_info_panel.visible:
-		_refresh_character_info(current_game_state)
+	if member_info_panel.visible:
+		_refresh_member_info(current_game_state)
 	if hovered_inventory_instance_id.is_empty():
 		if inventory_detail_view != null:
 			inventory_detail_view.hide_item()
@@ -2009,7 +2076,7 @@ func _refresh_worker_option(option: OptionButton, selected_member_id: String, ta
 		return ""
 	for index in range(members.size()):
 		var member: Dictionary = members[index]
-		var member_id: String = str(member.get("id", PLAYER_ID))
+		var member_id: String = str(member.get("id", ""))
 		var label: String = current_game_state.production_member_summary(member_id, task_id)
 		option.add_item(label)
 		option.set_item_metadata(index, member_id)
@@ -2075,8 +2142,8 @@ func _on_forge_action_pressed() -> void:
 			_refresh_forge_panel()
 			if inventory_panel.visible:
 				_refresh_inventory()
-			if character_info_panel.visible:
-				_refresh_character_info(current_game_state)
+			if member_info_panel.visible:
+				_refresh_member_info(current_game_state)
 		return
 	if selected_forge_equipment_instance_id.is_empty():
 		return
@@ -2090,8 +2157,8 @@ func _on_forge_action_pressed() -> void:
 		_refresh_forge_panel()
 		if inventory_panel.visible:
 			_refresh_inventory()
-		if character_info_panel.visible:
-			_refresh_character_info(current_game_state)
+		if member_info_panel.visible:
+			_refresh_member_info(current_game_state)
 
 
 func _refresh_forge_panel() -> void:
@@ -2137,24 +2204,24 @@ func _refresh_forge_craft_panel() -> void:
 	if current_game_state.member_by_id(selected_forge_worker_id).is_empty():
 		forge_action_button.disabled = true
 		forge_detail.text = "%s\n需要先招募角色" % _building_level_summary("forge")
-		forge_material_grid.add_child(_create_forge_material_slot("material", "任意材料", current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL), 0))
+		forge_material_grid.add_child(_create_forge_material_slot("material", "矿石", current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE), 0))
 		forge_hint_label.text = "需要先招募角色"
 		return
 	var material_cost: int = current_game_state.forge_material_cost_for(selected_forge_worker_id)
 	forge_action_button.disabled = not current_game_state.can_craft_equipment_for_member(selected_forge_worker_id)
-	forge_detail.text = "%s\n可用材料：%d / %d  耗时：%s" % [
+	forge_detail.text = "%s\n可用矿石：%d / %d  耗时：%s" % [
 		_building_level_summary("forge"),
-		current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL),
+		current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE),
 		material_cost,
 		_format_seconds(DataTables.forge_duration_seconds(current_game_state.building_level("forge"))),
 	]
-	forge_material_grid.add_child(_create_forge_material_slot("material", "任意材料", current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL), material_cost))
+	forge_material_grid.add_child(_create_forge_material_slot("material", "矿石", current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE), material_cost))
 	forge_material_grid.add_child(_create_forge_material_slot("bonus", "炼器加成", current_game_state.craft_bonus_for(selected_forge_worker_id), 0))
 	if forge_action_button.disabled:
-		forge_hint_label.text = "材料不足，炼器需要 %d 个任意材料" % material_cost
+		forge_hint_label.text = "矿石不足，炼器需要 %d 个矿石" % material_cost
 	else:
 		var output_count: int = 2 if current_game_state.building_level("forge") >= 6 else 1
-		forge_hint_label.text = "消耗 %d 个材料，炼制 %d 件随机装备。%s" % [material_cost, output_count, current_game_state.production_member_summary(selected_forge_worker_id, "forge")]
+		forge_hint_label.text = "消耗 %d 个矿石，炼制 %d 件随机装备。%s" % [material_cost, output_count, current_game_state.production_member_summary(selected_forge_worker_id, "forge")]
 
 
 func _refresh_forge_equipment_action_panel() -> void:

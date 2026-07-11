@@ -2,21 +2,25 @@ extends Node2D
 
 const GAME_STATE_SCRIPT_PATH := "res://scripts/game/core/game_state.gd"
 const SAVE_MANAGER_SCRIPT_PATH := "res://scripts/game/core/save_manager.gd"
-const PLAYER_ID := "player"
+const ACTOR_SCENE_PATH := "res://scripts/actors/actor.tscn"
 const WINDOW_SIZE := Vector2i(960, 480)
 const SCENE_VIEWPORT_SIZE := Vector2(960, 480)
+const EXPEDITION_RUN_POSITION := Vector2(180, 170)
+const COMBAT_START_POSITION := Vector2(736, 170)
 
 var game_state
 var save_manager
 var save_timer: Timer
-var character
+var party_actors_container: Node2D
+var party_actors: Dictionary = {}
+var _party_signature := ""
 var combat
 var hud
 var home_map
 var battle_map
 var expedition_active := false
 var scene_transition_active := false
-var character_available := false
+var _exit_save_completed := false
 
 
 func _ready() -> void:
@@ -27,9 +31,7 @@ func _ready() -> void:
 
 	_bind_scene_nodes()
 	_apply_scene_viewport_size()
-	if character != null:
-		character.setup()
-	_sync_character_presence()
+	_sync_party_actors(true)
 
 	_connect_scene_signals()
 	hud.load_hud_save_data(_loaded_hud_data())
@@ -89,11 +91,12 @@ func _process(delta: float) -> void:
 	game_state.update_farm(delta)
 	if combat.active:
 		combat.tick(delta, game_state)
-	_sync_character_presence()
-	if combat.is_finished():
+	_sync_party_actors()
+	if combat.is_finished() and not scene_transition_active:
 		_finish_current_combat()
-	elif not expedition_active and character_available and character != null:
-		character.set_idle_roam()
+	elif not expedition_active:
+		for actor in party_actors.values():
+			actor.set_idle_roam()
 	hud.refresh(game_state)
 	if home_map != null:
 		home_map.show_farm_slots(game_state.farm_slots)
@@ -111,13 +114,12 @@ func _enter_expedition() -> void:
 		_push_log("需要先招募角色")
 		return
 	expedition_active = true
-	_sync_character_presence()
+	_sync_party_actors()
 	if home_map != null:
 		home_map.visible = false
 	if battle_map != null:
 		battle_map.enter_expedition()
-	if character != null:
-		character.enter_expedition_run(Vector2(180, 170))
+	_set_party_expedition_run()
 	if hud != null:
 		hud.set_expedition_controls_visible(true)
 	_push_log("进入历练地图，开始寻找怪物")
@@ -178,9 +180,8 @@ func _exit_expedition() -> void:
 		home_map.visible = true
 		home_map.show_farm_slots(game_state.farm_slots)
 		home_map.update_progress_alerts(game_state)
-	if character != null:
-		character.exit_expedition_run()
-	_sync_character_presence()
+	_set_party_home()
+	_sync_party_actors()
 	if hud != null:
 		hud.set_expedition_controls_visible(false)
 		hud.refresh(game_state)
@@ -197,17 +198,28 @@ func _on_monster_spawn_requested() -> void:
 		return
 	if battle_map != null:
 		battle_map.set_combat_mode(true)
+		battle_map.set_player_combat_position(COMBAT_START_POSITION)
+	combat.set_party_views(party_actors)
 	combat.begin_encounter(game_state, battle_map)
 
 
 func _finish_current_combat() -> void:
 	_bind_scene_nodes()
-	game_state.add_task_experience(GameDefs.TaskType.FIGHT, 8)
+	var result: String = combat.combat_result()
 	combat.clear()
+	if result == CombatController.RESULT_DEFEAT:
+		game_state.recover_party_after_defeat(0.5)
+		_push_log("队伍全灭，恢复半数生命与法力后返回家园")
+		_queue_save_data()
+		_start_exit_expedition_transition()
+		return
+	if result != CombatController.RESULT_VICTORY:
+		return
+	game_state.add_task_experience(GameDefs.TaskType.FIGHT, 8)
 	if battle_map != null and expedition_active:
 		battle_map.finish_combat()
-	if character != null and expedition_active:
-		character.enter_expedition_run(Vector2(180, 170))
+	if expedition_active:
+		_set_party_expedition_run()
 
 
 func _on_damage_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool) -> void:
@@ -220,26 +232,76 @@ func _bind_scene_nodes() -> void:
 		home_map = get_node_or_null("Home")
 	if battle_map == null:
 		battle_map = get_node_or_null("BattleMap")
-	if character == null:
-		character = get_node_or_null("CharacterController")
+	if party_actors_container == null:
+		party_actors_container = get_node_or_null("PartyActors") as Node2D
 	if combat == null:
 		combat = get_node_or_null("CombatController")
 	if hud == null:
 		hud = get_node_or_null("Hud")
 
 
-func _sync_character_presence() -> void:
-	if character == null or game_state == null:
+func _sync_party_actors(force: bool = false) -> void:
+	if party_actors_container == null or game_state == null:
 		return
-	var should_show: bool = game_state.has_party_member()
-	if should_show and not character_available:
-		character.process_mode = Node.PROCESS_MODE_INHERIT
-		character.visible = true
-		character.setup()
-	elif not should_show:
-		character.visible = false
-		character.process_mode = Node.PROCESS_MODE_DISABLED
-	character_available = should_show
+	var members: Array = game_state.party_members()
+	var signature_parts: Array[String] = []
+	for member in members:
+		signature_parts.append("%s:%s" % [member.get("id", ""), member.get("visual_id", "actor_default")])
+	var signature := "|".join(signature_parts)
+	if not force and signature == _party_signature:
+		return
+	_party_signature = signature
+	var wanted: Dictionary = {}
+	for member in members:
+		wanted[str(member.get("id", ""))] = true
+	for member_id in party_actors.keys().duplicate():
+		if wanted.has(member_id):
+			continue
+		var removed_actor: Node = party_actors.get(member_id)
+		party_actors.erase(member_id)
+		if removed_actor != null and is_instance_valid(removed_actor):
+			removed_actor.queue_free()
+	var actor_scene := load(ACTOR_SCENE_PATH) as PackedScene
+	if actor_scene == null:
+		push_error("角色模板加载失败: %s" % ACTOR_SCENE_PATH)
+		return
+	for index in range(members.size()):
+		var member: Dictionary = members[index]
+		var member_id := str(member.get("id", ""))
+		var actor: ActorController = party_actors.get(member_id)
+		if actor == null or not is_instance_valid(actor):
+			actor = actor_scene.instantiate() as ActorController
+			if actor == null:
+				continue
+			party_actors_container.add_child(actor)
+			party_actors[member_id] = actor
+		actor.configure_member(member, index)
+		if expedition_active:
+			actor.enter_expedition_run(_expedition_position_for(index))
+		else:
+			actor.setup()
+	if combat != null:
+		combat.set_party_views(party_actors)
+
+
+func _set_party_home() -> void:
+	var members: Array = game_state.party_members()
+	for index in range(members.size()):
+		var actor: ActorController = party_actors.get(str(members[index].get("id", "")))
+		if actor != null:
+			actor.exit_expedition_run()
+
+
+func _set_party_expedition_run() -> void:
+	var members: Array = game_state.party_members()
+	for index in range(members.size()):
+		var actor: ActorController = party_actors.get(str(members[index].get("id", "")))
+		if actor != null:
+			actor.enter_expedition_run(_expedition_position_for(index))
+
+
+func _expedition_position_for(index: int) -> Vector2:
+	return EXPEDITION_RUN_POSITION + Vector2(-52.0 * float(index), 0.0)
 
 
 func _apply_scene_viewport_size() -> void:
@@ -280,10 +342,6 @@ func _connect_scene_signals() -> void:
 		var damage_popup_callback := Callable(self, "_on_damage_popup_requested")
 		if not combat.damage_popup_requested.is_connected(damage_popup_callback):
 			combat.damage_popup_requested.connect(damage_popup_callback)
-		if character != null:
-			var player_hit_callback := Callable(character, "play_hurt_feedback")
-			if not combat.player_hit_received.is_connected(player_hit_callback):
-				combat.player_hit_received.connect(player_hit_callback)
 	var game_log_callback := Callable(self, "_push_log")
 	if not game_state.log_added.is_connected(game_log_callback):
 		game_state.log_added.connect(game_log_callback)
@@ -363,6 +421,8 @@ func _queue_save_data() -> void:
 
 
 func _save_data() -> void:
+	if save_manager == null or game_state == null:
+		return
 	var hud_data: Dictionary = {}
 	if hud != null:
 		hud_data = hud.to_hud_save_data()
@@ -371,3 +431,21 @@ func _save_data() -> void:
 		"hud": hud_data,
 		"config": {"viewport_size": {"width": WINDOW_SIZE.x, "height": WINDOW_SIZE.y}},
 	})
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_save_before_exit()
+
+
+func _exit_tree() -> void:
+	_save_before_exit()
+
+
+func _save_before_exit() -> void:
+	if _exit_save_completed:
+		return
+	_exit_save_completed = true
+	if save_timer != null:
+		save_timer.stop()
+	_save_data()

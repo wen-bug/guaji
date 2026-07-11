@@ -1,5 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="PackedScene" path="res://scripts/character/me.tscn" id="1_me"]
-
-[node name="CharacterController" instance=ExtResource("1_me")]

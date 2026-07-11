@@ -1,8 +1,8 @@
 class_name PartyService
 extends RefCounted
 
-const PLAYER_ID := "player"
 const PARTY_MAX_SIZE := 4
+const DEFAULT_VISUAL_ID := "actor_default"
 const RECRUIT_RESOURCE_ID := "spirit_stone"
 const RECRUIT_COST_SPIRIT_STONE := 1
 const LEVEL_ATTRIBUTE_POINTS := 5
@@ -16,21 +16,8 @@ func _init(owner) -> void:
 	game_state = owner
 
 
-func player_member() -> Dictionary:
-	return {
-		"id": PLAYER_ID,
-		"name": "玩家",
-		"kind": "player",
-		"stats": game_state.stats,
-		"elements": game_state.elements,
-		"equipped": game_state.equipped,
-		"skills": game_state.skills,
-		"innate_traits": game_state.innate_traits,
-	}
-
-
 func growth_summary_for(member_id: String) -> String:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return ""
 	return growth_summary_for_member_data(member)
@@ -55,7 +42,7 @@ func active_party_members() -> Array:
 
 
 func member_by_id(member_id: String) -> Dictionary:
-	if member_id == PLAYER_ID or member_id.is_empty():
+	if member_id.is_empty():
 		return {}
 	for companion in game_state.companions:
 		if str(companion.get("id", "")) == member_id:
@@ -66,10 +53,6 @@ func member_by_id(member_id: String) -> Dictionary:
 
 func party_member_count() -> int:
 	return party_members().size()
-
-
-func selected_party_member_or_player(member_id: String) -> Dictionary:
-	return member_by_id(member_id)
 
 
 func generate_recruit_candidates(should_emit_signal: bool = true) -> void:
@@ -129,9 +112,6 @@ func move_party_member(member_id: String, direction: int) -> bool:
 
 
 func dismiss_companion(member_id: String) -> bool:
-	if member_id == PLAYER_ID:
-		game_state.log_added.emit("角色不存在")
-		return false
 	for index in range(game_state.companions.size()):
 		var companion: Dictionary = game_state.companions[index]
 		if str(companion.get("id", "")) != member_id:
@@ -163,7 +143,7 @@ func recruit_stone_count() -> int:
 
 
 func add_exp_for_member(member_id: String, amount: int) -> void:
-	var member: Dictionary = selected_party_member_or_player(member_id)
+	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		return
 	var member_stats: Dictionary = member.get("stats", {})
@@ -179,12 +159,10 @@ func add_exp_for_member(member_id: String, amount: int) -> void:
 
 func add_exp_to_party(amount: int) -> void:
 	for member in party_members():
-		add_exp_for_member(str(member.get("id", PLAYER_ID)), amount)
+		add_exp_for_member(str(member.get("id", "")), amount)
 
 
 func ensure_party_state() -> void:
-	if not game_state.stats.has("free_points"):
-		game_state.stats["free_points"] = 0
 	if game_state.task_exp.has("meditate"):
 		game_state.task_exp["recruit"] = max(int(game_state.task_exp.get("recruit", 0)), int(game_state.task_exp.get("meditate", 0)))
 	game_state.task_exp.erase("meditate")
@@ -192,7 +170,7 @@ func ensure_party_state() -> void:
 		var companion: Dictionary = game_state.companions[index]
 		ensure_member_shape(companion)
 		var companion_id: String = str(companion.get("id", ""))
-		if companion_id.is_empty() or companion_id == PLAYER_ID:
+		if companion_id.is_empty():
 			game_state.companions.remove_at(index)
 			continue
 		game_state.companions[index] = companion
@@ -201,7 +179,7 @@ func ensure_party_state() -> void:
 		var member_id: String = str(raw_id)
 		if filtered.has(member_id):
 			continue
-		if member_id != PLAYER_ID and companion_exists(member_id):
+		if companion_exists(member_id):
 			filtered.append(member_id)
 	game_state.party_order = filtered
 	while game_state.party_order.size() > PARTY_MAX_SIZE:
@@ -213,6 +191,9 @@ func ensure_member_shape(member: Dictionary) -> void:
 	member["id"] = str(member.get("id", "companion_%d" % game_state.rng.randi()))
 	member["name"] = str(member.get("name", "队友"))
 	member["kind"] = str(member.get("kind", "companion"))
+	member["visual_id"] = str(member.get("visual_id", DEFAULT_VISUAL_ID))
+	if str(member.get("visual_id", "")).is_empty():
+		member["visual_id"] = DEFAULT_VISUAL_ID
 	var member_stats: Dictionary = member.get("stats", {})
 	var defaults: Dictionary = base_member_stats()
 	for key in defaults.keys():
@@ -231,10 +212,12 @@ func ensure_member_shape(member: Dictionary) -> void:
 		if not member_equipped.has(key):
 			member_equipped[key] = equipped_defaults[key]
 	member["equipped"] = member_equipped
-	var member_skills: Array = member.get("skills", [])
-	if member_skills.is_empty():
-		member_skills.append(DataTables.create_skill())
-	member["skills"] = member_skills
+	var attack_mode: String = str(member.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
+	member["attack_mode"] = attack_mode if DataTables.ATTACK_MODES.has(attack_mode) else DataTables.ATTACK_MODE_MELEE
+	var member_skills: Array = member.get("skills", []) if member.get("skills", []) is Array else []
+	member["skills"] = member_skills.filter(func(skill):
+		return skill is Dictionary and str(skill.get("id", "")) != DataTables.RANGED_BASIC_ATTACK_ID
+	)
 	member["innate_traits"] = member.get("innate_traits", []) if member.get("innate_traits", []) is Array else []
 	member["growth_primary_stats"] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
 	clamp_member_runtime_stats(member)
@@ -288,7 +271,6 @@ func companion_exists(member_id: String) -> bool:
 
 
 func sync_equipped_ownership() -> void:
-	game_state.equipped = sanitize_equipped_for_member(PLAYER_ID, game_state.equipped)
 	for companion_index in range(game_state.companions.size()):
 		var companion: Dictionary = game_state.companions[companion_index]
 		companion["equipped"] = sanitize_equipped_for_member(str(companion.get("id", "")), companion.get("equipped", {}))
@@ -316,16 +298,18 @@ func sanitize_equipped_for_member(member_id: String, member_equipped: Dictionary
 
 
 func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
-	var target_level: int = maxi(1, int(game_state.stats.get("level", 1)))
+	var target_level: int = game_state.expedition_level()
 	var candidate: Dictionary = {
 		"id": "companion_%d_%d" % [Time.get_ticks_usec(), game_state.rng.randi()],
 		"candidate_id": "candidate_%d_%d" % [index, game_state.rng.randi()],
 		"name": random_recruit_name(used_names),
 		"kind": "candidate",
+		"visual_id": DEFAULT_VISUAL_ID,
 		"stats": base_member_stats(),
 		"elements": base_member_elements(),
 		"equipped": base_equipped_slots(),
-		"skills": [DataTables.create_skill()],
+		"attack_mode": DataTables.ATTACK_MODE_MELEE,
+		"skills": [],
 		"innate_traits": random_basic_recruit_traits(),
 		"growth_primary_stats": random_growth_primary_stats(),
 	}
@@ -378,8 +362,6 @@ func candidate_by_id(candidate_id: String) -> Dictionary:
 
 
 func growth_summary_for_member_data(member: Dictionary) -> String:
-	if str(member.get("id", "")) == PLAYER_ID:
-		return "全随机"
 	var primary_stats: Array[String] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
 	member["growth_primary_stats"] = primary_stats
 	return "主属性 %s" % attribute_list_text(primary_stats)
@@ -422,8 +404,6 @@ func apply_random_attribute_points_to(member: Dictionary, point_count: int) -> D
 
 
 func apply_auto_attribute_points_to(member: Dictionary, point_count: int) -> Dictionary:
-	if str(member.get("id", "")) == PLAYER_ID:
-		return apply_random_attribute_points_to(member, point_count)
 	return apply_companion_attribute_points_to(member, point_count)
 
 
