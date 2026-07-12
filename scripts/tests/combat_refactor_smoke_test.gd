@@ -19,6 +19,9 @@ func _run() -> void:
 	_test_legacy_migration()
 	_test_recruit_skills_and_basic_attacks()
 	_test_gameplay_baseline()
+	_test_enemy_rank_progression()
+	_test_equipment_enhancement_rules()
+	_test_rich_text_descriptions()
 	_test_save_fallback()
 	_test_visual_contracts(world)
 	var game_state := GameState.new()
@@ -45,7 +48,7 @@ func _run() -> void:
 	world.add_child(combat)
 	combat.set_party_views(views)
 	_test_defeat_and_cooldowns(world, combat_scene, actor_scene)
-	combat.begin_encounter(game_state, null, "forest_wolf")
+	combat.begin_encounter(game_state, null, "forest_wolf", 1)
 	_expect(combat.active, "战斗应成功开始")
 	_expect(combat.party_combatants.size() == PARTY_SIZE, "应按编队创建四名战斗成员")
 	for combatant in combat.party_combatants:
@@ -190,6 +193,173 @@ func _test_gameplay_baseline() -> void:
 	_expect(stone_count >= 1, "固定种子首小时模拟应获得至少一个建筑升级灵石")
 
 
+func _test_enemy_rank_progression() -> void:
+	_expect(CombatController.MAX_ENEMY_COUNT == 8, "敌人数量上限应为8")
+	_expect(mini(CombatController.MAX_ENEMY_COUNT, 1 * 2) == 2, "单人遭遇应生成两只敌人")
+	_expect(mini(CombatController.MAX_ENEMY_COUNT, PARTY_SIZE * 2) == 8, "四人遭遇应生成八只敌人")
+	var boundaries := {1: "t1", 20: "t1", 21: "t2", 40: "t2", 41: "t3", 60: "t3", 61: "t4", 80: "t4", 81: "t5"}
+	for level in boundaries.keys():
+		_expect(DataTables.enemy_rank_for_level(int(level)) == str(boundaries[level]), "敌人阶级边界错误: %d" % int(level))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260712
+	var previous: Dictionary = {}
+	for level in [1, 5, 20, 21, 40, 41, 60, 61, 80, 81]:
+		var enemy := DataTables.create_enemy(level, rng, "forest_wolf")
+		_expect(enemy.get("elements", {}).has("wood"), "林狼应具有木行战斗属性")
+		_expect(float(enemy.get("element_attack_ratio", 0.0)) >= 0.0 and float(enemy.get("element_attack_ratio", 0.0)) <= 1.0, "元素攻击概率必须有效")
+		_expect(enemy.get("skills", []).size() == int(DataTables.ENEMY_RANK_DEFS[enemy.get("rank", "t1")].get("skill_count", 0)), "林狼技能数量应跟随阶级")
+		if not previous.is_empty():
+			_expect(int(enemy.get("max_hp", 0)) >= int(previous.get("max_hp", 0)), "敌人生命应随等级单调增长")
+			_expect(int(enemy.get("attack", 0)) >= int(previous.get("attack", 0)), "敌人攻击应随等级单调增长")
+			_expect(int(enemy.get("defense", 0)) >= int(previous.get("defense", 0)), "敌人防御应随等级单调增长")
+		previous = enemy
+	var top_profile := DataTables.rank_drop_profile("t5", {})
+	_expect(top_profile.get("categories", []).has("rare_material"), "五阶掉落池应解锁稀有材料")
+	_expect(DataTables.random_rarity_from_weights(rng, {"t1": 0, "t2": 0, "t3": 0, "t4": 0, "t5": 1}) == "t5", "固定稀有度权重应稳定抽中对应阶级")
+	var controller := CombatController.new()
+	controller.enemy = DataTables.create_enemy(20, rng, "forest_wolf")
+	var rank_level := int(controller.enemy.get("rank_level", 1))
+	var level_steps := mini(3, floori(float(rank_level - 1) / 5.0))
+	_expect(level_steps == 3, "阶内掉落概率加成最多应为三个5%台阶")
+
+
+func _test_equipment_enhancement_rules() -> void:
+	var budgets := {"t1": 20, "t2": 50, "t3": 100, "t4": 180, "t5": 300}
+	var attribute_rng := RandomNumberGenerator.new()
+	attribute_rng.seed = 20260712
+	var saw_normal := false
+	var saw_element := false
+	for rarity in budgets.keys():
+		_expect(DataTables.equipment_attribute_point_budget(str(rarity)) == int(budgets[rarity]), "装备阶位属性点预算错误: %s" % str(rarity))
+		for _index in range(40):
+			var attributes := DataTables.generate_equipment_base_attributes(str(rarity), attribute_rng)
+			_expect(attributes.size() >= 1 and attributes.size() <= 5, "装备随机属性数量应在1至5之间")
+			var total := 0
+			var unique_stat_ids: Dictionary = {}
+			for attribute in attributes:
+				var stat_id := str(attribute.get("stat", ""))
+				_expect(not unique_stat_ids.has(stat_id), "装备随机属性不能重复")
+				unique_stat_ids[stat_id] = true
+				total += int(attribute.get("amount", 0))
+				saw_normal = saw_normal or DataTables.EQUIPMENT_NORMAL_ATTRIBUTE_STATS.has(stat_id)
+				saw_element = saw_element or DataTables.EQUIPMENT_ELEMENT_ATTRIBUTE_STATS.has(stat_id)
+			_expect(total <= int(budgets[rarity]) and total > 0, "随机属性点总值应为预算平均分配后的有效值")
+	_expect(saw_normal and saw_element, "随机属性应同时覆盖普通与五行属性池")
+	var level_rng_a := RandomNumberGenerator.new()
+	var level_rng_b := RandomNumberGenerator.new()
+	level_rng_a.seed = 99
+	level_rng_b.seed = 99
+	var level_one := DataTables.create_equipment_from_template("weapon", 1, level_rng_a, 0, "", "t3", "debug")
+	var level_ninety_nine := DataTables.create_equipment_from_template("weapon", 99, level_rng_b, 0, "", "t3", "debug")
+	_expect(level_one.get("base_attributes", []) == level_ninety_nine.get("base_attributes", []), "同阶装备基础属性不应受装备等级影响")
+	_expect(level_one.get("affixes", []).is_empty(), "新装备不应生成旧数值词条")
+	_expect(DataTables.equipment_enhance_limit("t1") == 5 and DataTables.equipment_enhance_limit("t5") == 40, "装备强化上限应按阶位为5至40")
+	_expect(DataTables.equipment_enhance_cost("t1", 5) == 1, "一阶+5强化消耗应为1")
+	_expect(DataTables.equipment_enhance_cost("t3", 16) == 6, "三阶+16强化消耗应为6")
+	_expect(DataTables.equipment_enhance_cost("t5", 40) == 15, "五阶+40强化消耗应为15")
+	var state := GameState.new()
+	state.inventory.clear()
+	state.rng.seed = 20260712
+	state.add_inventory_item(DataTables.ITEM_ID_SPIRIT_STONE, 100, false)
+	var weapon := DataTables.create_equipment_from_template("weapon", 1, state.rng, 0, "", "t1", "debug")
+	weapon["base_attributes"] = [{"stat": "attack", "amount": 20}]
+	state.add_equipment(weapon)
+	for _index in range(5):
+		_expect(state.enhance_equipment(str(weapon.get("instance_id", ""))), "一阶武器应能强化至+5")
+	var enhanced_weapon := state.inventory_item_by_instance(str(weapon.get("instance_id", "")))
+	_expect(int(enhanced_weapon.get("enhance_count", 0)) == 5, "一阶武器强化次数应达到上限")
+	_expect(state._sum_enhanced_attribute(enhanced_weapon, "attack") == 5, "单属性武器每次强化应直接增加1点攻击")
+	_expect(not state.enhance_equipment(str(weapon.get("instance_id", ""))), "达到阶位上限后不应继续强化")
+	var armor := DataTables.create_equipment_from_template("armor", 1, state.rng, 0, "", "t1", "debug")
+	armor["base_attributes"] = [{"stat": "defense", "amount": 10}, {"stat": "max_hp", "amount": 10}]
+	state.add_equipment(armor)
+	_expect(state.enhance_equipment(str(armor.get("instance_id", ""))), "双属性装备应能强化")
+	var enhanced_armor := state.inventory_item_by_instance(str(armor.get("instance_id", "")))
+	var enhanced_stat := str(enhanced_armor.get("enhanced_attributes", [])[0].get("stat", ""))
+	_expect(["defense", "max_hp"].has(enhanced_stat), "随机强化必须命中已有基础属性")
+	state.add_inventory_item(DataTables.ITEM_ID_REFINE_TALISMAN, 10, false)
+	var enhancement_level := int(enhanced_armor.get("enhance_count", 0))
+	_expect(state.add_equipment_affix(str(armor.get("instance_id", ""))), "洗练应成功重洗随机属性")
+	var refined_armor := state.inventory_item_by_instance(str(armor.get("instance_id", "")))
+	_expect(int(refined_armor.get("enhance_count", 0)) == enhancement_level, "洗练后强化等级必须保持")
+	_expect(refined_armor.get("enhanced_attributes", []).size() == enhancement_level, "洗练后强化点总数必须保持")
+	_expect(refined_armor.get("refine_affixes", []).is_empty() and int(refined_armor.get("refine_count", 0)) == 1, "洗练不应生成旧百分比词条且应增加洗练次数")
+	var refined_base_stats: Dictionary = {}
+	for attribute in refined_armor.get("base_attributes", []):
+		refined_base_stats[str(attribute.get("stat", ""))] = true
+	for attribute in refined_armor.get("enhanced_attributes", []):
+		_expect(refined_base_stats.has(str(attribute.get("stat", ""))), "洗练后的强化点必须重新分配到新属性")
+	var migration_state := GameState.new()
+	migration_state.load_save_data({
+		"schema_version": 5,
+		"inventory": [{
+			"instance_id": "legacy_equipment",
+			"item_id": "weapon",
+			"type": DataTables.ITEM_TYPE_EQUIPMENT,
+			"count": 1,
+			"rarity": "t2",
+			"equipment_level": 1,
+			"base_attributes": [{"stat": "attack", "amount": 999}],
+			"affixes": [{"stat": "defense", "amount": 999}],
+			"enhanced_attributes": [{"stat": "attack", "amount": 5}],
+			"refine_affixes": [{"stat": "attack", "percent": 0.1}],
+			"enhance_count": 5,
+			"refine_count": 1,
+		}],
+	})
+	var migrated_item := migration_state.inventory_item_by_instance("legacy_equipment")
+	_expect(int(migrated_item.get("attribute_generation_version", 0)) == 1, "旧装备应迁移到阶位点数属性模型")
+	_expect(migrated_item.get("affixes", []).is_empty() and migrated_item.get("enhanced_attributes", []).is_empty() and migrated_item.get("refine_affixes", []).is_empty(), "旧装备迁移应清空数值词条、强化和洗练")
+	_expect(int(migrated_item.get("enhance_count", -1)) == 0 and int(migrated_item.get("refine_count", -1)) == 0, "旧装备迁移应重置强化和洗练次数")
+
+
+func _test_rich_text_descriptions() -> void:
+	var state := GameState.new()
+	state.companions.clear()
+	state.party_order.clear()
+	var member := _test_member(state, 30)
+	member.get("elements", {})["fire"] = 32
+	state.companions.append(member)
+	state.party_order.append(str(member.get("id", "")))
+	state._ensure_party_state()
+	var item := {
+		"item_id": "weapon",
+		"name": "测试赤焰剑",
+		"description": "用于验证语义富文本。",
+		"type": DataTables.ITEM_TYPE_EQUIPMENT,
+		"rarity": "t3",
+		"base_attributes": [{"stat": "attack", "amount": 12}],
+		"enhanced_attributes": [{"stat": "attack", "amount": 2}],
+		"affixes": [{"stat": "element_fire", "amount": 4}],
+		"refine_affixes": [{"stat": "attack", "percent": 0.12}],
+		"description_effects": [{
+			"kind": "element_damage_formula",
+			"element": "fire",
+			"stat": "element_fire",
+			"multiplier": 0.75,
+			"rounding": "floor",
+		}],
+	}
+	var segments: Array = RichTextDescriptionRenderer.build_item_segments(item, state, str(member.get("id", "")))
+	var text: String = RichTextDescriptionRenderer.plain_text(segments)
+	_expect(text.contains("造成 火属性伤害（火属性 32 × 0.75 = 24）"), "元素公式描述应显示实时属性、倍率和结果")
+	var saw_fire_role := false
+	var saw_multiplier_role := false
+	var saw_result_role := false
+	for segment in segments:
+		var role: String = str(segment.get("role", ""))
+		saw_fire_role = saw_fire_role or role == "element_fire"
+		saw_multiplier_role = saw_multiplier_role or role == RichTextDescriptionRenderer.ROLE_MULTIPLIER
+		saw_result_role = saw_result_role or role == RichTextDescriptionRenderer.ROLE_RESULT
+	_expect(saw_fire_role and saw_multiplier_role and saw_result_role, "公式描述应包含元素、倍率和结果语义颜色")
+	var label := RichTextLabel.new()
+	RichTextDescriptionRenderer.render_item(label, item, state, str(member.get("id", "")))
+	_expect(label.get_total_character_count() > 0, "RichTextLabel应接收渲染后的描述")
+	label.free()
+	var generated := DataTables.create_equipment_from_template("weapon", 1, state.rng)
+	_expect(generated.has("description_effects"), "新装备实例应始终携带description_effects字段")
+
+
 func _test_defeat_and_cooldowns(world: Node2D, combat_scene: PackedScene, actor_scene: PackedScene) -> void:
 	var state := GameState.new()
 	state.companions.clear()
@@ -204,7 +374,7 @@ func _test_defeat_and_cooldowns(world: Node2D, combat_scene: PackedScene, actor_
 	var defeat_combat := combat_scene.instantiate() as CombatController
 	world.add_child(defeat_combat)
 	defeat_combat.set_party_views({str(member.get("id", "")): actor})
-	defeat_combat.begin_encounter(state, null, "forest_wolf")
+	defeat_combat.begin_encounter(state, null, "forest_wolf", 1)
 	member.get("stats", {})["hp"] = 0
 	defeat_combat._check_combat_result()
 	_expect(defeat_combat.is_finished(), "队伍全灭应立即结束战斗")

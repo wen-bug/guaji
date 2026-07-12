@@ -26,6 +26,7 @@
 - `use_scope`：使用范围，当前为 `home`、`combat`、`none`。
 - `gain_target`：成长或强化倾向标签。
 - `icon_name` / `icon_path`：可选图标覆盖；默认由 `item_id` 推导。
+- `description_effects`：装备结构化富文本公式；格式与维护边界见 `docs/items.md`。
 
 ## 已实现：物品编号与素材命名
 
@@ -115,26 +116,28 @@
 - `resources/equipment/gloves.tres`
 - `resources/equipment/accessory.tres`
 
-装备 `.tres` 字段包括 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_texture`、`icon_name`、`icon_path`、`level_scale`、`base_attributes`、`requirement_stat` 和 `description`。资源内不写入 `一阶`、`二阶` 等阶位文本；阶位只在运行时装备实例名称中动态生成。
+装备 `.tres` 字段包括 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_texture`、`icon_name`、`icon_path`、`requirement_stat`、`description` 和 `description_effects`。模板不再保存固定基础属性；`RichTextLabel` 节点仍由 `hud.tscn` 提供；资源内不写入 `一阶`、`二阶` 等阶位文本，阶位只在运行时装备实例名称中动态生成。
 
 装备生成公式：
 
 - 名称：`<阶位名>·<EQUIPMENT_DEFS.name>`。
-- 基础属性：`max(1, int((模板基础值 + equipment_level * level_scale + craft_bonus) * (1.0 + rarity_index * 0.08)))`
-- 随机词条：`max(1, int(random(1, 4) + equipment_level * 0.3 + craft_bonus))`
+- 属性点预算：一至五阶为 `20/50/100/180/300`。
+- 随机属性：随机生成 1 至 5 条不重复属性，每条有 50% 概率来自普通池或五行池，按 `floor(预算 / 条数)` 平均分配；余数舍弃。
+- 旧随机数值词条不再生成，`affixes` 保留为空以兼容旧存档结构。
+- 洗练会重洗随机属性并保留强化等级；强化点按新属性重新随机分配，不再生成百分比洗练词条。
 - 穿戴需求：`level >= max(1, equipment_level * rarity_tier)`
 
-## 已实现：装备阶位与词条池
+## 已实现：装备阶位与随机属性
 
-| rarity | 名称 | 权重 | 词条数量 |
+| rarity | 名称 | 权重 | 属性点预算 |
 | --- | --- | ---: | ---: |
-| `t1` | 一阶 | 55 | 1 |
-| `t2` | 二阶 | 28 | 2 |
-| `t3` | 三阶 | 12 | 3 |
-| `t4` | 四阶 | 4 | 4 |
-| `t5` | 五阶 | 1 | 5 |
+| `t1` | 一阶 | 55 | 20 |
+| `t2` | 二阶 | 28 | 50 |
+| `t3` | 三阶 | 12 | 100 |
+| `t4` | 四阶 | 4 | 180 |
+| `t5` | 五阶 | 1 | 300 |
 
-随机词条池：
+随机属性池：
 
 - `attack`
 - `defense`
@@ -151,7 +154,7 @@
 
 - 普通属性 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone` 消耗通用 `spirit_stone`。
 - 五行属性 `element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water` 消耗对应五行灵石。
-- 当前静态物品 ID 不按阶级拆分，强化值统一为 `+1`。
+- 当前静态物品 ID 不按阶级拆分；强化随机命中已有基础属性并直接 `+1`，上限按装备阶位为 `5/10/20/30/40`，每五级提高一次灵石消耗。
 - 后续阶级通过动态显示或额外数据扩展，不使用 `*_t1` 这类静态物品 ID；同类灵石默认共用同一素材图。
 
 ## 已实现：命格数据索引
@@ -175,10 +178,12 @@
 
 ## 已实现：敌人与掉落
 
+敌人掉落池按阶级解锁类别，物品使用 `t1` 到 `t5` 五档稀有度。敌人模板可以通过 `drop_profile.items`、`base_chance` 和 `rarity_weights` 覆盖阶级默认值；掉落成功后先抽稀有度，再从该稀有度物品中抽取具体物品。
+
 | enemy_id | 名称 | 五行 | 弱点 | 掉落 | 经验 | 说明 |
 | --- | --- | --- | --- | --- | ---: | --- |
 | `training_dummy` | 木桩 | `wood` | `fire` | 无 | `6 + level * 2` | 训练目标，`use_drop=false`，装备 0% |
-| `forest_wolf` | 林狼 | `wood` | `fire` | 草药 55%（1-2）、矿石 30%（1）、灵石 10%（1） | `10 + level * 2` | 独立装备掉落 5% |
+| `forest_wolf` | 林狼 | `wood` | `fire` | 一阶从草药、矿石、灵石池抽取；高阶逐步解锁属性作物、五行灵石、生产与稀有材料 | `10 + level * 2` | 基础普通掉落率 55%，阶内每 5 级 +5%（最多 +15%）；独立装备掉落 5% |
 
 敌人场景路径：
 

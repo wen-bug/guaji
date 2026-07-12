@@ -26,10 +26,13 @@ const DEFAULT_PARTY_POSITION := Vector2(736, 170)
 const PARTY_FORMATION_SPACING := Vector2(-68, 0)
 const POSITION_EPSILON := 2.0
 const DEFAULT_MOVE_SPEED := 120.0
+const MAX_ENEMY_COUNT := 8
 
 var active := false
 var finished := false
 var enemy: Dictionary = {}
+var enemy_group: Array = []
+var enemy_group_index := 0
 var party_combatants: Array = []
 var party_actor_views: Dictionary = {}
 var party_actor_statuses: Dictionary = {}
@@ -49,6 +52,7 @@ var _round_number := 1
 var _enemy_state := STATE_READY
 var _enemy_action_id := 0
 var _enemy_target_id := ""
+var _enemy_pending_action: Dictionary = {}
 var _enemy_home_position := DEFAULT_ENEMY_POSITION
 var _enemy_death_waiting := false
 var _rewards_granted := false
@@ -69,7 +73,7 @@ func set_party_views(views: Dictionary) -> void:
 			actor.connect("attack_finished", finished_callback)
 
 
-func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "") -> void:
+func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "", enemy_count_override: int = 0) -> void:
 	clear()
 	pending_game_state = game_state
 	battle_map = map_node
@@ -118,8 +122,13 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "")
 		return
 
 	var resolved_enemy_id := DataTables.resolve_enemy_id(enemy_id)
-	enemy = DataTables.create_enemy(game_state.expedition_level(), game_state.rng, resolved_enemy_id)
-	enemy["combat_id"] = "enemy_1"
+	var enemy_count := clampi(enemy_count_override, 1, MAX_ENEMY_COUNT) if enemy_count_override > 0 else mini(MAX_ENEMY_COUNT, members.size() * 2)
+	for index in range(enemy_count):
+		var generated_enemy: Dictionary = DataTables.create_enemy(game_state.expedition_level(), game_state.rng, resolved_enemy_id)
+		generated_enemy["combat_id"] = "enemy_%d" % (index + 1)
+		enemy_group.append(generated_enemy)
+	enemy_group_index = 0
+	enemy = enemy_group[enemy_group_index]
 	_spawn_enemy_node(resolved_enemy_id)
 	if current_enemy_node == null:
 		return
@@ -131,7 +140,7 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "")
 	_enemy_state = STATE_READY
 	active = true
 	finished = false
-	log_added.emit("遭遇%s，弱%s" % [enemy.get("name", "敌人"), DataTables.element_name(str(enemy.get("weak_element", "")))])
+	log_added.emit("遭遇%s x%d，弱%s" % [enemy.get("name", "敌人"), enemy_group.size(), DataTables.element_name(str(enemy.get("weak_element", "")))])
 
 
 func tick(delta: float, game_state) -> void:
@@ -165,6 +174,8 @@ func clear() -> void:
 	enemy_actor_status = null
 	party_actor_statuses.clear()
 	party_combatants.clear()
+	enemy_group.clear()
+	enemy_group_index = 0
 	_marker_reservations.clear()
 	_resolved_hits.clear()
 	enemy.clear()
@@ -175,6 +186,7 @@ func clear() -> void:
 	_rewards_granted = false
 	_enemy_action_id = 0
 	_enemy_target_id = ""
+	_enemy_pending_action.clear()
 	_turn_phase = PHASE_PARTY
 	_party_turn_index = 0
 	_round_number = 1
@@ -193,6 +205,9 @@ func combat_status() -> Dictionary:
 		"enemy_state": _enemy_state,
 		"party_combatants": party_combatants.duplicate(true),
 		"enemy": enemy.duplicate(true),
+		"enemy_count": enemy_group.size(),
+		"enemy_index": enemy_group_index,
+		"enemies": enemy_group.duplicate(true),
 		"marker_reservations": _marker_reservations.duplicate(true),
 	}
 
@@ -388,7 +403,13 @@ func _begin_enemy_action() -> void:
 		return
 	if not _reserve_marker(target_id, str(enemy.get("combat_id", "enemy_1"))):
 		return
+	var enemy_cooldowns: Dictionary = enemy.get("skill_cooldowns", {})
+	for skill_id in enemy_cooldowns.keys():
+		enemy_cooldowns[skill_id] = maxi(0, int(enemy_cooldowns[skill_id]) - 1)
+	enemy["skill_cooldowns"] = enemy_cooldowns
 	_enemy_target_id = target_id
+	var target_status: CombatActorStatus = party_actor_statuses.get(target_id)
+	_enemy_pending_action = current_enemy_node.select_action(pending_game_state, target_status)
 	_enemy_action_id = _allocate_action_id()
 	_resolved_hits[_enemy_action_id] = {}
 	_enemy_state = STATE_APPROACH
@@ -459,8 +480,10 @@ func _on_enemy_hit_candidate(action_id: int, target_id: String) -> void:
 	var target: CombatActorStatus = party_actor_statuses.get(target_id)
 	if target == null or not target.is_alive():
 		return
-	var action := current_enemy_node.select_action(pending_game_state)
-	var skill := _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))), str(action.get("element", "")))
+	var action := _enemy_pending_action
+	var skill: Dictionary = action
+	if str(action.get("source", "")) != "skill" and str(action.get("type", "")) != "damage":
+		skill = _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))), str(action.get("element", "")))
 	var result := _run_skill_scene(enemy_actor_status, [target], skill, pending_game_state.rng)
 	log_added.emit("%s攻击%s，造成%d点伤害" % [enemy.get("name", "敌人"), target.actor_name, int(result.get("damage", 0))])
 	_check_combat_result()
@@ -513,6 +536,9 @@ func _on_enemy_death_finished() -> void:
 	if not _enemy_death_waiting:
 		return
 	_grant_victory_rewards()
+	if enemy_group_index + 1 < enemy_group.size():
+		_advance_enemy_group()
+		return
 	_combat_result = RESULT_VICTORY
 	_enemy_death_waiting = false
 	active = false
@@ -520,6 +546,33 @@ func _on_enemy_death_finished() -> void:
 	for combatant in party_combatants:
 		if str(combatant.get("state", "")) != STATE_DEFEATED:
 			combatant["state"] = STATE_VICTORY
+
+
+func _advance_enemy_group() -> void:
+	if current_enemy_node != null and is_instance_valid(current_enemy_node):
+		current_enemy_node.queue_free()
+	current_enemy_node = null
+	enemy_actor_status = null
+	enemy_group_index += 1
+	enemy = enemy_group[enemy_group_index]
+	_spawn_enemy_node(str(enemy.get("id", DataTables.DEFAULT_ENEMY_ID)))
+	if current_enemy_node == null:
+		_combat_result = RESULT_DEFEAT
+		active = false
+		finished = true
+		_enemy_death_waiting = false
+		return
+	current_enemy_node.set_combat_position(_enemy_home_position)
+	_turn_phase = PHASE_PARTY
+	_party_turn_index = 0
+	_round_number = 1
+	_enemy_state = STATE_READY
+	_enemy_action_id = 0
+	_enemy_target_id = ""
+	_enemy_pending_action.clear()
+	_enemy_death_waiting = false
+	_rewards_granted = false
+	log_added.emit("下一只%s进入战斗（剩余 %d）" % [enemy.get("name", "敌人"), enemy_group.size() - enemy_group_index])
 
 
 func _grant_victory_rewards() -> void:
@@ -532,20 +585,61 @@ func _grant_victory_rewards() -> void:
 		pending_game_state.add_exp_for_member(str(combatant.get("member_id", "")), exp_amount)
 	_resolve_drops(pending_game_state)
 	if bool(enemy.get("use_drop", true)) and pending_game_state.rng.randf() < float(enemy.get("equipment_drop_chance", 0.0)):
-		pending_game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", pending_game_state.expedition_level())), pending_game_state.rng, pending_game_state.craft_bonus(), "drop"))
+		var rarity_weights: Dictionary = enemy.get("drop_profile", {}).get("rarity_weights", {})
+		pending_game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", pending_game_state.expedition_level())), pending_game_state.rng, pending_game_state.craft_bonus(), "drop", rarity_weights))
 	log_added.emit("击败%s，账号历练 +%d" % [enemy.get("name", "敌人"), exp_amount])
 
 
 func _resolve_drops(game_state) -> void:
 	if not bool(enemy.get("use_drop", true)):
 		return
-	for item_id in enemy.get("drops", {}).keys():
-		var drop_def: Dictionary = enemy.get("drops", {}).get(item_id, {})
-		if game_state.rng.randf() > float(drop_def.get("chance", 1.0)):
+	var profile: Dictionary = enemy.get("drop_profile", {})
+	var items: Array = profile.get("items", []) if profile.get("items", []) is Array else []
+	if items.is_empty():
+		for item_id in enemy.get("drops", {}).keys():
+			var drop_def: Dictionary = enemy.get("drops", {}).get(item_id, {})
+			if game_state.rng.randf() <= clampf(float(drop_def.get("chance", 0.0)), 0.0, 1.0):
+				var low := maxi(1, int(drop_def.get("min", 1)))
+				var high := maxi(low, int(drop_def.get("max", low)))
+				game_state.gain_resource(str(item_id), game_state.rng.randi_range(low, high))
+		return
+	var rank_level := int(enemy.get("rank_level", 1))
+	var level_steps := mini(3, floori(float(rank_level - 1) / 5.0))
+	var chance := clampf(float(profile.get("base_chance", 0.0)) + 0.05 * float(level_steps), 0.0, 1.0)
+	if game_state.rng.randf() > chance:
+		return
+	var rarity := _roll_drop_rarity(profile.get("rarity_weights", {}), game_state.rng)
+	var matching: Array = []
+	for item_id in items:
+		var resolved_id := str(item_id)
+		if DataTables.item_definition(resolved_id).is_empty():
 			continue
-		var low := int(drop_def.get("min", 1))
-		var high := int(drop_def.get("max", low))
-		game_state.gain_resource(str(item_id), game_state.rng.randi_range(low, high))
+		if DataTables.item_drop_rarity(resolved_id) == rarity:
+			matching.append(resolved_id)
+	if matching.is_empty():
+		for item_id in items:
+			if not DataTables.item_definition(str(item_id)).is_empty():
+				matching.append(str(item_id))
+	if matching.is_empty():
+		return
+	var selected_id: String = str(matching[game_state.rng.randi_range(0, matching.size() - 1)])
+	game_state.gain_resource(selected_id, 1)
+
+
+func _roll_drop_rarity(weights, rng: RandomNumberGenerator) -> String:
+	var total := 0
+	if weights is Dictionary:
+		for rarity in DataTables.EQUIPMENT_RARITY_ORDER:
+			total += maxi(0, int(weights.get(rarity, 0)))
+	if total <= 0:
+		return "t1"
+	var roll := rng.randi_range(1, total)
+	var cursor := 0
+	for rarity in DataTables.EQUIPMENT_RARITY_ORDER:
+		cursor += maxi(0, int(weights.get(rarity, 0)))
+		if roll <= cursor:
+			return str(rarity)
+	return "t1"
 
 
 func _check_combat_result() -> void:

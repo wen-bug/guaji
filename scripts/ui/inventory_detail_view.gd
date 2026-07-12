@@ -6,7 +6,7 @@ extends PanelContainer
 @onready var target_row: HBoxContainer = $DetailLayout/TargetColumn/TargetRow
 @onready var title_label: Label = $DetailLayout/DetailColumn/TitleLabel
 @onready var meta_label: Label = $DetailLayout/DetailColumn/MetaLabel
-@onready var description_label: Label = $DetailLayout/DetailColumn/DescriptionLabel
+@onready var description_label: RichTextLabel = $DetailLayout/DetailColumn/DescriptionLabel
 @onready var use_button: Button = $DetailLayout/DetailColumn/UseButton
 
 var target_icons: Array[ColorRect] = []
@@ -22,12 +22,14 @@ func show_item(item: Dictionary, game_state, mouse_position: Vector2, viewport_s
 	if item.is_empty():
 		hide_item()
 		return
-	_position_panel(mouse_position, viewport_size)
-	visible = true
 	var target_id: String = str(item.get("gain_target", DataTables.item_gain_target(str(item.get("item_id", "")))))
 	title_label.text = DataTables.inventory_display_name(item)
 	meta_label.text = _item_meta_text(item, game_state, member_id)
-	description_label.text = _item_description_text(item)
+	RichTextDescriptionRenderer.render_item(description_label, item, game_state, member_id)
+	if str(item.get("type", "")) == DataTables.ITEM_TYPE_EQUIPMENT:
+		title_label.add_theme_color_override("font_color", RichTextDescriptionRenderer.rarity_color(str(item.get("rarity", "t1"))))
+	else:
+		title_label.add_theme_color_override("font_color", RichTextDescriptionRenderer.TEXT_COLORS[RichTextDescriptionRenderer.ROLE_PRIMARY])
 	_refresh_detail_icon(DataTables.inventory_icon_texture(item), target_id)
 	_refresh_target_icons(target_id)
 	var can_use: bool = false
@@ -38,6 +40,9 @@ func show_item(item: Dictionary, game_state, mouse_position: Vector2, viewport_s
 	use_button.visible = can_use
 	use_button.disabled = not can_use
 	use_button.text = "使用" if can_use else ""
+	reset_size()
+	_position_panel(mouse_position, viewport_size)
+	visible = true
 
 func hide_item() -> void:
 	visible = false
@@ -126,22 +131,6 @@ func _item_meta_text(item: Dictionary, game_state, member_id: String = "") -> St
 			parts.append("效果：气血 +%d / 法力 +%d" % [int(payload.get("hp", 0)), int(payload.get("mp", 0))])
 	return "  ".join(parts)
 
-func _item_description_text(item: Dictionary) -> String:
-	var description: String = DataTables.inventory_display_description(item)
-	if item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
-		var details: Array[String] = []
-		details.append("攻击 %d" % int(item.get("attack_bonus", 0)))
-		details.append("防御 %d" % int(item.get("defense_bonus", 0)))
-		if not description.is_empty():
-			details.append(description)
-		return "  ".join(details)
-	if item.get("type", "") == DataTables.ITEM_TYPE_PILL:
-		var payload: Dictionary = item.get("payload", {})
-		if payload.get("effect_mode", "instant") == "duration":
-			return "%s，持续 %d 秒" % [description, int(payload.get("duration", 0))]
-		return description
-	return description
-
 func _item_source_text(item: Dictionary) -> String:
 	if item.is_empty():
 		return "非掉落"
@@ -161,10 +150,8 @@ func _position_panel(mouse_position: Vector2, viewport_size: Vector2) -> void:
 	var y: float = mouse_position.y + offset_y
 	if x + panel_size.x > viewport_size.x:
 		x = mouse_position.x - panel_size.x - offset_x
-	if y + panel_size.y > viewport_size.y:
-		y = viewport_size.y - panel_size.y - 8.0
-	if y < 8.0:
-		y = 8.0
-	if x < 8.0:
-		x = 8.0
+	var max_x: float = max(8.0, viewport_size.x - panel_size.x - 8.0)
+	var max_y: float = max(8.0, viewport_size.y - panel_size.y - 8.0)
+	x = clampf(x, 8.0, max_x)
+	y = clampf(y, 8.0, max_y)
 	position = Vector2i(int(x), int(y))

@@ -11,10 +11,5 @@ display_name = "饰品"
 slot_label = "饰品"
 icon_name = "accessory"
 icon_path = "res://assets/equipment/accessory.png"
-level_scale = 1.0
-base_attributes = [{
-"amount": 2,
-"stat": "root_bone"
-}]
 requirement_stat = "level"
-description = "饰品装备模板，提供基础根骨属性。"
+description = "饰品装备模板。"

@@ -69,9 +69,24 @@ func effect_position() -> Vector2:
 	return combat_visual.effect_position() if combat_visual != null else global_position
 
 
-func select_action(game_state) -> Dictionary:
+func select_action(game_state, target_status = null) -> Dictionary:
 	if enemy_data.is_empty():
 		return {}
+	var cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
+	var candidates: Array = []
+	for skill_id in enemy_data.get("skills", []):
+		var skill: Dictionary = DataTables.SKILL_DEFS.get(str(skill_id), {}).duplicate(true)
+		if skill.is_empty() or int(cooldowns.get(str(skill_id), 0)) > 0:
+			continue
+		if not _skill_triggered(skill, target_status):
+			continue
+		candidates.append(skill)
+	if not candidates.is_empty():
+		candidates.sort_custom(func(a, b): return int(a.get("priority", 0)) > int(b.get("priority", 0)))
+		var chosen: Dictionary = candidates[0]
+		cooldowns[str(chosen.get("id", ""))] = maxi(0, int(chosen.get("cooldown", 0)))
+		enemy_data["skill_cooldowns"] = cooldowns
+		return chosen
 	var element_id := ""
 	if game_state != null and game_state.rng.randf() < float(enemy_data.get("element_attack_ratio", 0.0)):
 		element_id = str(enemy_data.get("element", ""))
@@ -80,7 +95,23 @@ func select_action(game_state) -> Dictionary:
 		"source": "basic",
 		"base_damage": int(enemy_data.get("attack", 1)),
 		"element": element_id,
+		"attack_mode": DataTables.ATTACK_MODE_MELEE,
 	}
+
+
+func _skill_triggered(skill: Dictionary, target_status) -> bool:
+	var triggers: Array = skill.get("trigger", []) if skill.get("trigger", []) is Array else []
+	if triggers.is_empty() or triggers.has("always"):
+		return true
+	var hp_ratio := float(enemy_data.get("hp", 0)) / maxf(1.0, float(enemy_data.get("max_hp", 1)))
+	if triggers.has("hp_below_50") and hp_ratio <= 0.5:
+		return true
+	if triggers.has("hp_below_35") and hp_ratio <= 0.35:
+		return true
+	if triggers.has("target_hp_below_35") and target_status != null:
+		var snapshot: Dictionary = target_status.combat_snapshot()
+		return float(snapshot.get("hp", 0)) / maxf(1.0, float(snapshot.get("max_hp", 1))) <= 0.35
+	return false
 
 
 func play_idle() -> void:

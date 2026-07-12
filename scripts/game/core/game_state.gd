@@ -14,7 +14,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 5
+const SAVE_SCHEMA_VERSION = 7
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -177,6 +177,10 @@ func load_save_data(data: Dictionary) -> void:
 	_ensure_production_jobs()
 	_ensure_farm_slots()
 	_sanitize_loaded_inventory()
+	if loaded_schema_version < 6:
+		_migrate_equipment_attribute_model()
+	if loaded_schema_version < 7:
+		_migrate_equipment_refine_model()
 	_seed_test_inventory_if_enabled()
 	_sanitize_active_buffs()
 	_sanitize_farm_speed_buffs()
@@ -473,6 +477,8 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id)))
 	item["resource_path"] = str(item.get("resource_path", DataTables.equipment_resource_path(item_id)))
 	item["base_attributes"] = _duplicate_array(item.get("base_attributes", []))
+	item["attribute_generation_version"] = maxi(0, int(item.get("attribute_generation_version", 0)))
+	item["description_effects"] = _duplicate_array(item.get("description_effects", DataTables.equipment_template_description_effects(item_id)))
 	item["enhanced_attributes"] = _duplicate_array(item.get("enhanced_attributes", []))
 	item["refine_affixes"] = _duplicate_array(item.get("refine_affixes", []))
 	item["affixes"] = _duplicate_array(item.get("affixes", []))
@@ -486,6 +492,32 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 		item.erase("equipped_slot")
 	item["equip_requirement"] = item.get("equip_requirement", {}) if item.get("equip_requirement", {}) is Dictionary else {}
 	_update_equipment_compat_bonuses(item)
+
+
+func _migrate_equipment_attribute_model() -> void:
+	for index in range(inventory.size()):
+		var item: Dictionary = inventory[index]
+		if str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+			continue
+		item["base_attributes"] = DataTables.generate_equipment_base_attributes(str(item.get("rarity", "t1")), rng)
+		item["attribute_generation_version"] = 1
+		item["affixes"] = []
+		item["enhanced_attributes"] = []
+		item["refine_affixes"] = []
+		item["enhance_count"] = 0
+		item["enhance_level"] = 0
+		item["refine_count"] = 0
+		_update_equipment_compat_bonuses(item)
+		inventory[index] = item
+
+
+func _migrate_equipment_refine_model() -> void:
+	for index in range(inventory.size()):
+		var item: Dictionary = inventory[index]
+		if str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+			continue
+		item["refine_affixes"] = []
+		inventory[index] = item
 
 
 func _sanitize_active_buffs() -> void:
@@ -2037,22 +2069,29 @@ func enhance_equipment(instance_id: String) -> bool:
 	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty() or item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
 		return false
-	var cost: int = int(item.get("enhance_count", 0)) + 1
-	var stone: Dictionary = _find_enhance_stone(item, cost)
+	var current_level := int(item.get("enhance_count", 0))
+	var rarity := str(item.get("rarity", "t1"))
+	var limit := DataTables.equipment_enhance_limit(rarity)
+	if current_level >= limit:
+		log_added.emit("%s已达到强化上限 +%d" % [item.get("name", "装备"), limit])
+		return false
+	var next_level := current_level + 1
+	var cost := DataTables.equipment_enhance_cost(rarity, next_level)
+	var stone: Dictionary = _random_enhance_stone(item)
 	if stone.is_empty():
-		log_added.emit("缺少匹配的灵石")
+		log_added.emit("装备没有可强化的基础属性")
 		return false
 	if not spend_resource(stone["item_id"], cost):
-		log_added.emit("灵石不足")
+		log_added.emit("%s不足，强化需要 %d 个" % [DataTables.resource_name(str(stone["item_id"])), cost])
 		return false
 	var enhanced_attributes: Array = item.get("enhanced_attributes", [])
 	enhanced_attributes.append({
 		"stat": stone["stat"],
-		"amount": int(stone["amount"]),
+		"amount": 1,
 		"quality": stone["quality"],
 	})
 	item["enhanced_attributes"] = enhanced_attributes
-	item["enhance_count"] = int(item.get("enhance_count", 0)) + 1
+	item["enhance_count"] = next_level
 	item["enhance_level"] = item["enhance_count"]
 	_update_equipment_compat_bonuses(item)
 	set_progress_state("forge", "completed", "已强化%s至 +%d" % [item["name"], item["enhance_count"]])
@@ -2068,17 +2107,13 @@ func add_equipment_affix(instance_id: String) -> bool:
 	if not spend_resource("refine_talisman", cost):
 		log_added.emit("洗练符不足")
 		return false
-	var attribute_def: Dictionary = DataTables.EQUIPMENT_ATTRIBUTE_DEFS[rng.randi_range(0, DataTables.EQUIPMENT_ATTRIBUTE_DEFS.size() - 1)]
-	var refine_affixes: Array = item.get("refine_affixes", [])
-	var percent: float = snappedf(rng.randf_range(0.05, 0.15), 0.01)
-	refine_affixes.append({
-		"stat": attribute_def["stat"],
-		"percent": percent,
-	})
-	item["refine_affixes"] = refine_affixes
+	item["base_attributes"] = DataTables.generate_equipment_base_attributes(str(item.get("rarity", "t1")), rng)
+	item["refine_affixes"] = []
+	_reroll_enhanced_attributes(item)
 	item["refine_count"] = int(item.get("refine_count", 0)) + 1
-	set_progress_state("forge", "completed", "已洗练%s" % item["name"])
-	log_added.emit("洗练%s" % item["name"])
+	_update_equipment_compat_bonuses(item)
+	set_progress_state("forge", "completed", "已洗练%s的随机属性" % item["name"])
+	log_added.emit("洗练%s，强化等级保持 +%d" % [item["name"], int(item.get("enhance_count", 0))])
 	return true
 
 
@@ -2134,31 +2169,41 @@ func _item_equipment_attribute_value(item: Dictionary, stat_id: String) -> int:
 			flat_value += int(attribute.get("amount", 0))
 	if flat_value == 0:
 		return 0
-	var percent_bonus: float = 0.0
-	for affix in item.get("refine_affixes", []):
-		if affix.get("stat", "") == stat_id:
-			percent_bonus += float(affix.get("percent", 0.0))
-	return int(floor(flat_value * (1.0 + percent_bonus)))
+	return flat_value
 
 
-func _find_enhance_stone(item: Dictionary, cost: int) -> Dictionary:
+func _random_enhance_stone(item: Dictionary) -> Dictionary:
 	var base_stats: Array = []
 	for attribute in item.get("base_attributes", []):
 		var stat_id: String = attribute.get("stat", "")
 		if not stat_id.is_empty() and not base_stats.has(stat_id):
 			base_stats.append(stat_id)
+	var candidates: Array = []
 	for stat_id in base_stats:
 		var item_id: String = DataTables.enhance_stone_item_id(stat_id)
-		if item_id.is_empty():
-			continue
-		if inventory_item_count(item_id) >= cost:
-			return {
-				"item_id": item_id,
-				"stat": stat_id,
-				"quality": "base",
-				"amount": DataTables.spirit_stone_enhance_amount(item_id),
-			}
+		if not item_id.is_empty():
+			candidates.append({"item_id": item_id, "stat": stat_id, "quality": "base"})
+	if not candidates.is_empty():
+		return candidates[rng.randi_range(0, candidates.size() - 1)]
 	return {}
+
+
+func _reroll_enhanced_attributes(item: Dictionary) -> void:
+	var base_stats: Array[String] = []
+	for attribute in item.get("base_attributes", []):
+		var stat_id := str(attribute.get("stat", ""))
+		if not stat_id.is_empty() and not base_stats.has(stat_id):
+			base_stats.append(stat_id)
+	var enhanced_attributes: Array = []
+	for _index in range(int(item.get("enhance_count", 0))):
+		if base_stats.is_empty():
+			break
+		enhanced_attributes.append({
+			"stat": base_stats[rng.randi_range(0, base_stats.size() - 1)],
+			"amount": 1,
+			"quality": "base",
+		})
+	item["enhanced_attributes"] = enhanced_attributes
 
 
 func _update_equipment_compat_bonuses(item: Dictionary) -> void:

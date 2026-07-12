@@ -441,12 +441,12 @@ columns = 5
 
 [node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root" unique_id=1685661679]
 visible = false
-custom_minimum_size = Vector2(420, 132)
+custom_minimum_size = Vector2(420, 196)
 layout_mode = 0
 offset_left = 528.0
 offset_top = 6.0
 offset_right = 948.0
-offset_bottom = 138.0
+offset_bottom = 202.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 script = ExtResource("2_inventory_detail_view")
 
@@ -506,10 +506,12 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.88, 0.82, 0.68, 1)
 autowrap_mode = 2
 
-[node name="DescriptionLabel" type="Label" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000019]
-custom_minimum_size = Vector2(320, 56)
+[node name="DescriptionLabel" type="RichTextLabel" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000019]
+custom_minimum_size = Vector2(320, 116)
 layout_mode = 2
-autowrap_mode = 2
+mouse_filter = 2
+scroll_active = false
+fit_content = false
 
 [node name="UseButton" type="Button" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000020]
 custom_minimum_size = Vector2(120, 28)

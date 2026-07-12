@@ -41,14 +41,91 @@
 - `equipped_by`：当前穿戴者成员 ID，空字符串表示未穿戴。
 - `equipped_slot`：实际穿戴槽位。饰品会落到 `accessory_1` 或 `accessory_2`。
 - `rarity` / `equipment_level`：阶位与装备等级。
-- `base_attributes`：模板基础属性。
-- `affixes`：随机词条。
+- `base_attributes`：装备实例按阶位预算随机生成的属性。
+- `affixes`：已废弃的旧数值词条字段；新装备始终为空。
 - `enhanced_attributes`：普通强化加法属性。
-- `refine_affixes`：洗练百分比词条。
+- `refine_affixes`：已废弃的旧洗练百分比词条字段；新装备始终为空。
 - `enhance_count` / `refine_count`：强化和洗练次数。
 - `equip_requirement`：穿戴需求。
+- `description_effects`：结构化描述效果，只保存公式参数，不保存已渲染文本或颜色。
+
+## 富文本描述数据格式
+
+物品详情使用 `RichTextLabel`，由 `RichTextDescriptionRenderer` 根据物品实例和当前选中角色生成语义颜色。普通 `description` 只保存不参与计算的背景说明；装备属性和公式必须保存为结构化数据。
+
+`RichTextLabel` 是场景中的 `Control` 节点，应放在 `.tscn`，不能作为物品 `.tres` 本身。装备 `.tres` 只保存 `description_effects` 数据，运行时由详情面板把资源数据交给渲染器。这样新增物品只需编辑资源或数据表，不需要为每件物品创建一个 UI 节点。
+
+装备属性会自动渲染，无需重复写入描述：
+
+- `base_attributes`：显示为“随机属性”。
+- `enhanced_attributes`：显示为“强化”。
+
+特殊公式写入 `description_effects`。元素伤害公式格式：
+
+```gdscript
+"description_effects": [
+	{
+		"kind": "element_damage_formula",
+		"element": "fire",
+		"stat": "element_fire",
+		"multiplier": 0.75,
+		"rounding": "floor",
+	}
+]
+```
+
+同一内容序列化到装备 `.tres` 时使用 Godot 的数组和字典格式：
+
+```ini
+description_effects = [{
+"element": "fire",
+"kind": "element_damage_formula",
+"multiplier": 0.75,
+"rounding": "floor",
+"stat": "element_fire"
+}]
+```
+
+| 字段 | 必填 | 说明 |
+| --- | --- | --- |
+| `kind` | 是 | 当前支持 `element_damage_formula`、`text` |
+| `element` | 元素公式必填 | `wood`、`fire`、`earth`、`metal`、`water` |
+| `stat` | 否 | 取值属性；元素公式默认使用 `element_<element>` |
+| `multiplier` | 否 | 公式倍率，默认 `1.0` |
+| `rounding` | 否 | `floor`、`round`、`ceil`，默认 `floor` |
+| `text` | 文本效果必填 | `kind=text` 的显示文字 |
+| `role` | 否 | 文本语义颜色，默认 `primary` |
+
+有选中角色时，公式显示实时数值与结果，例如“造成火属性伤害（火属性 32 × 0.75 = 24）”；没有角色上下文时只显示“火属性 × 0.75”，不以 0 冒充实际属性。
+
+语义颜色：
+
+| role | 用途 | 颜色 |
+| --- | --- | --- |
+| `primary` | 正文 | `#F1E7D2` |
+| `secondary` | 标签、分隔和次要说明 | `#B8B0A2` |
+| `value` | 属性和普通数值 | `#7DD3FC` |
+| `multiplier` / `warning` | 倍率、持续时间、警告 | `#F2C14E` |
+| `result` / `positive` | 公式结果、成功状态 | `#86D98B` |
+| `error` | 不足、失败 | `#FF6B6B` |
+| `element_<id>` | 五行文本 | 木绿、火红、土黄、金灰、水蓝 |
+
+装备名称按 `t1..t5` 使用灰、绿、蓝、紫、金阶位色。颜色只增强信息，关键状态仍必须保留文字。
+
+维护边界：
+
+- `description_effects` 只负责展示，不会改变战斗结算。
+- 会造成真实战斗效果的装备必须同时拥有已实现的 `effects` 或对应属性字段，二者参数必须来自同一数据定义，不能只写彩色描述。
+- 存档保存结构化字段，绝不保存 BBCode、最终句子或公式结果；角色属性变化后重新渲染。
+- 装备实例优先使用自身 `description_effects`，旧存档缺失时从 `EquipmentTemplate` / `EQUIPMENT_DEFS` 回填。
+- `description_effects` 是可选的新增字段，加载旧档时由背包实例规范化补齐空数组，不单独提升存档 schema；若以后改变字段含义或删除字段，则必须增加 schema 迁移。
+- 未支持的 `kind` 默认不显示；新增类型时必须扩展渲染器、本文字段表和回归测试。
+- 渲染器使用 `push_color()`，不解析物品名称或描述中的 BBCode，避免特殊字符破坏格式。
+- 当前装备尚无通用“公式伤害”结算入口；在真实 `effects` 或属性结算逻辑接通前，元素伤害公式只能用于开发验证，不能作为已生效的正式装备效果发布。
 
 ## 物品分类
+
+掉落物品可通过 `drop_rarity` 标记五档稀有度；敌人掉落配置使用 `drop_categories` 或模板物品列表限制可掉落类别。掉落概率由敌人阶级基础概率和阶内等级修正共同决定。
 
 已实现分类：
 
@@ -86,7 +163,7 @@
 
 - 已实现：每个 `EQUIPMENT_DEFS` 模板在 `resources/equipment/<template_id>.tres` 有对应 `EquipmentTemplate` 资源。
 - 已实现：装备 `.tres` 保留 `icon_texture: Texture2D` 空字段，方便在 Inspector 手动拖入图片。
-- 已实现：装备 `.tres` 补齐 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_name`、`icon_path`、`level_scale`、`base_attributes`、`requirement_stat` 和 `description`。
+- 已实现：装备 `.tres` 只保留 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_name`、`icon_path`、`requirement_stat`、`description` 和 `description_effects`；不再定义固定基础属性。
 - 已实现：装备默认图标路径为 `res://assets/equipment/<template_id>.png`；背包装备图标优先读取装备 `.tres` 的 `icon_texture`，再回退到实例 `icon_path` 和占位色块。
 
 实际穿戴槽位：
@@ -108,7 +185,12 @@
 
 属性统计规则：
 
-- 装备基础属性、强化属性和随机词条通过属性读取入口叠加。
+- 新装备按阶位获得可分配属性点：一至五阶分别为 `20/50/100/180/300`。
+- 每件装备随机生成 1 至 5 条不重复属性；每条以 50% 概率从普通池或五行池选择。
+- 普通池为攻击、防御、生命、法力、根骨；五行池为木、火、土、金、水。
+- 点数平均分配到随机属性，无法整除的余数直接舍弃；装备等级不影响属性点预算。
+
+- 装备随机属性和强化属性通过属性读取入口叠加。
 - 五行词条使用 `element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water`。
 - 穿戴时检查 `equip_requirement`；掉落或炼器获得装备时不检查门槛。
 
@@ -116,13 +198,16 @@
 
 已实现规则：
 
-- 普通强化消耗装备已有基础属性对应的灵石。
-- 消耗数量为 `enhance_count + 1`。
+- 每次强化从装备已有的随机属性中随机选择一条，选中属性直接 `+1`。
+- 普通强化消耗随机选中属性对应的灵石；普通属性使用通用灵石，五行属性使用对应五行灵石。
+- 强化上限按装备阶位为：一阶 `+5`、二阶 `+10`、三阶 `+20`、四阶 `+30`、五阶 `+40`。
+- 单次消耗为“阶位基础消耗 + `floor((下一强化等级 - 1) / 5)`”；阶位基础消耗依次为 `1/2/3/5/8`。
 - 普通属性 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone` 消耗通用 `spirit_stone`；五行属性消耗对应五行灵石。
-- 当前静态物品 ID 不按阶级拆分，强化值统一为 `+1`；后续阶级通过动态显示或额外数据扩展。
+- 当前静态物品 ID 不按阶级拆分，强化值统一为 `+1`；每次只强化随机命中的一条装备属性。
 - 强化成功后向 `enhanced_attributes` 追加记录，并增加 `enhance_count`。
 - 洗练消耗 `refine_talisman`，消耗数量为 `refine_count + 1`。
-- 洗练成功后向 `refine_affixes` 追加百分比词条，并增加 `refine_count`。
+- 洗练会重新随机装备属性的数量、种类和点数分配，并按原强化等级随机重新分配强化点；强化等级不变。
+- 洗练不再生成百分比词条，`refine_affixes` 固定为空。
 
 规划规则：
 

@@ -2246,19 +2246,27 @@ func _refresh_forge_equipment_action_panel() -> void:
 
 
 func _refresh_forge_enhance_cost(item: Dictionary) -> void:
-	var cost: int = int(item.get("enhance_count", 0)) + 1 if not item.is_empty() else 1
-	forge_detail.text = "强化消耗：匹配灵石 x%d" % cost
+	var rarity := str(item.get("rarity", "t1")) if not item.is_empty() else "t1"
+	var current_level := int(item.get("enhance_count", 0)) if not item.is_empty() else 0
+	var limit := DataTables.equipment_enhance_limit(rarity)
+	var cost := DataTables.equipment_enhance_cost(rarity, current_level + 1)
+	forge_detail.text = "强化消耗：随机基础属性对应灵石 x%d" % cost
 	if item.is_empty():
 		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
 		return
-	var best_item_id: String = _first_matching_enhance_stone_id(item, cost)
-	if best_item_id.is_empty():
+	if current_level >= limit:
+		forge_action_button.disabled = true
+		forge_hint_label.text = "强化已达到上限：+%d" % limit
+		return
+	var stone_ids := _matching_enhance_stone_ids(item)
+	if stone_ids.is_empty():
 		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
 		forge_hint_label.text = "缺少可强化该装备属性的灵石"
 	else:
-		var current: int = current_game_state.inventory_item_count(best_item_id)
-		forge_material_grid.add_child(_create_forge_material_slot(best_item_id, DataTables.resource_name(best_item_id), current, cost))
-		forge_hint_label.text = "强化等级：+%d → +%d" % [int(item.get("enhance_count", 0)), int(item.get("enhance_count", 0)) + 1]
+		for item_id in stone_ids:
+			var current: int = current_game_state.inventory_item_count(item_id)
+			forge_material_grid.add_child(_create_forge_material_slot(item_id, DataTables.resource_name(item_id), current, cost))
+		forge_hint_label.text = "随机强化基础属性：+%d → +%d（上限 +%d）" % [current_level, current_level + 1, limit]
 
 
 func _refresh_forge_refine_cost(item: Dictionary) -> void:
@@ -2271,7 +2279,7 @@ func _refresh_forge_refine_cost(item: Dictionary) -> void:
 	if current < cost:
 		forge_hint_label.text = "洗练符不足"
 	else:
-		forge_hint_label.text = "当前洗练词条：%d，洗练后新增百分比词条" % int(item.get("refine_count", 0))
+		forge_hint_label.text = "重洗随机属性；强化等级 +%d 保持不变" % int(item.get("enhance_count", 0))
 
 
 func _refresh_forge_equipment_list() -> void:
@@ -2319,17 +2327,14 @@ func _create_forge_material_slot(item_id: String, item_name: String, current: in
 	return slot
 
 
-func _first_matching_enhance_stone_id(item: Dictionary, cost: int) -> String:
-	var base_stats: Array = []
+func _matching_enhance_stone_ids(item: Dictionary) -> Array[String]:
+	var result: Array[String] = []
 	for attribute in item.get("base_attributes", []):
 		var stat_id: String = attribute.get("stat", "")
-		if not stat_id.is_empty() and not base_stats.has(stat_id):
-			base_stats.append(stat_id)
-	for stat_id in base_stats:
 		var item_id: String = DataTables.enhance_stone_item_id(stat_id)
-		if not item_id.is_empty() and current_game_state.inventory_item_count(item_id) >= cost:
-			return item_id
-	return ""
+		if not item_id.is_empty() and not result.has(item_id):
+			result.append(item_id)
+	return result
 
 
 func _on_alchemy_recipe_slot_pressed() -> void:

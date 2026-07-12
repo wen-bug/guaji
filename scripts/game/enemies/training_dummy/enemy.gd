@@ -15,7 +15,7 @@ func setup(data: Dictionary) -> void:
 	super.setup(prepared_data)
 
 
-func select_action(_game_state) -> Dictionary:
+func select_action(_game_state, _target_status = null) -> Dictionary:
 	if enemy_data.is_empty():
 		return {}
 	return {

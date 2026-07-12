@@ -75,7 +75,9 @@
 │   │   └── outline_highlight.gdshader
 │   └── ui/
 │       ├── hud.gd
-│       └── hud.tscn
+│       ├── hud.tscn
+│       ├── inventory_detail_view.gd
+│       └── rich_text_description_renderer.gd
 ├── docs/
 ├── resources/
 │   ├── items/
@@ -283,6 +285,15 @@ HUD 控制脚本：
 - 加载遮罩：家园进入历练、历练返回家园时播放淡入/淡出过渡。
 - 调试 HUD：常驻 `调试` 按钮，支持添加物品、生成装备、直接设置基础属性。
 - 弹窗拖动、位置保存与视口内 clamp。
+
+### `scripts/ui/rich_text_description_renderer.gd`
+
+物品语义富文本渲染器：
+
+- 将装备基础、强化、随机词条和洗练字段渲染为紧凑彩色文本。
+- 根据 `description_effects` 和当前角色属性生成公式、倍率与结果。
+- 统一正文、数值、结果、警告、错误、五行和装备阶位颜色。
+- 只负责展示，不修改物品、角色属性或战斗状态。
 
 ## 文档目录
 

@@ -186,6 +186,7 @@ HUD 提供队伍、背包、招募、种田、炼器、炼丹、历练、返回�
 
 - `DataTables` 是当前数据事实来源，`docs/item-table.md` 是其文档化索引。
 - 新增物品或生产规则时同步更新 `docs/items.md` 和 `docs/item-table.md`。
+- 新增富文本描述效果时同步结构化数据、实际结算规则、渲染器和回归测试，禁止只写展示文本。
 - 新增命格时同步更新 `docs/innate-traits.md`。
 - 修改战斗流程、冷却、效果或失败规则时同步更新 `docs/battle-expedition.md`。
 - 未实现内容必须显式标注“规划”，不能写入已实现清单。
