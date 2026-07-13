@@ -110,6 +110,19 @@ const BASIC_RECRUIT_TRAIT_IDS := [
 	"pill_sense",
 ]
 
+const INNATE_TRAIT_RARITY_NAMES := {
+	"common": "普通",
+	"rare": "优秀",
+	"exceptional": "异禀",
+}
+
+const INNATE_TRAIT_SLOT_NAMES := {
+	"main": "主命格",
+	"sub": "副命格",
+	"flaw": "缺陷命格",
+	"basic": "命格",
+}
+
 const SLOT_NAMES := {
 	"weapon": "武器",
 	"helmet": "头盔",
@@ -547,6 +560,7 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 		"count": amount,
 		"stackable": bool(definition.get("stackable", true)),
 		"usable": bool(definition.get("usable", false)),
+		"consumable": bool(definition.get("consumable", definition.get("type", "") == ITEM_TYPE_SKILL_BOOK)),
 		"payload": definition.get("payload", {}).duplicate(true),
 		"obtain_source": "non_drop",
 		"gain_target": definition.get("gain_target", "none"),
@@ -563,6 +577,9 @@ static func create_skill(skill_id: String, obtain_source: String = "non_drop") -
 		return {}
 	var skill: Dictionary = definition.duplicate(true)
 	skill["obtain_source"] = obtain_source
+	if not bool(skill.get("enemy_only", false)):
+		skill["locked"] = true
+		skill["replaceable"] = false
 	return skill
 
 
@@ -789,6 +806,87 @@ static func recruit_max_trait_count(level: int) -> int:
 	if level >= 4:
 		return 2
 	return 1
+
+
+static func random_innate_trait_rarity(rng: RandomNumberGenerator) -> String:
+	var roll := rng.randi_range(1, 100)
+	if roll <= 70:
+		return "common"
+	if roll <= 95:
+		return "rare"
+	return "exceptional"
+
+
+static func innate_trait_rarity_name(rarity: String) -> String:
+	return str(INNATE_TRAIT_RARITY_NAMES.get(rarity, rarity))
+
+
+static func innate_trait_slot_name(slot: String) -> String:
+	return str(INNATE_TRAIT_SLOT_NAMES.get(slot, slot))
+
+
+static func innate_trait_id(raw_trait) -> String:
+	if raw_trait is Dictionary:
+		return str(raw_trait.get("id", ""))
+	return str(raw_trait)
+
+
+static func innate_trait_name(raw_trait) -> String:
+	var trait_id := innate_trait_id(raw_trait)
+	var definition: Dictionary = INNATE_TRAIT_DEFS.get(trait_id, {})
+	if raw_trait is Dictionary:
+		return str(raw_trait.get("name", definition.get("name", trait_id)))
+	return str(definition.get("name", trait_id))
+
+
+static func innate_trait_rarity(raw_trait) -> String:
+	return str(raw_trait.get("rarity", "common")) if raw_trait is Dictionary else "common"
+
+
+static func innate_trait_slot(raw_trait) -> String:
+	return str(raw_trait.get("slot", "main")) if raw_trait is Dictionary else "main"
+
+
+static func innate_trait_description(raw_trait) -> String:
+	var definition: Dictionary = INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {})
+	return str(definition.get("description", "暂无说明"))
+
+
+static func innate_trait_effect_summary(raw_trait) -> String:
+	var definition: Dictionary = INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {})
+	var effects: Array = []
+	if definition.get("effects", []) is Array:
+		effects.append_array(definition.get("effects", []))
+	if raw_trait is Dictionary and raw_trait.get("effects", []) is Array:
+		effects.append_array(raw_trait.get("effects", []))
+	var parts: Array[String] = []
+	for effect in effects:
+		if not (effect is Dictionary):
+			continue
+		var kind := str(effect.get("kind", ""))
+		var amount := float(effect.get("value", effect.get("amount", 0.0)))
+		match kind:
+			"stat_flat":
+				parts.append("%s %+d" % [attribute_display_name(str(effect.get("stat", ""))), int(amount)])
+			"element_flat":
+				parts.append("%s行 %+d" % [element_name(str(effect.get("element", ""))), int(amount)])
+			"alchemy_extra_chance":
+				parts.append("炼丹额外成丹概率 %+d%%" % int(round(amount * 100.0)))
+			"craft_bonus_flat":
+				parts.append("炼器加成 %+d" % int(amount))
+			"farm_harvest_bonus_flat":
+				parts.append("种田收成 %+d" % int(amount))
+			"forge_rarity_upgrade_chance":
+				parts.append("炼器升阶概率 %+d%%" % int(round(amount * 100.0)))
+	return "；".join(parts) if not parts.is_empty() else "暂无直接效果"
+
+
+static func innate_trait_compact_summary(raw_trait) -> String:
+	return "%s·%s %s" % [
+		innate_trait_rarity_name(innate_trait_rarity(raw_trait)),
+		innate_trait_slot_name(innate_trait_slot(raw_trait)),
+		innate_trait_name(raw_trait),
+	]
 
 
 static func forge_duration_seconds(level: int) -> float:

@@ -9,12 +9,13 @@ const FARM_STATUS_EMPTY = "empty"
 const FARM_STATUS_GROWING = "growing"
 const FARM_STATUS_READY = "ready"
 const PARTY_MAX_SIZE = 4
+const ROSTER_MAX_SIZE = 8
 const RECRUIT_RESOURCE_ID = "spirit_stone"
 const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 7
+const SAVE_SCHEMA_VERSION = 8
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -43,6 +44,7 @@ var inventory_service: InventoryService
 var known_alchemy_recipes: Array = []
 var companions: Array = []
 var party_order: Array = []
+var reserve_order: Array = []
 var recruit_candidates: Array = []
 var party_service: PartyService
 var active_buffs: Array = []
@@ -123,6 +125,7 @@ func to_save_data() -> Dictionary:
 		"known_alchemy_recipes": known_alchemy_recipes.duplicate(),
 		"companions": companions.duplicate(true),
 		"party_order": party_order.duplicate(),
+		"reserve_order": reserve_order.duplicate(),
 		"recruit_candidates": recruit_candidates.duplicate(true),
 		"active_buffs": active_buffs.duplicate(true),
 		"farm_slots": farm_slots.duplicate(true),
@@ -154,6 +157,10 @@ func load_save_data(data: Dictionary) -> void:
 		party_order.clear()
 		for member_id in data.get("party_order", []):
 			party_order.append(str(member_id))
+	reserve_order.clear()
+	if data.has("reserve_order"):
+		for member_id in data.get("reserve_order", []):
+			reserve_order.append(str(member_id))
 	if data.has("recruit_candidates"):
 		recruit_candidates.assign(_duplicate_array(data.get("recruit_candidates", [])))
 	if data.has("active_buffs"):
@@ -561,6 +568,10 @@ func party_members() -> Array:
 	return party_service.party_members()
 
 
+func roster_members() -> Array:
+	return party_service.roster_members()
+
+
 func active_party_members() -> Array:
 	return party_service.active_party_members()
 
@@ -571,6 +582,10 @@ func member_by_id(member_id: String) -> Dictionary:
 
 func party_member_count() -> int:
 	return party_service.party_member_count()
+
+
+func roster_member_count() -> int:
+	return party_service.roster_member_count()
 
 
 func generate_recruit_candidates(should_emit_signal: bool = true) -> void:
@@ -587,6 +602,18 @@ func move_party_member(member_id: String, direction: int) -> bool:
 
 func dismiss_companion(member_id: String) -> bool:
 	return party_service.dismiss_companion(member_id)
+
+
+func release_companion(member_id: String) -> bool:
+	return party_service.release_companion(member_id)
+
+
+func set_member_active(member_id: String, active: bool) -> bool:
+	return party_service.set_member_active(member_id, active)
+
+
+func is_member_active(member_id: String) -> bool:
+	return party_order.has(member_id)
 
 
 func can_recruit() -> bool:
@@ -1477,7 +1504,11 @@ func _use_skill_book(item: Dictionary, member_id: String = "") -> bool:
 		return false
 
 	var skill: Dictionary = DataTables.create_skill(skill_id, str(item.get("payload", {}).get("obtain_source", "non_drop")))
+	if skill.is_empty():
+		log_added.emit("技能不存在，技能书未消耗")
+		return false
 	var member_skills: Array = member.get("skills", [])
+	# Learned character skills are append-only: skill books never replace an existing skill.
 	member_skills.append(skill)
 	member["skills"] = member_skills
 	_remove_inventory_count(item["item_id"], 1)

@@ -18,6 +18,7 @@ func _run() -> void:
 	add_child(world)
 	_test_legacy_migration()
 	_test_recruit_skills_and_basic_attacks()
+	_test_roster_and_innate_traits()
 	_test_gameplay_baseline()
 	_test_enemy_rank_progression()
 	_test_equipment_enhancement_rules()
@@ -154,6 +155,93 @@ func _test_recruit_skills_and_basic_attacks() -> void:
 	_expect(str(action.get("attack_mode", "")) == DataTables.ATTACK_MODE_RANGED and float(action.get("range", 0.0)) >= 120.0, "火球术普通攻击应保留远程射程")
 	var fireball_attack: Dictionary = DataTables.create_basic_attack(DataTables.ATTACK_MODE_RANGED, 10)
 	_expect(int(fireball_attack.get("mp_cost", -1)) == 0 and float(fireball_attack.get("cooldown", -1.0)) == 0.0, "火球术普通攻击不应消耗法力或进入技能冷却")
+
+	var learner: Dictionary = empty_member.duplicate(true)
+	learner.erase("candidate_id")
+	learner["kind"] = "companion"
+	state.companions.append(learner)
+	state.party_order.append(str(learner.get("id", "")))
+	var heal_book := {
+		"instance_id": "test_skill_heal",
+		"item_id": "test_skill_heal",
+		"name": "回春术技能书",
+		"type": DataTables.ITEM_TYPE_SKILL_BOOK,
+		"count": 2,
+		"stackable": true,
+		"usable": true,
+		"consumable": true,
+		"payload": {"skill_id": "heal"},
+	}
+	var thunder_book := heal_book.duplicate(true)
+	thunder_book["instance_id"] = "test_skill_thunder"
+	thunder_book["item_id"] = "test_skill_thunder"
+	thunder_book["name"] = "雷击术技能书"
+	thunder_book["count"] = 1
+	thunder_book["payload"] = {"skill_id": "thunder"}
+	state.inventory.append(heal_book)
+	state.inventory.append(thunder_book)
+	var learner_id := str(learner.get("id", ""))
+	_expect(state.use_inventory_item_for_member("test_skill_heal", learner_id), "首次使用技能书应成功学习技能")
+	_expect(state.inventory_item_count("test_skill_heal") == 1, "成功学习后技能书应消耗1本")
+	_expect(not state.use_inventory_item_for_member("test_skill_heal", learner_id), "重复技能书不应替换已学技能")
+	_expect(state.inventory_item_count("test_skill_heal") == 1, "重复学习失败时不应消耗技能书")
+	_expect(state.use_inventory_item_for_member("test_skill_thunder", learner_id), "不同技能书应追加新技能")
+	var learned_skills: Array = state.member_by_id(learner_id).get("skills", [])
+	_expect(learned_skills.size() == 2, "学习第二技能时不应替换第一技能")
+	_expect(str(learned_skills[0].get("id", "")) == "heal" and str(learned_skills[1].get("id", "")) == "thunder", "人物技能应按学习顺序永久保留")
+	for learned_skill in learned_skills:
+		_expect(bool(learned_skill.get("locked", false)) and not bool(learned_skill.get("replaceable", true)), "人物已学技能应锁定且不可替换")
+
+
+func _test_roster_and_innate_traits() -> void:
+	var state := GameState.new()
+	state.add_inventory_item("spirit_stone", PartyService.ROSTER_MAX_SIZE, false)
+	for _index in range(PartyService.ROSTER_MAX_SIZE):
+		var candidate_id := str(state.recruit_candidates[0].get("candidate_id", ""))
+		_expect(state.recruit_candidate(candidate_id), "角色库未满时应允许招募")
+	_expect(state.roster_member_count() == 8, "角色库上限应为8人")
+	_expect(state.party_member_count() == 4, "出战队伍上限应保持4人")
+	_expect(state.reserve_order.size() == 4, "第5至第8名角色应进入候补")
+	_expect(not state.can_recruit(), "角色库达到8人后不应继续招募")
+	var ninth_candidate_id := str(state.recruit_candidates[0].get("candidate_id", ""))
+	_expect(not state.recruit_candidate(ninth_candidate_id), "第9名角色招募应被拒绝")
+
+	var removed_active_id := str(state.party_order[0])
+	var promoted_id := str(state.reserve_order[0])
+	_expect(state.set_member_active(removed_active_id, false), "出战角色应能下阵")
+	_expect(state.party_member_count() == 3 and state.reserve_order.has(removed_active_id), "下阵角色应进入候补")
+	_expect(state.set_member_active(promoted_id, true), "候补角色应能上阵")
+	_expect(state.party_member_count() == 4 and state.party_order.has(promoted_id), "上阵后出战人数应恢复为4")
+
+	var released_equipment := DataTables.create_equipment_from_template("weapon", 1, state.rng, 0, "", "t1", "test")
+	state.add_inventory_instance(released_equipment)
+	var released_equipment_id := str(released_equipment.get("instance_id", ""))
+	_expect(state.equip_item_for_member(released_equipment_id, removed_active_id), "放生测试角色应能穿戴装备")
+	var stone_count_before_release := state.recruit_stone_count()
+	_expect(state.release_companion(removed_active_id), "候补角色应能被放生")
+	_expect(state.member_by_id(removed_active_id).is_empty(), "放生后角色数据应永久移除")
+	var unequipped_item := state.inventory_item_by_instance(released_equipment_id)
+	_expect(not bool(unequipped_item.get("equipped", true)) and str(unequipped_item.get("equipped_by", "")) == "", "放生后角色装备应解除归属")
+	_expect(state.recruit_stone_count() == stone_count_before_release, "放生不应返还灵石")
+
+	var restored := GameState.new()
+	restored.load_save_data(state.to_save_data())
+	_expect(restored.roster_member_count() == state.roster_member_count(), "存档应保留角色库人数")
+	_expect(restored.party_order == state.party_order, "存档应保留出战顺序")
+	_expect(restored.reserve_order == state.reserve_order, "存档应保留候补顺序")
+
+	state.building_levels["recruit"] = 10
+	for _index in range(24):
+		var candidate := state.party_service.create_recruit_candidate(_index, {})
+		var traits: Array = candidate.get("innate_traits", [])
+		_expect(not traits.is_empty() and traits.size() <= DataTables.recruit_max_trait_count(10), "招募候选命格数量应在建筑上限内且至少有一个")
+		for raw_trait in traits:
+			_expect(raw_trait is Dictionary, "新候选命格应使用结构化数据")
+			if raw_trait is Dictionary:
+				_expect(["main", "sub"].has(str(raw_trait.get("slot", ""))), "候选命格槽位应有效")
+				_expect(DataTables.INNATE_TRAIT_RARITY_NAMES.has(str(raw_trait.get("rarity", ""))), "候选命格品质应有效")
+	_expect(DataTables.innate_trait_name("sharp_edge") == "锋芒", "旧字符串命格应继续解析名称")
+	_expect(not DataTables.innate_trait_effect_summary("sharp_edge").is_empty(), "命格应提供实际效果说明")
 
 
 func _test_gameplay_baseline() -> void:

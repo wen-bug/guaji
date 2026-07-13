@@ -10,6 +10,7 @@ const FORGE_MODE_CRAFT := "craft"
 const FORGE_MODE_ENHANCE := "enhance"
 const FORGE_MODE_REFINE := "refine"
 const PARTY_MAX_SIZE := 4
+const ROSTER_MAX_SIZE := 8
 const INVENTORY_CATEGORIES := [
 	{"type": DataTables.ITEM_TYPE_SKILL_BOOK, "label": "技能书", "node": "SkillBookButton"},
 	{"type": DataTables.ITEM_TYPE_ALCHEMY_RECIPE, "label": "图纸", "node": "RecipeButton"},
@@ -83,6 +84,7 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var fight_panel: PanelContainer = $Root/FightPanel
 @onready var member_info_member_list: ItemList = $Root/MemberInfoPanel/PanelLayout/MemberList
 @onready var member_info_attribute_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性/AttributeGrid
+@onready var member_info_trait_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/命格/TraitGrid
 @onready var member_info_equipment_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备/EquipmentGrid
 @onready var member_info_skill_grid: GridContainer = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/技能/SkillGrid
 @onready var member_info_portrait_root: Node2D = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport/PortraitRoot
@@ -127,7 +129,9 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var party_list: ItemList = $Root/RecruitPanel/PanelLayout/PartyList
 @onready var party_move_up_button: Button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/MoveUpButton
 @onready var party_move_down_button: Button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/MoveDownButton
+@onready var party_toggle_active_button: Button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/ToggleActiveButton
 @onready var party_dismiss_button: Button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/DismissButton
+@onready var release_confirmation_dialog: ConfirmationDialog = $Root/ReleaseConfirmationDialog
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
 @onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
 @onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
@@ -186,6 +190,7 @@ var forge_controls_connected: bool = false
 var selected_party_member_id: String = ""
 var selected_recruit_candidate_id: String = ""
 var selected_recruit_party_member_id: String = ""
+var pending_release_member_id: String = ""
 var recruit_controls_connected: bool = false
 var selected_alchemy_recipe_id: String = ""
 var selected_alchemy_worker_id: String = ""
@@ -228,6 +233,7 @@ func _ready() -> void:
 	_connect_forge_controls()
 	_connect_alchemy_controls()
 	_connect_recruit_controls()
+	release_confirmation_dialog.confirmed.connect(_on_release_confirmed)
 	_connect_debug_controls()
 	_populate_debug_options()
 
@@ -388,7 +394,7 @@ func push_log(message: String) -> void:
 func _first_party_member_id() -> String:
 	if current_game_state == null:
 		return ""
-	var members: Array = current_game_state.party_members()
+	var members: Array = current_game_state.roster_members()
 	if members.is_empty():
 		return ""
 	return str(members[0].get("id", ""))
@@ -398,6 +404,7 @@ func _refresh_member_info(game_state) -> void:
 	_refresh_member_info_member_list(game_state)
 	_refresh_member_info_portrait(game_state)
 	_refresh_member_info_attributes(game_state)
+	_refresh_member_info_traits(game_state)
 	_refresh_member_info_equipment(game_state)
 	_refresh_member_info_skills(game_state)
 
@@ -407,7 +414,7 @@ func _refresh_member_info_member_list(game_state) -> void:
 		return
 	member_info_member_list.clear()
 	var selected_index := 0
-	var members: Array = game_state.party_members()
+	var members: Array = game_state.roster_members()
 	if members.is_empty():
 		var empty_index: int = member_info_member_list.add_item("暂无角色")
 		member_info_member_list.set_item_metadata(empty_index, "")
@@ -418,7 +425,8 @@ func _refresh_member_info_member_list(game_state) -> void:
 		var member: Dictionary = members[index]
 		var member_id: String = str(member.get("id", ""))
 		var member_stats: Dictionary = member.get("stats", {})
-		var label := "%s  Lv.%d" % [
+		var label := "%s %s  Lv.%d" % [
+			"[出战]" if game_state.is_member_active(member_id) else "[候补]",
 			str(member.get("name", "成员")),
 			int(member_stats.get("level", 1)),
 		]
@@ -428,6 +436,7 @@ func _refresh_member_info_member_list(game_state) -> void:
 			selected_index = item_index
 	if member_info_member_list.item_count > 0:
 		member_info_member_list.select(selected_index)
+		selected_party_member_id = str(member_info_member_list.get_item_metadata(selected_index))
 
 
 func _refresh_member_info_portrait(game_state) -> void:
@@ -517,6 +526,34 @@ func _add_attribute_control_row(label_text: String, value_control: Control) -> v
 	name_label.text = label_text
 	member_info_attribute_grid.add_child(name_label)
 	member_info_attribute_grid.add_child(value_control)
+
+
+func _refresh_member_info_traits(game_state) -> void:
+	_clear_control_children(member_info_trait_grid)
+	var member: Dictionary = game_state.member_by_id(selected_party_member_id) if game_state != null else {}
+	if member.is_empty():
+		member_info_trait_grid.add_child(_create_member_info_slot("命格", "暂无角色", ""))
+		return
+	var traits: Array = member.get("innate_traits", []) if member.get("innate_traits", []) is Array else []
+	if traits.is_empty():
+		member_info_trait_grid.add_child(_create_member_info_slot("命格", "暂无命格", "该角色没有已记录的先天命格。"))
+		return
+	for raw_trait in traits:
+		var slot := DataTables.innate_trait_slot(raw_trait)
+		var header := "%s · %s" % [
+			DataTables.innate_trait_rarity_name(DataTables.innate_trait_rarity(raw_trait)),
+			DataTables.innate_trait_slot_name(slot),
+		]
+		if raw_trait is Dictionary and bool(raw_trait.get("awakened", false)):
+			header += " · 已觉醒"
+		var detail := "%s\n%s" % [
+			DataTables.innate_trait_description(raw_trait),
+			DataTables.innate_trait_effect_summary(raw_trait),
+		]
+		var trait_slot := _create_member_info_slot(header, DataTables.innate_trait_name(raw_trait), detail)
+		if slot == "flaw":
+			trait_slot.modulate = Color(1.0, 0.72, 0.72, 1.0)
+		member_info_trait_grid.add_child(trait_slot)
 
 
 func _create_panel_style(fill_color: Color, border_color: Color, border_width: int = 1, corner_radius: int = 6, left_margin: float = 8.0, top_margin: float = 6.0, right_margin: float = 8.0, bottom_margin: float = 6.0, shadow_size: int = 2, shadow_color: Color = Color(0, 0, 0, 0.28)) -> StyleBoxFlat:
@@ -736,6 +773,8 @@ func _ensure_menu_panel_refs() -> void:
 		member_info_member_list = $Root/MemberInfoPanel/PanelLayout/MemberList
 	if member_info_attribute_grid == null:
 		member_info_attribute_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性/AttributeGrid
+	if member_info_trait_grid == null:
+		member_info_trait_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/命格/TraitGrid
 	if member_info_equipment_grid == null:
 		member_info_equipment_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备/EquipmentGrid
 	if member_info_skill_grid == null:
@@ -822,8 +861,12 @@ func _ensure_menu_panel_refs() -> void:
 		party_move_up_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/MoveUpButton
 	if party_move_down_button == null:
 		party_move_down_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/MoveDownButton
+	if party_toggle_active_button == null:
+		party_toggle_active_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/ToggleActiveButton
 	if party_dismiss_button == null:
 		party_dismiss_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/DismissButton
+	if release_confirmation_dialog == null:
+		release_confirmation_dialog = $Root/ReleaseConfirmationDialog
 	if fight_detail == null:
 		fight_detail = $Root/FightPanel/PanelLayout/ActionDetail
 	if expedition_hud == null:
@@ -966,17 +1009,10 @@ func _building_level_summary(building_id: String) -> String:
 
 func _trait_summary(traits: Array) -> String:
 	if traits.is_empty():
-		return "无词条"
+		return "无命格"
 	var names: Array[String] = []
 	for raw_trait in traits:
-		if raw_trait is Dictionary:
-			var trait_id: String = str(raw_trait.get("id", ""))
-			var definition: Dictionary = DataTables.INNATE_TRAIT_DEFS.get(trait_id, {})
-			names.append(str(raw_trait.get("name", definition.get("name", trait_id))))
-		else:
-			var trait_id: String = str(raw_trait)
-			var definition: Dictionary = DataTables.INNATE_TRAIT_DEFS.get(trait_id, {})
-			names.append(str(definition.get("name", trait_id)))
+		names.append(DataTables.innate_trait_compact_summary(raw_trait))
 	return "/".join(names)
 
 
@@ -1037,6 +1073,7 @@ func _connect_recruit_controls() -> void:
 	party_list.item_selected.connect(_on_recruit_party_member_selected)
 	party_move_up_button.pressed.connect(func(): _on_party_move_pressed(-1))
 	party_move_down_button.pressed.connect(func(): _on_party_move_pressed(1))
+	party_toggle_active_button.pressed.connect(_on_party_toggle_active_pressed)
 	party_dismiss_button.pressed.connect(_on_party_dismiss_pressed)
 	if member_info_member_list != null:
 		member_info_member_list.item_selected.connect(_on_member_info_member_selected)
@@ -1408,8 +1445,10 @@ func _refresh_recruit_panel() -> void:
 	var stone_count: int = current_game_state.recruit_stone_count()
 	var recruit_cost: int = current_game_state.recruit_cost()
 	_refresh_building_upgrade_button(recruit_upgrade_button, "recruit")
-	recruit_detail.text = "%s\n队伍 %d/%d  灵石 %d/%d" % [
+	recruit_detail.text = "%s\n角色库 %d/%d  出战 %d/%d  灵石 %d/%d" % [
 		_building_level_summary("recruit"),
+		current_game_state.roster_member_count(),
+		ROSTER_MAX_SIZE,
 		current_game_state.party_member_count(),
 		PARTY_MAX_SIZE,
 		stone_count,
@@ -1419,15 +1458,18 @@ func _refresh_recruit_panel() -> void:
 	_refresh_recruit_party_list()
 	var candidate_selected := not selected_recruit_candidate_id.is_empty()
 	recruit_button.disabled = not candidate_selected or not current_game_state.can_recruit()
-	if current_game_state.party_member_count() >= PARTY_MAX_SIZE:
-		recruit_button.text = "队伍已满"
+	if current_game_state.roster_member_count() >= ROSTER_MAX_SIZE:
+		recruit_button.text = "角色库已满"
 	elif stone_count < recruit_cost:
 		recruit_button.text = "灵石不足"
 	else:
 		recruit_button.text = "招募"
-	var selected_index: int = int(party_list.get_selected_items()[0]) if party_list.get_selected_items().size() > 0 else -1
-	party_move_up_button.disabled = selected_index <= 0
-	party_move_down_button.disabled = selected_index < 0 or selected_index >= party_list.item_count - 1
+	var active_index: int = current_game_state.party_order.find(selected_recruit_party_member_id)
+	var selected_active := active_index >= 0
+	party_move_up_button.disabled = active_index <= 0
+	party_move_down_button.disabled = active_index < 0 or active_index >= current_game_state.party_member_count() - 1
+	party_toggle_active_button.text = "下阵" if selected_active else "上阵"
+	party_toggle_active_button.disabled = selected_recruit_party_member_id.is_empty() or (not selected_active and current_game_state.party_member_count() >= PARTY_MAX_SIZE)
 	party_dismiss_button.disabled = selected_recruit_party_member_id.is_empty()
 
 
@@ -1438,19 +1480,24 @@ func _refresh_recruit_candidate_list() -> void:
 		var candidate: Dictionary = current_game_state.recruit_candidates[index]
 		var candidate_id: String = str(candidate.get("candidate_id", ""))
 		var stats_data: Dictionary = candidate.get("stats", {})
-		var elements_data: Dictionary = candidate.get("elements", {})
-		var label := "%s  Lv.%d  攻%d 防%d 血%d 根%d  %s  %s" % [
+		var traits: Array = candidate.get("innate_traits", []) if candidate.get("innate_traits", []) is Array else []
+		var trait_text := _trait_summary(traits)
+		if not traits.is_empty():
+			trait_text += " %s" % DataTables.innate_trait_effect_summary(traits[0])
+		var label := "%s Lv.%d 攻%d 防%d 根%d | %s" % [
 			str(candidate.get("name", "候选人")),
 			int(stats_data.get("level", 1)),
 			int(stats_data.get("attack", 0)),
 			int(stats_data.get("defense", 0)),
-			int(stats_data.get("max_hp", 0)),
 			int(stats_data.get("root_bone", 0)),
-			_candidate_element_summary(elements_data),
-			"%s  词条:%s" % [current_game_state.growth_summary_for_member_data(candidate), _trait_summary(candidate.get("innate_traits", []))],
+			trait_text,
 		]
 		var item_index := recruit_candidate_list.add_item(label)
 		recruit_candidate_list.set_item_metadata(item_index, candidate_id)
+		recruit_candidate_list.set_item_tooltip(item_index, "%s\n%s" % [
+			current_game_state.growth_summary_for_member_data(candidate),
+			_trait_detail_summary(traits),
+		])
 		if candidate_id == selected_recruit_candidate_id:
 			selected_index = item_index
 	if selected_index >= 0:
@@ -1463,7 +1510,7 @@ func _refresh_recruit_candidate_list() -> void:
 func _refresh_recruit_party_list() -> void:
 	party_list.clear()
 	var selected_index := 0
-	var members: Array = current_game_state.party_members()
+	var members: Array = current_game_state.roster_members()
 	if members.is_empty():
 		var empty_index: int = party_list.add_item("暂无角色")
 		party_list.set_item_metadata(empty_index, "")
@@ -1474,8 +1521,9 @@ func _refresh_recruit_party_list() -> void:
 		var member: Dictionary = members[index]
 		var member_id: String = str(member.get("id", ""))
 		var member_stats: Dictionary = member.get("stats", {})
-		var label := "%d. %s  Lv.%d  血%d/%d 法%d/%d" % [
-			index + 1,
+		var active: bool = bool(current_game_state.is_member_active(member_id))
+		var label := "%s %s  Lv.%d  血%d/%d 法%d/%d" % [
+			"[出战 %d]" % (current_game_state.party_order.find(member_id) + 1) if active else "[候补]",
 			str(member.get("name", "成员")),
 			int(member_stats.get("level", 1)),
 			int(member_stats.get("hp", 0)),
@@ -1502,6 +1550,19 @@ func _candidate_element_summary(elements_data: Dictionary) -> String:
 	]
 
 
+func _trait_detail_summary(traits: Array) -> String:
+	if traits.is_empty():
+		return "无命格"
+	var lines: Array[String] = []
+	for raw_trait in traits:
+		lines.append("%s：%s；%s" % [
+			DataTables.innate_trait_compact_summary(raw_trait),
+			DataTables.innate_trait_description(raw_trait),
+			DataTables.innate_trait_effect_summary(raw_trait),
+		])
+	return "\n".join(lines)
+
+
 func _on_recruit_candidate_selected(index: int) -> void:
 	if index < 0 or index >= recruit_candidate_list.item_count:
 		return
@@ -1513,7 +1574,7 @@ func _on_recruit_pressed() -> void:
 	if current_game_state == null or selected_recruit_candidate_id.is_empty():
 		return
 	if current_game_state.recruit_candidate(selected_recruit_candidate_id):
-		var members: Array = current_game_state.party_members()
+		var members: Array = current_game_state.roster_members()
 		if not members.is_empty():
 			selected_party_member_id = str(members[members.size() - 1].get("id", ""))
 			selected_recruit_party_member_id = selected_party_member_id
@@ -1561,16 +1622,37 @@ func _on_party_move_pressed(direction: int) -> void:
 		_refresh_member_info(current_game_state)
 
 
+func _on_party_toggle_active_pressed() -> void:
+	if current_game_state == null or selected_recruit_party_member_id.is_empty():
+		return
+	var should_activate: bool = not bool(current_game_state.is_member_active(selected_recruit_party_member_id))
+	if current_game_state.set_member_active(selected_recruit_party_member_id, should_activate):
+		_refresh_recruit_panel()
+		_refresh_member_info(current_game_state)
+
+
 func _on_party_dismiss_pressed() -> void:
 	if current_game_state == null or selected_recruit_party_member_id.is_empty():
 		return
-	if current_game_state.dismiss_companion(selected_recruit_party_member_id):
+	var member: Dictionary = current_game_state.member_by_id(selected_recruit_party_member_id)
+	if member.is_empty():
+		return
+	pending_release_member_id = selected_recruit_party_member_id
+	release_confirmation_dialog.dialog_text = "确认放生 %s？\n角色将永久消失，装备会自动卸下，且不会返还招募资源。" % str(member.get("name", "该角色"))
+	release_confirmation_dialog.popup_centered()
+
+
+func _on_release_confirmed() -> void:
+	if current_game_state == null or pending_release_member_id.is_empty():
+		return
+	if current_game_state.release_companion(pending_release_member_id):
 		selected_party_member_id = _first_party_member_id()
 		selected_recruit_party_member_id = selected_party_member_id
 		_refresh_recruit_panel()
 		_refresh_member_info(current_game_state)
 		if inventory_panel.visible:
 			_refresh_inventory()
+	pending_release_member_id = ""
 
 
 func _set_inventory_category(type_id: String) -> void:

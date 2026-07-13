@@ -312,6 +312,17 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 3
 columns = 2
 
+[node name="命格" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="TraitGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/命格" unique_id=700000011]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/v_separation = 6
+columns = 1
+
 [node name="装备" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
 visible = false
 layout_mode = 2
@@ -955,7 +966,7 @@ layout_mode = 2
 autowrap_mode = 2
 
 [node name="CandidateList" type="ItemList" parent="Root/RecruitPanel/PanelLayout" unique_id=700000002]
-custom_minimum_size = Vector2(360, 108)
+custom_minimum_size = Vector2(360, 72)
 layout_mode = 2
 
 [node name="RecruitButton" type="Button" parent="Root/RecruitPanel/PanelLayout" unique_id=2069067699]
@@ -985,10 +996,10 @@ text = "刷新候选"
 [node name="PartyLabel" type="Label" parent="Root/RecruitPanel/PanelLayout" unique_id=700000005]
 custom_minimum_size = Vector2(360, 20)
 layout_mode = 2
-text = "队伍顺序"
+text = "角色库（出战优先）"
 
 [node name="PartyList" type="ItemList" parent="Root/RecruitPanel/PanelLayout" unique_id=700000006]
-custom_minimum_size = Vector2(360, 96)
+custom_minimum_size = Vector2(360, 72)
 layout_mode = 2
 
 [node name="PartyButtonRow" type="HBoxContainer" parent="Root/RecruitPanel/PanelLayout" unique_id=700000007]
@@ -996,7 +1007,7 @@ layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="MoveUpButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000008]
-custom_minimum_size = Vector2(116, 28)
+custom_minimum_size = Vector2(86, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
@@ -1006,7 +1017,7 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "上移"
 
 [node name="MoveDownButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000009]
-custom_minimum_size = Vector2(116, 28)
+custom_minimum_size = Vector2(86, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
@@ -1015,15 +1026,31 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "下移"
 
-[node name="DismissButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000010]
-custom_minimum_size = Vector2(116, 28)
+[node name="ToggleActiveButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000012]
+custom_minimum_size = Vector2(86, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "离队"
+text = "上阵"
+
+[node name="DismissButton" type="Button" parent="Root/RecruitPanel/PanelLayout/PartyButtonRow" unique_id=700000010]
+custom_minimum_size = Vector2(86, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "放生"
+
+[node name="ReleaseConfirmationDialog" type="ConfirmationDialog" parent="Root" unique_id=700000013]
+title = "确认放生"
+dialog_text = "放生后角色将永久消失，且不会返还招募资源。"
+ok_button_text = "确认放生"
+cancel_button_text = "取消"
 
 [node name="FightPanel" type="PanelContainer" parent="Root" unique_id=2124618921]
 visible = false

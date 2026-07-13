@@ -2,6 +2,7 @@ class_name PartyService
 extends RefCounted
 
 const PARTY_MAX_SIZE := 4
+const ROSTER_MAX_SIZE := 8
 const DEFAULT_VISUAL_ID := "actor_default"
 const RECRUIT_RESOURCE_ID := "spirit_stone"
 const RECRUIT_COST_SPIRIT_STONE := 1
@@ -33,6 +34,19 @@ func party_members() -> Array:
 	return result
 
 
+func roster_members() -> Array:
+	ensure_party_state()
+	var result: Array = []
+	var ordered_ids: Array = []
+	ordered_ids.append_array(game_state.party_order)
+	ordered_ids.append_array(game_state.reserve_order)
+	for member_id in ordered_ids:
+		var member: Dictionary = member_by_id(str(member_id))
+		if not member.is_empty():
+			result.append(member)
+	return result
+
+
 func active_party_members() -> Array:
 	var result: Array = []
 	for member in party_members():
@@ -55,6 +69,10 @@ func party_member_count() -> int:
 	return party_members().size()
 
 
+func roster_member_count() -> int:
+	return game_state.companions.size()
+
+
 func generate_recruit_candidates(should_emit_signal: bool = true) -> void:
 	game_state.recruit_candidates.clear()
 	var used_names: Dictionary = {}
@@ -70,8 +88,8 @@ func generate_recruit_candidates(should_emit_signal: bool = true) -> void:
 
 func recruit_candidate(candidate_id: String) -> bool:
 	ensure_party_state()
-	if game_state.party_order.size() >= PARTY_MAX_SIZE:
-		game_state.log_added.emit("队伍已满，最多四人")
+	if game_state.companions.size() >= ROSTER_MAX_SIZE:
+		game_state.log_added.emit("角色库已满，最多八人")
 		return false
 	var candidate: Dictionary = candidate_by_id(candidate_id)
 	if candidate.is_empty():
@@ -88,7 +106,10 @@ func recruit_candidate(candidate_id: String) -> bool:
 	companion["kind"] = "companion"
 	ensure_member_shape(companion)
 	game_state.companions.append(companion)
-	game_state.party_order.append(str(companion.get("id", "")))
+	if game_state.party_order.size() < PARTY_MAX_SIZE:
+		game_state.party_order.append(str(companion.get("id", "")))
+	else:
+		game_state.reserve_order.append(str(companion.get("id", "")))
 	game_state.log_added.emit("招募%s入队" % str(companion.get("name", "队友")))
 	generate_recruit_candidates(false)
 	game_state.add_task_experience(GameDefs.TaskType.RECRUIT, 5)
@@ -112,6 +133,10 @@ func move_party_member(member_id: String, direction: int) -> bool:
 
 
 func dismiss_companion(member_id: String) -> bool:
+	return release_companion(member_id)
+
+
+func release_companion(member_id: String) -> bool:
 	for index in range(game_state.companions.size()):
 		var companion: Dictionary = game_state.companions[index]
 		if str(companion.get("id", "")) != member_id:
@@ -119,15 +144,37 @@ func dismiss_companion(member_id: String) -> bool:
 		game_state._unequip_all_for_member(member_id)
 		game_state.companions.remove_at(index)
 		game_state.party_order.erase(member_id)
-		game_state.log_added.emit("%s离开队伍" % str(companion.get("name", "队友")))
+		game_state.reserve_order.erase(member_id)
+		game_state.log_added.emit("%s已放生" % str(companion.get("name", "队友")))
 		ensure_party_state()
 		game_state.changed.emit()
 		return true
 	return false
 
 
+func set_member_active(member_id: String, active: bool) -> bool:
+	ensure_party_state()
+	var active_index: int = game_state.party_order.find(member_id)
+	var reserve_index: int = game_state.reserve_order.find(member_id)
+	if active:
+		if active_index >= 0:
+			return true
+		if reserve_index < 0 or game_state.party_order.size() >= PARTY_MAX_SIZE:
+			return false
+		game_state.reserve_order.remove_at(reserve_index)
+		game_state.party_order.append(member_id)
+	else:
+		if active_index < 0:
+			return reserve_index >= 0
+		game_state.party_order.remove_at(active_index)
+		if not game_state.reserve_order.has(member_id):
+			game_state.reserve_order.append(member_id)
+	game_state.changed.emit()
+	return true
+
+
 func can_recruit() -> bool:
-	return game_state.party_order.size() < PARTY_MAX_SIZE and recruit_stone_count() >= recruit_cost()
+	return game_state.companions.size() < ROSTER_MAX_SIZE and recruit_stone_count() >= recruit_cost()
 
 
 func recruit_resource_id() -> String:
@@ -183,7 +230,21 @@ func ensure_party_state() -> void:
 			filtered.append(member_id)
 	game_state.party_order = filtered
 	while game_state.party_order.size() > PARTY_MAX_SIZE:
-		game_state.party_order.remove_at(game_state.party_order.size() - 1)
+		var overflow_id := str(game_state.party_order.pop_back())
+		if not game_state.reserve_order.has(overflow_id):
+			game_state.reserve_order.append(overflow_id)
+	var reserve_filtered: Array[String] = []
+	for raw_id in game_state.reserve_order:
+		var reserve_id := str(raw_id)
+		if reserve_filtered.has(reserve_id) or filtered.has(reserve_id):
+			continue
+		if companion_exists(reserve_id):
+			reserve_filtered.append(reserve_id)
+	for companion in game_state.companions:
+		var companion_id := str(companion.get("id", ""))
+		if not filtered.has(companion_id) and not reserve_filtered.has(companion_id):
+			reserve_filtered.append(companion_id)
+	game_state.reserve_order = reserve_filtered
 	sync_equipped_ownership()
 
 
@@ -215,9 +276,13 @@ func ensure_member_shape(member: Dictionary) -> void:
 	var attack_mode: String = str(member.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
 	member["attack_mode"] = attack_mode if DataTables.ATTACK_MODES.has(attack_mode) else DataTables.ATTACK_MODE_MELEE
 	var member_skills: Array = member.get("skills", []) if member.get("skills", []) is Array else []
-	member["skills"] = member_skills.filter(func(skill):
+	member_skills = member_skills.filter(func(skill):
 		return skill is Dictionary and str(skill.get("id", "")) != DataTables.RANGED_BASIC_ATTACK_ID
 	)
+	for skill in member_skills:
+		skill["locked"] = true
+		skill["replaceable"] = false
+	member["skills"] = member_skills
 	member["innate_traits"] = member.get("innate_traits", []) if member.get("innate_traits", []) is Array else []
 	member["growth_primary_stats"] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
 	clamp_member_runtime_stats(member)
@@ -327,7 +392,11 @@ func random_basic_recruit_traits() -> Array:
 	if game_state != null and game_state.has_method("building_level"):
 		recruit_level = int(game_state.call("building_level", "recruit"))
 	var max_count: int = DataTables.recruit_max_trait_count(recruit_level)
-	var trait_count: int = game_state.rng.randi_range(0, max_count)
+	var trait_count: int = 1
+	var rarity := DataTables.random_innate_trait_rarity(game_state.rng)
+	if max_count >= 2 and rarity != "common":
+		trait_count = 2
+	trait_count = mini(trait_count, max_count)
 	var pool: Array = DataTables.BASIC_RECRUIT_TRAIT_IDS.duplicate()
 	var traits: Array = []
 	while traits.size() < trait_count and not pool.is_empty():
@@ -338,8 +407,8 @@ func random_basic_recruit_traits() -> Array:
 		traits.append({
 			"id": trait_id,
 			"name": str(definition.get("name", trait_id)),
-			"slot": "basic",
-			"rarity": "common",
+			"slot": "main" if traits.is_empty() else "sub",
+			"rarity": rarity,
 			"level": 1,
 			"awakened": false,
 		})
