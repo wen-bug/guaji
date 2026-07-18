@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guaji.example/schemas/mod/v1/enemy.schema.json",
+  "title": "enemy definition v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "name",
+    "visual_id",
+    "scene_path"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "visual_id": {
+      "type": "string"
+    },
+    "scene_path": {
+      "type": "string"
+    },
+    "skills": {
+      "type": "array"
+    },
+    "drops": {
+      "type": "object"
+    }
+  }
+}

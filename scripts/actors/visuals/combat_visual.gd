@@ -5,6 +5,9 @@ signal hit_candidate(action_id: int, target_id: String)
 signal attack_finished(action_id: int)
 signal death_finished
 
+const CombatHitboxScript = preload("res://scripts/actors/visuals/combat_hitbox.gd")
+const CombatHurtboxScript = preload("res://scripts/actors/visuals/combat_hurtbox.gd")
+
 const WALK_ANIMATIONS: Array[StringName] = [&"walk", &"run", &"idle"]
 const RUN_ANIMATIONS: Array[StringName] = [&"run", &"walk", &"idle"]
 const MELEE_ATTACK_ANIMATIONS: Array[StringName] = [&"melee_attack", &"attack"]
@@ -37,12 +40,16 @@ var _death_finished_emitted := false
 
 func _ready() -> void:
 	_bind_nodes()
+	_ensure_runtime_contract()
+	_bind_nodes()
 	_connect_nodes()
 	_apply_placeholder_color()
 	close_attack_window()
 
 
 func configure_identity(value_actor_id: String, value_team: String) -> void:
+	_bind_nodes()
+	_ensure_runtime_contract()
 	_bind_nodes()
 	_connect_nodes()
 	actor_id = value_actor_id
@@ -151,6 +158,8 @@ func effect_position() -> Vector2:
 
 
 func contract_error() -> String:
+	_bind_nodes()
+	_ensure_runtime_contract()
 	_bind_nodes()
 	if sprite == null:
 		return "缺少 AnimatedSprite2D 或 Sprite2D"
@@ -275,6 +284,8 @@ func _bind_nodes() -> void:
 		sprite = animated_sprite
 		if sprite == null:
 			sprite = get_node_or_null("Sprite2D") as Sprite2D
+		if sprite == null:
+			sprite = get_node_or_null("Visual") as CanvasItem
 	if animation_player == null:
 		animation_player = get_node_or_null("AnimationPlayer") as AnimationPlayer
 	if hurtbox == null:
@@ -289,6 +300,49 @@ func _bind_nodes() -> void:
 		effect_socket = get_node_or_null("EffectSocket") as Marker2D
 	if hp_fill == null:
 		hp_fill = get_node_or_null("HPBack/HPFill") as ColorRect
+
+
+func _ensure_runtime_contract() -> void:
+	if hurtbox == null:
+		hurtbox = CombatHurtboxScript.new()
+		hurtbox.name = "Hurtbox"
+		add_child(hurtbox)
+		var hurt_shape := CollisionShape2D.new()
+		hurt_shape.name = "CollisionShape2D"
+		var hurt_rectangle := RectangleShape2D.new()
+		hurt_rectangle.size = Vector2(28.0, 38.0)
+		hurt_shape.shape = hurt_rectangle
+		hurtbox.add_child(hurt_shape)
+	if attack_hitbox == null:
+		attack_hitbox = CombatHitboxScript.new()
+		attack_hitbox.name = "AttackHitbox"
+		attack_hitbox.position = Vector2(22.0, 0.0)
+		add_child(attack_hitbox)
+		var attack_shape := CollisionShape2D.new()
+		attack_shape.name = "CollisionShape2D"
+		var attack_rectangle := RectangleShape2D.new()
+		attack_rectangle.size = Vector2(28.0, 28.0)
+		attack_shape.shape = attack_rectangle
+		attack_hitbox.add_child(attack_shape)
+	if melee_marker == null:
+		melee_marker = Marker2D.new()
+		melee_marker.name = "Marker2D"
+		melee_marker.position = Vector2(22.0, 0.0)
+		add_child(melee_marker)
+	if hit_socket == null:
+		hit_socket = Marker2D.new()
+		hit_socket.name = "HitSocket"
+		hit_socket.position = Vector2(0.0, -10.0)
+		add_child(hit_socket)
+	if effect_socket == null:
+		effect_socket = Marker2D.new()
+		effect_socket.name = "EffectSocket"
+		effect_socket.position = Vector2(16.0, -14.0)
+		add_child(effect_socket)
+	if animation_player == null:
+		animation_player = AnimationPlayer.new()
+		animation_player.name = "AnimationPlayer"
+		add_child(animation_player)
 
 
 func _connect_nodes() -> void:

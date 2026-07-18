@@ -1,6 +1,8 @@
 class_name Hud
 extends CanvasLayer
 
+const ModManagerPanelScript = preload("res://scripts/modding/ui/mod_manager_panel.gd")
+
 const MENU_USE := 1
 const MENU_DROP := 2
 const MENU_ENHANCE := 3
@@ -206,6 +208,8 @@ var window_drag_mouse_start: Vector2 = Vector2.ZERO
 var window_drag_start_position: Vector2i = Vector2i.ZERO
 var menu_button_hover_tween: Tween = null
 var scene_transition_tween: Tween = null
+var mod_manager_button: Button = null
+var mod_manager_panel: Control = null
 
 
 func _ready() -> void:
@@ -250,6 +254,27 @@ func _ready() -> void:
 	window_drag_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	loading_overlay.visible = false
 	loading_overlay.modulate.a = 0.0
+	_setup_mod_manager()
+
+
+func _setup_mod_manager() -> void:
+	var root := get_node_or_null("Root") as Control
+	var mod_api := get_node_or_null("/root/ModAPI")
+	if root == null or mod_api == null:
+		return
+	mod_manager_button = Button.new()
+	mod_manager_button.name = "ModManagerButton"
+	mod_manager_button.text = "MOD"
+	mod_manager_button.tooltip_text = "Mod 管理"
+	mod_manager_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	mod_manager_button.position = Vector2(-58, 42)
+	mod_manager_button.size = Vector2(50, 28)
+	mod_manager_button.pressed.connect(func(): mod_manager_panel.open())
+	root.add_child(mod_manager_button)
+	mod_manager_panel = ModManagerPanelScript.new()
+	mod_manager_panel.name = "ModManagerPanel"
+	root.add_child(mod_manager_panel)
+	mod_manager_panel.setup(mod_api)
 
 
 func set_expedition_controls_visible(visible: bool) -> void:
@@ -456,10 +481,12 @@ func _refresh_member_info_portrait(game_state) -> void:
 			return
 	_clear_member_info_portrait()
 
-	var scene_path := "%s/%s.tscn" % [PARTY_VISUAL_ROOT, visual_id]
+	var appearance := DataTables.content_definition("appearance", visual_id)
+	var scene_path := str(appearance.get("scene_path", ""))
 	if not ResourceLoader.exists(scene_path):
 		visual_id = DEFAULT_PARTY_VISUAL_ID
-		scene_path = "%s/%s.tscn" % [PARTY_VISUAL_ROOT, visual_id]
+		appearance = DataTables.content_definition("appearance", visual_id)
+		scene_path = str(appearance.get("scene_path", "%s/%s.tscn" % [PARTY_VISUAL_ROOT, visual_id]))
 	var packed := load(scene_path) as PackedScene
 	if packed == null:
 		return
@@ -619,9 +646,17 @@ func _refresh_member_info_skills(game_state) -> void:
 	for skill in member_skills:
 		var skill_id: String = str(skill.get("id", ""))
 		var element_id: String = str(skill.get("element", ""))
-		var source_text: String = DataTables.obtain_source_name(str(skill.get("obtain_source", "non_drop")))
+		var target_mode_text: String = DataTables.skill_target_mode_name(DataTables.skill_target_mode(skill))
+		var effect_names := PackedStringArray()
+		for tag in DataTables.skill_effect_tags(skill):
+			if effect_names.size() >= 2:
+				break
+			effect_names.append(DataTables.skill_effect_tag_name(str(tag)))
+		var classification := target_mode_text
+		if not effect_names.is_empty():
+			classification += "·%s" % "/".join(effect_names)
 		var cooldown_text: String = str(int(skill.get("cooldown", 0)))
-		var detail: String = "%s  冷却 %s回合  法力 %d  %s" % [DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0)), source_text]
+		var detail: String = "%s  %s  CD%s  MP%d" % [classification, DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0))]
 		member_info_skill_grid.add_child(_create_member_info_slot("技能", str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id)))
 
 
@@ -1191,7 +1226,7 @@ func _populate_debug_options() -> void:
 
 func _populate_debug_item_options() -> void:
 	debug_item_option.clear()
-	var item_ids: Array = DataTables.ITEM_DEFS.keys()
+	var item_ids: Array = DataTables.content_ids("item", DataTables.ITEM_DEFS)
 	item_ids.sort()
 	for item_id in item_ids:
 		var item_data: Dictionary = DataTables.item_definition(str(item_id))
@@ -1204,10 +1239,10 @@ func _populate_debug_item_options() -> void:
 
 func _populate_debug_equipment_options() -> void:
 	debug_equipment_option.clear()
-	var template_ids: Array = DataTables.EQUIPMENT_DEFS.keys()
+	var template_ids: Array = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
 	template_ids.sort()
 	for template_id in template_ids:
-		var template_data: Dictionary = DataTables.EQUIPMENT_DEFS.get(str(template_id), {})
+		var template_data: Dictionary = DataTables.content_definition("equipment", str(template_id), DataTables.EQUIPMENT_DEFS.get(str(template_id), {}))
 		var label: String = str(template_data.get("name", DataTables.slot_name(str(template_data.get("slot", template_id)))))
 		var index: int = debug_equipment_option.item_count
 		debug_equipment_option.add_item("%s (%s)" % [label, str(template_id)])

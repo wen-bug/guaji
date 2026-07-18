@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guaji.example/schemas/mod/v1/basic_attack.schema.json",
+  "title": "basic_attack definition v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "name",
+    "scene_path"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "scene_path": {
+      "type": "string"
+    },
+    "target_scope": {
+      "type": "string"
+    },
+    "attack_mode": {
+      "type": "string"
+    }
+  }
+}

@@ -1,16 +1,21 @@
-[gd_resource type="Resource" script_class="SkillDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Lightning/lightning_strike_001/lightning_strike_001_small_violet/frame0003.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1")
 id = "thunder"
 display_name = "雷击术"
+icon_texture = ExtResource("2_icon")
 icon_name = "thunder"
 icon_path = "res://assets/skills/thunder.png"
 type = "damage"
+target_scope = "single_enemy"
+target_mode = "single"
+effect_tags = Array[String](["damage"])
 element = "metal"
 mp_cost = 12
 cooldown = 5
 release_distance = 140.0
-description = "金属性高伤害技能。"
+description = "召来雷霆打击单个敌人，造成金属性高额伤害。"

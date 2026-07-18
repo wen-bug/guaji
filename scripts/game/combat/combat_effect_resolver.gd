@@ -57,7 +57,7 @@ func normalize_effects(raw_effects) -> Array:
 		var effect: Dictionary = raw_effect.duplicate(true)
 		var kind: String = str(effect.get("kind", ""))
 		var trigger: String = str(effect.get("trigger", ""))
-		if kind.is_empty() or not COMBAT_KINDS.has(kind):
+		if kind.is_empty() or (not COMBAT_KINDS.has(kind) and not _custom_effect_handler(kind).is_valid()):
 			continue
 		if not trigger.is_empty() and not TRIGGERS.has(trigger):
 			continue
@@ -295,6 +295,12 @@ func _apply_effect(effect: Dictionary, trigger: String, context: Dictionary, own
 			if final_damage > 0:
 				var amount: int = _percent_amount(final_damage, float(effect.get("value", effect.get("amount", 0.0))))
 				_add_event(context, effect, "attacker", "heal", amount)
+		_:
+			var handler := _custom_effect_handler(kind)
+			if handler.is_valid():
+				var result = handler.call(effect.duplicate(true), trigger, context, owner_role)
+				if result is Dictionary:
+					context.merge(result, true)
 	if not kind.is_empty():
 		var applied: Array = context.get("applied_effects", [])
 		applied.append(effect.duplicate(true))
@@ -319,6 +325,8 @@ func _target_role(effect: Dictionary, owner_role: String) -> String:
 	match target:
 		"self":
 			return owner_role
+		"target":
+			return "defender" if owner_role == "attacker" else "attacker"
 		"enemy":
 			return "defender" if owner_role == "attacker" else "attacker"
 		"attacker":
@@ -421,6 +429,14 @@ func _percent_amount(base_amount: int, value: float) -> int:
 	if value > 0.0 and value <= 1.0:
 		return int(floor(float(base_amount) * value))
 	return int(value)
+
+
+func _custom_effect_handler(kind: String) -> Callable:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return Callable()
+	var api := tree.root.get_node_or_null("ModAPI")
+	return api.effect_handler(kind) if api != null else Callable()
 
 
 func _default_target_for_kind(kind: String) -> String:

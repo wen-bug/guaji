@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_poison_001/spell_poison_001_small_green/frame0005.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1")
+id = "poison"
+display_name = "蚀骨毒雾"
+icon_texture = ExtResource("2_icon")
+icon_name = "poison"
+icon_path = "res://assets/skills/poison.png"
+type = "damage"
+target_scope = "all_enemies"
+target_mode = "aoe"
+is_aoe = true
+effect_tags = Array[String](["damage", "debuff", "dot"])
+has_debuff = true
+element = "wood"
+mp_cost = 8
+cooldown = 4
+release_distance = 120.0
+description = "以毒雾侵蚀敌人，造成木属性伤害并附加三回合中毒。"

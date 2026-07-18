@@ -6,13 +6,44 @@ func apply_marker(marker: String) -> void:
 	var expected_marker: String = str(skill_data.get("damage_marker", skill_data.get("apply_marker", "impact")))
 	if marker != expected_marker:
 		return
-	var target: CombatActorStatus = primary_target()
-	if caster == null or target == null:
+	if caster == null:
 		return
 	_apply_skill_buffs()
 	var raw_damage: int = _raw_damage()
 	if raw_damage <= 0:
 		return
+	last_result["damage"] = 0
+	last_result["blocked_by_shield"] = 0
+	last_result["healed"] = 0
+	last_result["applied_effects"] = []
+	last_result["cooldown_multiplier"] = 1.0
+	last_result["target_ids"] = []
+	last_result["target_results"] = []
+	for candidate in targets:
+		if not (candidate is CombatActorStatus):
+			continue
+		var target := candidate as CombatActorStatus
+		if not target.is_alive():
+			continue
+		var target_result := _apply_damage_to_target(target, raw_damage)
+		var target_ids: Array = last_result.get("target_ids", [])
+		target_ids.append(target.actor_id)
+		last_result["target_ids"] = target_ids
+		var target_results: Array = last_result.get("target_results", [])
+		target_results.append(target_result)
+		last_result["target_results"] = target_results
+		last_result["damage"] = int(last_result.get("damage", 0)) + int(target_result.get("damage", 0))
+		last_result["blocked_by_shield"] = int(last_result.get("blocked_by_shield", 0)) + int(target_result.get("blocked_by_shield", 0))
+		last_result["healed"] = int(last_result.get("healed", 0)) + int(target_result.get("healed", 0))
+		last_result["cooldown_multiplier"] = minf(float(last_result.get("cooldown_multiplier", 1.0)), float(target_result.get("cooldown_multiplier", 1.0)))
+		var applied_effects: Array = last_result.get("applied_effects", [])
+		applied_effects.append_array(target_result.get("applied_effects", []))
+		last_result["applied_effects"] = applied_effects
+	if not last_result.get("target_ids", []).is_empty():
+		last_result["target_id"] = str(last_result.get("target_ids", [""])[0])
+
+
+func _apply_damage_to_target(target: CombatActorStatus, raw_damage: int) -> Dictionary:
 	var element_id: String = str(skill_data.get("element", ""))
 	if element_id.is_empty():
 		element_id = caster.dominant_element()
@@ -38,8 +69,6 @@ func apply_marker(marker: String) -> void:
 		"raw_damage": raw_damage,
 	})
 	_add_context_damage(context, target, int(result.get("amount", 0)))
-	last_result["damage"] = int(result.get("amount", 0))
-	last_result["target_id"] = target.actor_id
 	add_event(result)
 	if amount > 0:
 		apply_effect_events(context)
@@ -55,10 +84,14 @@ func apply_marker(marker: String) -> void:
 		resolve_static_trigger("on_kill", context, effects, "attacker")
 		resolve_actor_status_trigger(caster, "on_kill", context, "attacker")
 		apply_effect_events(context)
-	last_result["blocked_by_shield"] = int(context.get("blocked_by_shield", 0))
-	last_result["healed"] = int(context.get("healed", 0))
-	last_result["applied_effects"] = context.get("applied_effects", []).duplicate(true)
-	last_result["cooldown_multiplier"] = float(context.get("cooldown_multiplier", 1.0))
+	return {
+		"target_id": target.actor_id,
+		"damage": int(result.get("amount", 0)),
+		"blocked_by_shield": int(context.get("blocked_by_shield", 0)),
+		"healed": int(context.get("healed", 0)),
+		"applied_effects": context.get("applied_effects", []).duplicate(true),
+		"cooldown_multiplier": float(context.get("cooldown_multiplier", 1.0)),
+	}
 
 
 func _apply_skill_buffs() -> void:

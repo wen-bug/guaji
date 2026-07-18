@@ -1,0 +1,38 @@
+extends ModPlugin
+
+const MeditationState = preload("res://mods/com.example.guaji/scripts/meditation_state.gd")
+
+
+func register(context: ModContext) -> void:
+	context.register_actor_state("meditating", MeditationState.new)
+	context.register_effect_handler("spirit_burn", _resolve_spirit_burn)
+	context.register_ai_condition("target_ready", _target_ready)
+	context.register_dialogue_condition("level_two", _level_two)
+
+
+func on_game_ready(_api) -> void:
+	var launches := int(storage.get_value("launches", 0)) + 1
+	storage.set_value("launches", launches)
+
+
+func migrate_save(data: Dictionary, _from_version: String, _to_version: String) -> Dictionary:
+	return data.duplicate(true)
+
+
+func _resolve_spirit_burn(effect: Dictionary, _trigger: String, context: Dictionary, _owner_role: String) -> Dictionary:
+	var events: Array = context.get("events", []).duplicate(true)
+	events.append({
+		"kind": "damage",
+		"amount": maxi(1, int(context.get("damage", 0)) + int(effect.get("amount", 0))),
+		"target_role": "defender",
+		"effect": effect.duplicate(true),
+	})
+	return {"events": events}
+
+
+func _target_ready(_skill: Dictionary, _actor_data: Dictionary, target_status) -> bool:
+	return target_status == null or target_status.is_alive()
+
+
+func _level_two(context: Dictionary, _definition: Dictionary) -> bool:
+	return int(context.get("level", 1)) >= 2

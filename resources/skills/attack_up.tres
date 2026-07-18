@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_attack_up_001/spell_attack_up_001_small_red/frame0006.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1")
+id = "attack_up"
+display_name = "燃锋诀"
+icon_texture = ExtResource("2_icon")
+icon_name = "attack_up"
+icon_path = "res://assets/skills/attack_up.png"
+type = "buff"
+target_scope = "self"
+target_mode = "single"
+effect_tags = Array[String](["buff"])
+has_buff = true
+element = "fire"
+mp_cost = 5
+cooldown = 6
+release_distance = 0.0
+description = "引火淬锋，使自身攻击提高 2 点，持续三个自身回合。"

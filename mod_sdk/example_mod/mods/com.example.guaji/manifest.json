@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "com.example.guaji",
+  "name": "Guaji Example Mod",
+  "version": "1.0.0",
+  "description": "Mod API 1 complete example",
+  "authors": [
+    "Example Author"
+  ],
+  "mod_api_version": 1,
+  "game_version": {
+    "min": "0.1.0",
+    "max_exclusive": "0.2.0"
+  },
+  "dependencies": [],
+  "conflicts": [],
+  "load_after": [],
+  "content": [
+    "res://mods/com.example.guaji/content/items.json",
+    "res://mods/com.example.guaji/content/skills.json",
+    "res://mods/com.example.guaji/content/appearances.json",
+    "res://mods/com.example.guaji/content/dialogues.json"
+  ],
+  "entry_script": "res://mods/com.example.guaji/scripts/main.gd",
+  "overrides": []
+}

@@ -36,9 +36,9 @@
 
 当前还生成了 `.tres` 图标承载资源：
 
-- 物品：`resources/items/<item_id>.tres`，字段来自 `ITEM_DEFS`，`icon_texture` 留空供 Inspector 手动设置。
-- 装备：`resources/equipment/<template_id>.tres`，字段来自 `EQUIPMENT_DEFS`，`icon_texture` 留空供 Inspector 手动设置。
-- 技能：`resources/skills/<skill_id>.tres`，字段来自 `SKILL_DEFS`，`icon_texture` 留空供 Inspector 手动设置。
+- 物品：`resources/items/<item_id>.tres`，字段来自 `ITEM_DEFS`，`icon_texture` 可直接引用对应美术资源。
+- 装备：`resources/equipment/<template_id>.tres`，字段来自 `EQUIPMENT_DEFS`，`icon_texture` 可在 Inspector 中配置。
+- 技能：`resources/skills/<skill_id>.tres`，字段来自 `SKILL_DEFS`，`icon_texture` 可直接引用技能特效的代表帧。
 
 图标读取顺序：`.tres.icon_texture` -> `icon_path` 图片 -> UI 占位色块或文字。`DataTables` 仍是数据事实来源，`.tres` 只作为美术引用和可视化编辑承载。
 
@@ -67,6 +67,11 @@
 | 1026 | `earth_moss` | 厚土苔 | `crop` | 否 | `earth` | `seed_yield=1`, `growth_seconds=1050` |
 | 1027 | `metal_reed` | 玄金苇 | `crop` | 否 | `metal` | `seed_yield=1`, `growth_seconds=1500` |
 | 1028 | `water_orchid` | 玄水兰 | `crop` | 否 | `water` | `seed_yield=1`, `growth_seconds=1200` |
+| 1029 | `skill_book_thunder` | 雷击术技能书 | `skill_book` | 是 | `metal` | 学习 `thunder` |
+| 1030 | `skill_book_poison` | 蚀骨毒雾技能书 | `skill_book` | 是 | `wood` | 学习 `poison` |
+| 1031 | `skill_book_heal` | 回春术技能书 | `skill_book` | 是 | `wood` | 学习 `heal` |
+| 1032 | `skill_book_attack_up` | 燃锋诀技能书 | `skill_book` | 是 | `fire` | 学习 `attack_up` |
+| 1033 | `skill_book_spirit_shield` | 玄甲术技能书 | `skill_book` | 是 | `earth` | 学习 `spirit_shield` |
 
 `item_no` 1002、1003、1007、1008 和 1018 曾用于已删除物品，后续不复用。
 
@@ -83,10 +88,13 @@
 | --- | --- | --- | --- | ---: | ---: | ---: | --- |
 | `heal` | 回春术 | `heal` | `wood` | 6 | 5 | 96 | 血量低于 35% 时优先治疗 |
 | `thunder` | 雷击术 | `damage` | `metal` | 12 | 5 | 140 | 伤害倍率 1.75 |
+| `poison` | 蚀骨毒雾 | `damage` | `wood` | 8 | 4 | 120 | 伤害倍率 0.9；命中后每回合 2 点 DOT，持续 3 回合 |
+| `attack_up` | 燃锋诀 | `buff` | `fire` | 5 | 6 | 0 | 攻击 +2，持续 3 个自身回合 |
+| `spirit_shield` | 玄甲术 | `defense` | `earth` | 7 | 6 | 0 | 血量低于 60% 时获得 10 点护盾，最多持续 3 回合 |
 
 冷却在角色每次获得自身回合时递减 1；百分比修正后的冷却向上取整。
 
-当前没有已实现的技能书物品。`heal` 和 `thunder` 已在技能表中配置，但没有对应物品定义；后续技能书统一为成功学习后消耗 1 本，人物已学技能不可替换或遗忘。
+五本初阶技能书由正式新档各赠送 1 本；版本 9 迁移会为旧存档补齐尚未持有且尚未学会的技能书。它们不进入敌人掉落、商店或生产经济。技能书成功学习后消耗 1 本；重复学习失败时不消耗，人物已学技能不可替换或遗忘。
 
 ## 已实现：炼丹配方
 
@@ -192,7 +200,7 @@
 
 ## 已实现：开局、建筑与生产节奏
 
-正式新档物资为 `spirit_stone x1`、`herb x1`、`recipe_pill x1`。项目设置 `game/development/seed_test_inventory` 默认为 `false`，开启后才补齐测试物品和基础装备。
+正式新档物资为 `spirit_stone x1`、`herb x1`、`recipe_pill x1` 和五本初阶技能书各 1 本。项目设置 `game/development/seed_test_inventory` 默认为 `false`，开启后才补齐其余测试物品和基础装备。
 
 | 建筑 | 1 级升级消耗 | 升级成本 | 1 级生产时间 | 满级附近生产时间 |
 | --- | --- | --- | ---: | ---: |

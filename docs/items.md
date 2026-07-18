@@ -247,7 +247,7 @@ description_effects = [{
 
 ## 正式开局与资源闭环
 
-正式新档只有 `spirit_stone x1`、`herb x1` 和 `recipe_pill x1`。测试物资由项目设置 `game/development/seed_test_inventory` 显式开启，默认关闭。
+正式新档拥有 `spirit_stone x1`、`herb x1`、`recipe_pill x1`，以及雷击术、蚀骨毒雾、回春术、燃锋诀、玄甲术技能书各 1 本。版本 9 迁移会为旧存档补齐尚未持有且尚未学会的技能书，不会重复发放。技能书不进入敌人掉落、商店或生产经济；其余测试物资仍由项目设置 `game/development/seed_test_inventory` 显式开启，默认关闭。
 
 | 资源 | 当前来源 | 当前消耗 |
 | --- | --- | --- |

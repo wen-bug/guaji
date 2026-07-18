@@ -3,8 +3,9 @@ extends Node2D
 
 signal monster_spawn_requested
 
-@export var spawn_interval_min := 30.0
-@export var spawn_interval_max := 60.0
+@export var spawn_interval_min := 3.0
+@export var spawn_interval_max := 5.0
+@export var first_spawn_delay := 1.0
 
 var scene_viewport_size := Vector2(960, 480)
 var spawn_timer := 0.0
@@ -32,7 +33,7 @@ func enter_expedition() -> void:
 	_waiting_for_combat = false
 	_combat_mode = false
 	visible = true
-	_reset_spawn_timer()
+	_reset_spawn_timer(maxf(0.0, first_spawn_delay))
 	set_process(true)
 
 
@@ -86,8 +87,11 @@ func advance(delta: float) -> void:
 		monster_spawn_requested.emit()
 
 
-func _reset_spawn_timer() -> void:
+func _reset_spawn_timer(delay_override: float = -1.0) -> void:
 	spawn_timer = 0.0
+	if delay_override >= 0.0:
+		next_spawn_time = delay_override
+		return
 	var low := minf(spawn_interval_min, spawn_interval_max)
 	var high := maxf(spawn_interval_min, spawn_interval_max)
 	next_spawn_time = _rng.randf_range(low, high)

@@ -3,12 +3,29 @@ extends Node2D
 
 signal finished(result: Dictionary)
 
+@export var frame_count := 0
+@export var impact_frame := 0
+@export var frames_per_second := 15.0
+@export_enum("caster", "target") var anchor_role := "target"
+@export var effect_offset := Vector2.ZERO
+
 var caster: CombatActorStatus = null
 var targets: Array = []
 var skill_data: Dictionary = {}
 var last_result: Dictionary = {}
 var effect_resolver: CombatEffectResolver = null
 var rng: RandomNumberGenerator = null
+var _effect_sprite: AnimatedSprite2D = null
+var _cast_active := false
+var _cast_finished := false
+var _marker_applied := false
+var _current_frame := 0
+var _frame_elapsed := 0.0
+
+
+func _ready() -> void:
+	_effect_sprite = get_node_or_null("EffectSprite") as AnimatedSprite2D
+	set_process(false)
 
 
 func setup(skill_caster: CombatActorStatus, skill_targets: Array, data: Dictionary, resolver: CombatEffectResolver = null, random_source: RandomNumberGenerator = null) -> void:
@@ -25,10 +42,42 @@ func setup(skill_caster: CombatActorStatus, skill_targets: Array, data: Dictiona
 			(target as CombatActorStatus).set_effect_resolver(effect_resolver)
 
 
-func start_cast() -> Dictionary:
-	apply_marker(str(skill_data.get("start_marker", "impact")))
-	finish_cast()
-	return last_result
+func start_cast() -> void:
+	_cast_finished = false
+	_marker_applied = false
+	_current_frame = 0
+	_frame_elapsed = 0.0
+	if _effect_sprite == null:
+		_effect_sprite = get_node_or_null("EffectSprite") as AnimatedSprite2D
+	if _effect_sprite == null or _effect_sprite.sprite_frames == null or not _effect_sprite.sprite_frames.has_animation(&"cast") or frame_count <= 0:
+		_apply_impact_marker()
+		finish_cast()
+		return
+	_effect_sprite.animation = &"cast"
+	_effect_sprite.stop()
+	_effect_sprite.frame = 0
+	_effect_sprite.visible = true
+	global_position = _anchor_position() + effect_offset
+	_cast_active = true
+	set_process(true)
+	if impact_frame <= 0:
+		_apply_impact_marker()
+
+
+func _process(delta: float) -> void:
+	if not _cast_active:
+		return
+	var frame_duration := 1.0 / maxf(1.0, frames_per_second)
+	_frame_elapsed += maxf(0.0, delta)
+	while _frame_elapsed >= frame_duration and _cast_active:
+		_frame_elapsed -= frame_duration
+		if _current_frame >= frame_count - 1:
+			finish_cast()
+			return
+		_current_frame += 1
+		_effect_sprite.frame = _current_frame
+		if _current_frame >= impact_frame:
+			_apply_impact_marker()
 
 
 func apply_marker(_marker: String) -> void:
@@ -36,7 +85,29 @@ func apply_marker(_marker: String) -> void:
 
 
 func finish_cast() -> void:
-	finished.emit(last_result)
+	if _cast_finished:
+		return
+	_cast_finished = true
+	_cast_active = false
+	set_process(false)
+	_apply_impact_marker()
+	finished.emit(last_result.duplicate(true))
+
+
+func _apply_impact_marker() -> void:
+	if _marker_applied:
+		return
+	_marker_applied = true
+	apply_marker(str(skill_data.get("start_marker", "impact")))
+
+
+func _anchor_position() -> Vector2:
+	var anchor: CombatActorStatus = caster if anchor_role == "caster" else primary_target()
+	if anchor == null:
+		return global_position
+	if anchor.visual_owner != null and anchor.visual_owner.has_method("effect_position"):
+		return anchor.visual_owner.call("effect_position")
+	return anchor.combat_position()
 
 
 func primary_target() -> CombatActorStatus:

@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mods/com.example.guaji/scripts/disciple_visual.gd" id="1"]
+
+[node name="ExampleDisciple" type="Node2D"]
+script = ExtResource("1")
+placeholder_color = Color(0.35, 0.9, 0.72, 1)
+
+[node name="Visual" type="Polygon2D" parent="."]
+polygon = PackedVector2Array(-13, 14, -10, -9, -5, -18, 5, -18, 10, -9, 13, 14, 6, 20, -6, 20)
+color = Color(0.35, 0.9, 0.72, 1)
+
+[node name="Sash" type="Polygon2D" parent="Visual"]
+polygon = PackedVector2Array(-10, 2, 10, 2, 9, 7, -9, 7)
+color = Color(0.95, 0.72, 0.22, 1)
+
+[node name="Face" type="Polygon2D" parent="Visual"]
+polygon = PackedVector2Array(-6, -13, 6, -13, 5, -5, -5, -5)
+color = Color(1, 0.82, 0.65, 1)

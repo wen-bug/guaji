@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "kind": "dialogue",
+  "entries": [
+    {
+      "operation": "add",
+      "local_id": "meditation_line",
+      "data": {
+        "text": "The example state is ready.",
+        "scenes": [
+          "home"
+        ],
+        "states": [
+          "idle"
+        ],
+        "visual_ids": [
+          "com.example.guaji:disciple"
+        ],
+        "weight": 2,
+        "cooldown_seconds": 8,
+        "custom_conditions": [
+          "com.example.guaji:level_two"
+        ]
+      }
+    }
+  ]
+}

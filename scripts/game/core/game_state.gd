@@ -15,7 +15,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 8
+const SAVE_SCHEMA_VERSION = 10
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -65,6 +65,12 @@ var production_jobs: Dictionary = {
 	"forge": {},
 	"alchemy": {},
 }
+var orphaned_mod_data: Dictionary = {
+	"inventory": [],
+	"recipes": [],
+	"skills": [],
+	"traits": [],
+}
 
 
 func _init() -> void:
@@ -79,6 +85,7 @@ func _init() -> void:
 	add_inventory_item(RECRUIT_RESOURCE_ID, 1, false)
 	add_inventory_item("herb", 1, false)
 	add_inventory_item("recipe_pill", 1, false)
+	_grant_missing_starter_skill_books()
 	_seed_test_inventory_if_enabled()
 	generate_recruit_candidates(false)
 
@@ -90,13 +97,13 @@ func _seed_test_inventory_if_enabled() -> void:
 
 
 func _add_test_inventory_items() -> void:
-	var item_ids: Array = DataTables.ITEM_DEFS.keys()
+	var item_ids: Array = DataTables.content_ids("item", DataTables.ITEM_DEFS)
 	item_ids.sort()
 	for item_id in item_ids:
 		var current_count: int = inventory_item_count(str(item_id))
 		if current_count < TEST_INVENTORY_ITEM_MIN_COUNT:
 			add_inventory_item(str(item_id), TEST_INVENTORY_ITEM_MIN_COUNT - current_count, false)
-	var template_ids: Array = DataTables.EQUIPMENT_DEFS.keys()
+	var template_ids: Array = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
 	template_ids.sort()
 	for template_id in template_ids:
 		if _has_inventory_equipment_template(str(template_id)):
@@ -116,7 +123,7 @@ func _has_inventory_equipment_template(template_id: String) -> bool:
 
 
 func to_save_data() -> Dictionary:
-	return {
+	var result := {
 		"schema_version": SAVE_SCHEMA_VERSION,
 		"rng": _rng_save_data(),
 		"account_progression": account_progression.duplicate(true),
@@ -133,7 +140,16 @@ func to_save_data() -> Dictionary:
 		"progress_states": progress_states.duplicate(true),
 		"building_levels": building_levels.duplicate(true),
 		"production_jobs": production_jobs.duplicate(true),
+		"orphaned_mod_data": orphaned_mod_data.duplicate(true),
 	}
+	var api = _mod_api()
+	if api != null:
+		api.emit_event(&"before_save", {
+			"schema_version": SAVE_SCHEMA_VERSION,
+			"party_member_ids": party_order.duplicate(),
+		})
+		result.merge(api.export_save_data(), true)
+	return result
 
 
 func load_save_data(data: Dictionary) -> void:
@@ -141,6 +157,11 @@ func load_save_data(data: Dictionary) -> void:
 		return
 
 	var loaded_schema_version: int = int(data.get("schema_version", 1))
+	orphaned_mod_data = data.get("orphaned_mod_data", orphaned_mod_data).duplicate(true)
+	_ensure_orphan_shape()
+	var api = _mod_api()
+	if api != null:
+		api.import_save_data(data)
 	_load_rng_state(data.get("rng", {}))
 	if data.has("account_progression"):
 		_load_dictionary_values(account_progression, data.get("account_progression", {}))
@@ -183,11 +204,15 @@ func load_save_data(data: Dictionary) -> void:
 	_ensure_account_progression()
 	_ensure_production_jobs()
 	_ensure_farm_slots()
+	_restore_available_mod_content()
+	_quarantine_unknown_mod_content()
 	_sanitize_loaded_inventory()
 	if loaded_schema_version < 6:
 		_migrate_equipment_attribute_model()
 	if loaded_schema_version < 7:
 		_migrate_equipment_refine_model()
+	if loaded_schema_version < 9:
+		_grant_missing_starter_skill_books()
 	_seed_test_inventory_if_enabled()
 	_sanitize_active_buffs()
 	_sanitize_farm_speed_buffs()
@@ -202,6 +227,127 @@ func load_save_data(data: Dictionary) -> void:
 	_clamp_runtime_stats()
 	_refresh_farm_progress_state()
 	changed.emit()
+
+
+func _mod_api():
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("ModAPI") if tree != null else null
+
+
+func _ensure_orphan_shape() -> void:
+	for key in ["inventory", "recipes", "skills", "traits"]:
+		if not (orphaned_mod_data.get(key, null) is Array):
+			orphaned_mod_data[key] = []
+
+
+func _inventory_content_available(item: Dictionary) -> bool:
+	var item_id := str(item.get("item_id", ""))
+	if str(item.get("type", "")) == DataTables.ITEM_TYPE_EQUIPMENT:
+		return DataTables.content_has("equipment", item_id, DataTables.EQUIPMENT_DEFS)
+	return DataTables.content_has("item", item_id, DataTables.ITEM_DEFS)
+
+
+func _restore_available_mod_content() -> void:
+	_ensure_orphan_shape()
+	var remaining_inventory: Array = []
+	for item in orphaned_mod_data["inventory"]:
+		if not (item is Dictionary) or not _inventory_content_available(item):
+			remaining_inventory.append(item)
+			continue
+		var instance_id := str(item.get("instance_id", ""))
+		if inventory_item_by_instance(instance_id).is_empty():
+			inventory.append(item.duplicate(true))
+			var owner_id := str(item.get("equipped_by", ""))
+			var slot := str(item.get("equipped_slot", ""))
+			var owner := member_by_id(owner_id)
+			if not owner.is_empty() and not slot.is_empty():
+				owner.get("equipped", {})[slot] = instance_id
+	orphaned_mod_data["inventory"] = remaining_inventory
+	var remaining_recipes: Array = []
+	for recipe_id in orphaned_mod_data["recipes"]:
+		if DataTables.content_has("recipe", str(recipe_id), DataTables.ALCHEMY_RECIPE_DEFS):
+			if not known_alchemy_recipes.has(str(recipe_id)):
+				known_alchemy_recipes.append(str(recipe_id))
+		else:
+			remaining_recipes.append(recipe_id)
+	orphaned_mod_data["recipes"] = remaining_recipes
+	for category in ["skills", "traits"]:
+		var remaining: Array = []
+		var kind := "skill" if category == "skills" else "trait"
+		for record in orphaned_mod_data[category]:
+			if not (record is Dictionary) or not DataTables.content_has(kind, str(record.get("content_id", ""))):
+				remaining.append(record)
+				continue
+			var member := member_by_id(str(record.get("member_id", "")))
+			if member.is_empty():
+				remaining.append(record)
+				continue
+			var field := "skills" if category == "skills" else "innate_traits"
+			var values: Array = member.get(field, [])
+			values.append(record.get("value", {}).duplicate(true))
+			member[field] = values
+		orphaned_mod_data[category] = remaining
+
+
+func _quarantine_unknown_mod_content() -> void:
+	_ensure_orphan_shape()
+	var kept_inventory: Array = []
+	for item in inventory:
+		if item is Dictionary and not _inventory_content_available(item):
+			orphaned_mod_data["inventory"].append(item.duplicate(true))
+		else:
+			kept_inventory.append(item)
+	inventory = kept_inventory
+	var kept_recipes: Array = []
+	for recipe_id in known_alchemy_recipes:
+		if DataTables.content_has("recipe", str(recipe_id), DataTables.ALCHEMY_RECIPE_DEFS):
+			kept_recipes.append(recipe_id)
+		else:
+			orphaned_mod_data["recipes"].append(recipe_id)
+	known_alchemy_recipes = kept_recipes
+	for member in companions:
+		if not (member is Dictionary):
+			continue
+		for field in ["skills", "innate_traits"]:
+			var kind := "skill" if field == "skills" else "trait"
+			var category := "skills" if field == "skills" else "traits"
+			var kept: Array = []
+			for value in member.get(field, []):
+				var content_id := str(value.get("id", "")) if value is Dictionary else str(value)
+				if DataTables.content_has(kind, content_id):
+					kept.append(value)
+				else:
+					orphaned_mod_data[category].append({
+						"member_id": str(member.get("id", "")),
+						"content_id": content_id,
+						"value": value.duplicate(true) if value is Dictionary or value is Array else value,
+					})
+			member[field] = kept
+
+
+func _grant_missing_starter_skill_books() -> void:
+	var starter_books := {
+		DataTables.ITEM_ID_SKILL_BOOK_THUNDER: "thunder",
+		DataTables.ITEM_ID_SKILL_BOOK_POISON: "poison",
+		DataTables.ITEM_ID_SKILL_BOOK_HEAL: "heal",
+		DataTables.ITEM_ID_SKILL_BOOK_ATTACK_UP: "attack_up",
+		DataTables.ITEM_ID_SKILL_BOOK_SPIRIT_SHIELD: "spirit_shield",
+	}
+	for book_id in starter_books:
+		var skill_id: String = str(starter_books[book_id])
+		if _party_knows_skill(skill_id) or inventory_item_count(str(book_id)) > 0:
+			continue
+		add_inventory_item(str(book_id), 1, false)
+
+
+func _party_knows_skill(skill_id: String) -> bool:
+	for member in companions:
+		if not (member is Dictionary):
+			continue
+		for skill in member.get("skills", []):
+			if skill is Dictionary and str(skill.get("id", "")) == skill_id:
+				return true
+	return false
 
 
 func _rng_save_data() -> Dictionary:
@@ -1184,7 +1330,7 @@ func claim_forge_job() -> bool:
 		if rng.randf() < float(job.get("rarity_upgrade_chance", 0.0)):
 			rarity = DataTables.upgrade_equipment_rarity(rarity, 1)
 		var equipment: Dictionary = DataTables.create_equipment_from_template(
-			str(DataTables.EQUIPMENT_DEFS.keys()[rng.randi_range(0, DataTables.EQUIPMENT_DEFS.size() - 1)]),
+			str(DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)[rng.randi_range(0, DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS).size() - 1)]),
 			int(job.get("member_level", 1)),
 			rng,
 			int(job.get("craft_bonus", 0)),
@@ -1288,7 +1434,7 @@ func debug_add_item(item_id: String, amount: int) -> bool:
 
 
 func debug_add_equipment(template_id: String, level: int, rarity: String) -> bool:
-	if not DataTables.EQUIPMENT_DEFS.has(template_id):
+	if not DataTables.content_has("equipment", template_id, DataTables.EQUIPMENT_DEFS):
 		log_added.emit("调试生成装备失败：未知模板 %s" % template_id)
 		return false
 	if not DataTables.EQUIPMENT_RARITY_ORDER.has(rarity):
@@ -1849,13 +1995,13 @@ func _innate_trait_effects_for_member(member: Dictionary) -> Array:
 	for raw_trait in raw_traits:
 		if raw_trait is String:
 			var trait_id: String = str(raw_trait)
-			var definition = DataTables.INNATE_TRAIT_DEFS.get(trait_id, {})
+			var definition = DataTables.content_definition("trait", trait_id, DataTables.INNATE_TRAIT_DEFS.get(trait_id, {}))
 			if definition is Dictionary:
 				_append_effects_from_value(effects, definition.get("effects", []))
 		elif raw_trait is Dictionary:
 			var trait_id: String = str(raw_trait.get("id", ""))
 			if not trait_id.is_empty():
-				var definition = DataTables.INNATE_TRAIT_DEFS.get(trait_id, {})
+				var definition = DataTables.content_definition("trait", trait_id, DataTables.INNATE_TRAIT_DEFS.get(trait_id, {}))
 				if definition is Dictionary:
 					_append_effects_from_value(effects, definition.get("effects", []))
 					if bool(raw_trait.get("awakened", false)):

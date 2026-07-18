@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guaji.example/schemas/mod/v1/manifest.schema.json",
+  "title": "Guaji Mod Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "name",
+    "version",
+    "mod_api_version",
+    "game_version",
+    "content"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mod_api_version": {
+      "const": 1
+    },
+    "game_version": {
+      "$ref": "#/$defs/versionRange"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/dependency"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "load_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "content": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^res://mods/[^/]+/.+\\.json$"
+      }
+    },
+    "entry_script": {
+      "type": "string",
+      "pattern": "^(|res://mods/[^/]+/.+\\.gd)$"
+    },
+    "overrides": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_]+:.+$"
+      }
+    }
+  },
+  "$defs": {
+    "versionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "type": "string"
+        },
+        "max_exclusive": {
+          "type": "string"
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "min_version": {
+          "type": "string"
+        },
+        "max_version_exclusive": {
+          "type": "string"
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "kind": "skill",
+  "entries": [
+    {
+      "operation": "add",
+      "local_id": "storm",
+      "data": {
+        "name": "Example Storm",
+        "type": "damage",
+        "target_scope": "all_enemies",
+        "element": "metal",
+        "mp_cost": 10,
+        "cooldown": 4,
+        "base_damage": 8,
+        "damage_multiplier": 1.2,
+        "release_distance": 140,
+        "priority": 70,
+        "trigger": [
+          "com.example.guaji:target_ready"
+        ],
+        "effects": [
+          {
+            "kind": "com.example.guaji:spirit_burn",
+            "trigger": "before_hit",
+            "target": "enemy",
+            "amount": 2
+          }
+        ],
+        "scene_path": "res://mods/com.example.guaji/scenes/storm.tscn"
+      }
+    }
+  ]
+}

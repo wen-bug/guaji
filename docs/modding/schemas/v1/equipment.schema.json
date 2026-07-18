@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guaji.example/schemas/mod/v1/equipment.schema.json",
+  "title": "equipment definition v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "name",
+    "slot"
+  ],
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slot": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "description_effects": {
+      "type": "array"
+    },
+    "icon_path": {
+      "type": "string"
+    }
+  }
+}

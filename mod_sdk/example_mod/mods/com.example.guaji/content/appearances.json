@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "kind": "appearance",
+  "entries": [
+    {
+      "operation": "add",
+      "local_id": "disciple",
+      "data": {
+        "kind": "party",
+        "scene_path": "res://mods/com.example.guaji/scenes/disciple.tscn",
+        "fallback_id": "actor_default",
+        "contract_version": 1
+      }
+    }
+  ]
+}

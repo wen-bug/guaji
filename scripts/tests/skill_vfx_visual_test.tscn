@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tests/skill_vfx_visual_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://scripts/game/combat/combat_controller.tscn" id="2_combat"]
+
+[node name="SkillVfxVisualTest" type="Node2D"]
+script = ExtResource("1_test")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 960.0
+offset_bottom = 480.0
+color = Color(0.08, 0.09, 0.1, 1)
+mouse_filter = 2
+
+[node name="PartyActors" type="Node2D" parent="."]
+
+[node name="CombatController" parent="." instance=ExtResource("2_combat")]

@@ -106,6 +106,9 @@ func recruit_candidate(candidate_id: String) -> bool:
 	companion["kind"] = "companion"
 	ensure_member_shape(companion)
 	game_state.companions.append(companion)
+	var mod_api = game_state._mod_api()
+	if mod_api != null:
+		mod_api.emit_event(&"member_created", {"member": companion.duplicate(true)})
 	if game_state.party_order.size() < PARTY_MAX_SIZE:
 		game_state.party_order.append(str(companion.get("id", "")))
 	else:
@@ -403,7 +406,7 @@ func random_basic_recruit_traits() -> Array:
 		var index: int = game_state.rng.randi_range(0, pool.size() - 1)
 		var trait_id: String = str(pool[index])
 		pool.remove_at(index)
-		var definition: Dictionary = DataTables.INNATE_TRAIT_DEFS.get(trait_id, {})
+		var definition: Dictionary = DataTables.content_definition("trait", trait_id, DataTables.INNATE_TRAIT_DEFS.get(trait_id, {}))
 		traits.append({
 			"id": trait_id,
 			"name": str(definition.get("name", trait_id)),

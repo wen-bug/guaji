@@ -158,6 +158,17 @@
 
 技能 `.tres` 资源脚本，导出技能 ID、显示名、图标贴图、图标路径、类型、五行、蓝耗、冷却、释放距离和描述。当前用于技能格图标显示和 Inspector 手动配置图标。
 
+## Mod 子系统
+
+- `scripts/modding/mod_api.gd`：`ModAPI` Autoload；在 `GameState` 前挂载 PCK/ZIP、解析依赖、执行事务注册并冻结内容。
+- `scripts/modding/api/`：API 1 稳定类，包括 `ModPlugin`、`ModContext`、只读内容注册表、事件、隔离存储/RNG 和 `ActorState`。
+- `scripts/modding/internal/`：Manifest/内容运行时校验和条件对白选择器，不属于兼容 API。
+- `scripts/modding/ui/mod_manager_panel.gd`：Mod 启停、代码授权、排序、错误和重启提示。
+- `docs/modding/schemas/v1/`：Manifest、统一内容信封和 11 类内容的 JSON Schema Draft 2020-12。
+- `mod_sdk/example_mod/`：可构建示例，覆盖技能、物品、形象、对白、自定义状态/effect/AI、存储和迁移。
+
+`DataTables` 保留为本体兼容门面，业务查询转发到冻结的 Mod 内容注册表；本体静态定义在 Mod 注册阶段以 `core` 来源导入。Mod 不应直接读取 `DataTables` 或其他业务脚本。
+
 ## 资源目录
 
 - `resources/items/`：物品资源，文件名为 `<item_id>.tres`。
@@ -266,7 +277,7 @@
 
 - 默认隐藏，进入历练时显示，退出历练时隐藏。
 - 作为透明历练层使用，不绘制独立背景。
-- 维护随机遇怪计时，发出 `monster_spawn_requested`。
+- 维护首场 1 秒、后续 3–5 秒的遇怪计时，发出 `monster_spawn_requested`。
 - 战斗结束后重新安排下一次遇怪。
 
 ### `scripts/ui/hud.gd`
@@ -303,6 +314,7 @@ HUD 控制脚本：
 - `innate-traits.md`：先天命格的已实现命格池、效果字段、规划生成规则、数值基准、缺陷命格和觉醒规则。
 - `battle-expedition.md`：历练地图、随机遇怪、自动战斗、战斗附加效果、返回家园和加载过渡流程。
 - `project-structure.md`：项目结构说明。
+- `modding/`：版本化 Mod 包格式、内容参考、脚本 API、专项契约、安全说明、迁移指南、Schema 和 API 变更记录。
 
 ## 维护约定
 
@@ -314,6 +326,7 @@ HUD 控制脚本：
 - 涉及战斗流程、随机遇怪、`effects` 管线或返回家园流程时，同步 `docs/battle-expedition.md`。
 - 未实现设定必须标注为“规划”，不能写入已实现清单。
 - 调试入口只用于测试，允许修改正式存档；新增调试能力时同步标注中文日志。
+- 修改 API 1 的公开类、方法或参数时先更新 API 快照测试和 `docs/modding/api-changelog.md`；破坏性变更必须增加 `MOD_API_VERSION`。
 
 ## 历练战斗补充
 

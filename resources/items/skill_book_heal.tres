@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_heal_001/spell_heal_001_small_red/frame0008.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1")
+id = "skill_book_heal"
+item_no = 1031
+type = "skill_book"
+display_name = "回春术技能书"
+icon_texture = ExtResource("2_icon")
+icon_name = "skill_book_heal"
+icon_path = "res://assets/items/skill_book_heal.png"
+description = "使用后令选中角色永久学会回春术。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "wood"
+payload = {"skill_id": "heal", "obtain_source": "non_drop"}

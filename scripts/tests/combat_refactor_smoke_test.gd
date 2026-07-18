@@ -484,7 +484,7 @@ func _test_defeat_and_cooldowns(world: Node2D, combat_scene: PackedScene, actor_
 
 
 func _test_save_fallback() -> void:
-	var save_path := "user://guaji_smoke_save.cfg"
+	var save_path := "res://.funplay/guaji_smoke_save.cfg"
 	var manager := SaveManager.new(save_path)
 	_expect(manager.save_data({"game_state": {"schema_version": GameState.SAVE_SCHEMA_VERSION}}), "临时存档应写入成功")
 	_expect(int(manager.load_data().get("version", 0)) == SaveManager.SAVE_VERSION, "存档应包含当前外层版本")

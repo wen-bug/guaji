@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_poison_001/spell_poison_001_small_green/frame0005.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1")
+id = "skill_book_poison"
+item_no = 1030
+type = "skill_book"
+display_name = "蚀骨毒雾技能书"
+icon_texture = ExtResource("2_icon")
+icon_name = "skill_book_poison"
+icon_path = "res://assets/items/skill_book_poison.png"
+description = "使用后令选中角色永久学会蚀骨毒雾。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "wood"
+payload = {"skill_id": "poison", "obtain_source": "non_drop"}

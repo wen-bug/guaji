@@ -1,0 +1,146 @@
+[gd_scene format=3 uid="uid://e1gup5ihyd2j"]
+
+[ext_resource type="Script" uid="uid://cae4gtod7en42" path="res://scripts/game/skills/damage/direct_damage_skill.gd" id="1_damage"]
+[ext_resource type="Texture2D" uid="uid://oygqp1vfr5gf" path="res://assets/Super Pixel Effects Gigapack (Free Version)/spritesheet/Fantasy Spells/spell_poison_001/spell_poison_001_small_green/spritesheet.png" id="2_effect"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_0"]
+atlas = ExtResource("2_effect")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_1"]
+atlas = ExtResource("2_effect")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_2"]
+atlas = ExtResource("2_effect")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_3"]
+atlas = ExtResource("2_effect")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_4"]
+atlas = ExtResource("2_effect")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_5"]
+atlas = ExtResource("2_effect")
+region = Rect2(320, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_6"]
+atlas = ExtResource("2_effect")
+region = Rect2(384, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_7"]
+atlas = ExtResource("2_effect")
+region = Rect2(448, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_8"]
+atlas = ExtResource("2_effect")
+region = Rect2(512, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_9"]
+atlas = ExtResource("2_effect")
+region = Rect2(576, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_10"]
+atlas = ExtResource("2_effect")
+region = Rect2(640, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_11"]
+atlas = ExtResource("2_effect")
+region = Rect2(704, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_12"]
+atlas = ExtResource("2_effect")
+region = Rect2(768, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_13"]
+atlas = ExtResource("2_effect")
+region = Rect2(832, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_14"]
+atlas = ExtResource("2_effect")
+region = Rect2(896, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_15"]
+atlas = ExtResource("2_effect")
+region = Rect2(960, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_frame_16"]
+atlas = ExtResource("2_effect")
+region = Rect2(1024, 0, 64, 64)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_cast"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_9")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_10")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_11")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_12")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_13")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_14")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_15")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_frame_16")
+}],
+"loop": 0,
+"name": &"cast",
+"speed": 15.0
+}]
+
+[node name="PoisonSkill" type="Node2D" unique_id=1139879165]
+script = ExtResource("1_damage")
+frame_count = 17
+impact_frame = 5
+effect_offset = Vector2(0, 12)
+
+[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=534420414]
+visible = false
+z_index = 20
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_cast")
+animation = &"cast"
+frame = 16
+frame_progress = 1.0

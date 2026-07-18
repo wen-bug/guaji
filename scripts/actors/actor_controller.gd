@@ -5,7 +5,7 @@ signal hit_candidate(action_id: int, target_id: String)
 signal attack_finished(action_id: int)
 signal death_finished(actor_id: String)
 
-enum ActorState {
+enum ActorMode {
 	IDLE,
 	ROAMING,
 	TALKING,
@@ -17,6 +17,7 @@ enum ActorState {
 	DEAD,
 }
 
+const ActorStateMachineScript = preload("res://scripts/modding/api/actor_state_machine.gd")
 const CombatActorStatusScript = preload("res://scripts/game/combat/combat_actor_status.gd")
 const DEFAULT_VISUAL_ID := "actor_default"
 const PARTY_VISUAL_ROOT := "res://scripts/actors/visuals/party"
@@ -28,16 +29,10 @@ const WORLD_LEFT := 28.0
 const WORLD_RIGHT := 930.0
 const TALK_BUBBLE_Y := -112.0
 const TALK_BUBBLE_LANE_OFFSET := 50.0
-const TALK_LINES := [
-	"今天也要稳稳修行。",
-	"家里真清静。",
-	"等一个新任务。",
-	"先散散步。",
-]
-
 static var active_talker: Node = null
 
 var member_id := ""
+var member_data: Dictionary = {}
 var visual_id := DEFAULT_VISUAL_ID
 var party_index := 0
 var speed := 140.0
@@ -45,7 +40,7 @@ var target_position := Vector2.ZERO
 var home_anchor := Vector2(HOME_X, BASELINE_Y)
 var formation_position := Vector2.ZERO
 var moving := false
-var state := ActorState.IDLE
+var state := ActorMode.IDLE
 var idle_timer := 0.0
 var talk_timer := 0.0
 var combat_motion_timer := 0.0
@@ -56,15 +51,18 @@ var talk_label: Label
 var talk_tween: Tween
 var combat_visual: CombatVisual
 var combat_status: CombatActorStatus
+var actor_state_machine = ActorStateMachineScript.new()
 
 
 func _ready() -> void:
 	_bind_scene_nodes()
+	actor_state_machine.setup(self, _resolve_actor_state_factory)
 	rng.randomize()
 
 
 func configure_member(member: Dictionary, index: int) -> void:
 	_bind_scene_nodes()
+	member_data = member.duplicate(true)
 	member_id = str(member.get("id", ""))
 	visual_id = str(member.get("visual_id", DEFAULT_VISUAL_ID))
 	if visual_id.is_empty():
@@ -88,12 +86,12 @@ func enter_home(anchor: Vector2 = home_anchor) -> void:
 	target_position = position
 	combat_motion_timer = 0.0
 	_hide_talk_bubble(true)
-	_set_state(ActorState.IDLE)
+	_set_state(ActorMode.IDLE)
 	_reset_idle_timer()
 
 
 func set_idle_roam() -> void:
-	if state != ActorState.IDLE:
+	if state != ActorMode.IDLE:
 		return
 	idle_timer -= get_process_delta_time()
 	if idle_timer <= 0.0:
@@ -105,7 +103,7 @@ func enter_expedition_run(run_position: Vector2) -> void:
 	position = run_position
 	target_position = position
 	_hide_talk_bubble(true)
-	_set_state(ActorState.EXPEDITION_RUNNING)
+	_set_state(ActorMode.EXPEDITION_RUNNING)
 
 
 func enter_combat(combat_start_position: Vector2) -> void:
@@ -115,16 +113,16 @@ func enter_combat(combat_start_position: Vector2) -> void:
 	target_position = position
 	combat_motion_timer = 0.0
 	_hide_talk_bubble(true)
-	_set_state(ActorState.COMBAT_READY)
+	_set_state(ActorMode.COMBAT_READY)
 
 
 func set_combat_position(value: Vector2) -> void:
 	var changed := position.distance_squared_to(value) > 0.25
 	position = value
 	target_position = value
-	if changed and state != ActorState.COMBAT_ACTING and state != ActorState.DEAD:
+	if changed and state != ActorMode.COMBAT_ACTING and state != ActorMode.DEAD:
 		combat_motion_timer = 0.08
-		_set_state(ActorState.COMBAT_MOVING)
+		_set_state(ActorMode.COMBAT_MOVING)
 
 
 func set_formation_position(value: Vector2) -> void:
@@ -152,10 +150,10 @@ func effect_position() -> Vector2:
 
 
 func play_combat_action(action_type: String, action_id: int = 0) -> void:
-	if state == ActorState.DEAD or combat_visual == null:
+	if state == ActorMode.DEAD or combat_visual == null:
 		return
 	combat_motion_timer = 0.0
-	_set_state(ActorState.COMBAT_ACTING, false)
+	_set_state(ActorMode.COMBAT_ACTING, false)
 	if action_type in ["ranged", "ranged_attack"]:
 		combat_visual.play_ranged_attack(action_id)
 	else:
@@ -168,14 +166,14 @@ func play_hurt_feedback() -> void:
 
 
 func play_level_up_feedback() -> void:
-	if state != ActorState.DEAD and combat_visual != null:
+	if state != ActorMode.DEAD and combat_visual != null:
 		combat_visual.play_level_up()
 
 
 func play_death_feedback() -> void:
-	if state == ActorState.DEAD:
+	if state == ActorMode.DEAD:
 		return
-	state = ActorState.DEAD
+	state = ActorMode.DEAD
 	if combat_visual != null:
 		combat_visual.play_death()
 
@@ -183,8 +181,8 @@ func play_death_feedback() -> void:
 func cancel_combat_action() -> void:
 	if combat_visual != null:
 		combat_visual.cancel_action()
-	if state != ActorState.DEAD:
-		_set_state(ActorState.COMBAT_READY)
+	if state != ActorMode.DEAD:
+		_set_state(ActorMode.COMBAT_READY)
 
 
 func ensure_combat_status() -> CombatActorStatus:
@@ -199,21 +197,26 @@ func ensure_combat_status() -> CombatActorStatus:
 
 
 func _process(delta: float) -> void:
+	if actor_state_machine.state != null:
+		var requested = actor_state_machine.update(delta)
+		if requested is String and not str(requested).is_empty():
+			_apply_requested_actor_state(str(requested))
+		return
 	if moving:
 		_update_home_movement(delta)
 		return
 	match state:
-		ActorState.EXPEDITION_RUNNING:
+		ActorMode.EXPEDITION_RUNNING:
 			_play_visual_state(&"run")
-		ActorState.COMBAT_MOVING:
+		ActorMode.COMBAT_MOVING:
 			combat_motion_timer = maxf(0.0, combat_motion_timer - delta)
 			if combat_motion_timer <= 0.0:
-				_set_state(ActorState.COMBAT_READY)
-		ActorState.TALKING:
+				_set_state(ActorMode.COMBAT_READY)
+		ActorMode.TALKING:
 			talk_timer -= delta
 			if talk_timer <= 0.0:
 				_hide_talk_bubble()
-				_set_state(ActorState.IDLE)
+				_set_state(ActorMode.IDLE)
 				_reset_idle_timer()
 
 
@@ -231,10 +234,13 @@ func _start_talking() -> bool:
 	if active_talker != null and is_instance_valid(active_talker) and active_talker != self:
 		return false
 	active_talker = self
-	talk_label.text = TALK_LINES[rng.randi_range(0, TALK_LINES.size() - 1)]
+	var dialogue := _pick_dialogue()
+	if dialogue.is_empty():
+		return false
+	talk_label.text = str(dialogue.get("text", ""))
 	_show_talk_bubble()
 	talk_timer = rng.randf_range(1.6, 2.8)
-	_set_state(ActorState.TALKING)
+	_set_state(ActorMode.TALKING)
 	return true
 
 
@@ -243,7 +249,7 @@ func _walk_to(target: Vector2) -> void:
 	moving = true
 	_hide_talk_bubble(true)
 	_face_target(target_position)
-	_set_state(ActorState.ROAMING)
+	_set_state(ActorMode.ROAMING)
 
 
 func _update_home_movement(delta: float) -> void:
@@ -252,7 +258,7 @@ func _update_home_movement(delta: float) -> void:
 		return
 	position.x = target_position.x
 	moving = false
-	_set_state(ActorState.IDLE)
+	_set_state(ActorMode.IDLE)
 	_reset_idle_timer()
 
 
@@ -261,18 +267,20 @@ func _face_target(target: Vector2) -> void:
 		combat_visual.animated_sprite.flip_h = target.x < position.x
 
 
-func _set_state(next_state: ActorState, play_animation: bool = true) -> void:
+func _set_state(next_state: ActorMode, play_animation: bool = true) -> void:
+	if actor_state_machine.state != null:
+		actor_state_machine.clear()
 	if state == next_state and play_animation:
 		return
 	state = next_state
 	if not play_animation:
 		return
 	match state:
-		ActorState.ROAMING:
+		ActorMode.ROAMING:
 			_play_visual_state(&"walk")
-		ActorState.EXPEDITION_RUNNING, ActorState.COMBAT_MOVING:
+		ActorMode.EXPEDITION_RUNNING, ActorMode.COMBAT_MOVING:
 			_play_visual_state(&"run")
-		ActorState.DEAD:
+		ActorMode.DEAD:
 			pass
 		_:
 			_play_visual_state(&"idle")
@@ -298,10 +306,10 @@ func _load_combat_visual() -> void:
 	if combat_visual != null:
 		combat_visual.queue_free()
 		combat_visual = null
-	var scene_path := "%s/%s.tscn" % [PARTY_VISUAL_ROOT, _safe_visual_id(visual_id)]
+	var scene_path := _appearance_scene_path(visual_id, "party", DEFAULT_VISUAL_ID)
 	if not ResourceLoader.exists(scene_path):
 		push_warning("角色形象不存在，使用默认形象: %s" % scene_path)
-		scene_path = "%s/%s.tscn" % [PARTY_VISUAL_ROOT, DEFAULT_VISUAL_ID]
+		scene_path = _appearance_scene_path(DEFAULT_VISUAL_ID, "party", DEFAULT_VISUAL_ID)
 	var packed := load(scene_path) as PackedScene
 	if packed == null:
 		push_error("默认角色形象加载失败: %s" % scene_path)
@@ -337,6 +345,80 @@ func _load_combat_visual() -> void:
 	_play_visual_state(&"idle")
 
 
+func request_actor_state(state_id: String, payload: Dictionary = {}) -> bool:
+	if state_id.begins_with("core:"):
+		_apply_requested_actor_state(state_id)
+		return true
+	moving = false
+	_hide_talk_bubble(true)
+	return actor_state_machine.transition(state_id, payload)
+
+
+func send_actor_state_event(event_id: StringName, payload: Dictionary = {}) -> void:
+	if actor_state_machine.state == null:
+		return
+	var requested = actor_state_machine.handle_event(event_id, payload)
+	if requested is String and not str(requested).is_empty():
+		_apply_requested_actor_state(str(requested))
+
+
+func _apply_requested_actor_state(state_id: String) -> void:
+	if not state_id.begins_with("core:"):
+		actor_state_machine.transition(state_id)
+		return
+	actor_state_machine.clear()
+	var core_id := state_id.trim_prefix("core:")
+	var mode_map := {
+		"idle": ActorMode.IDLE,
+		"roaming": ActorMode.ROAMING,
+		"talking": ActorMode.TALKING,
+		"paused": ActorMode.PAUSED,
+		"expedition_running": ActorMode.EXPEDITION_RUNNING,
+		"combat_ready": ActorMode.COMBAT_READY,
+		"combat_moving": ActorMode.COMBAT_MOVING,
+		"combat_acting": ActorMode.COMBAT_ACTING,
+		"dead": ActorMode.DEAD,
+	}
+	if mode_map.has(core_id):
+		_set_state(mode_map[core_id])
+
+
+func _resolve_actor_state_factory(state_id: String) -> Callable:
+	var api := get_node_or_null("/root/ModAPI")
+	return api.actor_state_factory(state_id) if api != null else Callable()
+
+
+func _pick_dialogue() -> Dictionary:
+	var api := get_node_or_null("/root/ModAPI")
+	if api == null:
+		return {}
+	var stats: Dictionary = member_data.get("stats", {})
+	var trait_ids: Array = []
+	for raw_trait in member_data.get("innate_traits", []):
+		trait_ids.append(DataTables.innate_trait_id(raw_trait))
+	return api.pick_dialogue({
+		"scene": "home",
+		"state": "idle",
+		"member_id": member_id,
+		"visual_id": visual_id,
+		"level": int(stats.get("level", 1)),
+		"trait_ids": trait_ids,
+	}, rng)
+
+
+func _appearance_scene_path(requested_id: String, expected_kind: String, fallback_id: String) -> String:
+	var definition := DataTables.content_definition("appearance", requested_id)
+	if str(definition.get("kind", "")) == expected_kind:
+		var registered_path := str(definition.get("scene_path", ""))
+		if ResourceLoader.exists(registered_path):
+			return registered_path
+	var fallback := DataTables.content_definition("appearance", fallback_id)
+	var fallback_path := str(fallback.get("scene_path", ""))
+	if ResourceLoader.exists(fallback_path):
+		return fallback_path
+	return "%s/%s.tscn" % [PARTY_VISUAL_ROOT, _safe_visual_id(fallback_id)]
+
+
 func _safe_visual_id(value: String) -> String:
 	var result := ""
 	for character in value:
@@ -350,8 +432,8 @@ func _on_visual_hit_candidate(action_id: int, target_id: String) -> void:
 
 
 func _on_visual_attack_finished(action_id: int) -> void:
-	if state != ActorState.DEAD:
-		_set_state(ActorState.COMBAT_READY)
+	if state != ActorMode.DEAD:
+		_set_state(ActorMode.COMBAT_READY)
 	attack_finished.emit(action_id)
 
 

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_defense_up_001/spell_defense_up_001_small_blue/frame0006.png" id="2_icon"]
+
+[resource]
+script = ExtResource("1")
+id = "spirit_shield"
+display_name = "玄甲术"
+icon_texture = ExtResource("2_icon")
+icon_name = "spirit_shield"
+icon_path = "res://assets/skills/spirit_shield.png"
+type = "defense"
+target_scope = "self"
+target_mode = "single"
+effect_tags = Array[String](["buff", "shield"])
+has_buff = true
+element = "earth"
+mp_cost = 7
+cooldown = 6
+release_distance = 0.0
+description = "气血低于六成时凝聚玄甲，获得 10 点护盾，最多持续三回合。"

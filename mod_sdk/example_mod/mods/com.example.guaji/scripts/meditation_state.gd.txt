@@ -1,0 +1,14 @@
+extends ActorState
+
+var remaining := 2.0
+
+
+func enter(actor: Node, _payload: Dictionary = {}) -> void:
+	remaining = 2.0
+	if actor.has_method("_play_visual_state"):
+		actor.call("_play_visual_state", &"idle")
+
+
+func update(_actor: Node, delta: float):
+	remaining -= delta
+	return "core:idle" if remaining <= 0.0 else null

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://guaji.example/schemas/mod/v1/appearance.schema.json",
+  "title": "appearance definition v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "kind",
+    "scene_path"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "party",
+        "enemy"
+      ]
+    },
+    "scene_path": {
+      "type": "string"
+    },
+    "fallback_id": {
+      "type": "string"
+    },
+    "contract_version": {
+      "const": 1
+    }
+  }
+}

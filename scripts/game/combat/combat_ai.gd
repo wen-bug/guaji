@@ -10,6 +10,7 @@ const ACTION_SOURCE_PILL := "pill"
 const ACTION_SOURCE_BASIC := "basic"
 const ACTION_TYPE_HEAL := "heal"
 const ACTION_TYPE_DEFENSE := "defense"
+const ACTION_TYPE_BUFF := "buff"
 const ACTION_TYPE_RESOURCE := "resource"
 const ACTION_TYPE_DAMAGE := "damage"
 const ACTION_TYPE_NORMAL_ATTACK := "normal_attack"
@@ -29,6 +30,10 @@ func select_player_action(game_state, player_range: float, distance_to_enemy: fl
 	var defense_action: Dictionary = _find_best_available_action(game_state, ACTION_TYPE_DEFENSE, hp_ratio, mp_ratio, skill_cooldowns, pill_cooldowns, pill_group_cooldowns, player_range, distance_to_enemy, actor)
 	if hp_ratio <= PLAYER_HP_DEFENSE_THRESHOLD and not defense_action.is_empty():
 		return defense_action
+
+	var buff_action: Dictionary = _find_best_available_action(game_state, ACTION_TYPE_BUFF, hp_ratio, mp_ratio, skill_cooldowns, pill_cooldowns, pill_group_cooldowns, player_range, distance_to_enemy, actor)
+	if not buff_action.is_empty():
+		return buff_action
 
 	var resource_action: Dictionary = _find_best_available_action(game_state, ACTION_TYPE_RESOURCE, hp_ratio, mp_ratio, skill_cooldowns, pill_cooldowns, pill_group_cooldowns, player_range, distance_to_enemy, actor)
 	if mp_ratio <= PLAYER_MP_RESOURCE_THRESHOLD and not resource_action.is_empty():

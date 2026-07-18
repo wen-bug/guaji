@@ -41,11 +41,33 @@ const ITEM_ID_REFINE_TALISMAN := "refine_talisman"
 const ITEM_ID_RECIPE_PILL := "recipe_pill"
 const ITEM_ID_PILL := "pill"
 const ITEM_ID_BREAKTHROUGH_PILL := "breakthrough_pill"
+const ITEM_ID_SKILL_BOOK_THUNDER := "skill_book_thunder"
+const ITEM_ID_SKILL_BOOK_POISON := "skill_book_poison"
+const ITEM_ID_SKILL_BOOK_HEAL := "skill_book_heal"
+const ITEM_ID_SKILL_BOOK_ATTACK_UP := "skill_book_attack_up"
+const ITEM_ID_SKILL_BOOK_SPIRIT_SHIELD := "skill_book_spirit_shield"
 
 const ATTACK_MODE_MELEE := "melee"
 const ATTACK_MODE_RANGED := "ranged"
 const ATTACK_MODES := [ATTACK_MODE_MELEE, ATTACK_MODE_RANGED]
 const RANGED_BASIC_ATTACK_ID := "fireball"
+
+const SKILL_TARGET_SELF := "self"
+const SKILL_TARGET_SINGLE_ALLY := "single_ally"
+const SKILL_TARGET_ALL_ALLIES := "all_allies"
+const SKILL_TARGET_SINGLE_ENEMY := "single_enemy"
+const SKILL_TARGET_ALL_ENEMIES := "all_enemies"
+const SKILL_TARGET_SCOPES := [
+	SKILL_TARGET_SELF,
+	SKILL_TARGET_SINGLE_ALLY,
+	SKILL_TARGET_ALL_ALLIES,
+	SKILL_TARGET_SINGLE_ENEMY,
+	SKILL_TARGET_ALL_ENEMIES,
+]
+const SKILL_TARGET_MODE_SINGLE := "single"
+const SKILL_TARGET_MODE_AOE := "aoe"
+const SKILL_BUFF_EFFECT_KINDS := ["hot", "shield", "buff_stat"]
+const SKILL_DEBUFF_EFFECT_KINDS := ["dot", "debuff_stat"]
 
 const ITEM_GAIN_TARGET_ORDER := ["attack", "defense", "max_hp", "max_mp", "root_bone", "wood", "fire", "earth", "metal", "water"]
 const ITEM_GAIN_TARGET_LABELS := {
@@ -212,20 +234,28 @@ const ITEM_DEFS := {
 	"earth_moss": {"item_no": 1026, "name": "厚土苔", "description": "蕴含土行厚重的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1050.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
 	"metal_reed": {"item_no": 1027, "name": "玄金苇", "description": "蕴含金行肃杀的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1500.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
 	"water_orchid": {"item_no": 1028, "name": "玄水兰", "description": "蕴含水行润泽的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
+	"skill_book_thunder": {"item_no": 1029, "name": "雷击术技能书", "description": "使用后令选中角色永久学会雷击术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "thunder", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
+	"skill_book_poison": {"item_no": 1030, "name": "蚀骨毒雾技能书", "description": "使用后令选中角色永久学会蚀骨毒雾。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "poison", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
+	"skill_book_heal": {"item_no": 1031, "name": "回春术技能书", "description": "使用后令选中角色永久学会回春术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "heal", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
+	"skill_book_attack_up": {"item_no": 1032, "name": "燃锋诀技能书", "description": "使用后令选中角色永久学会燃锋诀。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "attack_up", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
+	"skill_book_spirit_shield": {"item_no": 1033, "name": "玄甲术技能书", "description": "使用后令选中角色永久学会玄甲术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "spirit_shield", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
 }
 
 const SKILL_DEFS := {
-	"heal": {"id": "heal", "name": "回春术", "type": "heal", "element": "wood", "mp_cost": 6, "cooldown": 5, "damage_multiplier": 0.0, "heal_multiplier": 1.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
-	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "element": "metal", "mp_cost": 12, "cooldown": 5, "damage_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "damage_multiplier": 1.25, "release_distance": 0.0, "priority": 40, "trigger": ["always"], "weight": 1, "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "damage_multiplier": 1.0, "release_distance": 0.0, "priority": 55, "trigger": ["always"], "weight": 1, "combat_buffs": [], "effects": [{"kind": "dot", "trigger": "on_hit", "target": "target", "element": "wood", "amount": 2, "duration": 2}], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "damage_multiplier": 1.1, "release_distance": 0.0, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "combat_buffs": [], "effects": [{"kind": "buff_stat", "trigger": "after_damage", "target": "self", "stat": "attack", "amount": 2, "duration": 2}], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "damage_multiplier": 1.8, "release_distance": 0.0, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"heal": {"id": "heal", "name": "回春术", "type": "heal", "target_scope": SKILL_TARGET_SELF, "element": "wood", "mp_cost": 6, "cooldown": 5, "damage_multiplier": 0.0, "heal_multiplier": 1.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
+	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "metal", "mp_cost": 12, "cooldown": 5, "damage_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/thunder_skill.tscn"},
+	"poison": {"id": "poison", "name": "蚀骨毒雾", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "mp_cost": 8, "cooldown": 4, "damage_multiplier": 0.9, "release_distance": 120.0, "priority": 55, "trigger": ["always"], "combat_buffs": [], "effects": [{"kind": "dot", "trigger": "on_hit", "target": "target", "element": "wood", "amount": 2, "duration_turns": 3}], "scene_path": "res://scripts/game/skills/damage/poison_skill.tscn"},
+	"attack_up": {"id": "attack_up", "name": "燃锋诀", "type": "buff", "target_scope": SKILL_TARGET_SELF, "element": "fire", "mp_cost": 5, "cooldown": 6, "damage_multiplier": 0.0, "release_distance": 0.0, "priority": 70, "trigger": ["always"], "combat_buffs": [], "effects": [{"kind": "buff_stat", "target": "self", "stat": "attack", "amount": 2, "duration_turns": 3}], "scene_path": "res://scripts/game/skills/buff/attack_up_skill.tscn"},
+	"spirit_shield": {"id": "spirit_shield", "name": "玄甲术", "type": "defense", "target_scope": SKILL_TARGET_SELF, "element": "earth", "mp_cost": 7, "cooldown": 6, "damage_multiplier": 0.0, "release_distance": 0.0, "priority": 80, "trigger": ["hp_below_60"], "combat_buffs": [], "effects": [{"kind": "shield", "target": "self", "amount": 10, "duration_turns": 3}], "scene_path": "res://scripts/game/skills/buff/spirit_shield_skill.tscn"},
+	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "damage_multiplier": 1.25, "release_distance": 0.0, "priority": 40, "trigger": ["always"], "weight": 1, "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "damage_multiplier": 1.0, "release_distance": 0.0, "priority": 55, "trigger": ["always"], "weight": 1, "combat_buffs": [], "effects": [{"kind": "dot", "trigger": "on_hit", "target": "target", "element": "wood", "amount": 2, "duration": 2}], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "damage_multiplier": 1.1, "release_distance": 0.0, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "combat_buffs": [], "effects": [{"kind": "buff_stat", "trigger": "after_damage", "target": "self", "stat": "attack", "amount": 2, "duration": 2}], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "damage_multiplier": 1.8, "release_distance": 0.0, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
 }
 
 const BASIC_ATTACK_DEFS := {
-	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "element": "", "mp_cost": 0, "cooldown": 0.0, "release_distance": 0.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
-	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "release_distance": 120.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
+	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "", "mp_cost": 0, "cooldown": 0.0, "release_distance": 0.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
+	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "release_distance": 120.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
 }
 
 const ALCHEMY_RECIPE_DEFS := {
@@ -341,12 +371,48 @@ const ENEMY_SCENE_PATHS := {
 const DEFAULT_ENEMY_ID := "training_dummy"
 
 
+static func _mod_content():
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return null
+	var api := tree.root.get_node_or_null("ModAPI")
+	return api.content if api != null else null
+
+
+static func content_definition(kind: String, content_id: String, fallback: Dictionary = {}) -> Dictionary:
+	var registry = _mod_content()
+	if registry != null and registry.has(kind, content_id):
+		return registry.definition(kind, content_id)
+	return fallback.duplicate(true)
+
+
+static func content_definitions(kind: String, fallback: Dictionary = {}) -> Dictionary:
+	var registry = _mod_content()
+	return registry.all(kind) if registry != null else fallback.duplicate(true)
+
+
+static func content_ids(kind: String, fallback: Dictionary = {}) -> Array[String]:
+	var registry = _mod_content()
+	if registry != null:
+		return registry.ids(kind)
+	var result: Array[String] = []
+	for content_id in fallback.keys():
+		result.append(str(content_id))
+	result.sort()
+	return result
+
+
+static func content_has(kind: String, content_id: String, fallback: Dictionary = {}) -> bool:
+	var registry = _mod_content()
+	return registry.has(kind, content_id) if registry != null else fallback.has(content_id)
+
+
 static func item_definition(item_id: String) -> Dictionary:
-	return ITEM_DEFS.get(item_id, {}).duplicate(true)
+	return content_definition("item", item_id, ITEM_DEFS.get(item_id, {}))
 
 
 static func item_drop_rarity(item_id: String) -> String:
-	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	var definition: Dictionary = item_definition(item_id)
 	if definition.has("drop_rarity"):
 		return str(definition.get("drop_rarity", "t1"))
 	if item_id in ["herb", "ore", "spirit_stone"]:
@@ -361,23 +427,23 @@ static func item_drop_rarity(item_id: String) -> String:
 
 
 static func item_no(item_id: String) -> int:
-	return int(ITEM_DEFS.get(item_id, {}).get("item_no", 0))
+	return int(item_definition(item_id).get("item_no", 0))
 
 
 static func item_id_from_no(no: int) -> String:
-	for item_id in ITEM_DEFS.keys():
-		if int(ITEM_DEFS[item_id].get("item_no", 0)) == no:
+	for item_id in content_ids("item", ITEM_DEFS):
+		if int(item_definition(item_id).get("item_no", 0)) == no:
 			return str(item_id)
 	return ""
 
 
 static func item_icon_name(item_id: String) -> String:
-	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	var definition: Dictionary = item_definition(item_id)
 	return str(definition.get("icon_name", item_id))
 
 
 static func item_icon_path(item_id: String) -> String:
-	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	var definition: Dictionary = item_definition(item_id)
 	if definition.has("icon_path"):
 		return str(definition.get("icon_path", ""))
 	var icon_name: String = item_icon_name(item_id)
@@ -387,12 +453,12 @@ static func item_icon_path(item_id: String) -> String:
 
 
 static func equipment_icon_name(template_id: String) -> String:
-	var definition: Dictionary = EQUIPMENT_DEFS.get(template_id, {})
+	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	return str(definition.get("icon_name", template_id))
 
 
 static func equipment_icon_path(template_id: String) -> String:
-	var definition: Dictionary = EQUIPMENT_DEFS.get(template_id, {})
+	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if definition.has("icon_path"):
 		return str(definition.get("icon_path", ""))
 	var icon_name: String = equipment_icon_name(template_id)
@@ -444,7 +510,7 @@ static func item_display_name(item_id: String) -> String:
 	var display_name: String = _resource_string(resource, "display_name", "")
 	if not display_name.is_empty():
 		return display_name
-	return str(ITEM_DEFS.get(item_id, {}).get("name", item_id))
+	return str(item_definition(item_id).get("name", item_id))
 
 
 static func item_display_description(item_id: String) -> String:
@@ -452,7 +518,7 @@ static func item_display_description(item_id: String) -> String:
 	var description: String = _resource_string(resource, "description", "")
 	if not description.is_empty():
 		return description
-	return str(ITEM_DEFS.get(item_id, {}).get("description", ""))
+	return str(item_definition(item_id).get("description", ""))
 
 
 static func equipment_template_description(template_id: String) -> String:
@@ -460,7 +526,7 @@ static func equipment_template_description(template_id: String) -> String:
 	var description: String = _resource_string(resource, "description", "")
 	if not description.is_empty():
 		return description
-	return str(EQUIPMENT_DEFS.get(template_id, {}).get("description", ""))
+	return str(content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {})).get("description", ""))
 
 
 static func equipment_template_description_effects(template_id: String) -> Array:
@@ -469,7 +535,7 @@ static func equipment_template_description_effects(template_id: String) -> Array
 		var resource_effects = resource.get("description_effects")
 		if resource_effects is Array and not resource_effects.is_empty():
 			return resource_effects.duplicate(true)
-	var table_effects = EQUIPMENT_DEFS.get(template_id, {}).get("description_effects", [])
+	var table_effects = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {})).get("description_effects", [])
 	return table_effects.duplicate(true) if table_effects is Array else []
 
 
@@ -572,10 +638,10 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 
 
 static func create_skill(skill_id: String, obtain_source: String = "non_drop") -> Dictionary:
-	var definition: Dictionary = SKILL_DEFS.get(skill_id, {})
+	var definition: Dictionary = content_definition("skill", skill_id, SKILL_DEFS.get(skill_id, {}))
 	if definition.is_empty():
 		return {}
-	var skill: Dictionary = definition.duplicate(true)
+	var skill: Dictionary = normalize_skill_definition(definition)
 	skill["obtain_source"] = obtain_source
 	if not bool(skill.get("enemy_only", false)):
 		skill["locked"] = true
@@ -585,19 +651,103 @@ static func create_skill(skill_id: String, obtain_source: String = "non_drop") -
 
 static func create_basic_attack(attack_mode: String, base_damage: int = 0) -> Dictionary:
 	var resolved_mode: String = attack_mode if ATTACK_MODES.has(attack_mode) else ATTACK_MODE_MELEE
-	var attack: Dictionary = BASIC_ATTACK_DEFS[resolved_mode].duplicate(true)
+	var attack: Dictionary = normalize_skill_definition(content_definition("basic_attack", resolved_mode, BASIC_ATTACK_DEFS[resolved_mode]))
 	attack["type"] = "normal_attack"
 	attack["base_damage"] = maxi(0, base_damage)
 	attack["damage_marker"] = "impact"
 	return attack
 
 
+static func normalize_skill_definition(definition: Dictionary) -> Dictionary:
+	var skill: Dictionary = definition.duplicate(true)
+	var scope: String = str(skill.get("target_scope", ""))
+	if not SKILL_TARGET_SCOPES.has(scope):
+		scope = _default_skill_target_scope(str(skill.get("type", "")))
+	skill["target_scope"] = scope
+	skill["target_mode"] = SKILL_TARGET_MODE_AOE if scope in [SKILL_TARGET_ALL_ALLIES, SKILL_TARGET_ALL_ENEMIES] else SKILL_TARGET_MODE_SINGLE
+	skill["is_aoe"] = skill["target_mode"] == SKILL_TARGET_MODE_AOE
+	var tags: Array[String] = _skill_effect_tags(skill)
+	skill["effect_tags"] = tags
+	skill["has_buff"] = tags.has("buff")
+	skill["has_debuff"] = tags.has("debuff")
+	return skill
+
+
+static func skill_target_scope(skill: Dictionary) -> String:
+	return str(normalize_skill_definition(skill).get("target_scope", SKILL_TARGET_SINGLE_ENEMY))
+
+
+static func skill_target_mode(skill: Dictionary) -> String:
+	return str(normalize_skill_definition(skill).get("target_mode", SKILL_TARGET_MODE_SINGLE))
+
+
+static func skill_is_aoe(skill: Dictionary) -> bool:
+	return bool(normalize_skill_definition(skill).get("is_aoe", false))
+
+
+static func skill_effect_tags(skill: Dictionary) -> Array:
+	return normalize_skill_definition(skill).get("effect_tags", []).duplicate()
+
+
+static func skill_has_buff(skill: Dictionary) -> bool:
+	return bool(normalize_skill_definition(skill).get("has_buff", false))
+
+
+static func skill_has_debuff(skill: Dictionary) -> bool:
+	return bool(normalize_skill_definition(skill).get("has_debuff", false))
+
+
+static func skill_target_mode_name(mode: String) -> String:
+	return "AOE" if mode == SKILL_TARGET_MODE_AOE else "单体"
+
+
+static func skill_effect_tag_name(tag: String) -> String:
+	return {
+		"damage": "伤害",
+		"heal": "治疗",
+		"buff": "增益",
+		"debuff": "减益",
+		"shield": "护盾",
+		"dot": "持续伤害",
+		"hot": "持续治疗",
+	}.get(tag, tag)
+
+
+static func _default_skill_target_scope(skill_type: String) -> String:
+	if skill_type in ["heal", "defense", "resource", "buff"]:
+		return SKILL_TARGET_SELF
+	return SKILL_TARGET_SINGLE_ENEMY
+
+
+static func _skill_effect_tags(skill: Dictionary) -> Array[String]:
+	var tags: Array[String] = []
+	var skill_type: String = str(skill.get("type", ""))
+	if skill_type in ["damage", "normal_attack"] or float(skill.get("damage_multiplier", 0.0)) > 0.0 or int(skill.get("base_damage", 0)) > 0:
+		tags.append("damage")
+	if skill_type == "heal" or float(skill.get("heal_multiplier", 0.0)) > 0.0 or int(skill.get("heal_amount", 0)) > 0:
+		tags.append("heal")
+	var effects: Array = skill.get("effects", []) if skill.get("effects", []) is Array else []
+	for raw_effect in effects:
+		if not (raw_effect is Dictionary):
+			continue
+		var kind: String = str(raw_effect.get("kind", ""))
+		if SKILL_BUFF_EFFECT_KINDS.has(kind) and not tags.has("buff"):
+			tags.append("buff")
+		if SKILL_DEBUFF_EFFECT_KINDS.has(kind) and not tags.has("debuff"):
+			tags.append("debuff")
+		if kind in ["shield", "dot", "hot"] and not tags.has(kind):
+			tags.append(kind)
+	if not skill.get("combat_buffs", []).is_empty() and not tags.has("buff"):
+		tags.append("buff")
+	return tags
+
+
 static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: String = DEFAULT_ENEMY_ID) -> Dictionary:
 	var resolved_enemy_id: String = resolve_enemy_id(enemy_id)
-	var template: Dictionary = ENEMY_TEMPLATES.get(resolved_enemy_id, ENEMY_TEMPLATES[DEFAULT_ENEMY_ID]).duplicate(true)
+	var template: Dictionary = content_definition("enemy", resolved_enemy_id, ENEMY_TEMPLATES.get(resolved_enemy_id, ENEMY_TEMPLATES[DEFAULT_ENEMY_ID]))
 	var enemy_level: int = maxi(1, level + int(template.get("level_offset", 0)))
 	var rank_id := enemy_rank_for_level(enemy_level)
-	var rank: Dictionary = ENEMY_RANK_DEFS[rank_id]
+	var rank: Dictionary = content_definition("enemy_rank", rank_id, ENEMY_RANK_DEFS[rank_id])
 	var rank_level: int = enemy_rank_level(enemy_level)
 	var multipliers: Dictionary = rank.get("stat_multipliers", {})
 	var growth: Dictionary = rank.get("level_growth", {})
@@ -650,7 +800,7 @@ static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: Strin
 static func enemy_rank_for_level(level: int) -> String:
 	var resolved_level := maxi(1, level)
 	for rank_id in ENEMY_RANK_ORDER:
-		var definition: Dictionary = ENEMY_RANK_DEFS[rank_id]
+		var definition: Dictionary = content_definition("enemy_rank", str(rank_id), ENEMY_RANK_DEFS[rank_id])
 		if resolved_level >= int(definition.get("min_level", 1)) and (int(definition.get("max_level", 0)) <= 0 or resolved_level <= int(definition.get("max_level", 0))):
 			return rank_id
 	return "t5"
@@ -666,7 +816,7 @@ static func _enemy_scaled_stat(base_value: int, level: int, multipliers: Diction
 
 
 static func rank_drop_profile(rank_id: String, override_data) -> Dictionary:
-	var rank: Dictionary = ENEMY_RANK_DEFS.get(rank_id, ENEMY_RANK_DEFS["t1"])
+	var rank: Dictionary = content_definition("enemy_rank", rank_id, ENEMY_RANK_DEFS.get(rank_id, ENEMY_RANK_DEFS["t1"]))
 	var profile := {
 		"categories": rank.get("drop_categories", []).duplicate(true),
 		"rarity_weights": rank.get("drop_rarity_weights", {}).duplicate(true),
@@ -681,31 +831,37 @@ static func rank_drop_profile(rank_id: String, override_data) -> Dictionary:
 			profile["base_chance"] = clampf(float(override_data.get("base_chance", profile["base_chance"])), 0.0, 1.0)
 	if profile["items"].is_empty():
 		for category in profile["categories"]:
-			for item_id in ENEMY_DROP_CATEGORY_ITEMS.get(str(category), []):
-				if ITEM_DEFS.has(item_id):
+			var drop_table := content_definition("drop_table", "enemy_drop_categories", {"categories": ENEMY_DROP_CATEGORY_ITEMS})
+			for item_id in drop_table.get("categories", {}).get(str(category), []):
+				if content_has("item", str(item_id), ITEM_DEFS):
 					profile["items"].append(item_id)
 	return profile
 
 
 static func resolve_enemy_id(enemy_id: String) -> String:
-	if enemy_id.is_empty() or not ENEMY_TEMPLATES.has(enemy_id):
+	if enemy_id.is_empty() or not content_has("enemy", enemy_id, ENEMY_TEMPLATES):
 		return DEFAULT_ENEMY_ID
 	return enemy_id
 
 
 static func enemy_scene_path(enemy_id: String) -> String:
 	var resolved_enemy_id: String = resolve_enemy_id(enemy_id)
+	var definition := content_definition("enemy", resolved_enemy_id, ENEMY_TEMPLATES.get(resolved_enemy_id, {}))
+	var registered_path := str(definition.get("scene_path", ""))
+	if not registered_path.is_empty():
+		return registered_path
 	return str(ENEMY_SCENE_PATHS.get(resolved_enemy_id, ENEMY_SCENE_PATHS[DEFAULT_ENEMY_ID]))
 
 
 static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus: int = 0, obtain_source: String = "non_drop", rarity_weights: Dictionary = {}) -> Dictionary:
-	var template_id: String = str(EQUIPMENT_DEFS.keys()[rng.randi_range(0, EQUIPMENT_DEFS.size() - 1)])
+	var template_ids := content_ids("equipment", EQUIPMENT_DEFS)
+	var template_id: String = str(template_ids[rng.randi_range(0, template_ids.size() - 1)])
 	var rarity := random_equipment_rarity(rng) if rarity_weights.is_empty() else random_rarity_from_weights(rng, rarity_weights)
 	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", rarity, obtain_source)
 
 
 static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
-	var template: Dictionary = EQUIPMENT_DEFS.get(template_id, {})
+	var template: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if template.is_empty():
 		return {}
 	var rarity_index := maxi(0, EQUIPMENT_RARITY_ORDER.find(rarity))
@@ -833,7 +989,7 @@ static func innate_trait_id(raw_trait) -> String:
 
 static func innate_trait_name(raw_trait) -> String:
 	var trait_id := innate_trait_id(raw_trait)
-	var definition: Dictionary = INNATE_TRAIT_DEFS.get(trait_id, {})
+	var definition: Dictionary = content_definition("trait", trait_id, INNATE_TRAIT_DEFS.get(trait_id, {}))
 	if raw_trait is Dictionary:
 		return str(raw_trait.get("name", definition.get("name", trait_id)))
 	return str(definition.get("name", trait_id))
@@ -848,12 +1004,12 @@ static func innate_trait_slot(raw_trait) -> String:
 
 
 static func innate_trait_description(raw_trait) -> String:
-	var definition: Dictionary = INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {})
+	var definition: Dictionary = content_definition("trait", innate_trait_id(raw_trait), INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {}))
 	return str(definition.get("description", "暂无说明"))
 
 
 static func innate_trait_effect_summary(raw_trait) -> String:
-	var definition: Dictionary = INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {})
+	var definition: Dictionary = content_definition("trait", innate_trait_id(raw_trait), INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {}))
 	var effects: Array = []
 	if definition.get("effects", []) is Array:
 		effects.append_array(definition.get("effects", []))
@@ -906,7 +1062,7 @@ static func element_name(element_id: String) -> String:
 
 
 static func resource_name(resource_id: String) -> String:
-	var item: Dictionary = ITEM_DEFS.get(resource_id, {})
+	var item: Dictionary = item_definition(resource_id)
 	if not item.is_empty():
 		return item_display_name(resource_id)
 	return resource_id
@@ -931,7 +1087,7 @@ static func item_type_name(type_id: String) -> String:
 
 
 static func item_use_scope(item_id: String) -> String:
-	return str(ITEM_DEFS.get(item_id, {}).get("use_scope", ITEM_USE_SCOPE_NONE))
+	return str(item_definition(item_id).get("use_scope", ITEM_USE_SCOPE_NONE))
 
 
 static func item_use_scope_label(scope: String) -> String:
@@ -945,7 +1101,7 @@ static func item_use_scope_label(scope: String) -> String:
 
 
 static func item_gain_target(item_id: String) -> String:
-	return str(ITEM_DEFS.get(item_id, {}).get("gain_target", "none"))
+	return str(item_definition(item_id).get("gain_target", "none"))
 
 
 static func item_gain_target_label(target_id: String) -> String:
@@ -1008,7 +1164,7 @@ static func element_id_from_attribute(stat_id: String) -> String:
 
 
 static func is_farm_seed(item_id: String) -> bool:
-	var definition: Dictionary = ITEM_DEFS.get(item_id, {})
+	var definition: Dictionary = item_definition(item_id)
 	if str(definition.get("type", "")) != ITEM_TYPE_CROP:
 		return false
 	var payload: Dictionary = definition.get("payload", {})
@@ -1020,11 +1176,11 @@ static func is_farm_speed_item(item_id: String) -> bool:
 
 
 static func crop_seed_yield(item_id: String) -> int:
-	return int(ITEM_DEFS.get(item_id, {}).get("payload", {}).get("seed_yield", 1))
+	return int(item_definition(item_id).get("payload", {}).get("seed_yield", 1))
 
 
 static func crop_growth_seconds(item_id: String) -> float:
-	return float(ITEM_DEFS.get(item_id, {}).get("payload", {}).get("growth_seconds", 60.0))
+	return float(item_definition(item_id).get("payload", {}).get("growth_seconds", 60.0))
 
 
 static func farm_speed_item_multiplier(_item_id: String) -> float:
@@ -1058,8 +1214,8 @@ static func equipment_enhance_cost(rarity: String, next_enhance_level: int) -> i
 
 
 static func alchemy_recipe_def(recipe_id: String) -> Dictionary:
-	return ALCHEMY_RECIPE_DEFS.get(recipe_id, {}).duplicate(true)
+	return content_definition("recipe", recipe_id, ALCHEMY_RECIPE_DEFS.get(recipe_id, {}))
 
 
 static func alchemy_recipe_materials(recipe_id: String) -> Array:
-	return ALCHEMY_RECIPE_DEFS.get(recipe_id, {}).get("materials", []).duplicate(true)
+	return content_definition("recipe", recipe_id, ALCHEMY_RECIPE_DEFS.get(recipe_id, {})).get("materials", []).duplicate(true)

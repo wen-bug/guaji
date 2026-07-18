@@ -38,6 +38,9 @@ func _ready() -> void:
 	if home_map != null:
 		home_map.update_progress_alerts(game_state)
 	hud.push_log("家园已启动")
+	var mod_api := get_node_or_null("/root/ModAPI")
+	if mod_api != null:
+		mod_api.notify_game_ready(game_state)
 
 
 func _on_home_node_selected(node_name: String) -> void:

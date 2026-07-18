@@ -75,7 +75,7 @@ func select_action(game_state, target_status = null) -> Dictionary:
 	var cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
 	var candidates: Array = []
 	for skill_id in enemy_data.get("skills", []):
-		var skill: Dictionary = DataTables.SKILL_DEFS.get(str(skill_id), {}).duplicate(true)
+		var skill: Dictionary = DataTables.create_skill(str(skill_id))
 		if skill.is_empty() or int(cooldowns.get(str(skill_id), 0)) > 0:
 			continue
 		if not _skill_triggered(skill, target_status):
@@ -110,7 +110,13 @@ func _skill_triggered(skill: Dictionary, target_status) -> bool:
 		return true
 	if triggers.has("target_hp_below_35") and target_status != null:
 		var snapshot: Dictionary = target_status.combat_snapshot()
-		return float(snapshot.get("hp", 0)) / maxf(1.0, float(snapshot.get("max_hp", 1))) <= 0.35
+		if float(snapshot.get("hp", 0)) / maxf(1.0, float(snapshot.get("max_hp", 1))) <= 0.35:
+			return true
+	var api := get_node_or_null("/root/ModAPI")
+	for trigger in triggers:
+		var callback: Callable = api.ai_condition(str(trigger)) if api != null else Callable()
+		if callback.is_valid() and bool(callback.call(skill.duplicate(true), enemy_data.duplicate(true), target_status)):
+			return true
 	return false
 
 
@@ -174,10 +180,10 @@ func _load_combat_visual() -> void:
 	if combat_visual != null:
 		combat_visual.queue_free()
 		combat_visual = null
-	var scene_path := "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, _safe_visual_id(visual_id)]
+	var scene_path := _appearance_scene_path(visual_id, "enemy", DEFAULT_VISUAL_ID)
 	if not ResourceLoader.exists(scene_path):
 		push_warning("敌人形象不存在，使用默认形象: %s" % scene_path)
-		scene_path = "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, DEFAULT_VISUAL_ID]
+		scene_path = _appearance_scene_path(DEFAULT_VISUAL_ID, "enemy", DEFAULT_VISUAL_ID)
 	var packed := load(scene_path) as PackedScene
 	if packed == null:
 		push_error("默认敌人形象加载失败: %s" % scene_path)
@@ -192,7 +198,7 @@ func _load_combat_visual() -> void:
 	if not contract_issue.is_empty() and not scene_path.ends_with("/%s.tscn" % DEFAULT_VISUAL_ID):
 		push_warning("敌人形象接口不完整（%s），使用默认形象: %s" % [contract_issue, scene_path])
 		combat_visual.free()
-		scene_path = "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, DEFAULT_VISUAL_ID]
+		scene_path = _appearance_scene_path(DEFAULT_VISUAL_ID, "enemy", DEFAULT_VISUAL_ID)
 		packed = load(scene_path) as PackedScene
 		combat_visual = packed.instantiate() as CombatVisual if packed != null else null
 	if combat_visual == null:
@@ -215,6 +221,19 @@ func _load_combat_visual() -> void:
 func _sync_visual_data() -> void:
 	if combat_visual != null and not enemy_data.is_empty():
 		combat_visual.set_hit_points(int(enemy_data.get("hp", 0)), int(enemy_data.get("max_hp", 1)))
+
+
+func _appearance_scene_path(requested_id: String, expected_kind: String, fallback_id: String) -> String:
+	var definition := DataTables.content_definition("appearance", requested_id)
+	if str(definition.get("kind", "")) == expected_kind:
+		var registered_path := str(definition.get("scene_path", ""))
+		if ResourceLoader.exists(registered_path):
+			return registered_path
+	var fallback := DataTables.content_definition("appearance", fallback_id)
+	var fallback_path := str(fallback.get("scene_path", ""))
+	if ResourceLoader.exists(fallback_path):
+		return fallback_path
+	return "%s/%s.tscn" % [ENEMY_VISUAL_ROOT, _safe_visual_id(fallback_id)]
 
 
 func _safe_visual_id(value: String) -> String:

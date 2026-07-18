@@ -1,16 +1,21 @@
-[gd_resource type="Resource" script_class="SkillDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_heal_001/spell_heal_001_small_red/frame0008.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1")
 id = "heal"
 display_name = "回春术"
+icon_texture = ExtResource("2_icon")
 icon_name = "heal"
 icon_path = "res://assets/skills/heal.png"
 type = "heal"
+target_scope = "self"
+target_mode = "single"
+effect_tags = Array[String](["heal"])
 element = "wood"
 mp_cost = 6
 cooldown = 5
 release_distance = 96.0
-description = "木属性治疗技能。"
+description = "气血低于三成半时，以木行生机恢复自身气血。"
