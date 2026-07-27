@@ -96,6 +96,8 @@
 
 五本初阶技能书由正式新档各赠送 1 本；版本 9 迁移会为旧存档补齐尚未持有且尚未学会的技能书。它们不进入敌人掉落、商店或生产经济。技能书成功学习后消耗 1 本；重复学习失败时不消耗，人物已学技能不可替换或遗忘。
 
+五行软职业与二十个新增技能属于独立规划，完整数值和 AI 条件见 `docs/skills.md`，不能作为当前 `SKILL_DEFS` 的已实现内容。
+
 ## 已实现：炼丹配方
 
 | recipe_id | 产物 | 材料 |
@@ -226,78 +228,83 @@
 
 以下内容是规划设定，当前不代表 `DataTables` 已实现。
 
-### 规划：属性丹
+装备十阶成长、阶内等级、图纸打造、掉落等级、分解经济和迁移规则统一见 `docs/equipment-progression-v2.md`。在运行时、存档迁移与测试完成前，本文前面的五阶装备表仍是当前事实来源。
 
-| item_id | 名称 | 规划效果 |
-| --- | --- | --- |
-| `life_pill` | 归元丹 | 恢复生命 |
-| `spirit_pill` | 聚灵丹 | 恢复法力 |
-| `might_pill` | 壮气丹 | 持续属性 Buff |
-| `attack_pill` | 破军丹 | 攻击 Buff |
-| `defense_pill` | 玄甲丹 | 防御 Buff |
-| `life_boost_pill` | 血元丹 | 最大生命 Buff |
-| `mana_boost_pill` | 灵泉丹 | 最大法力 Buff |
-| `root_bone_pill` | 锻骨丹 | 根骨 Buff |
-| `wood_pill` | 青木丹 | 木行 Buff |
-| `fire_pill` | 赤焰丹 | 火行 Buff |
-| `earth_pill` | 厚土丹 | 土行 Buff |
-| `metal_pill` | 玄金丹 | 金行 Buff |
-| `water_pill` | 玄水丹 | 水行 Buff |
+五行职业是构筑推荐，不新增职业限制。二十个职业技能的完整数值、目标和 AI 条件见 `docs/skills.md`；五种武器和九种防具、饰品的固定主属性见 `docs/equipment-progression-v2.md`。
 
-规划配方结构为“属性作物 x2 + 通用辅料 x1 + 对应灵石 x1”。实现时必须先补齐丹药、图纸、丹方、UI 和测试。
+### 规划：装备图纸
 
-### 规划：阵营武器
+规划类型 `equipment_blueprint` 可堆叠、可在家园使用。使用后永久解锁 `payload.template_id` 并消耗 1 张；图纸本身没有正式 `item_no`。
 
-阵营武器是武器模板的风格化扩展，仍遵循装备生成、强化、洗练与穿戴规则。
-
-| 武器 | 阵营 | 定位 | 主属性 | 副属性 | 词条倾向 |
-| --- | --- | --- | --- | --- | --- |
-| 礼剑 | 儒家 | 均衡近战 | `attack` | `accuracy`, `defense` | 稳定输出、命中 |
-| 仁杖 | 儒家 | 辅助法器 | `max_hp` | `hp_regen`, `buff_duration` | 续航、治疗、护盾 |
-| 义简 | 儒家 | 快速短兵 | `attack_speed` | `crit_rate`, `counter_rate` | 高频打击 |
-| 礼印 | 儒家 | 防守器具 | `defense` | `block_rate`, `damage_reduce` | 承伤、保护 |
-| 经卷 | 儒家 | 文法远程 | `spell_attack` | `accuracy`, `buff_duration` | 远程压制 |
-| 拂尘 | 道家 | 轻灵近中程 | `evasion` | `move_speed`, `dot_damage` | 游击、持续伤害 |
-| 太极环 | 道家 | 攻守法器 | `defense` | `reflect_rate`, `element_balance` | 阴阳调和 |
-| 符箓 | 道家 | 远程术式 | `element_damage` | `control_rate`, `slow_rate` | 元素压制 |
-| 青木杖 | 道家 | 自然法器 | `wood` | `hp_regen`, `heal_rate` | 续航、生机成长 |
-| 云剑 | 道家 | 高机动爆发 | `crit_rate` | `penetration`, `move_speed` | 爆发、穿透 |
-
-### 规划：阵营装备套装
-
-儒家正礼套：
-
-| 装备 | 槽位 | 主属性 | 副属性 | 定位 |
+| item_id | 名称 | template_id | 来源 | 用途 |
 | --- | --- | --- | --- | --- |
-| 正冠 | 头盔 | `defense` | `accuracy`, `max_hp` | 稳定承伤 |
-| 礼袍 | 护甲 | `max_hp` | `defense`, `damage_reduce` | 生存减伤 |
-| 守履 | 胫甲 | `defense` | `move_speed`, `block_rate` | 格挡防守 |
-| 义护 | 护手 | `attack` | `accuracy`, `counter_rate` | 输出反击 |
-| 仁佩 | 饰品 | `hp_regen` | `buff_duration`, `max_hp` | 续航增益 |
-| 文璧 | 饰品 | `accuracy` | `spell_attack`, `buff_duration` | 文法命中 |
+| `blueprint_weapon_metal_sword` | 玄金剑图纸 | `weapon_metal_sword` | 有效胜利图纸池 | 解锁玄金剑打造 |
+| `blueprint_weapon_wood_staff` | 青木杖图纸 | `weapon_wood_staff` | 有效胜利图纸池 | 解锁青木杖打造 |
+| `blueprint_weapon_earth_gauntlet` | 镇岳拳套图纸 | `weapon_earth_gauntlet` | 有效胜利图纸池 | 解锁镇岳拳套打造 |
+| `blueprint_weapon_water_brush` | 沧水符笔图纸 | `weapon_water_brush` | 有效胜利图纸池 | 解锁沧水符笔打造 |
+| `blueprint_weapon_fire_orb` | 赤焰法环图纸 | `weapon_fire_orb` | 有效胜利图纸池 | 解锁赤焰法环打造 |
+| `blueprint_helmet` | 聚灵冠图纸 | `helmet` | 有效胜利图纸池 | 解锁聚灵冠打造 |
+| `blueprint_armor` | 镇元法衣图纸 | `armor` | 有效胜利图纸池 | 解锁镇元法衣打造 |
+| `blueprint_leggings` | 行脉胫甲图纸 | `leggings` | 有效胜利图纸池 | 解锁行脉胫甲打造 |
+| `blueprint_gloves` | 锻骨护手图纸 | `gloves` | 有效胜利图纸池 | 解锁锻骨护手打造 |
+| `blueprint_accessory_wood` | 青木佩图纸 | `accessory_wood` | 有效胜利图纸池 | 解锁青木佩打造 |
+| `blueprint_accessory_fire` | 赤焰珠图纸 | `accessory_fire` | 有效胜利图纸池 | 解锁赤焰珠打造 |
+| `blueprint_accessory_earth` | 厚土印图纸 | `accessory_earth` | 有效胜利图纸池 | 解锁厚土印打造 |
+| `blueprint_accessory_metal` | 玄金令图纸 | `accessory_metal` | 有效胜利图纸池 | 解锁玄金令打造 |
+| `blueprint_accessory_water` | 沧水环图纸 | `accessory_water` | 有效胜利图纸池 | 解锁沧水环打造 |
 
-道家清虚套：
+图纸每场有效胜利以 10% 概率判定，连续 10 场未获得新图纸时优先保底未解锁图纸。全部解锁后才能获得重复图纸，重复图纸分解为 `ascension_stone x1`。
 
-| 装备 | 槽位 | 主属性 | 副属性 | 定位 |
-| --- | --- | --- | --- | --- |
-| 云冠 | 头盔 | `evasion` | `move_speed`, `element_damage` | 闪避灵动 |
-| 清袍 | 护甲 | `defense` | `evasion`, `reflect_rate` | 防御反弹 |
-| 逍遥履 | 胫甲 | `move_speed` | `evasion`, `slow_resist` | 高机动 |
-| 玄护 | 护手 | `crit_rate` | `penetration`, `attack_speed` | 爆发穿透 |
-| 阴阳佩 | 饰品 | `element_balance` | `control_rate`, `element_damage` | 元素控制 |
-| 太虚符 | 饰品 | `control_rate` | `slow_rate`, `crit_damage` | 控制爆发 |
+### 规划：成长材料
 
-规划套装效果：
+| item_id | 名称 | 类型 | 堆叠 | 可使用 | 来源 | 用途 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ascension_stone` | 升阶石 | `material` | 是 | 否 | 装备分解、重复图纸分解 | 装备升阶 |
+| `manual_fragment` | 秘法残页 | `material` | 是 | 否 | 每 5 场有效胜利固定获得 1 页 | 定向兑换职业技能书 |
 
-- 儒家 2 件：`defense +5%`；4 件：`buff_duration +8%`；6 件：受伤后短时间提高 `damage_reduce`。
-- 道家 2 件：`evasion +5%`；4 件：`move_speed +8%`；6 件：暴击或控制时提高 `element_damage`。
+`ascension_stone` 的装备分解产量和升阶消耗以 `docs/equipment-progression-v2.md` 为准。秘法残页计数独立于普通掉落、图纸保底和装备掉落；`use_drop=false` 的战斗不推进计数。
 
-### 规划：数值平衡基准
+### 规划：职业技能书
 
-这些数值用于后续扩展，不代表当前代码全部采用：
+技能书均使用现有 `skill_book` 类型，可堆叠、可在家园使用；成功学习后消耗 1 本，重复学习不消耗。来源统一为秘法残页加对应五行灵石的定向兑换。
 
-- 玩家和队友每升 1 级自动获得 5 点属性成长。
-- 初始参考属性：`attack=10`、`defense=8`、`max_hp=120`、五行各 `5`。
-- 装备高阶可扩大基础属性倍率和百分比词条范围。
-- 儒家武器优先 `attack`、`accuracy`、`defense`、`max_hp`、`block_rate`、`buff_duration`。
-- 道家武器优先 `crit_rate`、`move_speed`、`evasion`、元素、控制和穿透。
+| item_id | 名称 | 五行 | 阶段 | 兑换成本 |
+| --- | --- | --- | ---: | --- |
+| `skill_book_metal_sword_flash` | 流光剑技能书 | 金 | 一 | 残页 3、金灵石 1 |
+| `skill_book_metal_mountain_break` | 断岳式技能书 | 金 | 二 | 残页 6、金灵石 2 |
+| `skill_book_metal_hidden_edge` | 藏锋诀技能书 | 金 | 三 | 残页 10、金灵石 3 |
+| `skill_book_metal_ten_thousand_blades` | 万剑归宗技能书 | 金 | 四 | 残页 15、金灵石 5 |
+| `skill_book_wood_dew_heal` | 青露回春技能书 | 木 | 一 | 残页 3、木灵石 1 |
+| `skill_book_wood_breath_array` | 生息阵技能书 | 木 | 二 | 残页 6、木灵石 2 |
+| `skill_book_wood_corroding_vine` | 蚀骨藤技能书 | 木 | 三 | 残页 10、木灵石 3 |
+| `skill_book_wood_meridian_guard` | 青木护脉技能书 | 木 | 四 | 残页 15、木灵石 5 |
+| `skill_book_earth_mountain_strike` | 震岳击技能书 | 土 | 一 | 残页 3、土灵石 1 |
+| `skill_book_earth_immovable_stance` | 不动势技能书 | 土 | 二 | 残页 6、土灵石 2 |
+| `skill_book_earth_spirit_armor` | 厚土玄甲技能书 | 土 | 三 | 残页 10、土灵石 3 |
+| `skill_book_earth_mountain_wall` | 山河壁技能书 | 土 | 四 | 残页 15、土灵石 5 |
+| `skill_book_water_cold_talisman` | 寒潮符技能书 | 水 | 一 | 残页 3、水灵石 1 |
+| `skill_book_water_mirror_art` | 水镜诀技能书 | 水 | 二 | 残页 6、水灵石 2 |
+| `skill_book_water_binding_array` | 玄水缚技能书 | 水 | 三 | 残页 10、水灵石 3 |
+| `skill_book_water_returning_tide` | 沧海归流技能书 | 水 | 四 | 残页 15、水灵石 5 |
+| `skill_book_fire_heart_flame` | 焚心火技能书 | 火 | 一 | 残页 3、火灵石 1 |
+| `skill_book_fire_blazing_mark` | 烈焰印技能书 | 火 | 二 | 残页 6、火灵石 2 |
+| `skill_book_fire_edge_rite` | 燃锋祭技能书 | 火 | 三 | 残页 10、火灵石 3 |
+| `skill_book_fire_heavenly_flame` | 天火劫技能书 | 火 | 四 | 残页 15、火灵石 5 |
+
+### 规划：丹药与配方
+
+九种丹药均可堆叠、可使用。恢复丹立即结算；持续 Buff 丹药持续 3 个使用者自身回合，共享 `buff_pill` 冷却组且相同状态覆盖、不叠层。
+
+| item_id | 名称 | 效果 | 配方 |
+| --- | --- | --- | --- |
+| `life_pill` | 归元丹 | 恢复 25% 最大生命 | 血参 2、草药 1 |
+| `spirit_pill` | 聚灵丹 | 恢复 25% 最大法力 | 灵泉莲 2、草药 1 |
+| `attack_pill` | 破军丹 | 攻击 +3，持续 3 回合 | 刃纹草 2、草药 1、灵石 1 |
+| `defense_pill` | 玄甲丹 | 防御 +3，持续 3 回合 | 铁根藤 2、草药 1、灵石 1 |
+| `wood_pill` | 青木丹 | 木行 +3，持续 3 回合 | 青木藤 2、草药 1、木灵石 1 |
+| `fire_pill` | 赤焰丹 | 火行 +3，持续 3 回合 | 赤焰花 2、草药 1、火灵石 1 |
+| `earth_pill` | 厚土丹 | 土行 +3，持续 3 回合 | 厚土苔 2、草药 1、土灵石 1 |
+| `metal_pill` | 玄金丹 | 金行 +3，持续 3 回合 | 玄金苇 2、草药 1、金灵石 1 |
+| `water_pill` | 玄水丹 | 水行 +3，持续 3 回合 | 玄水兰 2、草药 1、水灵石 1 |
+
+以上规划物品均不预分配 `item_no`。正式实现时只能从当前最大编号之后追加，并同步 `ITEM_DEFS`、配方、UI、存档迁移和对应资源；在此之前不得移入本文前面的已实现表。
