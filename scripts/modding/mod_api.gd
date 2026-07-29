@@ -602,7 +602,25 @@ func _register_core_content() -> void:
 		_actor_states["core:%s" % state_id] = ActorStateScript.new
 	for visual_id in ["actor_default"]:
 		content._define("appearance", visual_id, {"kind": "party", "scene_path": "res://scripts/actors/visuals/party/%s.tscn" % visual_id, "fallback_id": "actor_default", "contract_version": 1}, "core")
-	for visual_id in ["enemy_default", "forest_wolf", "training_dummy"]:
+	for visual_id in [
+		"enemy_default",
+		"forest_wolf",
+		"training_dummy",
+		"bear",
+		"gnome",
+		"lancer",
+		"lizard",
+		"minotaur",
+		"paddle_fish",
+		"panda",
+		"shaman",
+		"skull",
+		"snake",
+		"spider",
+		"thief",
+		"troll",
+		"turtle",
+	]:
 		content._define("appearance", visual_id, {"kind": "enemy", "scene_path": "res://scripts/actors/visuals/enemies/%s.tscn" % visual_id, "fallback_id": "enemy_default", "contract_version": 1}, "core")
 	var lines := ["今天也要稳稳修行。", "家里真清静。", "等一个新任务。", "先散散步。"]
 	for index in range(lines.size()):

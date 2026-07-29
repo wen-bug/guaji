@@ -1,0 +1,205 @@
+[gd_scene load_steps=28 format=3]
+
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/monster_visual_base.tscn" id="1_base"]
+
+[ext_resource type="Texture2D" uid="uid://bflefrx3gcx5e" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Gnome/Gnome_Idle.png" id="tex_0"]
+[ext_resource type="Texture2D" uid="uid://dexjmx20mf1l4" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Gnome/Gnome_Run.png" id="tex_1"]
+[ext_resource type="Texture2D" uid="uid://dgsvc1ap0sbik" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Gnome/Gnome_Attack.png" id="tex_2"]
+
+[sub_resource type="AtlasTexture" id="Atlas_0_0"]
+atlas = ExtResource("tex_0")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_1"]
+atlas = ExtResource("tex_0")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_2"]
+atlas = ExtResource("tex_0")
+region = Rect2(384, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_3"]
+atlas = ExtResource("tex_0")
+region = Rect2(576, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_4"]
+atlas = ExtResource("tex_0")
+region = Rect2(768, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_5"]
+atlas = ExtResource("tex_0")
+region = Rect2(960, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_6"]
+atlas = ExtResource("tex_0")
+region = Rect2(1152, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_7"]
+atlas = ExtResource("tex_0")
+region = Rect2(1344, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_0"]
+atlas = ExtResource("tex_2")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_1"]
+atlas = ExtResource("tex_2")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_2"]
+atlas = ExtResource("tex_2")
+region = Rect2(384, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_3"]
+atlas = ExtResource("tex_2")
+region = Rect2(576, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_4"]
+atlas = ExtResource("tex_2")
+region = Rect2(768, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_5"]
+atlas = ExtResource("tex_2")
+region = Rect2(960, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_6"]
+atlas = ExtResource("tex_2")
+region = Rect2(1152, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_0"]
+atlas = ExtResource("tex_1")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_1"]
+atlas = ExtResource("tex_1")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_2"]
+atlas = ExtResource("tex_1")
+region = Rect2(384, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_3"]
+atlas = ExtResource("tex_1")
+region = Rect2(576, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_4"]
+atlas = ExtResource("tex_1")
+region = Rect2(768, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_5"]
+atlas = ExtResource("tex_1")
+region = Rect2(960, 0, 192, 192)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_gnome"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_0_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_7")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_2_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_6")
+}],
+"loop": 0,
+"name": &"melee_attack",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_1_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_5")
+}],
+"loop": 1,
+"name": &"run",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="HurtShape"]
+size = Vector2(32, 30)
+
+[sub_resource type="RectangleShape2D" id="AttackShape"]
+size = Vector2(46, 34)
+
+[node name="GnomeVisual" unique_id=409775097 instance=ExtResource("1_base")]
+attack_hit_start_frame = 2
+attack_hit_end_frame = 4
+
+[node name="Sprite" parent="." index="0"]
+sprite_frames = SubResource("SpriteFrames_gnome")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, 3)
+shape = SubResource("HurtShape")
+
+[node name="CollisionShape2D" parent="AttackHitbox" index="0"]
+position = Vector2(-26, 2)
+shape = SubResource("AttackShape")
+
+[node name="Marker2D" parent="." index="3"]
+position = Vector2(-25, 0)
+
+[node name="HPBack" parent="." index="6"]
+offset_top = -40.0
+offset_bottom = -35.0
+
+[node name="HPFill" parent="HPBack" index="0"]
+layout_mode = 0

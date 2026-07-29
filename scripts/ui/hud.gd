@@ -44,6 +44,8 @@ const DEBUG_STAT_OPTIONS := [
 signal home_action_requested(task_type: int)
 signal hud_save_requested()
 signal expedition_exit_requested()
+signal home_camera_pan_started(direction: int)
+signal home_camera_pan_stopped()
 signal scene_transition_midpoint()
 signal scene_transition_finished()
 
@@ -137,6 +139,9 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
 @onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
 @onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
+@onready var home_camera_controls: Control = $Root/HomeCameraControls
+@onready var home_camera_left_button: Button = $Root/HomeCameraControls/LeftButton
+@onready var home_camera_right_button: Button = $Root/HomeCameraControls/RightButton
 @onready var loading_overlay: Control = $Root/LoadingOverlay
 @onready var loading_label: Label = $Root/LoadingOverlay/LoadingLabel
 @onready var window_drag_button: Button = $Root/WindowDragButton
@@ -224,6 +229,10 @@ func _ready() -> void:
 
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
 	return_home_button.pressed.connect(func(): expedition_exit_requested.emit())
+	home_camera_left_button.button_down.connect(func(): home_camera_pan_started.emit(-1))
+	home_camera_left_button.button_up.connect(func(): home_camera_pan_stopped.emit())
+	home_camera_right_button.button_down.connect(func(): home_camera_pan_started.emit(1))
+	home_camera_right_button.button_up.connect(func(): home_camera_pan_stopped.emit())
 	debug_button.pressed.connect(_toggle_debug_panel)
 	if inventory_detail_view != null:
 		inventory_detail_view.setup()
@@ -281,6 +290,16 @@ func set_expedition_controls_visible(visible: bool) -> void:
 	_ensure_menu_panel_refs()
 	if expedition_hud != null:
 		expedition_hud.visible = visible
+
+
+func set_home_camera_controls(controls_visible: bool, can_move_left: bool, can_move_right: bool) -> void:
+	if home_camera_controls == null:
+		return
+	home_camera_controls.visible = controls_visible
+	if home_camera_left_button != null:
+		home_camera_left_button.disabled = not can_move_left
+	if home_camera_right_button != null:
+		home_camera_right_button.disabled = not can_move_right
 
 
 func play_scene_transition(message: String = "加载中...") -> void:

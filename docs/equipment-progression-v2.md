@@ -44,15 +44,15 @@
 
 ### 武器目录
 
-五行职业是构筑推荐，不是穿戴限制。五种武器的固定主属性均为 `attack`，推荐五行和攻击方式只描述战斗风格，不额外提供属性。
+五行武器是技能构筑推荐，不是穿戴限制。五种武器的固定主属性均为 `attack`，推荐五行和攻击方式只描述战斗风格，不额外提供属性。
 
-| 模板 ID | 名称 | 推荐职业 | 推荐五行 | 推荐攻击方式 | 固定主属性 |
+| 模板 ID | 名称 | 推荐技能方向 | 推荐五行 | 推荐攻击方式 | 固定主属性 |
 | --- | --- | --- | --- | --- | --- |
-| `weapon_metal_sword` | 玄金剑 | 金系剑修 | 金 | 近战 | `attack` |
-| `weapon_wood_staff` | 青木杖 | 木系医修 | 木 | 远程 | `attack` |
-| `weapon_earth_gauntlet` | 镇岳拳套 | 土系体修 | 土 | 近战 | `attack` |
-| `weapon_water_brush` | 沧水符笔 | 水系符师 | 水 | 远程 | `attack` |
-| `weapon_fire_orb` | 赤焰法环 | 火系术士 | 火 | 远程 | `attack` |
+| `weapon_metal_sword` | 玄金剑 | 锋锐 | 金 | 近战 | `attack` |
+| `weapon_wood_staff` | 青木杖 | 生息 | 木 | 远程 | `attack` |
+| `weapon_earth_gauntlet` | 镇岳拳套 | 守御 | 土 | 近战 | `attack` |
+| `weapon_water_brush` | 沧水符笔 | 流转 | 水 | 远程 | `attack` |
+| `weapon_fire_orb` | 赤焰法环 | 爆燃 | 火 | 远程 | `attack` |
 
 ### 防具与饰品目录
 

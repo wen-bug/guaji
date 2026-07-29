@@ -5,6 +5,11 @@ const SAVE_MANAGER_SCRIPT_PATH := "res://scripts/game/core/save_manager.gd"
 const ACTOR_SCENE_PATH := "res://scripts/actors/actor.tscn"
 const WINDOW_SIZE := Vector2i(960, 480)
 const SCENE_VIEWPORT_SIZE := Vector2(960, 480)
+const HOME_CAMERA_STEP := 48.0
+const HOME_CAMERA_HOLD_DELAY := 0.25
+const HOME_CAMERA_SPEED := 240.0
+const HOME_CAMERA_SMOOTHING_SPEED := 8.0
+const HOME_CAMERA_EDGE_EPSILON := 0.5
 const EXPEDITION_RUN_POSITION := Vector2(180, 170)
 const COMBAT_START_POSITION := Vector2(736, 170)
 
@@ -18,8 +23,16 @@ var combat
 var hud
 var home_map
 var battle_map
+var home_camera: Camera2D
 var expedition_active := false
 var scene_transition_active := false
+var home_camera_target_x := SCENE_VIEWPORT_SIZE.x * 0.5
+var home_camera_min_x := SCENE_VIEWPORT_SIZE.x * 0.5
+var home_camera_max_x := SCENE_VIEWPORT_SIZE.x * 0.5
+var home_camera_pan_direction := 0
+var home_camera_hold_elapsed := 0.0
+var home_camera_initialized := false
+var home_camera_active := true
 var _exit_save_completed := false
 
 
@@ -31,6 +44,7 @@ func _ready() -> void:
 
 	_bind_scene_nodes()
 	_apply_scene_viewport_size()
+	_setup_home_camera()
 	_sync_party_actors(true)
 
 	_connect_scene_signals()
@@ -89,6 +103,7 @@ func _on_home_action_requested(task_type: int) -> void:
 
 func _process(delta: float) -> void:
 	_bind_scene_nodes()
+	_update_home_camera(delta)
 	game_state.update_buffs(delta)
 	game_state.update_home_production(delta)
 	game_state.update_farm(delta)
@@ -117,6 +132,7 @@ func _enter_expedition() -> void:
 		_push_log("需要先招募角色")
 		return
 	expedition_active = true
+	_set_home_camera_active(false)
 	_sync_party_actors()
 	if home_map != null:
 		home_map.visible = false
@@ -183,6 +199,7 @@ func _exit_expedition() -> void:
 		home_map.visible = true
 		home_map.show_farm_slots(game_state.farm_slots)
 		home_map.update_progress_alerts(game_state)
+	_set_home_camera_active(true)
 	_set_party_home()
 	_sync_party_actors()
 	if hud != null:
@@ -235,6 +252,8 @@ func _bind_scene_nodes() -> void:
 		home_map = get_node_or_null("Home")
 	if battle_map == null:
 		battle_map = get_node_or_null("BattleMap")
+	if home_camera == null:
+		home_camera = get_node_or_null("HomeCamera") as Camera2D
 	if party_actors_container == null:
 		party_actors_container = get_node_or_null("PartyActors") as Node2D
 	if combat == null:
@@ -314,6 +333,107 @@ func _apply_scene_viewport_size() -> void:
 		battle_map.call("set_scene_viewport_size", SCENE_VIEWPORT_SIZE)
 
 
+func _setup_home_camera() -> void:
+	if home_camera == null:
+		return
+	home_camera.position_smoothing_enabled = true
+	home_camera.position_smoothing_speed = HOME_CAMERA_SMOOTHING_SPEED
+	home_camera.limit_smoothed = true
+	_update_home_camera_limits()
+	home_camera_active = not expedition_active
+	home_camera.enabled = home_camera_active
+	home_camera.position = Vector2(home_camera_target_x, SCENE_VIEWPORT_SIZE.y * 0.5)
+	if home_camera_active:
+		home_camera.make_current()
+		home_camera.reset_smoothing()
+	_refresh_home_camera_controls()
+
+
+func _update_home_camera_limits() -> void:
+	if home_camera == null or home_map == null:
+		return
+	var local_limits := Vector2(0.0, SCENE_VIEWPORT_SIZE.x)
+	if home_map.has_method("get_horizontal_camera_limits"):
+		local_limits = home_map.call("get_horizontal_camera_limits")
+	var world_left: float = float(home_map.global_position.x) + local_limits.x
+	var world_right: float = float(home_map.global_position.x) + local_limits.y
+	world_right = maxf(world_right, world_left + SCENE_VIEWPORT_SIZE.x)
+	home_camera.limit_left = floori(world_left)
+	home_camera.limit_right = ceili(world_right)
+	home_camera.limit_top = 0
+	home_camera.limit_bottom = ceili(SCENE_VIEWPORT_SIZE.y)
+	home_camera_min_x = world_left + SCENE_VIEWPORT_SIZE.x * 0.5
+	home_camera_max_x = world_right - SCENE_VIEWPORT_SIZE.x * 0.5
+	if not home_camera_initialized:
+		home_camera_target_x = home_camera_min_x
+		home_camera_initialized = true
+	else:
+		home_camera_target_x = clampf(home_camera_target_x, home_camera_min_x, home_camera_max_x)
+
+
+func _set_home_camera_active(active: bool) -> void:
+	home_camera_pan_direction = 0
+	home_camera_hold_elapsed = 0.0
+	home_camera_active = active
+	if home_camera == null:
+		_refresh_home_camera_controls()
+		return
+	if active:
+		_update_home_camera_limits()
+		home_camera.position = Vector2(home_camera_target_x, SCENE_VIEWPORT_SIZE.y * 0.5)
+		home_camera.enabled = true
+		home_camera.make_current()
+		home_camera.reset_smoothing()
+	else:
+		home_camera.enabled = false
+	_refresh_home_camera_controls()
+
+
+func _on_home_camera_pan_started(direction: int) -> void:
+	if not home_camera_active or expedition_active or scene_transition_active:
+		return
+	var normalized_direction := clampi(direction, -1, 1)
+	if normalized_direction == 0:
+		return
+	home_camera_pan_direction = normalized_direction
+	home_camera_hold_elapsed = 0.0
+	_set_home_camera_target(home_camera_target_x + HOME_CAMERA_STEP * float(normalized_direction))
+
+
+func _on_home_camera_pan_stopped() -> void:
+	home_camera_pan_direction = 0
+	home_camera_hold_elapsed = 0.0
+
+
+func _update_home_camera(delta: float) -> void:
+	if not home_camera_active or home_camera == null:
+		return
+	if home_camera_pan_direction != 0:
+		var previous_elapsed := home_camera_hold_elapsed
+		home_camera_hold_elapsed += delta
+		var continuous_delta := maxf(0.0, home_camera_hold_elapsed - maxf(previous_elapsed, HOME_CAMERA_HOLD_DELAY))
+		if continuous_delta > 0.0:
+			_set_home_camera_target(home_camera_target_x + HOME_CAMERA_SPEED * continuous_delta * float(home_camera_pan_direction))
+	home_camera.position = Vector2(home_camera_target_x, SCENE_VIEWPORT_SIZE.y * 0.5)
+
+
+func _set_home_camera_target(target_x: float) -> void:
+	home_camera_target_x = clampf(target_x, home_camera_min_x, home_camera_max_x)
+	if home_camera_pan_direction < 0 and home_camera_target_x <= home_camera_min_x + HOME_CAMERA_EDGE_EPSILON:
+		home_camera_pan_direction = 0
+	elif home_camera_pan_direction > 0 and home_camera_target_x >= home_camera_max_x - HOME_CAMERA_EDGE_EPSILON:
+		home_camera_pan_direction = 0
+	_refresh_home_camera_controls()
+
+
+func _refresh_home_camera_controls() -> void:
+	if hud == null or not hud.has_method("set_home_camera_controls"):
+		return
+	var can_move_left := home_camera_active and home_camera_target_x > home_camera_min_x + HOME_CAMERA_EDGE_EPSILON
+	var can_move_right := home_camera_active and home_camera_target_x < home_camera_max_x - HOME_CAMERA_EDGE_EPSILON
+	hud.call("set_home_camera_controls", home_camera_active, can_move_left, can_move_right)
+
+
 func _push_log(message: String) -> void:
 	if hud != null:
 		hud.push_log(message)
@@ -332,6 +452,12 @@ func _connect_scene_signals() -> void:
 		var action_callback := Callable(self, "_on_home_action_requested")
 		if not hud.home_action_requested.is_connected(action_callback):
 			hud.home_action_requested.connect(action_callback)
+		var pan_started_callback := Callable(self, "_on_home_camera_pan_started")
+		if not hud.home_camera_pan_started.is_connected(pan_started_callback):
+			hud.home_camera_pan_started.connect(pan_started_callback)
+		var pan_stopped_callback := Callable(self, "_on_home_camera_pan_stopped")
+		if not hud.home_camera_pan_stopped.is_connected(pan_stopped_callback):
+			hud.home_camera_pan_stopped.connect(pan_stopped_callback)
 		var expedition_exit_callback := Callable(self, "_on_expedition_exit_requested")
 		if not hud.expedition_exit_requested.is_connected(expedition_exit_callback):
 			hud.expedition_exit_requested.connect(expedition_exit_callback)

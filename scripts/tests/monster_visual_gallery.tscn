@@ -1,0 +1,69 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/tests/monster_visual_gallery.gd" id="1_gallery"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/bear.tscn" id="2_bear"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/gnome.tscn" id="3_gnome"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/lancer.tscn" id="4_lancer"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/lizard.tscn" id="5_lizard"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/minotaur.tscn" id="6_minotaur"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/paddle_fish.tscn" id="7_paddle"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/panda.tscn" id="8_panda"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/shaman.tscn" id="9_shaman"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/skull.tscn" id="10_skull"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/snake.tscn" id="11_snake"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/spider.tscn" id="12_spider"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/thief.tscn" id="13_thief"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/troll.tscn" id="14_troll"]
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/turtle.tscn" id="15_turtle"]
+
+[node name="MonsterVisualGallery" type="Node2D"]
+script = ExtResource("1_gallery")
+
+[node name="Background" type="ColorRect" parent="."]
+z_index = -100
+offset_right = 960.0
+offset_bottom = 480.0
+mouse_filter = 2
+color = Color(0.075, 0.085, 0.095, 1)
+
+[node name="BearVisual" parent="." instance=ExtResource("2_bear")]
+position = Vector2(75, 130)
+
+[node name="GnomeVisual" parent="." instance=ExtResource("3_gnome")]
+position = Vector2(210, 130)
+
+[node name="LancerVisual" parent="." instance=ExtResource("4_lancer")]
+position = Vector2(345, 130)
+
+[node name="LizardVisual" parent="." instance=ExtResource("5_lizard")]
+position = Vector2(480, 130)
+
+[node name="MinotaurVisual" parent="." instance=ExtResource("6_minotaur")]
+position = Vector2(615, 130)
+
+[node name="PaddleFishVisual" parent="." instance=ExtResource("7_paddle")]
+position = Vector2(750, 130)
+
+[node name="PandaVisual" parent="." instance=ExtResource("8_panda")]
+position = Vector2(885, 130)
+
+[node name="ShamanVisual" parent="." instance=ExtResource("9_shaman")]
+position = Vector2(75, 350)
+
+[node name="SkullVisual" parent="." instance=ExtResource("10_skull")]
+position = Vector2(210, 350)
+
+[node name="SnakeVisual" parent="." instance=ExtResource("11_snake")]
+position = Vector2(345, 350)
+
+[node name="SpiderVisual" parent="." instance=ExtResource("12_spider")]
+position = Vector2(480, 350)
+
+[node name="ThiefVisual" parent="." instance=ExtResource("13_thief")]
+position = Vector2(615, 350)
+
+[node name="TrollVisual" parent="." instance=ExtResource("14_troll")]
+position = Vector2(750, 350)
+
+[node name="TurtleVisual" parent="." instance=ExtResource("15_turtle")]
+position = Vector2(885, 350)

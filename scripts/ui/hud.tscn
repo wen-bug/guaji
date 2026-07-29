@@ -1311,6 +1311,49 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "返回家园"
 
+[node name="HomeCameraControls" type="Control" parent="Root" unique_id=20237887]
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="LeftButton" type="Button" parent="Root/HomeCameraControls" unique_id=611549943]
+layout_mode = 0
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 12.0
+offset_top = -28.0
+offset_right = 56.0
+offset_bottom = 28.0
+tooltip_text = "镜头向左"
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+disabled = true
+text = "◀"
+
+[node name="RightButton" type="Button" parent="Root/HomeCameraControls" unique_id=97057018]
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -56.0
+offset_top = -28.0
+offset_right = -12.0
+offset_bottom = 28.0
+tooltip_text = "镜头向右"
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "▶"
+
 [node name="DamagePopupLayer" type="Control" parent="Root" unique_id=600000401]
 layout_mode = 1
 anchors_preset = 15

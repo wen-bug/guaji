@@ -19,7 +19,6 @@ config/icon="res://icon.svg"
 [autoload]
 
 ModAPI="*res://scripts/modding/mod_api.gd"
-FunplayMcpRuntimeBridge="*res://addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]

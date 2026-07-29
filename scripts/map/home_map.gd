@@ -57,6 +57,27 @@ func setup_home_map() -> void:
 	_setup_farm_slots()
 
 
+func get_horizontal_camera_limits() -> Vector2:
+	setup_home_map()
+	var left_edge := 0.0
+	var right_edge := scene_viewport_size.x
+	var floor_layer := get_node_or_null("floor") as TileMapLayer
+	if floor_layer == null or floor_layer.tile_set == null:
+		return Vector2(left_edge, right_edge)
+	var used_rect := floor_layer.get_used_rect()
+	if used_rect.size.x <= 0:
+		return Vector2(left_edge, right_edge)
+	var cell_size := Vector2(floor_layer.tile_set.tile_size)
+	var first_center := floor_layer.map_to_local(used_rect.position)
+	var last_center := floor_layer.map_to_local(used_rect.end - Vector2i.ONE)
+	var floor_transform := floor_layer.transform
+	var floor_left := (floor_transform * (first_center - cell_size * 0.5)).x
+	var floor_right := (floor_transform * (last_center + cell_size * 0.5)).x
+	left_edge = minf(left_edge, floor_left)
+	right_edge = maxf(right_edge, floor_right)
+	return Vector2(left_edge, right_edge)
+
+
 func farm_slot_count() -> int:
 	return 0
 

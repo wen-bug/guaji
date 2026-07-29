@@ -1,0 +1,235 @@
+[gd_scene load_steps=32 format=3]
+
+[ext_resource type="PackedScene" path="res://scripts/actors/visuals/enemies/monster_visual_base.tscn" id="1_base"]
+
+[ext_resource type="Texture2D" uid="uid://kkrhfuvksd0n" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Lizard/Lizard_Idle.png" id="tex_0"]
+[ext_resource type="Texture2D" uid="uid://eopx1hjo7l85" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Lizard/Lizard_Run.png" id="tex_1"]
+[ext_resource type="Texture2D" uid="uid://co3xr5hellew3" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Lizard/Lizard_Attack.png" id="tex_2"]
+[ext_resource type="Texture2D" uid="uid://cetuvohxxd376" path="res://assets/Tiny Swords (Enemy Pack)/Enemy Pack/Lizard/Lizard_Hit.png" id="tex_3"]
+
+[sub_resource type="AtlasTexture" id="Atlas_3_0"]
+atlas = ExtResource("tex_3")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_3_1"]
+atlas = ExtResource("tex_3")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_0"]
+atlas = ExtResource("tex_0")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_1"]
+atlas = ExtResource("tex_0")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_2"]
+atlas = ExtResource("tex_0")
+region = Rect2(384, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_3"]
+atlas = ExtResource("tex_0")
+region = Rect2(576, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_4"]
+atlas = ExtResource("tex_0")
+region = Rect2(768, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_5"]
+atlas = ExtResource("tex_0")
+region = Rect2(960, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_0_6"]
+atlas = ExtResource("tex_0")
+region = Rect2(1152, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_0"]
+atlas = ExtResource("tex_2")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_1"]
+atlas = ExtResource("tex_2")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_2"]
+atlas = ExtResource("tex_2")
+region = Rect2(384, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_3"]
+atlas = ExtResource("tex_2")
+region = Rect2(576, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_4"]
+atlas = ExtResource("tex_2")
+region = Rect2(768, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_5"]
+atlas = ExtResource("tex_2")
+region = Rect2(960, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_6"]
+atlas = ExtResource("tex_2")
+region = Rect2(1152, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_7"]
+atlas = ExtResource("tex_2")
+region = Rect2(1344, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_2_8"]
+atlas = ExtResource("tex_2")
+region = Rect2(1536, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_0"]
+atlas = ExtResource("tex_1")
+region = Rect2(0, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_1"]
+atlas = ExtResource("tex_1")
+region = Rect2(192, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_2"]
+atlas = ExtResource("tex_1")
+region = Rect2(384, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_3"]
+atlas = ExtResource("tex_1")
+region = Rect2(576, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_4"]
+atlas = ExtResource("tex_1")
+region = Rect2(768, 0, 192, 192)
+
+[sub_resource type="AtlasTexture" id="Atlas_1_5"]
+atlas = ExtResource("tex_1")
+region = Rect2(960, 0, 192, 192)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_lizard"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_3_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_3_1")
+}],
+"loop": 0,
+"name": &"hurt",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_0_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_0_6")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_2_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_5")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_6")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_7")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_2_8")
+}],
+"loop": 0,
+"name": &"melee_attack",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("Atlas_1_0")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_2")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_3")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_4")
+}, {
+"duration": 1.0,
+"texture": SubResource("Atlas_1_5")
+}],
+"loop": 1,
+"name": &"run",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="HurtShape"]
+size = Vector2(34, 28)
+
+[sub_resource type="RectangleShape2D" id="AttackShape"]
+size = Vector2(48, 32)
+
+[node name="LizardVisual" unique_id=888473187 instance=ExtResource("1_base")]
+
+[node name="Sprite" parent="." index="0"]
+sprite_frames = SubResource("SpriteFrames_lizard")
+animation = &"hurt"
+autoplay = "idle"
+frame = 1
+frame_progress = 1.0
+
+[node name="CollisionShape2D" parent="Hurtbox" index="0"]
+position = Vector2(0, 4)
+shape = SubResource("HurtShape")
+
+[node name="CollisionShape2D" parent="AttackHitbox" index="0"]
+position = Vector2(-27, 3)
+shape = SubResource("AttackShape")
+
+[node name="Marker2D" parent="." index="3"]
+position = Vector2(-26, 0)
+
+[node name="EffectSocket" parent="." index="5"]
+position = Vector2(-21, -14)
+
+[node name="HPBack" parent="." index="6"]
+offset_top = -39.0
+offset_bottom = -34.0
+
+[node name="HPFill" parent="HPBack" index="0"]
+layout_mode = 0
