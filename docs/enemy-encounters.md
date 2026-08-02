@@ -2,19 +2,33 @@
 
 ## 状态与边界
 
-本文全部内容均为规划，不代表当前敌人数据、随机池、混编生成、技能场景、形象绑定、掉落或公开 Mod Schema 已经实现。当前已实现敌人仍只有训练木桩与林狼，事实来源为 `docs/item-table.md`。
+地图驱动遭遇框架已经实现，包括地图独立 Profile、加权方案、类别池、固定编队、异种序列和地图专属兜底。本文后续列出的普通、精英与 Boss 具体敌人数据、技能、形象和掉落仍是规划；当前已实现敌人仍只有训练木桩与林狼，事实来源为 `docs/item-table.md`。
 
 普通、精英和 Boss 都是敌人类别，不是职业。五行只决定机制倾向和弱点，不新增角色职业、敌人职业、技能学习限制或装备限制。Boss 的详细数据与奖励见 `docs/boss-encounters.md`。
 
-## 规划：敌群生成
+## 已实现：地图驱动生成
 
-每场遭遇先根据出战人数确定敌人位置数量，再为每个位置独立抽取敌人类别和具体敌人：
+每个 `BattleMap` 通过 `encounter_profile` 引用独立的 `MapEncounterProfile`。地图收到刷新时，按以下顺序生成最终 ID 序列：
 
 ```text
-enemy_count = clamp(active_party_size * 2, 1, 8)
-encounter_class = weighted_pick({normal: 85, elite: 14, boss: 1})
-enemy_id = pick_with_replacement(enemy_pool[encounter_class])
+variant = weighted_pick(profile.variants)
+if variant.fixed_enemy_ids is not empty:
+    return valid_ids_in_original_order
+enemy_count = clamp(active_party_size * enemies_per_party_member, min_enemy_count, max_enemy_count)
+for each position:
+    class_pool = weighted_pick(variant.class_pools)
+    enemy_id = pick_with_replacement(class_pool.valid_enemy_ids)
 ```
+
+- Variant 和类别池权重只要求大于 0，不要求合计为 100。
+- 固定编队不再应用队伍人数和数量规则，允许混合任意类别。
+- 随机池内等概率、有放回抽取；未声明 `encounter_class` 的敌人按 `normal` 处理。
+- 无效 ID 与类别不匹配项会被过滤并报警。所有 Variant 都不可用时使用当前地图的 `fallback_enemy_id`，不使用全局默认敌人。
+- 当前默认 Profile 每名队员生成 2 只、限制 1–8，只包含 `forest_wolf`；训练木桩不进入正式随机池。
+
+## 规划：默认普通、精英与 Boss 池
+
+未来默认历练地图计划使用以下类别权重和内容规模；这些数值尚未写入当前 Profile：
 
 | 类别 | 每位置权重 | 池规模 | 抽取规则 |
 | --- | ---: | ---: | --- |
@@ -26,7 +40,7 @@ enemy_id = pick_with_replacement(enemy_pool[encounter_class])
 - 同一敌群允许同种重复、普通与精英混编、Boss 与其他敌人混编，以及低概率出现多个 Boss。
 - 敌人按生成顺序逐个进入战斗。每只敌人阵亡时立即结算自身经验、材料和装备；队伍之后全灭不会回滚已获得奖励。
 - 类别抽取不设置保底、连续未出现补偿或单场数量上限。四人队的 8 敌人遭遇中，至少出现一个 Boss 的概率为 `1 - 0.99^8 = 7.7255%`，约 7.73%。
-- 某个池为空、敌人定义无效或场景加载失败时，正式实现应在遭遇开始前拒绝该池配置；运行时最后防线沿用当前 `training_dummy` 回退，不能静默改抽另一类别。
+- 某个池为空或敌人定义无效时会被过滤；整份地图配置不可用时使用该地图的专属兜底。场景加载失败仍由战斗控制器报警并终止该场遭遇。
 
 ## 规划：数据与形象池
 

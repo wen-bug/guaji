@@ -36,3 +36,5 @@ Godot 的 `Object.get` 和 `Object.set` 是保留的原生方法，GDScript 不�
 开放事件：`game_ready`、`save_loaded`、`before_save`、`member_created`、`combat_started`、`combat_finished`。事件载荷为深拷贝，监听器返回值不会修改核心结果。
 
 事件载荷只包含可复制、可序列化的值，不暴露场景节点：`game_ready` 提供游戏/API 版本，`before_save` 提供存档 Schema 和队伍成员 ID，`member_created` 提供成员快照，战斗事件提供敌人、队伍和结果摘要。
+
+`combat_started` 的 `enemy_ids` 是地图生成的完整有序敌人序列，兼容字段 `enemy_id` 仍为首只敌人；同时提供 `enemy_count` 和 `party_member_ids`。`combat_finished` 提供 `result`、当前结算敌人的 `enemy_id` 与本场完整 `enemy_ids`。

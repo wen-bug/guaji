@@ -7,7 +7,7 @@ func apply_marker(_marker: String) -> void:
 			continue
 		var context := attack_context(
 			target,
-			int(skill_data.get("base_damage", 8)),
+			skill_damage_amount(),
 			str(skill_data.get("element", ""))
 		)
 		resolve_static_trigger("before_hit", context, attack_effects(), "attacker")

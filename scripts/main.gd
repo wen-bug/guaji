@@ -219,8 +219,18 @@ func _on_monster_spawn_requested() -> void:
 	if battle_map != null:
 		battle_map.set_combat_mode(true)
 		battle_map.set_player_combat_position(COMBAT_START_POSITION)
+	var enemy_ids: Array[String] = []
+	if battle_map != null and battle_map.has_method("roll_encounter"):
+		enemy_ids = battle_map.call("roll_encounter", game_state.active_party_members().size(), game_state.expedition_level(), game_state.rng)
+	if enemy_ids.is_empty():
+		_push_log("当前地图没有可用的敌人遭遇")
+		if battle_map != null:
+			battle_map.finish_combat()
+		return
 	combat.set_party_views(party_actors)
-	combat.begin_encounter(game_state, battle_map)
+	combat.begin_encounter(game_state, battle_map, enemy_ids)
+	if not combat.active and battle_map != null:
+		battle_map.finish_combat()
 
 
 func _finish_current_combat() -> void:

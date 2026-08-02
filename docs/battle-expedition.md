@@ -21,23 +21,27 @@
 
 `BattleMap` 负责维护刷怪计时器。进入历练时使用 1 秒首遇敌延迟；一场战斗结束后，会在 3–5 秒范围内重新随机下一次遇怪时间。
 
-当计时到达并且当前不在战斗中时，`BattleMap` 发出 `monster_spawn_requested` 信号。主场景收到信号后调用 `CombatController.begin_encounter(game_state, battle_map)` 创建敌人，并把当前循环地图作为战斗坐标参考。
+当计时到达并且当前不在战斗中时，`BattleMap` 发出 `monster_spawn_requested` 信号。主场景收到信号后调用当前地图的 `roll_encounter(party_size, level, rng)` 取得最终敌人 ID 序列，再交给 `CombatController.begin_encounter()`，刷新信号本身不携带敌人规则。
+
+每张地图通过 `encounter_profile` 引用自己的 `MapEncounterProfile`。Profile 保存地图专属兜底敌人、人数换算和数量上下限，以及按任意正权重选择的 `MapEncounterVariant`：固定方案严格使用配置顺序且忽略数量规则；随机方案逐位置按 `MapEnemyClassPool` 权重选择类别池，再从池内有效敌人中等概率、有放回抽取。无效 ID 或类别不匹配项会被过滤并报警；整份配置不可用时只使用该地图的 `fallback_enemy_id`。
+
+当前默认历练地图引用 `resources/maps/default_expedition_encounters.tres`，每名队员生成 2 只、总数限制为 1–8，只会刷新 `forest_wolf`。`training_dummy` 不在正式随机遭遇池内。
 
 `CombatController` 根据敌人 ID 读取 `scripts/game/enemies/<enemy_id>/enemy.tscn`，再用统一接口同步运行时数值。敌人定义和掉落表见 `docs/item-table.md`。
 
 战斗结束后，主场景调用 `BattleMap.finish_combat()` 重置刷怪计时。因此不会出现一场战斗结束后立刻无间隔进入下一场战斗。
 
-### 规划：普通、精英与 Boss 混编
+### 后续：普通、精英与 Boss 内容
 
-完整规划见 `docs/enemy-encounters.md`，Boss 具体数据见 `docs/boss-encounters.md`。该规划不属于当前已实现刷怪流程：每场先按 `clamp(出战人数 * 2, 1, 8)` 生成敌人位置数量，再为每个位置独立按普通 85%、精英 14%、Boss 1% 抽取类别，最后从对应全等级敌人池等概率、有放回抽取 `enemy_id`。
+完整内容规划见 `docs/enemy-encounters.md`，Boss 具体数据见 `docs/boss-encounters.md`。地图驱动的类别池、权重、固定编队和异种序列框架已经实现，但规划中的普通、精英及 Boss 敌人数据尚未落地；后续特殊地图应新增独立 Profile，而不是修改全局敌人默认值。
 
 规划允许同种重复、三类敌人混编和低概率多个 Boss。敌人仍按生成顺序逐个出场，每只阵亡时立即结算自身经验、材料和装备；之后全灭或主动返回不会回滚已结算奖励，也不会补发未击败敌人的奖励。
 
-正式实现前需要把当前同一 `enemy_id` 重复生成改为异种敌人 ID 序列，并补齐类别权重、三个敌人池、`encounter_class`、普通/精英形象池校验、精英倍率、Boss 按阶技能和对应自动化测试。所有敌人技能继续使用现有伤害、DOT、HOT、护盾、吸血、属性增减和破防，不引入职业、召唤、眩晕、冻结或跳过回合。
+后续仍需补齐具体敌人的 `encounter_class`、普通/精英形象池校验、精英倍率、Boss 按阶技能和对应自动化测试。所有敌人技能继续使用现有伤害、DOT、HOT、护盾、吸血、属性增减和破防，不引入职业、召唤、眩晕、冻结或跳过回合。
 
 ## 循环战斗
 
-`CombatController` 负责当前遭遇的一场战斗，包括敌群生成、队伍成员自动行动、技能冷却、战斗内受伤、胜负、掉落和经验结算。当前实现的敌群数量为活跃玩家数的两倍，最多 8 个，并重复生成同一个敌人 ID；规划中的混编敌群改为逐位置生成不同 ID，但仍按生成顺序逐个进入战斗。`CombatAI` 只负责当前行动成员的自动出招选择；技能场景脚本负责技能动画节点上的实际结算或状态投递；`CombatEffectResolver` 负责技能、装备、命格、敌人动作和临时状态的附加效果判定；敌人自身场景负责自己的攻击与受击反馈。
+`CombatController` 负责当前遭遇的一场战斗，包括按地图给出的异种敌人序列加载各自场景、队伍成员自动行动、技能冷却、战斗内受伤、胜负、掉落和经验结算。敌人按序逐只出场，每只死亡后立即结算自身奖励并加载下一只；旧调用者仍可传入单个敌人 ID 并按旧数量规则重复生成。`CombatAI` 只负责当前行动成员的自动出招选择；技能场景脚本负责技能动画节点上的实际结算或状态投递；`CombatEffectResolver` 负责技能、装备、命格、敌人动作和临时状态的附加效果判定；敌人自身场景负责自己的攻击与受击反馈。
 
 HUD 不提供自动/手动切换、攻击、防御或技能按钮；战斗过程显示伤害与治疗浮字。
 
@@ -65,9 +69,11 @@ HUD 不提供自动/手动切换、攻击、防御或技能按钮；战斗过程
 
 - 队伍成员普通攻击基础伤害：`max(1, total_attack_for(member_id) - enemy.defense)`。
 - 普通攻击元素为成员主五行；技能攻击元素为技能自身 `element`。
-- 元素伤害加成：`int(total_element(element) * 0.5)`。
+- 普通攻击元素加成：`int(total_element(element) * 0.5)`；已配置属性倍率的技能不再重复获得这项固定加成。
 - 命中敌人弱点时额外增加：`max(1, int(base_damage * 0.25)) + total_element(element)`。
-- 技能伤害基础值：`int(total_attack * skill.damage_multiplier)`，再走同元素、弱点和防御规则。
+- 伤害存在 `damage_attribute_multiplier` 时为 `floor(base_damage + 对应五行属性 * 倍率)`；仅存在 `base_damage` 时为固定伤害；两者都没有时兼容 `总攻击 * damage_multiplier`。
+- 治疗采用相同优先级。存在 `heal_attribute_multiplier` 时缩放，仅存在 `heal_amount` 时固定（包括固定 0），两者都没有时兼容 `总攻击 * heal_multiplier`。
+- `damage_flat`、`defense_ignore`、DOT、HOT、护盾、治疗和属性增减 effect 仅在自身存在 `attribute_multiplier` 时缩放；省略时 `amount/value` 是固定值。概率、持续时间、冷却比例和吸血比例不参与属性缩放。
 - 物理减伤：`max(1, amount - total_defense)`。
 - 元素减伤：`max(0, amount - int(total_element(element) * 0.35))`。
 - 敌人攻击可按 `element_attack_ratio` 随机附带自身五行。

@@ -1,6 +1,8 @@
-[gd_scene format=3 uid="uid://bdl5feyi8qwb7"]
+[gd_scene load_steps=3 format=3 uid="uid://bdl5feyi8qwb7"]
 
 [ext_resource type="Script" uid="uid://cijx4vhhgahhx" path="res://scripts/map/battle_map.gd" id="1_battle_map"]
+[ext_resource type="Resource" path="res://resources/maps/default_expedition_encounters.tres" id="2_encounters"]
 
 [node name="BattleMap" type="Node2D" unique_id=712539348]
 script = ExtResource("1_battle_map")
+encounter_profile = ExtResource("2_encounters")

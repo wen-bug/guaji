@@ -97,15 +97,13 @@ func _apply_damage_to_target(target: CombatActorStatus, raw_damage: int) -> Dict
 func _apply_skill_buffs() -> void:
 	for buff in skill_data.get("combat_buffs", []):
 		if buff is Dictionary:
-			var next_buff: Dictionary = buff.duplicate(true)
+			var next_buff: Dictionary = scaled_skill_effect(buff)
 			next_buff["source_skill_id"] = str(skill_data.get("id", ""))
 			caster.add_buff(next_buff)
 
 
 func _raw_damage() -> int:
-	if skill_data.has("base_damage"):
-		return maxi(0, int(skill_data.get("base_damage", 0)))
-	return maxi(0, int(caster.total_stat("attack") * float(skill_data.get("damage_multiplier", 1.0))))
+	return skill_damage_amount()
 
 
 func _final_damage(context: Dictionary, target: CombatActorStatus) -> int:
@@ -113,7 +111,8 @@ func _final_damage(context: Dictionary, target: CombatActorStatus) -> int:
 	var element_id: String = str(context.get("element", ""))
 	var defense: int = max(0, target.total_stat("defense") - int(context.get("defense_ignore", 0)))
 	var damage: int = max(1, raw_damage - defense)
-	if caster.actor_kind == CombatActorStatus.KIND_MEMBER:
+	var uses_legacy_element_bonus := str(skill_data.get("type", "")) == "normal_attack" or (not skill_data.has("base_damage") and not skill_data.has("damage_attribute_multiplier"))
+	if caster.actor_kind == CombatActorStatus.KIND_MEMBER and uses_legacy_element_bonus:
 		damage += int(caster.total_element(element_id) * 0.5)
 	if target.actor_kind == CombatActorStatus.KIND_ENEMY:
 		if element_id == str(target.data.get("weak_element", "")):

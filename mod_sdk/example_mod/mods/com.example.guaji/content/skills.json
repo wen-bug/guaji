@@ -14,6 +14,7 @@
         "cooldown": 4,
         "base_damage": 8,
         "damage_multiplier": 1.2,
+        "damage_attribute_multiplier": 1.2,
         "release_distance": 140,
         "priority": 70,
         "trigger": [

@@ -6,6 +6,7 @@ signal monster_spawn_requested
 @export var spawn_interval_min := 3.0
 @export var spawn_interval_max := 5.0
 @export var first_spawn_delay := 1.0
+@export var encounter_profile: Resource
 
 var scene_viewport_size := Vector2(960, 480)
 var spawn_timer := 0.0
@@ -70,6 +71,13 @@ func battle_player_position() -> Vector2:
 
 func set_player_combat_position(position: Vector2) -> void:
 	player_combat_position = position
+
+
+func roll_encounter(party_size: int, level: int, rng: RandomNumberGenerator) -> Array[String]:
+	if encounter_profile == null:
+		push_error("BattleMap 缺少 encounter_profile，无法生成遭遇")
+		return []
+	return encounter_profile.roll_enemy_ids(party_size, level, rng)
 
 
 func _process(delta: float) -> void:

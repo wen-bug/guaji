@@ -75,7 +75,7 @@ func set_party_views(views: Dictionary) -> void:
 			actor.connect("attack_finished", finished_callback)
 
 
-func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "", enemy_count_override: int = 0) -> void:
+func begin_encounter(game_state, map_node: Node2D = null, enemy_selection = "", enemy_count_override: int = 0) -> void:
 	clear()
 	pending_game_state = game_state
 	battle_map = map_node
@@ -123,15 +123,19 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "",
 		log_added.emit("当前编队没有可用的战斗形象")
 		return
 
-	var resolved_enemy_id := DataTables.resolve_enemy_id(enemy_id)
 	var enemy_count := clampi(enemy_count_override, 1, MAX_ENEMY_COUNT) if enemy_count_override > 0 else mini(MAX_ENEMY_COUNT, members.size() * 2)
-	for index in range(enemy_count):
-		var generated_enemy: Dictionary = DataTables.create_enemy(game_state.expedition_level(), game_state.rng, resolved_enemy_id)
+	var encounter_enemy_ids := _normalized_encounter_enemy_ids(enemy_selection, enemy_count)
+	if encounter_enemy_ids.is_empty():
+		log_added.emit("遭遇配置没有可用敌人")
+		return
+	for index in range(encounter_enemy_ids.size()):
+		var selected_enemy_id: String = encounter_enemy_ids[index]
+		var generated_enemy: Dictionary = DataTables.create_enemy(game_state.expedition_level(), game_state.rng, selected_enemy_id)
 		generated_enemy["combat_id"] = "enemy_%d" % (index + 1)
 		enemy_group.append(generated_enemy)
 	enemy_group_index = 0
 	enemy = enemy_group[enemy_group_index]
-	_spawn_enemy_node(resolved_enemy_id)
+	_spawn_enemy_node(str(enemy.get("id", "")))
 	if current_enemy_node == null:
 		return
 	_enemy_home_position = DEFAULT_ENEMY_POSITION
@@ -144,10 +148,38 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_id: String = "",
 	finished = false
 	_emit_mod_event(&"combat_started", {
 		"enemy_id": str(enemy.get("id", "")),
+		"enemy_ids": _enemy_group_ids(),
 		"enemy_count": enemy_group.size(),
 		"party_member_ids": party_combatants.map(func(value): return str(value.get("member_id", ""))),
 	})
-	log_added.emit("遭遇%s x%d，弱%s" % [enemy.get("name", "敌人"), enemy_group.size(), DataTables.element_name(str(enemy.get("weak_element", "")))])
+	log_added.emit("遭遇%s（共%d只），弱%s" % [enemy.get("name", "敌人"), enemy_group.size(), DataTables.element_name(str(enemy.get("weak_element", "")))])
+
+
+func _normalized_encounter_enemy_ids(enemy_selection, legacy_enemy_count: int) -> Array[String]:
+	var result: Array[String] = []
+	if enemy_selection is Array or enemy_selection is PackedStringArray:
+		for raw_id in enemy_selection:
+			if result.size() >= MAX_ENEMY_COUNT:
+				push_warning("遭遇敌人超过上限 %d，额外敌人已忽略" % MAX_ENEMY_COUNT)
+				break
+			var enemy_id := str(raw_id)
+			if not DataTables.content_has("enemy", enemy_id, DataTables.ENEMY_TEMPLATES):
+				push_warning("遭遇配置引用了无效敌人：%s" % enemy_id)
+				continue
+			result.append(enemy_id)
+		return result
+	var resolved_enemy_id := DataTables.resolve_enemy_id(str(enemy_selection))
+	for _index in range(clampi(legacy_enemy_count, 1, MAX_ENEMY_COUNT)):
+		result.append(resolved_enemy_id)
+	return result
+
+
+func _enemy_group_ids() -> Array[String]:
+	var result: Array[String] = []
+	for enemy_data in enemy_group:
+		if enemy_data is Dictionary:
+			result.append(str(enemy_data.get("id", "")))
+	return result
 
 
 func tick(delta: float, game_state) -> void:
@@ -582,7 +614,11 @@ func _on_enemy_death_finished() -> void:
 		_advance_enemy_group()
 		return
 	_combat_result = RESULT_VICTORY
-	_emit_mod_event(&"combat_finished", {"result": RESULT_VICTORY, "enemy_id": str(enemy.get("id", ""))})
+	_emit_mod_event(&"combat_finished", {
+		"result": RESULT_VICTORY,
+		"enemy_id": str(enemy.get("id", "")),
+		"enemy_ids": _enemy_group_ids(),
+	})
 	_enemy_death_waiting = false
 	active = false
 	finished = true
@@ -601,7 +637,11 @@ func _advance_enemy_group() -> void:
 	_spawn_enemy_node(str(enemy.get("id", DataTables.DEFAULT_ENEMY_ID)))
 	if current_enemy_node == null:
 		_combat_result = RESULT_DEFEAT
-		_emit_mod_event(&"combat_finished", {"result": RESULT_DEFEAT, "enemy_id": str(enemy.get("id", ""))})
+		_emit_mod_event(&"combat_finished", {
+			"result": RESULT_DEFEAT,
+			"enemy_id": str(enemy.get("id", "")),
+			"enemy_ids": _enemy_group_ids(),
+		})
 		active = false
 		finished = true
 		_enemy_death_waiting = false
@@ -696,7 +736,11 @@ func _check_combat_result() -> void:
 		active = false
 		finished = true
 		_combat_result = RESULT_DEFEAT
-		_emit_mod_event(&"combat_finished", {"result": RESULT_DEFEAT, "enemy_id": str(enemy.get("id", ""))})
+		_emit_mod_event(&"combat_finished", {
+			"result": RESULT_DEFEAT,
+			"enemy_id": str(enemy.get("id", "")),
+			"enemy_ids": _enemy_group_ids(),
+		})
 		log_added.emit("队伍全灭")
 
 

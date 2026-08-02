@@ -44,7 +44,8 @@
 │   │   │   ├── combat_controller.gd
 │   │   │   ├── combat_controller.tscn
 │   │   │   ├── combat_effect_resolver.gd
-│   │   │   └── skill_resolver.gd
+│   │   │   ├── skill_resolver.gd
+│   │   │   └── skill_value_resolver.gd
 │   │   ├── skills/
 │   │   │   ├── base/
 │   │   │   │   └── skill_scene_base.gd
@@ -70,6 +71,10 @@
 │   ├── map/
 │   │   ├── battle_map.gd
 │   │   ├── battle_map.tscn
+│   │   ├── encounters/
+│   │   │   ├── map_encounter_profile.gd
+│   │   │   ├── map_encounter_variant.gd
+│   │   │   └── map_enemy_class_pool.gd
 │   │   ├── home.tscn
 │   │   ├── home_map.gd
 │   │   └── outline_highlight.gdshader
@@ -82,7 +87,8 @@
 ├── resources/
 │   ├── items/
 │   ├── equipment/
-│   └── skills/
+│   ├── skills/
+│   └── maps/
 ├── assets/
 │   ├── actors/
 │   └── items/
@@ -174,6 +180,7 @@
 - `resources/items/`：物品资源，文件名为 `<item_id>.tres`。
 - `resources/equipment/`：装备模板资源，文件名为 `<template_id>.tres`，例如 `weapon.tres`。
 - `resources/skills/`：技能资源，文件名为 `<skill_id>.tres`。
+- `resources/maps/`：地图独立遭遇 Profile；默认历练配置为 `default_expedition_encounters.tres`。
 
 这些资源的 `icon_texture` 供手动拖图使用。运行时图标读取顺序为 `.tres.icon_texture`、默认 `icon_path` 图片、UI 占位。
 
@@ -208,7 +215,7 @@
 
 单场战斗控制器：
 
-- 创建敌人并启动战斗。
+- 接受地图生成的异种敌人 ID 序列，按顺序创建各自场景并启动战斗；旧单 ID 调用继续兼容。
 - 按 `party_order` 生成成员站位，并以严格回合指针逐个执行玩家成员，之后才执行敌人回合。
 - 单名成员使用 `READY -> APPROACH -> ATTACK -> RETURN -> RECOVERY` 状态，预约目标 Marker 后接敌；攻击动画和归位完全结束后才轮到下一名。
 - 普通攻击只接受形象 Hitbox 与敌方 Hurtbox 的碰撞信号，每个行动对每个目标只结算一次。
@@ -279,6 +286,7 @@
 - 默认隐藏，进入历练时显示，退出历练时隐藏。
 - 作为透明历练层使用，不绘制独立背景。
 - 维护首场 1 秒、后续 3–5 秒的遇怪计时，发出 `monster_spawn_requested`。
+- 持有地图自己的 `encounter_profile`，通过 `roll_encounter()` 生成最终敌人 ID 序列；计时信号不决定敌人内容。
 - 战斗结束后重新安排下一次遇怪。
 
 ### `scripts/ui/hud.gd`
@@ -336,7 +344,9 @@ HUD 控制脚本：
 ## 历练战斗补充
 
 - `scripts/map/battle_map.tscn`：历练地图场景，默认隐藏；进入打怪历练后显示，作为透明历练层承载刷怪和战斗坐标。
-- `scripts/map/battle_map.gd`：历练地图控制器，维护随机刷怪计时，发出 `monster_spawn_requested`，并在战斗结束后重新安排下一次遇怪。
+- `scripts/map/battle_map.gd`：历练地图控制器，维护随机刷怪计时并调用地图独立遭遇 Profile；发出 `monster_spawn_requested`，战斗结束后重新安排下一次遇怪。
+- `scripts/map/encounters/`：地图遭遇资源类型，分别定义 Profile、加权 Variant 和加权类别池。
+- `resources/maps/default_expedition_encounters.tres`：当前默认历练地图配置，只随机生成林狼。
 - `scripts/game/combat/combat_controller.gd`：单场自动战斗控制器，只处理当前遇怪战斗，不负责怪物刷新频率。
 - `scripts/ui/hud.gd`：提供 `ExpeditionHud` 返回入口和 `LoadingOverlay` 加载过渡，不恢复手动战斗控件。
 - `docs/battle-expedition.md`：记录家园入口、加载过渡、历练跑图、随机遇怪、自动战斗、返回家园和战后继续跑图的流程。

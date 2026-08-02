@@ -2,6 +2,7 @@ class_name Hud
 extends CanvasLayer
 
 const ModManagerPanelScript = preload("res://scripts/modding/ui/mod_manager_panel.gd")
+const SkillValueResolverScript = preload("res://scripts/game/combat/skill_value_resolver.gd")
 
 const MENU_USE := 1
 const MENU_DROP := 2
@@ -676,7 +677,82 @@ func _refresh_member_info_skills(game_state) -> void:
 			classification += "·%s" % "/".join(effect_names)
 		var cooldown_text: String = str(int(skill.get("cooldown", 0)))
 		var detail: String = "%s  %s  CD%s  MP%d" % [classification, DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0))]
+		var scaling_text := _skill_scaling_text(skill, game_state, selected_party_member_id)
+		if not scaling_text.is_empty():
+			detail += "\n%s" % scaling_text
 		member_info_skill_grid.add_child(_create_member_info_slot("技能", str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id)))
+
+
+func _skill_scaling_text(skill: Dictionary, game_state, member_id: String) -> String:
+	var skill_element: String = str(skill.get("element", ""))
+	var parts := PackedStringArray()
+	if skill.has("damage_attribute_multiplier"):
+		parts.append(_skill_value_formula(
+			"伤害",
+			int(skill.get("base_damage", 0)),
+			float(skill.get("damage_attribute_multiplier", 0.0)),
+			skill_element,
+			game_state,
+			member_id
+		))
+	elif skill.has("base_damage"):
+		parts.append("伤害 %d（固定）" % maxi(0, int(skill.get("base_damage", 0))))
+	if skill.has("heal_attribute_multiplier"):
+		parts.append(_skill_value_formula(
+			"治疗",
+			int(skill.get("heal_amount", 0)),
+			float(skill.get("heal_attribute_multiplier", 0.0)),
+			skill_element,
+			game_state,
+			member_id
+		))
+	elif skill.has("heal_amount"):
+		parts.append("治疗 %d（固定）" % maxi(0, int(skill.get("heal_amount", 0))))
+	for effect in skill.get("effects", []):
+		if not (effect is Dictionary):
+			continue
+		var effect_kind := str(effect.get("kind", ""))
+		if not SkillValueResolverScript.SCALABLE_EFFECT_KINDS.has(effect_kind):
+			continue
+		var label: String = {
+			"damage_flat": "附伤",
+			"defense_ignore": "破防",
+			"dot": "持续伤害",
+			"hot": "持续治疗",
+			"shield": "护盾",
+			"heal": "治疗",
+			"buff_stat": "属性提升",
+			"debuff_stat": "属性降低",
+		}.get(effect_kind, "效果")
+		var base_value := int(effect.get("amount", effect.get("value", 0)))
+		if effect.has("attribute_multiplier"):
+			parts.append(_skill_value_formula(
+				label,
+				base_value,
+				float(effect.get("attribute_multiplier", 0.0)),
+				str(effect.get("element", skill_element)),
+				game_state,
+				member_id
+			))
+		else:
+			parts.append("%s %d（固定）" % [label, base_value])
+	return "；".join(parts)
+
+
+func _skill_value_formula(label: String, base_amount: int, multiplier: float, element_id: String, game_state, member_id: String) -> String:
+	var resolved_element := element_id
+	if resolved_element.is_empty():
+		resolved_element = str(game_state.dominant_element_for(member_id))
+	var attribute_value: int = int(game_state.total_element_for(member_id, resolved_element))
+	var current_value := SkillValueResolverScript.scaled_amount_from_attribute(base_amount, multiplier, attribute_value)
+	return "%s %d + %s%d x %.2f = %d" % [
+		label,
+		base_amount,
+		DataTables.element_name(resolved_element),
+		attribute_value,
+		multiplier,
+		current_value,
+	]
 
 
 func _create_member_info_slot(slot_label: String, item_name: String, detail_text: String, icon_texture: Texture2D = null) -> PanelContainer:
@@ -709,6 +785,7 @@ func _create_member_info_slot(slot_label: String, item_name: String, detail_text
 	var detail_label: Label = Label.new()
 	detail_label.name = "DetailLabel"
 	detail_label.text = detail_text
+	detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text_layout.add_child(detail_label)
 	return slot

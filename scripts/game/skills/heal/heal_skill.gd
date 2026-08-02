@@ -8,9 +8,7 @@ func apply_marker(marker: String) -> void:
 		return
 	if caster == null:
 		return
-	var amount: int = int(skill_data.get("heal_amount", 0))
-	if amount <= 0:
-		amount = max(1, int(caster.total_stat("attack") * float(skill_data.get("heal_multiplier", 1.0))))
+	var amount: int = skill_heal_amount()
 	last_result["heal"] = 0
 	last_result["target_ids"] = []
 	last_result["target_results"] = []

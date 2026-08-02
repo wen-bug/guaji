@@ -32,14 +32,14 @@ func _apply_to_target(target: CombatActorStatus) -> void:
 	for buff in skill_data.get("combat_buffs", []):
 		if not (buff is Dictionary):
 			continue
-		var next_buff: Dictionary = buff.duplicate(true)
+		var next_buff: Dictionary = scaled_skill_effect(buff)
 		next_buff["source_skill_id"] = str(skill_data.get("id", ""))
 		target.add_buff(next_buff)
 		add_event({"type": "buff", "actor_id": target.actor_id, "buff": next_buff})
 	for effect in skill_data.get("effects", []):
 		if not (effect is Dictionary):
 			continue
-		var next_effect: Dictionary = effect.duplicate(true)
+		var next_effect: Dictionary = scaled_skill_effect(effect)
 		next_effect["source_skill_id"] = str(skill_data.get("id", ""))
 		target.add_status_effect(next_effect)
 		add_event({"type": "status", "actor_id": target.actor_id, "effect": next_effect})

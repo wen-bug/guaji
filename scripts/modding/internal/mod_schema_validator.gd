@@ -147,6 +147,14 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 		for field in ["mp_cost", "cooldown", "release_distance"]:
 			if float(data.get(field, 0.0)) < 0.0:
 				errors.append("%s:%s %s 不能为负数" % [kind, content_id, field])
+		for field in ["base_damage", "damage_attribute_multiplier", "heal_amount", "heal_attribute_multiplier"]:
+			if data.has(field) and (typeof(data.get(field)) not in [TYPE_INT, TYPE_FLOAT] or float(data.get(field)) < 0.0):
+				errors.append("%s:%s %s 必须为非负数" % [kind, content_id, field])
+		var effects = data.get("effects", [])
+		if effects is Array:
+			for effect in effects:
+				if effect is Dictionary and effect.has("attribute_multiplier") and (typeof(effect.get("attribute_multiplier")) not in [TYPE_INT, TYPE_FLOAT] or float(effect.get("attribute_multiplier")) < 0.0):
+					errors.append("%s:%s effect.attribute_multiplier 必须为非负数" % [kind, content_id])
 	if kind == "appearance" and not ["party", "enemy"].has(str(data.get("kind", ""))):
 		errors.append("appearance:%s kind 必须为 party 或 enemy" % content_id)
 	if kind == "appearance" and int(data.get("contract_version", 1)) != 1:

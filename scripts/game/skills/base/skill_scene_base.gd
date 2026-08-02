@@ -3,6 +3,8 @@ extends Node2D
 
 signal finished(result: Dictionary)
 
+const SkillValueResolverScript = preload("res://scripts/game/combat/skill_value_resolver.gd")
+
 @export var frame_count := 0
 @export var impact_frame := 0
 @export var frames_per_second := 15.0
@@ -153,9 +155,23 @@ func attack_context(target: CombatActorStatus, base_damage: int, element_id: Str
 
 func attack_effects() -> Array:
 	var effects: Array = []
-	effects.append_array(skill_data.get("effects", []))
+	for effect in skill_data.get("effects", []):
+		if effect is Dictionary:
+			effects.append(scaled_skill_effect(effect))
 	effects.append_array(skill_data.get("caster_static_effects", []))
 	return effects
+
+
+func skill_damage_amount() -> int:
+	return SkillValueResolverScript.damage_amount(skill_data, caster)
+
+
+func skill_heal_amount() -> int:
+	return SkillValueResolverScript.heal_amount(skill_data, caster)
+
+
+func scaled_skill_effect(effect: Dictionary) -> Dictionary:
+	return SkillValueResolverScript.scaled_effect(effect, str(skill_data.get("element", "")), caster)
 
 
 func defender_effects() -> Array:
