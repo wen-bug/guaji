@@ -9,8 +9,9 @@ const ModPluginScript = preload("res://scripts/modding/api/mod_plugin.gd")
 const ModRngScript = preload("res://scripts/modding/api/mod_rng.gd")
 const ModSchemaValidatorScript = preload("res://scripts/modding/internal/mod_schema_validator.gd")
 const ModStorageScript = preload("res://scripts/modding/api/mod_storage.gd")
-const MOD_API_VERSION := 1
-const GAME_VERSION := "0.1.0"
+const SkillSceneRegistryScript = preload("res://scripts/game/skills/base/skill_scene_registry.gd")
+const MOD_API_VERSION := 2
+const GAME_VERSION := "0.2.0"
 const MOD_CONFIG_PATH := "user://mods.cfg"
 const MOD_DIRECTORY := "user://mods"
 
@@ -19,6 +20,7 @@ var events = ModEventBusScript.new()
 var storage = ModStorageScript.new()
 var rng = ModRngScript.new()
 var dialogues = DialogueServiceScript.new()
+var skill_scenes = SkillSceneRegistryScript.new()
 
 var _validator = ModSchemaValidatorScript.new()
 var _manifests: Dictionary = {}
@@ -117,6 +119,14 @@ func dialogue_condition(condition_id: String) -> Callable:
 	return _dialogue_conditions.get(condition_id, Callable())
 
 
+func skill_scene(skill_id: String) -> PackedScene:
+	return skill_scenes.packed_scene(skill_id)
+
+
+func skill_scene_definition(skill_id: String) -> Dictionary:
+	return skill_scenes.definition(skill_id)
+
+
 func pick_dialogue(context: Dictionary, random: RandomNumberGenerator) -> Dictionary:
 	return dialogues.pick_line(context, random)
 
@@ -161,7 +171,7 @@ func export_save_data() -> Dictionary:
 	}
 
 
-func notify_game_ready(game_state = null) -> void:
+func notify_game_ready(_game_state = null) -> void:
 	for mod_id in _plugins.keys():
 		var plugin = _plugins[mod_id]
 		plugin.on_game_ready(self)
@@ -403,6 +413,7 @@ func _stage_content_file(context, path: String) -> void:
 
 func _commit_context(context) -> String:
 	var content_snapshot: Dictionary = content._snapshot()
+	var skill_scene_snapshot: Dictionary = skill_scenes.snapshot()
 	var actor_snapshot := _actor_states.duplicate()
 	var effect_snapshot := _effect_handlers.duplicate()
 	var ai_snapshot := _ai_conditions.duplicate()
@@ -412,35 +423,59 @@ func _commit_context(context) -> String:
 		var kind := str(operation.get("kind", ""))
 		var content_id := str(operation.get("content_id", ""))
 		if not ModContentRegistryScript.KINDS.has(kind):
-			_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+			_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 			return "不支持的内容 kind: %s" % kind
 		var data: Dictionary
 		if operation.get("operation", "") == "add":
 			data = operation.get("data", {}).duplicate(true)
 			var path_errors: Array[String] = _validator.validate_owned_values(data, context.mod_id)
 			if not path_errors.is_empty():
-				_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+				_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 				return path_errors[0]
 			if content.has(kind, content_id):
-				_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+				_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 				return "内容 ID 已存在: %s:%s" % [kind, content_id]
+			if kind == "skill":
+				var local_id := content_id.get_slice(":", 1)
+				var scene_path := str(data.get("scene_path", ""))
+				var registered: Dictionary = skill_scenes.register_mod_scene(scene_path, context.mod_id, local_id)
+				if not bool(registered.get("ok", false)):
+					_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+					return str(registered.get("error", "Mod 技能场景注册失败"))
+				var resource_path := str(registered.get("resource_path", ""))
+				if not _validator.is_owned_path(resource_path, context.mod_id, ".tres"):
+					_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+					return "技能资源不属于当前 Mod: %s" % resource_path
+				data = registered.get("definition", {}).duplicate(true)
+				path_errors = _validator.validate_owned_values(data, context.mod_id)
+				if not path_errors.is_empty():
+					_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+					return path_errors[0]
 		else:
 			if not content.has(kind, content_id):
-				_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+				_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 				return "覆盖目标不存在: %s:%s" % [kind, content_id]
 			var patch_data: Dictionary = operation.get("patch", {})
+			if kind == "skill" and patch_data.has("id"):
+				_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+				return "skill.id 是稳定标识，不能 patch"
 			var path_errors: Array[String] = _validator.validate_owned_values(patch_data, context.mod_id)
 			if not path_errors.is_empty():
-				_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+				_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 				return path_errors[0]
 			data = ModContentRegistryScript.merge_patch(content.definition(kind, content_id), patch_data)
+			if kind == "skill" and patch_data.has("scene_path"):
+				var replaced: Dictionary = skill_scenes.replace_scene(content_id, str(data.get("scene_path", "")), context.mod_id)
+				if not bool(replaced.get("ok", false)):
+					_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+					return str(replaced.get("error", "技能场景替换失败"))
 		var definition_errors: Array[String] = _validator.validate_definition(kind, content_id, data)
 		if not definition_errors.is_empty():
-			_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+			_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 			return definition_errors[0]
 		var applied: bool = content._define(kind, content_id, data, context.mod_id) if operation.get("operation", "") == "add" else content._replace(kind, content_id, data, context.mod_id)
 		if not applied:
-			_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+			_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 			return "无法提交内容: %s:%s" % [kind, content_id]
 		staged_definitions.append({"kind": kind, "content_id": content_id, "data": data.duplicate(true)})
 	_actor_states.merge(context._actor_states, true)
@@ -448,7 +483,7 @@ func _commit_context(context) -> String:
 	_ai_conditions.merge(context._ai_conditions, true)
 	_dialogue_conditions.merge(context._dialogue_conditions, true)
 	if not context.errors().is_empty():
-		_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+		_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 		return context.errors()[0]
 	for staged in staged_definitions:
 		var reference_error := _validate_references(
@@ -458,19 +493,21 @@ func _commit_context(context) -> String:
 			context.mod_id
 		)
 		if not reference_error.is_empty():
-			_restore_transaction(content_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
+			_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 			return reference_error
 	return ""
 
 
 func _restore_transaction(
 	content_snapshot: Dictionary,
+	skill_scene_snapshot: Dictionary,
 	actor_snapshot: Dictionary,
 	effect_snapshot: Dictionary,
 	ai_snapshot: Dictionary,
 	dialogue_snapshot: Dictionary
 ) -> void:
 	content._restore(content_snapshot)
+	skill_scenes.restore(skill_scene_snapshot)
 	_actor_states = actor_snapshot
 	_effect_handlers = effect_snapshot
 	_ai_conditions = ai_snapshot
@@ -526,11 +563,23 @@ func _validate_references(kind: String, content_id: String, data: Dictionary, ow
 			if not (effect is Dictionary):
 				continue
 			var effect_kind := str(effect.get("kind", ""))
-			if effect_kind in [
-				"damage_percent", "damage_flat", "defense_ignore", "element_attach",
-				"dot", "hot", "shield", "heal", "leech", "buff_stat",
-				"debuff_stat", "cooldown_percent"
-			]:
+			if effect_kind == "status":
+				var status_scene_path := str(effect.get("status_scene_path", ""))
+				if not ResourceLoader.exists(status_scene_path):
+					return "%s:%s 状态动画场景不存在: %s" % [kind, content_id, status_scene_path]
+				var packed := load(status_scene_path) as PackedScene
+				var instance := packed.instantiate() if packed != null else null
+				var visual := instance as StatusVisualBase
+				if visual == null:
+					if instance != null:
+						instance.free()
+					return "%s:%s 状态动画根节点必须继承 StatusVisualBase" % [kind, content_id]
+				var visual_errors := visual.contract_errors()
+				visual.free()
+				if not visual_errors.is_empty():
+					return "%s:%s 状态动画契约无效: %s" % [kind, content_id, "；".join(visual_errors)]
+				continue
+			if effect_kind in ["damage", "heal", "cooldown"]:
 				continue
 			var error := _callable_reference_error(_effect_handlers, effect_kind, owner_mod_id, "effect handler")
 			if not error.is_empty():
@@ -586,9 +635,12 @@ func _appearance_cycle_error(start_id: String) -> String:
 
 
 func _register_core_content() -> void:
+	var scene_errors := skill_scenes.scan_core()
+	for error in scene_errors:
+		push_error(error)
 	_register_core_kind("item", DataTables.ITEM_DEFS)
 	_register_core_kind("equipment", DataTables.EQUIPMENT_DEFS)
-	_register_core_kind("skill", DataTables.SKILL_DEFS)
+	_register_core_kind("skill", skill_scenes.definitions())
 	_register_core_kind("basic_attack", DataTables.BASIC_ATTACK_DEFS)
 	_register_core_kind("recipe", DataTables.ALCHEMY_RECIPE_DEFS)
 	_register_core_kind("trait", DataTables.INNATE_TRAIT_DEFS)

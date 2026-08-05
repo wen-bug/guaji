@@ -21,7 +21,7 @@ const RESULT_DEFEAT := "defeat"
 const ACTION_SOURCE_SKILL := "skill"
 const ACTION_SOURCE_PILL := "pill"
 const ACTION_SOURCE_BASIC := "basic"
-const BASIC_ATTACK_SCENE := "res://scripts/game/skills/damage/basic_attack.tscn"
+const CombatSkillExecutorScript = preload("res://scripts/game/combat/combat_skill_executor.gd")
 const DEFAULT_ENEMY_POSITION := Vector2(866, 170)
 const DEFAULT_PARTY_POSITION := Vector2(736, 170)
 const PARTY_FORMATION_SPACING := Vector2(-68, 0)
@@ -43,6 +43,7 @@ var battle_map: Node2D = null
 var pending_game_state = null
 var combat_ai := CombatAI.new()
 var combat_effect_resolver := CombatEffectResolver.new()
+var combat_skill_executor = CombatSkillExecutorScript.new()
 
 var _next_action_id := 1
 var _resolved_hits: Dictionary = {}
@@ -56,9 +57,14 @@ var _enemy_target_id := ""
 var _enemy_pending_action: Dictionary = {}
 var _enemy_home_position := DEFAULT_ENEMY_POSITION
 var _enemy_death_waiting := false
+var _enemy_turn_started := false
 var _rewards_granted := false
 var _combat_result := RESULT_NONE
 var _active_skill_scenes: Dictionary = {}
+var _presentation_events: Array = []
+var _presentation_timer := 0.0
+var _presentation_waiters: Array[Callable] = []
+var _presentation_active := false
 
 
 func set_party_views(views: Dictionary) -> void:
@@ -186,6 +192,9 @@ func tick(delta: float, game_state) -> void:
 	if not active or finished or _enemy_death_waiting:
 		return
 	pending_game_state = game_state
+	if _presentation_active:
+		_tick_presentation(delta)
+		return
 	if _turn_phase == PHASE_PARTY:
 		_tick_current_party_turn(delta, game_state)
 	else:
@@ -206,6 +215,10 @@ func clear() -> void:
 		if scene != null and is_instance_valid(scene):
 			scene.queue_free()
 	_active_skill_scenes.clear()
+	_presentation_events.clear()
+	_presentation_timer = 0.0
+	_presentation_waiters.clear()
+	_presentation_active = false
 	for combatant in party_combatants:
 		var actor := _party_actor(str(combatant.get("member_id", "")))
 		if actor != null:
@@ -226,6 +239,7 @@ func clear() -> void:
 	finished = false
 	_combat_result = RESULT_NONE
 	_enemy_death_waiting = false
+	_enemy_turn_started = false
 	_rewards_granted = false
 	_enemy_action_id = 0
 	_enemy_target_id = ""
@@ -284,7 +298,10 @@ func _tick_party_combatant(index: int, delta: float, game_state) -> void:
 		_advance_turn_cooldowns(combatant)
 		var status: CombatActorStatus = party_actor_statuses.get(member_id)
 		if status != null:
-			status.tick_turn_start()
+			var turn_events := status.tick_turn_start()
+			if _queue_presentation(turn_events):
+				party_combatants[index] = combatant
+				return
 		if not _member_alive(member_id):
 			_cancel_party_action(combatant, true)
 			actor.call("play_death_feedback")
@@ -370,12 +387,23 @@ func _finish_party_turn(combatant: Dictionary) -> void:
 	var member_id: String = str(combatant.get("member_id", ""))
 	var status: CombatActorStatus = party_actor_statuses.get(member_id)
 	if status != null:
-		status.tick_turn_end()
+		var turn_events := status.tick_turn_end()
+		if _queue_presentation(turn_events, Callable(self, "_complete_party_turn").bind(member_id)):
+			return
+	_complete_party_turn(member_id)
+
+
+func _complete_party_turn(member_id: String) -> void:
+	var index := _combatant_index(member_id)
+	if index < 0:
+		return
+	var combatant: Dictionary = party_combatants[index]
 	_resolved_hits.erase(int(combatant.get("action_id", 0)))
 	combatant["action_id"] = 0
 	combatant["pending_action"] = {}
 	combatant["state"] = STATE_RECOVERY
 	combatant["turn_started"] = false
+	party_combatants[index] = combatant
 	_advance_party_turn()
 
 
@@ -395,22 +423,25 @@ func _resolve_party_skill(combatant: Dictionary, member: Dictionary, action: Dic
 		return
 	var member_id: String = str(member.get("id", ""))
 	var caster: CombatActorStatus = party_actor_statuses.get(member_id)
-	if caster == null or not caster.spend_mp(int(skill.get("mp_cost", 0))):
-		log_added.emit("%s法力不足" % member.get("name", "成员"))
-		return
 	var targets: Array = _skill_targets(caster, skill)
-	var scene := _create_skill_scene(caster, targets, skill, game_state.rng)
+	var scene := _create_skill_scene(skill)
 	if scene == null:
 		log_added.emit("%s释放%s失败" % [member.get("name", "成员"), skill.get("name", "技能")])
 		_finish_party_turn(combatant)
+		return
+	var mp_cost := int(skill.get("mp_cost", 0))
+	if caster == null or not caster.spend_mp(mp_cost):
+		scene.queue_free()
+		log_added.emit("%s法力不足" % member.get("name", "成员"))
 		return
 	var skill_id := str(skill.get("id", ""))
 	combatant["pending_action"] = action.duplicate(true)
 	combatant["state"] = STATE_SKILL
 	_active_skill_scenes[member_id] = scene
+	scene.combat_events_emitted.connect(_on_skill_combat_events)
 	scene.finished.connect(_on_party_skill_finished.bind(member_id, skill_id), CONNECT_ONE_SHOT)
 	log_added.emit("%s释放%s" % [member.get("name", "成员"), skill.get("name", "技能")])
-	scene.start_cast()
+	scene.start_cast(_skill_cast_context(caster, targets, skill, game_state.rng))
 
 
 func _on_party_skill_finished(result: Dictionary, member_id: String, skill_id: String) -> void:
@@ -424,9 +455,25 @@ func _on_party_skill_finished(result: Dictionary, member_id: String, skill_id: S
 	var combatant: Dictionary = party_combatants[index]
 	var cooldowns: Dictionary = combatant.get("skill_cooldowns", {})
 	var skill: Dictionary = DataTables.create_skill(skill_id)
-	cooldowns[skill_id] = _cooldown_turns(int(skill.get("cooldown", 0)), float(result.get("cooldown_multiplier", 1.0)))
+	if bool(result.get("cast_succeeded", false)):
+		cooldowns[skill_id] = _cooldown_turns(int(skill.get("cooldown", 0)), float(result.get("cooldown_multiplier", 1.0)))
+	else:
+		var caster: CombatActorStatus = party_actor_statuses.get(member_id)
+		if caster != null:
+			caster.refund_mp(int(skill.get("mp_cost", 0)))
+		log_added.emit("%s配置无效，施法已中止" % skill.get("name", "技能"))
 	combatant["skill_cooldowns"] = cooldowns
 	party_combatants[index] = combatant
+	if _wait_for_presentation(Callable(self, "_complete_party_skill_turn").bind(member_id)):
+		return
+	_complete_party_skill_turn(member_id)
+
+
+func _complete_party_skill_turn(member_id: String) -> void:
+	var index := _combatant_index(member_id)
+	if index < 0:
+		return
+	var combatant: Dictionary = party_combatants[index]
 	_check_combat_result()
 	if not active or finished or _enemy_death_waiting:
 		return
@@ -461,12 +508,18 @@ func _tick_enemy(delta: float) -> void:
 			_tick_enemy_approach(delta)
 		STATE_ATTACK:
 			pass
+		STATE_SKILL:
+			pass
 		STATE_RETURN:
 			_tick_enemy_return(delta)
 
 
 func _begin_enemy_action() -> void:
-	enemy_actor_status.tick_turn_start()
+	if not _enemy_turn_started:
+		_enemy_turn_started = true
+		var turn_events := enemy_actor_status.tick_turn_start()
+		if _queue_presentation(turn_events):
+			return
 	if not enemy_actor_status.is_alive():
 		_check_combat_result()
 		return
@@ -495,8 +548,11 @@ func _tick_enemy_approach(delta: float) -> void:
 		return
 	var target_position: Vector2 = target.call("melee_approach_position")
 	if _move_enemy_toward(target_position, delta):
-		_enemy_state = STATE_ATTACK
-		current_enemy_node.play_attack_feedback(_enemy_action_id)
+		if _enemy_action_is_skill():
+			_start_enemy_skill()
+		else:
+			_enemy_state = STATE_ATTACK
+			current_enemy_node.play_attack_feedback(_enemy_action_id)
 
 
 func _tick_enemy_return(delta: float) -> void:
@@ -506,7 +562,14 @@ func _tick_enemy_return(delta: float) -> void:
 	_resolved_hits.erase(_enemy_action_id)
 	_enemy_action_id = 0
 	_enemy_target_id = ""
-	enemy_actor_status.tick_turn_end()
+	var turn_events := enemy_actor_status.tick_turn_end()
+	if _queue_presentation(turn_events, Callable(self, "_complete_enemy_return")):
+		return
+	_complete_enemy_return()
+
+
+func _complete_enemy_return() -> void:
+	_enemy_turn_started = false
 	_begin_next_round()
 
 
@@ -554,11 +617,9 @@ func _on_enemy_hit_candidate(action_id: int, target_id: String) -> void:
 	if target == null or not target.is_alive():
 		return
 	var action := _enemy_pending_action
-	var skill: Dictionary = action
-	if str(action.get("source", "")) != "skill" and str(action.get("type", "")) != "damage":
-		skill = _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))), str(action.get("element", "")))
+	var skill: Dictionary = _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))), str(action.get("element", "")))
 	var targets := _skill_targets(enemy_actor_status, skill, target)
-	var result := _run_skill_scene(enemy_actor_status, targets, skill, pending_game_state.rng)
+	var result := combat_skill_executor.execute(enemy_actor_status, targets, skill, combat_effect_resolver, pending_game_state.rng)
 	log_added.emit("%s攻击%s，造成%d点伤害" % [enemy.get("name", "敌人"), target.actor_name, int(result.get("damage", 0))])
 	_check_combat_result()
 
@@ -654,6 +715,7 @@ func _advance_enemy_group() -> void:
 	_enemy_action_id = 0
 	_enemy_target_id = ""
 	_enemy_pending_action.clear()
+	_enemy_turn_started = false
 	_enemy_death_waiting = false
 	_rewards_granted = false
 	log_added.emit("下一只%s进入战斗（剩余 %d）" % [enemy.get("name", "敌人"), enemy_group.size() - enemy_group_index])
@@ -792,7 +854,7 @@ func _resolve_party_basic_attack(combatant: Dictionary, caster: CombatActorStatu
 	var action: Dictionary = combatant.get("pending_action", {})
 	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
 	var attack: Dictionary = DataTables.create_basic_attack(attack_mode, caster.total_stat("attack"))
-	var result := _run_skill_scene(caster, [enemy_actor_status], attack, pending_game_state.rng)
+	var result := combat_skill_executor.execute(caster, [enemy_actor_status], attack, combat_effect_resolver, pending_game_state.rng)
 	log_added.emit("%s使用%s命中%s，造成%d点伤害" % [
 		caster.actor_name,
 		attack.get("name", "普通攻击"),
@@ -802,30 +864,134 @@ func _resolve_party_basic_attack(combatant: Dictionary, caster: CombatActorStatu
 	_check_combat_result()
 
 
-func _run_skill_scene(caster: CombatActorStatus, targets: Array, skill: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
-	var scene := _create_skill_scene(caster, targets, skill, rng)
-	if scene == null:
-		return {"damage": 0, "events": []}
-	scene.start_cast()
-	var result: Dictionary = scene.last_result.duplicate(true)
-	scene.queue_free()
-	return result
-
-
-func _create_skill_scene(caster: CombatActorStatus, targets: Array, skill: Dictionary, rng: RandomNumberGenerator) -> SkillSceneBase:
-	if caster == null or targets.is_empty() or targets[0] == null:
+func _create_skill_scene(skill: Dictionary) -> SkillSceneBase:
+	if skill.is_empty():
 		return null
-	var path := str(skill.get("scene_path", BASIC_ATTACK_SCENE))
-	var packed := load(path) as PackedScene
+	var api := get_node_or_null("/root/ModAPI")
+	var packed: PackedScene = api.skill_scene(str(skill.get("id", ""))) if api != null else null
 	if packed == null:
-		push_warning("技能场景加载失败: %s" % path)
+		push_warning("技能场景未注册: %s" % skill.get("id", ""))
 		return null
 	var scene := packed.instantiate() as SkillSceneBase
 	if scene == null:
 		return null
 	add_child(scene)
-	scene.setup(caster, targets, skill, combat_effect_resolver, rng)
 	return scene
+
+
+func _skill_cast_context(caster: CombatActorStatus, targets: Array, skill: Dictionary, rng: RandomNumberGenerator) -> SkillCastContext:
+	return SkillCastContext.create(caster, targets, _skill_candidates(caster, skill), skill, combat_effect_resolver, rng)
+
+
+func _skill_candidates(caster: CombatActorStatus, skill: Dictionary) -> Array:
+	var scope := str(skill.get("target_scope", "single_enemy"))
+	if scope == "self":
+		return [caster]
+	var targets_allies := scope in ["single_ally", "all_allies"]
+	var caster_is_party := caster != null and caster.actor_kind == CombatActorStatus.KIND_MEMBER
+	var wants_party := caster_is_party == targets_allies
+	if wants_party:
+		var result: Array = []
+		for combatant in party_combatants:
+			var status: CombatActorStatus = party_actor_statuses.get(str(combatant.get("member_id", "")))
+			if status != null and status.is_alive():
+				result.append(status)
+		return result
+	return [enemy_actor_status] if enemy_actor_status != null and enemy_actor_status.is_alive() else []
+
+
+func _enemy_action_is_skill() -> bool:
+	return not _enemy_pending_action.is_empty() and DataTables.content_has("skill", str(_enemy_pending_action.get("id", "")), DataTables.SKILL_DEFS)
+
+
+func _start_enemy_skill() -> void:
+	var skill := _enemy_pending_action
+	var preferred: CombatActorStatus = party_actor_statuses.get(_enemy_target_id)
+	var targets := _skill_targets(enemy_actor_status, skill, preferred)
+	var scene := _create_skill_scene(skill)
+	if scene == null:
+		log_added.emit("%s释放%s失败" % [enemy.get("name", "敌人"), skill.get("name", "技能")])
+		_enemy_state = STATE_RETURN
+		return
+	var scene_key := enemy_actor_status.actor_id
+	_active_skill_scenes[scene_key] = scene
+	_enemy_state = STATE_SKILL
+	scene.combat_events_emitted.connect(_on_skill_combat_events)
+	scene.finished.connect(_on_enemy_skill_finished.bind(scene_key, str(skill.get("id", ""))), CONNECT_ONE_SHOT)
+	log_added.emit("%s释放%s" % [enemy.get("name", "敌人"), skill.get("name", "技能")])
+	scene.start_cast(_skill_cast_context(enemy_actor_status, targets, skill, pending_game_state.rng))
+
+
+func _on_enemy_skill_finished(result: Dictionary, scene_key: String, skill_id: String) -> void:
+	var scene: SkillSceneBase = _active_skill_scenes.get(scene_key) as SkillSceneBase
+	_active_skill_scenes.erase(scene_key)
+	if scene != null and is_instance_valid(scene):
+		scene.queue_free()
+	if not bool(result.get("cast_succeeded", false)):
+		var cooldowns: Dictionary = enemy.get("skill_cooldowns", {})
+		cooldowns[skill_id] = 0
+		enemy["skill_cooldowns"] = cooldowns
+	if _wait_for_presentation(Callable(self, "_complete_enemy_skill")):
+		return
+	_complete_enemy_skill()
+
+
+func _complete_enemy_skill() -> void:
+	_check_combat_result()
+	if active and not finished and not _enemy_death_waiting:
+		_enemy_state = STATE_RETURN
+
+
+func _on_skill_combat_events(events: Array) -> void:
+	_queue_presentation(events)
+
+
+func _queue_presentation(events: Array, done: Callable = Callable()) -> bool:
+	var queued := false
+	for event in events:
+		if not (event is Dictionary):
+			continue
+		if str(event.get("type", "")) in ["status_added", "status_refreshed", "status_stacked", "status_tick", "shield_absorbed", "status_removed"]:
+			_presentation_events.append(event.duplicate(true))
+			queued = true
+	if done.is_valid() and (queued or _presentation_active):
+		_presentation_waiters.append(done)
+	if queued and not _presentation_active:
+		_presentation_active = true
+		_start_next_presentation_event()
+	return queued or _presentation_active
+
+
+func _wait_for_presentation(done: Callable) -> bool:
+	if not _presentation_active and _presentation_events.is_empty():
+		return false
+	if done.is_valid():
+		_presentation_waiters.append(done)
+	return true
+
+
+func _tick_presentation(delta: float) -> void:
+	_presentation_timer = maxf(0.0, _presentation_timer - maxf(0.0, delta))
+	if _presentation_timer <= 0.0:
+		_start_next_presentation_event()
+
+
+func _start_next_presentation_event() -> void:
+	if _presentation_events.is_empty():
+		_presentation_active = false
+		var waiters := _presentation_waiters.duplicate()
+		_presentation_waiters.clear()
+		for done in waiters:
+			if done.is_valid():
+				done.call()
+		return
+	var event: Dictionary = _presentation_events.pop_front()
+	var actor_id := str(event.get("actor_id", ""))
+	var event_owner: Node = current_enemy_node if enemy_actor_status != null and actor_id == enemy_actor_status.actor_id else _party_actor(actor_id)
+	var duration := 0.08
+	if event_owner != null and event_owner.has_method("present_combat_event"):
+		duration = maxf(duration, float(event_owner.call("present_combat_event", event)))
+	_presentation_timer = duration
 
 
 func _skill_targets(caster: CombatActorStatus, skill: Dictionary, preferred_target: CombatActorStatus = null) -> Array:
@@ -866,12 +1032,12 @@ func _alive_party_statuses() -> Array:
 
 
 func _move_actor_toward(combatant: Dictionary, actor: Node, target: Vector2, delta: float) -> bool:
-	var position: Vector2 = combatant.get("position", actor.call("combat_position"))
+	var current_position: Vector2 = combatant.get("position", actor.call("combat_position"))
 	var speed := float(combatant.get("move_speed", DEFAULT_MOVE_SPEED))
-	position = position.move_toward(target, speed * delta)
-	combatant["position"] = position
-	actor.call("set_combat_position", position)
-	return position.distance_to(target) <= POSITION_EPSILON
+	current_position = current_position.move_toward(target, speed * delta)
+	combatant["position"] = current_position
+	actor.call("set_combat_position", current_position)
+	return current_position.distance_to(target) <= POSITION_EPSILON
 
 
 func _ranged_approach_position(combatant: Dictionary, release_distance: float) -> Vector2:
@@ -886,11 +1052,11 @@ func _ranged_approach_position(combatant: Dictionary, release_distance: float) -
 func _move_enemy_toward(target: Vector2, delta: float) -> bool:
 	if current_enemy_node == null:
 		return false
-	var position := current_enemy_node.combat_position()
-	position = position.move_toward(target, float(enemy.get("move_speed", DEFAULT_MOVE_SPEED)) * delta)
-	current_enemy_node.set_combat_position(position)
+	var current_position := current_enemy_node.combat_position()
+	current_position = current_position.move_toward(target, float(enemy.get("move_speed", DEFAULT_MOVE_SPEED)) * delta)
+	current_enemy_node.set_combat_position(current_position)
 	current_enemy_node.play_run()
-	return position.distance_to(target) <= POSITION_EPSILON
+	return current_position.distance_to(target) <= POSITION_EPSILON
 
 
 func _advance_turn_cooldowns(combatant: Dictionary) -> void:
@@ -953,8 +1119,8 @@ func _current_party_member_id() -> String:
 
 
 func _reserve_marker(target_id: String, attacker_id: String) -> bool:
-	var owner := str(_marker_reservations.get(target_id, ""))
-	if not owner.is_empty() and owner != attacker_id:
+	var reservation_owner := str(_marker_reservations.get(target_id, ""))
+	if not reservation_owner.is_empty() and reservation_owner != attacker_id:
 		return false
 	_marker_reservations[target_id] = attacker_id
 	return true

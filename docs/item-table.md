@@ -180,13 +180,8 @@
 | `steady_guard` | 稳守 | 防御 | `defense +2` |
 | `full_vigor` | 充沛 | 法力 | `max_mp +12` |
 | `good_root` | 良根 | 根骨 | `root_bone +2` |
-| `craft_hand` | 巧匠 | 炼器 | `craft_bonus +1`, 炼器升阶概率 +5% |
-| `craft_touch` | 巧手 | 炼器 | `craft_bonus +1` |
-| `pill_heart` | 丹心 | 炼丹 | 额外出丹概率 +5% |
-| `pill_sense` | 丹感 | 炼丹 | 额外出丹概率 +4% |
-| `field_sense` | 识田 | 种田 | 收成 +1 |
 
-基础招募命格池当前为 `robust_body`、`sharp_edge`、`steady_guard`、`full_vigor`、`good_root`、`field_sense`、`craft_touch`、`pill_sense`。
+基础招募命格池当前为 `robust_body`、`sharp_edge`、`steady_guard`、`full_vigor`、`good_root`。
 
 ## 已实现：敌人与掉落
 
@@ -208,14 +203,14 @@
 
 正式新档物资为 `spirit_stone x1`、`herb x1`、`recipe_pill x1` 和五本初阶技能书各 1 本。项目设置 `game/development/seed_test_inventory` 默认为 `false`，开启后才补齐其余测试物品和基础装备。
 
-| 建筑 | 1 级升级消耗 | 升级成本 | 1 级生产时间 | 满级附近生产时间 |
-| --- | --- | --- | ---: | ---: |
-| 招募 | `spirit_stone x1` | 当前等级个灵石 | 即时 | 即时 |
-| 农田 | `herb x1` | 当前等级个草药 | 草药 600 秒 | 基础时间的 55% |
-| 炼器 | `ore x2` | 当前等级 + 1 个矿石 | 900 秒 | 360 秒 |
-| 炼丹 | `herb x2` | 当前等级 + 1 个草药 | 每份 600 秒 | 每份 195 秒 |
+| 建筑 | 1 级升级消耗 | 升级成本 | 生产方式 |
+| --- | --- | --- | --- |
+| 招募 | `spirit_stone x1` | 当前等级个灵石 | 即时 |
+| 农田 | `herb x1` | 当前等级个草药 | 作物独立计时；草药基础 600 秒，满级为基础时间的 55% |
+| 炼器 | `ore x2` | 当前等级 + 1 个矿石 | 即时 |
+| 炼丹 | `herb x2` | 当前等级 + 1 个草药 | 即时 |
 
-炼器任务基础消耗 `ore x4`，受执行者材料减免效果影响但最低为 1。生产时间只在程序运行时推进，不补算离线时间。
+炼器固定消耗 `ore x4`，装备等级使用账号历练等级。炼器和炼丹不依赖人物；只有农田生长时间在程序运行时推进，不补算离线时间。
 
 ## 已实现：维护规则
 

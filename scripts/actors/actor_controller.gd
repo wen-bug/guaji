@@ -149,6 +149,15 @@ func effect_position() -> Vector2:
 	return combat_visual.effect_position() if combat_visual != null else global_position
 
 
+func bind_combat_status_presentation(status: CombatActorStatus) -> void:
+	if combat_visual != null:
+		combat_visual.bind_combat_status(status)
+
+
+func present_combat_event(event: Dictionary) -> float:
+	return combat_visual.present_combat_event(event) if combat_visual != null else 0.0
+
+
 func play_combat_action(action_type: String, action_id: int = 0) -> void:
 	if state == ActorMode.DEAD or combat_visual == null:
 		return

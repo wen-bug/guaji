@@ -37,6 +37,8 @@
 | appearance | kind、scene_path、fallback_id、contract_version | kind=party/enemy，contract_version=1 |
 | dialogue | text、scenes、states、weight、cooldown_seconds、custom_conditions | 数组=[]、weight=1、cooldown_seconds=0 |
 
+可使用物品可声明 `payload.permanent_building_quality = {"building_id": "forge", "amount": 1}`。`building_id` 仅接受 `farm`、`forge`、`alchemy`，`amount` 必须为正整数；成功使用后消耗一个物品并永久累加账号建筑品质。当前只有 `forge` 品质参与产出计算。
+
 `target_scope` 枚举为 `self`、`single_ally`、`all_allies`、`single_enemy`、`all_enemies`。appearance 的 `kind` 仅为 `party` 或 `enemy`。字段未写时由业务层使用上述默认值；兼容字段只会新增且必须带默认值。
 
 ## Patch

@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://bg1btmrlc40gj"]
+
+[ext_resource type="Script" path="res://scripts/game/skills/status/status_visual_base.gd" id="1_base"]
+
+[sub_resource type="Animation" id="Animation_kqxv7"]
+length = 0.18
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.03, 0.06, 0.09, 0.12, 0.15, 0.18),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(0, 0), Vector2(-0.4109583, 1.2424202), Vector2(2.4024172, 1.0234461), Vector2(1.8019171, 1.5341), Vector2(-2.7117965, -1.8211846), Vector2(2.1774335, -0.7078254), Vector2(0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_xw1nk"]
+length = 0.22
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:modulate:a")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.22),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [0.0, 1.0]
+}
+
+[sub_resource type="Animation" id="Animation_bq7uj"]
+length = 0.28
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:modulate:a")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.28),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [1.0, 0.0]
+}
+
+[sub_resource type="Animation" id="Animation_cc8a7"]
+length = 0.8
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.4, 0.8),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(1.08, 1.08), Vector2(1, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_1d88l"]
+length = 0.22
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:modulate:a")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.22),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [1.0, 0.0]
+}
+
+[sub_resource type="Animation" id="Animation_og0h3"]
+length = 0.18
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.09, 0.18),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(1.3, 1.3), Vector2(1, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_qc67y"]
+_data = {
+&"absorb": SubResource("Animation_kqxv7"),
+&"apply": SubResource("Animation_xw1nk"),
+&"break": SubResource("Animation_bq7uj"),
+&"loop": SubResource("Animation_cc8a7"),
+&"remove": SubResource("Animation_1d88l"),
+&"tick": SubResource("Animation_og0h3")
+}
+
+[node name="StatusVisualTemplate" type="Node2D" unique_id=1107847661]
+script = ExtResource("1_base")
+tint = Color(0.35, 0.85, 1, 1)
+
+[node name="Sprite" type="Sprite2D" parent="." unique_id=1478046139]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=423203972]
+libraries/ = SubResource("AnimationLibrary_qc67y")

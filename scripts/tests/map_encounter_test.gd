@@ -74,6 +74,7 @@ func _ready() -> void:
 
 func _run() -> void:
 	_check_default_map()
+	_check_map_selection()
 	_check_count_clamps()
 	_check_seeded_weights()
 	_check_fixed_and_fallback_variants()
@@ -96,6 +97,26 @@ func _check_default_map() -> void:
 		for enemy_id in ids:
 			_expect_string("default enemy", enemy_id, "forest_wolf")
 	map.free()
+
+
+func _check_map_selection() -> void:
+	var map := BATTLE_MAP_SCENE.instantiate() as BattleMap
+	var summaries := map.map_summaries(1)
+	_expect_equal("configured map count", summaries.size(), 2)
+	_expect_true("forest map selectable", map.select_map("verdant_forest", 1))
+	_expect_string("forest map name", map.current_map_name(), "青木林")
+	var forest_ids := map.roll_encounter(1, 1, _seeded_rng(9))
+	_expect_array("forest encounter", forest_ids, ["forest_wolf", "forest_wolf"])
+	_expect_true("training map selectable", map.select_map("training_ground", 1))
+	_expect_string("training map name", map.current_map_name(), "试炼场")
+	_expect_array("training encounter", map.roll_encounter(4, 1, _seeded_rng(9)), ["training_dummy"])
+	_expect_true("unknown map rejected", not map.select_map("missing_map", 99))
+	map.free()
+	var saved_state := GameState.new()
+	saved_state.set_selected_expedition_map_id("training_ground")
+	var restored_state := GameState.new()
+	restored_state.load_save_data(saved_state.to_save_data())
+	_expect_string("selected map persists", restored_state.selected_expedition_map_id, "training_ground")
 
 
 func _check_count_clamps() -> void:

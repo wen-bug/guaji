@@ -43,6 +43,7 @@ const DEBUG_STAT_OPTIONS := [
 ]
 
 signal home_action_requested(task_type: int)
+signal expedition_map_selected(map_id: String)
 signal hud_save_requested()
 signal expedition_exit_requested()
 signal home_camera_pan_started(direction: int)
@@ -100,7 +101,6 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var inventory_menu: PopupMenu = $Root/InventoryMenu
 @onready var category_row: HBoxContainer = $Root/InventoryPanel/InventoryLayout/CategoryRow
 @onready var farm_detail: Label = $Root/FarmPanel/PanelLayout/ActionDetail
-@onready var farm_worker_option: OptionButton = $Root/FarmPanel/PanelLayout/WorkerOption
 @onready var farm_progress_label: Label = $Root/FarmPanel/PanelLayout/ProgressLabel
 @onready var farm_seed_slot_button: Button = $Root/FarmPanel/PanelLayout/SeedSlotButton
 @onready var farm_seed_picker_panel: PanelContainer = $Root/FarmPanel/PanelLayout/SeedPickerPanel
@@ -116,8 +116,6 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var farm_claim_all_button: Button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimAllButton
 @onready var farm_hint_label: Label = $Root/FarmPanel/PanelLayout/HintLabel
 @onready var forge_detail: Label = $Root/ForgePanel/PanelLayout/ActionDetail
-@onready var forge_worker_option: OptionButton = $Root/ForgePanel/PanelLayout/WorkerOption
-@onready var forge_progress_label: Label = $Root/ForgePanel/PanelLayout/ProgressLabel
 @onready var forge_action_button: Button = $Root/ForgePanel/PanelLayout/ExecuteButton
 @onready var forge_craft_mode_button: Button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeCraftButton
 @onready var forge_enhance_mode_button: Button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeEnhanceButton
@@ -138,6 +136,7 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var party_dismiss_button: Button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/DismissButton
 @onready var release_confirmation_dialog: ConfirmationDialog = $Root/ReleaseConfirmationDialog
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
+@onready var expedition_map_option: OptionButton = $Root/FightPanel/PanelLayout/MapRow/MapOption
 @onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
 @onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
 @onready var home_camera_controls: Control = $Root/HomeCameraControls
@@ -159,14 +158,12 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var debug_stat_value_spinbox: SpinBox = $Root/DebugPanel/PanelLayout/StatRow/StatValueSpinBox
 @onready var debug_set_stat_button: Button = $Root/DebugPanel/PanelLayout/StatRow/SetStatButton
 @onready var alchemy_recipe_slot_button: Button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
-@onready var alchemy_worker_option: OptionButton = $Root/AlchemyPanel/PanelLayout/WorkerOption
 @onready var alchemy_recipe_picker_panel: PanelContainer = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel
 @onready var alchemy_recipe_list: ItemList = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList
 @onready var alchemy_material_grid: GridContainer = $Root/AlchemyPanel/PanelLayout/MaterialGrid
 @onready var alchemy_max_count_label: Label = $Root/AlchemyPanel/PanelLayout/MaxCountLabel
 @onready var alchemy_craft_count_spinbox: SpinBox = $Root/AlchemyPanel/PanelLayout/CraftCountSpinBox
 @onready var alchemy_craft_button: Button = $Root/AlchemyPanel/PanelLayout/CraftButton
-@onready var alchemy_progress_label: Label = $Root/AlchemyPanel/PanelLayout/ProgressLabel
 @onready var alchemy_hint_label: Label = $Root/AlchemyPanel/PanelLayout/HintLabel
 
 var farm_upgrade_button: Button = null
@@ -189,11 +186,9 @@ var log_lines: Array = []
 var selected_farm_seed_id: String = ""
 var selected_farm_slot_index: int = -1
 var selected_farm_speed_item_id: String = ""
-var selected_farm_worker_id: String = ""
 var farm_controls_connected: bool = false
 var selected_forge_mode: String = FORGE_MODE_CRAFT
 var selected_forge_equipment_instance_id: String = ""
-var selected_forge_worker_id: String = ""
 var forge_controls_connected: bool = false
 var selected_party_member_id: String = ""
 var selected_recruit_candidate_id: String = ""
@@ -201,7 +196,8 @@ var selected_recruit_party_member_id: String = ""
 var pending_release_member_id: String = ""
 var recruit_controls_connected: bool = false
 var selected_alchemy_recipe_id: String = ""
-var selected_alchemy_worker_id: String = ""
+var selected_expedition_map_id := ""
+var expedition_map_summaries: Array[Dictionary] = []
 var alchemy_controls_connected: bool = false
 var debug_controls_connected: bool = false
 var debug_options_populated: bool = false
@@ -229,6 +225,7 @@ func _ready() -> void:
 	$Root/FightPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): fight_panel.visible = false)
 
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
+	expedition_map_option.item_selected.connect(_on_expedition_map_option_selected)
 	return_home_button.pressed.connect(func(): expedition_exit_requested.emit())
 	home_camera_left_button.button_down.connect(func(): home_camera_pan_started.emit(-1))
 	home_camera_left_button.button_up.connect(func(): home_camera_pan_stopped.emit())
@@ -287,10 +284,10 @@ func _setup_mod_manager() -> void:
 	mod_manager_panel.setup(mod_api)
 
 
-func set_expedition_controls_visible(visible: bool) -> void:
+func set_expedition_controls_visible(controls_visible: bool) -> void:
 	_ensure_menu_panel_refs()
 	if expedition_hud != null:
-		expedition_hud.visible = visible
+		expedition_hud.visible = controls_visible
 
 
 func set_home_camera_controls(controls_visible: bool, can_move_left: bool, can_move_right: bool) -> void:
@@ -434,6 +431,57 @@ func push_log(message: String) -> void:
 	log_lines.push_front(message)
 	if log_lines.size() > 3:
 		log_lines.resize(3)
+
+
+func set_expedition_maps(map_summaries: Array[Dictionary], selected_map_id: String) -> void:
+	expedition_map_summaries = map_summaries.duplicate(true)
+	selected_expedition_map_id = selected_map_id
+	_refresh_expedition_map_options()
+	if fight_panel != null and fight_panel.visible:
+		_refresh_action_detail(GameDefs.TaskType.FIGHT)
+
+
+func _refresh_expedition_map_options() -> void:
+	if expedition_map_option == null:
+		return
+	expedition_map_option.clear()
+	var selected_index := -1
+	for summary in expedition_map_summaries:
+		var map_id := str(summary.get("id", ""))
+		var unlocked := bool(summary.get("unlocked", false))
+		var label := str(summary.get("name", map_id))
+		if not unlocked:
+			label += "（历练%d级）" % int(summary.get("unlock_level", 1))
+		var index := expedition_map_option.item_count
+		expedition_map_option.add_item(label)
+		expedition_map_option.set_item_metadata(index, map_id)
+		expedition_map_option.set_item_disabled(index, not unlocked)
+		if map_id == selected_expedition_map_id:
+			selected_index = index
+	if selected_index >= 0:
+		expedition_map_option.select(selected_index)
+	elif expedition_map_option.item_count > 0:
+		expedition_map_option.select(0)
+
+
+func _on_expedition_map_option_selected(index: int) -> void:
+	if expedition_map_option == null or index < 0 or index >= expedition_map_option.item_count:
+		return
+	if expedition_map_option.is_item_disabled(index):
+		return
+	var map_id := str(expedition_map_option.get_item_metadata(index))
+	if map_id.is_empty() or map_id == selected_expedition_map_id:
+		return
+	selected_expedition_map_id = map_id
+	expedition_map_selected.emit(map_id)
+	_refresh_action_detail(GameDefs.TaskType.FIGHT)
+
+
+func _selected_expedition_map_summary() -> Dictionary:
+	for summary in expedition_map_summaries:
+		if str(summary.get("id", "")) == selected_expedition_map_id:
+			return summary
+	return {}
 
 
 func _first_party_member_id() -> String:
@@ -665,6 +713,9 @@ func _refresh_member_info_skills(game_state) -> void:
 		return
 	for skill in member_skills:
 		var skill_id: String = str(skill.get("id", ""))
+		if bool(skill.get("disabled", false)):
+			member_info_skill_grid.add_child(_create_member_info_slot("技能", skill_id, "Mod 技能缺失，当前已禁用"))
+			continue
 		var element_id: String = str(skill.get("element", ""))
 		var target_mode_text: String = DataTables.skill_target_mode_name(DataTables.skill_target_mode(skill))
 		var effect_names := PackedStringArray()
@@ -836,7 +887,6 @@ func show_home_action_panel(task_type: int) -> void:
 	var menu: Control = get_node_or_null("Root/MenuPanel") as Control
 	if menu != null:
 		menu.visible = false
-	_apply_saved_panel_position(panel)
 	panel.visible = true
 	_refresh_action_detail(task_type)
 	if task_type == GameDefs.TaskType.FARM:
@@ -847,6 +897,9 @@ func show_home_action_panel(task_type: int) -> void:
 		_refresh_alchemy_panel()
 	if task_type == GameDefs.TaskType.RECRUIT:
 		_refresh_recruit_panel()
+	panel.reset_size()
+	_apply_saved_panel_position(panel)
+	call_deferred("_apply_saved_panel_position_if_visible", panel)
 
 
 func _toggle_menu() -> void:
@@ -924,8 +977,6 @@ func _ensure_menu_panel_refs() -> void:
 		category_row = $Root/InventoryPanel/InventoryLayout/CategoryRow
 	if farm_detail == null:
 		farm_detail = $Root/FarmPanel/PanelLayout/ActionDetail
-	if farm_worker_option == null:
-		farm_worker_option = $Root/FarmPanel/PanelLayout/WorkerOption
 	if farm_progress_label == null:
 		farm_progress_label = $Root/FarmPanel/PanelLayout/ProgressLabel
 	if farm_seed_slot_button == null:
@@ -956,10 +1007,6 @@ func _ensure_menu_panel_refs() -> void:
 		farm_hint_label = $Root/FarmPanel/PanelLayout/HintLabel
 	if forge_detail == null:
 		forge_detail = $Root/ForgePanel/PanelLayout/ActionDetail
-	if forge_worker_option == null:
-		forge_worker_option = $Root/ForgePanel/PanelLayout/WorkerOption
-	if forge_progress_label == null:
-		forge_progress_label = $Root/ForgePanel/PanelLayout/ProgressLabel
 	if forge_action_button == null:
 		forge_action_button = $Root/ForgePanel/PanelLayout/ExecuteButton
 	if forge_craft_mode_button == null:
@@ -1000,6 +1047,8 @@ func _ensure_menu_panel_refs() -> void:
 		release_confirmation_dialog = $Root/ReleaseConfirmationDialog
 	if fight_detail == null:
 		fight_detail = $Root/FightPanel/PanelLayout/ActionDetail
+	if expedition_map_option == null:
+		expedition_map_option = $Root/FightPanel/PanelLayout/MapRow/MapOption
 	if expedition_hud == null:
 		expedition_hud = $Root/ExpeditionHud
 	if return_home_button == null:
@@ -1036,8 +1085,6 @@ func _ensure_menu_panel_refs() -> void:
 		debug_set_stat_button = $Root/DebugPanel/PanelLayout/StatRow/SetStatButton
 	if alchemy_recipe_slot_button == null:
 		alchemy_recipe_slot_button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
-	if alchemy_worker_option == null:
-		alchemy_worker_option = $Root/AlchemyPanel/PanelLayout/WorkerOption
 	if alchemy_recipe_picker_panel == null:
 		alchemy_recipe_picker_panel = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel
 	if alchemy_recipe_list == null:
@@ -1050,8 +1097,6 @@ func _ensure_menu_panel_refs() -> void:
 		alchemy_craft_count_spinbox = $Root/AlchemyPanel/PanelLayout/CraftCountSpinBox
 	if alchemy_craft_button == null:
 		alchemy_craft_button = $Root/AlchemyPanel/PanelLayout/CraftButton
-	if alchemy_progress_label == null:
-		alchemy_progress_label = $Root/AlchemyPanel/PanelLayout/ProgressLabel
 	if alchemy_hint_label == null:
 		alchemy_hint_label = $Root/AlchemyPanel/PanelLayout/HintLabel
 	if farm_upgrade_button == null:
@@ -1152,7 +1197,6 @@ func _connect_farm_controls() -> void:
 		return
 	if farm_seed_slot_button == null or farm_seed_list == null or farm_slot_list == null or farm_plant_button == null:
 		return
-	farm_worker_option.item_selected.connect(_on_farm_worker_selected)
 	farm_seed_slot_button.pressed.connect(_on_farm_seed_slot_pressed)
 	farm_seed_list.item_selected.connect(_on_farm_seed_selected)
 	farm_slot_list.item_selected.connect(_on_farm_slot_selected)
@@ -1170,7 +1214,6 @@ func _connect_forge_controls() -> void:
 		return
 	if forge_craft_mode_button == null or forge_enhance_mode_button == null or forge_refine_mode_button == null or forge_action_button == null:
 		return
-	forge_worker_option.item_selected.connect(_on_forge_worker_selected)
 	forge_craft_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_CRAFT))
 	forge_enhance_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_ENHANCE))
 	forge_refine_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_REFINE))
@@ -1185,7 +1228,6 @@ func _connect_alchemy_controls() -> void:
 		return
 	if alchemy_recipe_slot_button == null or alchemy_recipe_list == null or alchemy_craft_button == null:
 		return
-	alchemy_worker_option.item_selected.connect(_on_alchemy_worker_selected)
 	alchemy_recipe_slot_button.pressed.connect(_on_alchemy_recipe_slot_pressed)
 	alchemy_recipe_list.item_selected.connect(_on_alchemy_recipe_selected)
 	alchemy_craft_button.pressed.connect(_on_alchemy_craft_pressed)
@@ -1265,7 +1307,11 @@ func _apply_saved_panel_position(panel: Control) -> void:
 		return
 	var target: Vector2 = Vector2(float(position_data.get("x", panel.position.x)), float(position_data.get("y", panel.position.y)))
 	panel.position = _clamp_panel_position(panel, target)
-	saved_panel_positions[panel.name] = _position_to_dictionary(panel.position)
+
+
+func _apply_saved_panel_position_if_visible(panel: Control) -> void:
+	if panel != null and is_instance_valid(panel) and panel.visible:
+		_apply_saved_panel_position(panel)
 
 
 func _begin_panel_drag(mouse_position: Vector2) -> void:
@@ -1416,9 +1462,11 @@ func _refresh_after_debug_change() -> void:
 
 func _clamp_panel_position(panel: Control, target: Vector2) -> Vector2:
 	var viewport_size: Vector2 = _viewport_size()
-	var panel_size: Vector2 = panel.size
-	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
-		panel_size = panel.get_combined_minimum_size()
+	var minimum_size: Vector2 = panel.get_combined_minimum_size()
+	var panel_size := Vector2(
+		maxf(panel.size.x, minimum_size.x),
+		maxf(panel.size.y, minimum_size.y)
+	)
 	var max_x: float = max(DRAG_MARGIN, viewport_size.x - panel_size.x - DRAG_MARGIN)
 	var max_y: float = max(DRAG_MARGIN, viewport_size.y - panel_size.y - DRAG_MARGIN)
 	return Vector2(
@@ -1488,8 +1536,11 @@ func _refresh_action_detail(task_type: int) -> void:
 	elif task_type == GameDefs.TaskType.FIGHT:
 		var fight_button: Button = get_node_or_null("Root/FightPanel/PanelLayout/ExecuteButton") as Button
 		var has_member: bool = current_game_state.has_party_member()
+		var map_summary := _selected_expedition_map_summary()
+		var has_map := not map_summary.is_empty() and bool(map_summary.get("unlocked", false))
 		if has_member:
-			fight_detail.text = "账号历练 %d级  %d/%d\n随机遇怪并自动战斗" % [
+			fight_detail.text = "%s\n账号历练 %d级  %d/%d" % [
+				str(map_summary.get("description", "请选择历练地图")),
 				current_game_state.expedition_level(),
 				int(current_game_state.account_progression.get("expedition_exp", 0)),
 				int(current_game_state.account_progression.get("next_expedition_exp", 1)),
@@ -1497,7 +1548,7 @@ func _refresh_action_detail(task_type: int) -> void:
 		else:
 			fight_detail.text = "需要先招募角色"
 		if fight_button != null:
-			fight_button.disabled = not has_member
+			fight_button.disabled = not has_member or not has_map
 
 
 func _progress_label_text(progress_id: String) -> String:
@@ -1522,11 +1573,11 @@ func _action_button_disabled(progress_id: String) -> bool:
 	if bool(progress.get("claimable", false)):
 		return false
 	if progress_id == "farm":
-		return current_game_state == null or not current_game_state.has_party_member() or current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_CROP) <= 0
+		return current_game_state == null or current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_CROP) <= 0
 	if progress_id == "forge":
-		return current_game_state == null or not current_game_state.has_party_member() or current_game_state.inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL) <= 0
+		return current_game_state == null or current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE) < current_game_state.forge_material_cost()
 	if progress_id == "alchemy":
-		return current_game_state == null or not current_game_state.has_party_member()
+		return current_game_state == null or current_game_state.known_alchemy_recipes.is_empty()
 	return current_game_state == null
 
 
@@ -2130,7 +2181,7 @@ func _on_farm_plant_pressed() -> void:
 	_ensure_menu_panel_refs()
 	if current_game_state == null or selected_farm_slot_index < 0 or selected_farm_seed_id.is_empty():
 		return
-	if current_game_state.plant_farm_slot(selected_farm_slot_index, selected_farm_seed_id, selected_farm_worker_id):
+	if current_game_state.plant_farm_slot(selected_farm_slot_index, selected_farm_seed_id):
 		_refresh_farm_panel()
 		if inventory_panel.visible:
 			_refresh_inventory()
@@ -2160,7 +2211,6 @@ func _refresh_farm_panel() -> void:
 	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
-	selected_farm_worker_id = _refresh_worker_option(farm_worker_option, selected_farm_worker_id, "farm")
 	if selected_farm_slot_index >= current_game_state.farm_slots.size():
 		selected_farm_slot_index = -1
 	_refresh_building_upgrade_button(farm_upgrade_button, "farm")
@@ -2175,8 +2225,7 @@ func _refresh_farm_panel() -> void:
 func _refresh_farm_buttons() -> void:
 	var selected_slot: Dictionary = _selected_farm_slot()
 	var selected_status: String = str(selected_slot.get("status", "empty"))
-	var has_worker: bool = current_game_state.member_by_id(selected_farm_worker_id).is_empty() == false
-	var can_plant: bool = has_worker and selected_farm_slot_index >= 0 and selected_status == "empty" and not selected_farm_seed_id.is_empty() and current_game_state.inventory_item_count(selected_farm_seed_id) > 0
+	var can_plant: bool = selected_farm_slot_index >= 0 and selected_status == "empty" and not selected_farm_seed_id.is_empty() and current_game_state.inventory_item_count(selected_farm_seed_id) > 0
 	var can_claim: bool = selected_farm_slot_index >= 0 and selected_status == "ready"
 	farm_plant_button.disabled = not can_plant
 	farm_claim_button.disabled = not can_claim
@@ -2186,9 +2235,7 @@ func _refresh_farm_buttons() -> void:
 	farm_speed_item_slot_button.disabled = false
 	if can_use_speed:
 		farm_speed_item_slot_button.text = DataTables.resource_name(selected_farm_speed_item_id)
-	if not has_worker:
-		farm_hint_label.text = "需要先招募角色"
-	elif selected_farm_slot_index < 0:
+	if selected_farm_slot_index < 0:
 		farm_hint_label.text = "请选择农田槽位"
 	elif selected_status == "empty":
 		farm_hint_label.text = "选择种子后可种植到空槽"
@@ -2210,7 +2257,7 @@ func _refresh_farm_seed_list() -> void:
 			continue
 		var count: int = current_game_state.inventory_item_count(item_id)
 		var growth_seconds: float = DataTables.crop_growth_seconds(item_id) * DataTables.farm_growth_multiplier(current_game_state.building_level("farm"))
-		var label: String = "%s x%d  产量%d  %s" % [DataTables.resource_name(item_id), count, current_game_state.farm_harvest_amount_for(item_id, selected_farm_worker_id), _format_seconds(growth_seconds)]
+		var label: String = "%s x%d  产量%d  %s" % [DataTables.resource_name(item_id), count, current_game_state.farm_harvest_amount_for(item_id), _format_seconds(growth_seconds)]
 		var index: int = farm_seed_list.add_item(label)
 		farm_seed_list.set_item_metadata(index, item_id)
 
@@ -2245,9 +2292,8 @@ func _farm_slot_label(index: int, slot: Dictionary) -> String:
 		return "%d. 空地" % (index + 1)
 	var crop_id: String = str(slot.get("crop_id", ""))
 	var amount: int = int(slot.get("harvest_amount", 0))
-	var worker_name: String = str(slot.get("worker_name", ""))
 	if status == "ready":
-		return "%d. %s x%d  已成熟%s" % [index + 1, DataTables.resource_name(crop_id), amount, "" if worker_name.is_empty() else "  %s" % worker_name]
+		return "%d. %s x%d  已成熟" % [index + 1, DataTables.resource_name(crop_id), amount]
 	var elapsed: float = float(slot.get("elapsed_seconds", 0.0))
 	var growth: float = float(slot.get("growth_seconds", 1.0))
 	var percent: int = int(clamp(elapsed / max(1.0, growth) * 100.0, 0.0, 100.0))
@@ -2270,58 +2316,9 @@ func _empty_farm_slot_count() -> int:
 
 func _format_seconds(seconds: float) -> String:
 	var total: int = maxi(0, int(ceil(seconds)))
-	var minutes: int = total / 60
+	var minutes: int = int(float(total) / 60.0)
 	var rest: int = total % 60
 	return "%02d:%02d" % [minutes, rest]
-
-
-func _refresh_worker_option(option: OptionButton, selected_member_id: String, task_id: String) -> String:
-	if option == null or current_game_state == null:
-		return ""
-	option.clear()
-	var resolved_id: String = selected_member_id
-	var selected_index := 0
-	var members: Array = current_game_state.party_members()
-	if members.is_empty():
-		option.add_item("暂无角色")
-		option.set_item_metadata(0, "")
-		option.select(0)
-		return ""
-	for index in range(members.size()):
-		var member: Dictionary = members[index]
-		var member_id: String = str(member.get("id", ""))
-		var label: String = current_game_state.production_member_summary(member_id, task_id)
-		option.add_item(label)
-		option.set_item_metadata(index, member_id)
-		if member_id == selected_member_id:
-			selected_index = index
-			resolved_id = member_id
-	if current_game_state.member_by_id(resolved_id).is_empty():
-		resolved_id = str(option.get_item_metadata(0))
-		selected_index = 0
-	option.select(selected_index)
-	return resolved_id
-
-
-func _worker_id_from_option(option: OptionButton, index: int) -> String:
-	if option == null or index < 0 or index >= option.item_count:
-		return ""
-	return str(option.get_item_metadata(index))
-
-
-func _on_farm_worker_selected(index: int) -> void:
-	selected_farm_worker_id = _worker_id_from_option(farm_worker_option, index)
-	_refresh_farm_panel()
-
-
-func _on_forge_worker_selected(index: int) -> void:
-	selected_forge_worker_id = _worker_id_from_option(forge_worker_option, index)
-	_refresh_forge_panel()
-
-
-func _on_alchemy_worker_selected(index: int) -> void:
-	selected_alchemy_worker_id = _worker_id_from_option(alchemy_worker_option, index)
-	_refresh_alchemy_panel()
 
 
 func _set_forge_mode(mode: String) -> void:
@@ -2351,7 +2348,7 @@ func _on_forge_action_pressed() -> void:
 	if current_game_state == null:
 		return
 	if selected_forge_mode == FORGE_MODE_CRAFT:
-		if current_game_state.craft_equipment_for_member(selected_forge_worker_id):
+		if current_game_state.craft_equipment():
 			_refresh_forge_panel()
 			if inventory_panel.visible:
 				_refresh_inventory()
@@ -2380,14 +2377,11 @@ func _refresh_forge_panel() -> void:
 		return
 	if not [FORGE_MODE_CRAFT, FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode):
 		selected_forge_mode = FORGE_MODE_CRAFT
-	selected_forge_worker_id = _refresh_worker_option(forge_worker_option, selected_forge_worker_id, "forge")
-	forge_worker_option.visible = selected_forge_mode == FORGE_MODE_CRAFT
 	_refresh_building_upgrade_button(forge_upgrade_button, "forge")
 
 	forge_craft_mode_button.disabled = selected_forge_mode == FORGE_MODE_CRAFT
 	forge_enhance_mode_button.disabled = selected_forge_mode == FORGE_MODE_ENHANCE
 	forge_refine_mode_button.disabled = selected_forge_mode == FORGE_MODE_REFINE
-	forge_progress_label.text = _progress_label_text("forge")
 	_clear_forge_material_grid()
 
 	if selected_forge_mode == FORGE_MODE_CRAFT:
@@ -2399,42 +2393,21 @@ func _refresh_forge_panel() -> void:
 func _refresh_forge_craft_panel() -> void:
 	forge_equipment_slot_button.visible = false
 	forge_equipment_picker_panel.visible = false
-	forge_action_button.text = "开始炼器"
-	var job: Dictionary = current_game_state.production_job("forge")
-	var job_status: String = str(job.get("status", "idle"))
-	if job_status == "running":
-		forge_action_button.text = "进行中"
-		forge_action_button.disabled = true
-		forge_detail.text = "%s\n%s" % [_building_level_summary("forge"), _progress_label_text("forge")]
-		forge_hint_label.text = "炼器进行中，完成后可领取"
-		return
-	if job_status == "claimable":
-		forge_action_button.text = "领取"
-		forge_action_button.disabled = false
-		forge_detail.text = "%s\n%s" % [_building_level_summary("forge"), _progress_label_text("forge")]
-		forge_hint_label.text = "炼器已完成，点击领取装备"
-		return
-	if current_game_state.member_by_id(selected_forge_worker_id).is_empty():
-		forge_action_button.disabled = true
-		forge_detail.text = "%s\n需要先招募角色" % _building_level_summary("forge")
-		forge_material_grid.add_child(_create_forge_material_slot("material", "矿石", current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE), 0))
-		forge_hint_label.text = "需要先招募角色"
-		return
-	var material_cost: int = current_game_state.forge_material_cost_for(selected_forge_worker_id)
-	forge_action_button.disabled = not current_game_state.can_craft_equipment_for_member(selected_forge_worker_id)
-	forge_detail.text = "%s\n可用矿石：%d / %d  耗时：%s" % [
+	forge_action_button.text = "立即炼器"
+	var material_cost: int = current_game_state.forge_material_cost()
+	forge_action_button.disabled = not current_game_state.can_craft_equipment()
+	forge_detail.text = "%s\n装备等级：%d  永久品质：%d  升阶率：%d%%" % [
 		_building_level_summary("forge"),
-		current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE),
-		material_cost,
-		_format_seconds(DataTables.forge_duration_seconds(current_game_state.building_level("forge"))),
+		current_game_state.expedition_level(),
+		current_game_state.building_output_quality("forge"),
+		int(round(current_game_state.forge_rarity_upgrade_chance() * 100.0)),
 	]
 	forge_material_grid.add_child(_create_forge_material_slot("material", "矿石", current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE), material_cost))
-	forge_material_grid.add_child(_create_forge_material_slot("bonus", "炼器加成", current_game_state.craft_bonus_for(selected_forge_worker_id), 0))
 	if forge_action_button.disabled:
 		forge_hint_label.text = "矿石不足，炼器需要 %d 个矿石" % material_cost
 	else:
 		var output_count: int = 2 if current_game_state.building_level("forge") >= 6 else 1
-		forge_hint_label.text = "消耗 %d 个矿石，炼制 %d 件随机装备。%s" % [material_cost, output_count, current_game_state.production_member_summary(selected_forge_worker_id, "forge")]
+		forge_hint_label.text = "消耗 %d 个矿石，立即获得 %d 件随机装备" % [material_cost, output_count]
 
 
 func _refresh_forge_equipment_action_panel() -> void:
@@ -2515,7 +2488,7 @@ func _clear_forge_material_grid() -> void:
 		child.queue_free()
 
 
-func _create_forge_material_slot(item_id: String, item_name: String, current: int, required: int) -> PanelContainer:
+func _create_forge_material_slot(_item_id: String, item_name: String, current: int, required: int) -> PanelContainer:
 	var slot: PanelContainer = PanelContainer.new()
 	slot.custom_minimum_size = Vector2(144, 60)
 	slot.add_theme_stylebox_override("panel", _create_panel_style(CARD_FILL_COLOR, CARD_BORDER_COLOR))
@@ -2569,18 +2542,10 @@ func _on_alchemy_craft_pressed() -> void:
 	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
-	var job: Dictionary = current_game_state.production_job("alchemy")
-	if str(job.get("status", "idle")) == "claimable":
-		if current_game_state.claim_alchemy_job():
-			_refresh_alchemy_recipe_list()
-			_refresh_alchemy_panel()
-			if inventory_panel.visible:
-				_refresh_inventory()
-		return
 	if selected_alchemy_recipe_id.is_empty():
 		return
 	var amount: int = int(alchemy_craft_count_spinbox.value)
-	if current_game_state.start_alchemy_job(selected_alchemy_recipe_id, amount, selected_alchemy_worker_id):
+	if current_game_state.craft_alchemy_recipe(selected_alchemy_recipe_id, amount):
 		_refresh_alchemy_recipe_list()
 		_refresh_alchemy_panel()
 		if inventory_panel.visible:
@@ -2591,36 +2556,8 @@ func _refresh_alchemy_panel() -> void:
 	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
-	selected_alchemy_worker_id = _refresh_worker_option(alchemy_worker_option, selected_alchemy_worker_id, "alchemy")
 	_refresh_building_upgrade_button(alchemy_upgrade_button, "alchemy")
-	var job: Dictionary = current_game_state.production_job("alchemy")
-	var job_status: String = str(job.get("status", "idle"))
-	alchemy_progress_label.text = _progress_label_text("alchemy")
-	if job_status == "running":
-		alchemy_craft_button.text = "进行中"
-		alchemy_craft_button.disabled = true
-		alchemy_hint_label.text = "炼丹进行中，完成后可领取"
-		alchemy_max_count_label.text = _building_level_summary("alchemy")
-		_clear_alchemy_material_grid()
-		return
-	if job_status == "claimable":
-		alchemy_craft_button.text = "领取"
-		alchemy_craft_button.disabled = false
-		alchemy_hint_label.text = "炼丹已完成，点击领取丹药"
-		alchemy_max_count_label.text = _building_level_summary("alchemy")
-		_clear_alchemy_material_grid()
-		return
-	alchemy_craft_button.text = "开始炼丹"
-	if current_game_state.member_by_id(selected_alchemy_worker_id).is_empty():
-		alchemy_recipe_slot_button.text = "选择图纸"
-		alchemy_max_count_label.text = "最多可做：0"
-		alchemy_craft_count_spinbox.min_value = 0.0
-		alchemy_craft_count_spinbox.max_value = 0.0
-		alchemy_craft_count_spinbox.value = 0.0
-		alchemy_craft_button.disabled = true
-		alchemy_hint_label.text = "需要先招募角色"
-		_clear_alchemy_material_grid()
-		return
+	alchemy_craft_button.text = "立即炼丹"
 
 	if selected_alchemy_recipe_id.is_empty() or DataTables.alchemy_recipe_def(selected_alchemy_recipe_id).is_empty():
 		alchemy_recipe_slot_button.text = "选择图纸"
@@ -2634,7 +2571,7 @@ func _refresh_alchemy_panel() -> void:
 		return
 
 	alchemy_recipe_slot_button.text = DataTables.resource_name(selected_alchemy_recipe_id)
-	var max_count: int = current_game_state.alchemy_max_craft_count(selected_alchemy_recipe_id, selected_alchemy_worker_id)
+	var max_count: int = current_game_state.alchemy_max_craft_count(selected_alchemy_recipe_id)
 	alchemy_max_count_label.text = "%s  最多可做：%d" % [_building_level_summary("alchemy"), max_count]
 	var previous_value := int(alchemy_craft_count_spinbox.value)
 	alchemy_craft_count_spinbox.min_value = 0.0 if max_count <= 0 else 1.0
@@ -2650,11 +2587,10 @@ func _refresh_alchemy_panel() -> void:
 	elif max_count <= 0:
 		alchemy_hint_label.text = "材料不足"
 	else:
-		var amount: int = maxi(1, int(alchemy_craft_count_spinbox.value))
-		alchemy_hint_label.text = "%s\n%s  耗时：%s" % [
-			_building_level_summary("alchemy"),
-			current_game_state.production_member_summary(selected_alchemy_worker_id, "alchemy"),
-			_format_seconds(DataTables.alchemy_duration_seconds(current_game_state.building_level("alchemy"), amount)),
+		var output_multiplier := 2 if current_game_state.building_level("alchemy") >= 6 else 1
+		alchemy_hint_label.text = "立即完成；每份基础产出 x%d，额外出丹率 %d%%" % [
+			output_multiplier,
+			int(round(0.02 * float(current_game_state.building_level("alchemy") - 1) * 100.0)),
 		]
 
 
@@ -2666,7 +2602,7 @@ func _refresh_alchemy_material_cost_grid() -> void:
 		return
 	var craft_amount: int = maxi(1, int(alchemy_craft_count_spinbox.value))
 	for material in DataTables.alchemy_recipe_materials(selected_alchemy_recipe_id):
-		alchemy_material_grid.add_child(_create_alchemy_material_slot(material, craft_amount, selected_alchemy_worker_id))
+		alchemy_material_grid.add_child(_create_alchemy_material_slot(material, craft_amount))
 
 
 func _refresh_alchemy_recipe_list() -> void:
@@ -2688,9 +2624,9 @@ func _clear_alchemy_material_grid() -> void:
 		child.queue_free()
 
 
-func _create_alchemy_material_slot(material: Dictionary, craft_amount: int, worker_id: String) -> PanelContainer:
+func _create_alchemy_material_slot(material: Dictionary, craft_amount: int) -> PanelContainer:
 	var item_id: String = material.get("item_id", "")
-	var required: int = current_game_state.alchemy_material_cost_for(item_id, int(material.get("amount", 0)), craft_amount, worker_id)
+	var required: int = current_game_state.alchemy_material_cost(item_id, int(material.get("amount", 0)), craft_amount)
 	var current: int = current_game_state.inventory_item_count(item_id)
 	var slot: PanelContainer = PanelContainer.new()
 	slot.custom_minimum_size = Vector2(144, 60)

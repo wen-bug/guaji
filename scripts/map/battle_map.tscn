@@ -1,8 +1,27 @@
-[gd_scene load_steps=3 format=3 uid="uid://bdl5feyi8qwb7"]
+[gd_scene load_steps=5 format=3 uid="uid://bdl5feyi8qwb7"]
 
 [ext_resource type="Script" uid="uid://cijx4vhhgahhx" path="res://scripts/map/battle_map.gd" id="1_battle_map"]
 [ext_resource type="Resource" path="res://resources/maps/default_expedition_encounters.tres" id="2_encounters"]
+[ext_resource type="Resource" path="res://resources/maps/verdant_forest.tres" id="3_forest"]
+[ext_resource type="Resource" path="res://resources/maps/training_ground.tres" id="4_training"]
 
 [node name="BattleMap" type="Node2D" unique_id=712539348]
 script = ExtResource("1_battle_map")
+map_definitions = Array[Resource]([ExtResource("3_forest"), ExtResource("4_training")])
+default_map_id = "verdant_forest"
 encounter_profile = ExtResource("2_encounters")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 960.0
+offset_bottom = 480.0
+mouse_filter = 2
+color = Color(0.055, 0.13, 0.085, 1)
+z_index = -100
+
+[node name="Ground" type="ColorRect" parent="."]
+offset_top = 326.0
+offset_right = 960.0
+offset_bottom = 480.0
+mouse_filter = 2
+color = Color(0.16, 0.29, 0.14, 1)
+z_index = -99

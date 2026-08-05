@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://bfpfky4k1v3xc"]
+
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Texture2D" uid="uid://c4qvgevu2es0q" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Impacts/symmetrical_impact_002/symmetrical_impact_002_small_blue/frame0000.png" id="2_icon"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="3_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/wolf_howl.tscn" id="4_status"]
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("3_effect")
+base_amount = 3
+attribute_multiplier = 1.1
+
+[sub_resource type="Resource" id="Resource_howl"]
+script = ExtResource("3_effect")
+effect_id = "howl"
+kind = "status"
+target = "caster"
+base_amount = 1
+attribute_multiplier = 0.5
+requires_hit = true
+status_id = "wolf_howl"
+status_kind = "buff_stat"
+stat = "attack"
+duration_turns = 2
+status_visual_scene = ExtResource("4_status")
+
+[resource]
+script = ExtResource("1_skill")
+id = "wolf_howl"
+display_name = "狼嚎"
+icon_texture = ExtResource("2_icon")
+type = "damage"
+target_scope = "all_enemies"
+target_mode = "aoe"
+is_aoe = true
+effect_tags = Array[String](["damage", "buff"])
+has_buff = true
+element = "wood"
+cooldown = 4.0
+priority = 65
+triggers = Array[String](["hp_below_50"])
+enemy_only = true
+effects = Array[Resource]([SubResource("Resource_damage"), SubResource("Resource_howl")])
+description = "以狼嚎震慑全体敌人，命中后提高自身攻击。"

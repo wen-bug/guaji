@@ -1,7 +1,22 @@
-[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://cm3h5fnc134pm"]
 
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_attack_up_001/spell_attack_up_001_small_red/frame0006.png" id="2_icon"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://svsmhrs3y0xn" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_attack_up_001/spell_attack_up_001_small_red/frame0006.png" id="2_icon"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="3_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/attack_up.tscn" id="4_status"]
+
+[sub_resource type="Resource" id="Resource_attack_up"]
+script = ExtResource("3_effect")
+effect_id = "attack_up"
+kind = "status"
+target = "caster"
+base_amount = 2
+attribute_multiplier = 0.5
+status_id = "attack_up"
+status_kind = "buff_stat"
+stat = "attack"
+duration_turns = 3
+status_visual_scene = ExtResource("4_status")
 
 [resource]
 script = ExtResource("1")
@@ -12,11 +27,10 @@ icon_name = "attack_up"
 icon_path = "res://assets/skills/attack_up.png"
 type = "buff"
 target_scope = "self"
-target_mode = "single"
 effect_tags = Array[String](["buff"])
 has_buff = true
 element = "fire"
 mp_cost = 5
-cooldown = 6
-release_distance = 0.0
+priority = 70
+effects = Array[Resource]([SubResource("Resource_attack_up")])
 description = "引火淬锋，使自身攻击提高 2 点，持续三个自身回合。"

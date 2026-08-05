@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MapEncounterProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/map/encounters/map_encounter_profile.gd" id="1_profile"]
+[ext_resource type="Script" path="res://scripts/map/encounters/map_encounter_variant.gd" id="2_variant"]
+
+[sub_resource type="Resource" id="Resource_training_variant"]
+script = ExtResource("2_variant")
+id = "training_drill"
+weight = 1.0
+fixed_enemy_ids = Array[String](["training_dummy"])
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = "training_ground"
+fallback_enemy_id = "training_dummy"
+enemies_per_party_member = 1
+min_enemy_count = 1
+max_enemy_count = 1
+variants = Array[Resource]([SubResource("Resource_training_variant")])

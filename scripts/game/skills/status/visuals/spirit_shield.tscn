@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/shield.tscn" id="1_base"]
+
+[node name="SpiritShieldStatusVisual" instance=ExtResource("1_base")]
+tint = Color(0.38, 0.78, 1, 1)

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionMapDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/map/expedition_map_definition.gd" id="1_definition"]
+[ext_resource type="Resource" path="res://resources/maps/training_ground_encounters.tres" id="2_encounters"]
+
+[resource]
+script = ExtResource("1_definition")
+map_id = "training_ground"
+display_name = "试炼场"
+description = "只会遭遇木桩，不产出掉落，用于检验队伍配置。"
+unlock_expedition_level = 1
+encounter_profile = ExtResource("2_encounters")
+background_color = Color(0.13, 0.105, 0.075, 1)
+ground_color = Color(0.31, 0.23, 0.13, 1)

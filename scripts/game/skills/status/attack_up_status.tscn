@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://d1j1d1yf04j82"]
+
+[ext_resource type="Script" uid="uid://dibj4t1id1aek" path="res://scripts/game/skills/status/status_visual_base.gd" id="1"]
+
+[node name="AttackUpStatus" type="Node2D" unique_id=1132222144]
+script = ExtResource("1")
+tint = Color(1, 0.38, 0.18, 1)

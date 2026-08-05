@@ -7,6 +7,7 @@ signal death_finished
 
 const CombatHitboxScript = preload("res://scripts/actors/visuals/combat_hitbox.gd")
 const CombatHurtboxScript = preload("res://scripts/actors/visuals/combat_hurtbox.gd")
+const CombatStatusPresenterScript = preload("res://scripts/game/combat/combat_status_presenter.gd")
 
 const WALK_ANIMATIONS: Array[StringName] = [&"walk", &"run", &"idle"]
 const RUN_ANIMATIONS: Array[StringName] = [&"run", &"walk", &"idle"]
@@ -36,6 +37,7 @@ var hp_fill: ColorRect
 var _hurt_tween: Tween
 var _death_tween: Tween
 var _death_finished_emitted := false
+var status_presenter = null
 
 
 func _ready() -> void:
@@ -155,6 +157,20 @@ func hit_position() -> Vector2:
 func effect_position() -> Vector2:
 	_bind_nodes()
 	return effect_socket.global_position if effect_socket != null else hit_position()
+
+
+func bind_combat_status(status: CombatActorStatus) -> void:
+	_bind_nodes()
+	_ensure_runtime_contract()
+	if status_presenter == null:
+		status_presenter = CombatStatusPresenterScript.new()
+		status_presenter.name = "CombatStatusPresenter"
+		add_child(status_presenter)
+	status_presenter.setup(status, effect_socket)
+
+
+func present_combat_event(event: Dictionary) -> float:
+	return status_presenter.present_event(event) if status_presenter != null else 0.0
 
 
 func contract_error() -> String:

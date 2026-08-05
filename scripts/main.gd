@@ -44,6 +44,7 @@ func _ready() -> void:
 
 	_bind_scene_nodes()
 	_apply_scene_viewport_size()
+	_sync_expedition_map_selection()
 	_setup_home_camera()
 	_sync_party_actors(true)
 
@@ -65,6 +66,8 @@ func _on_home_node_selected(node_name: String) -> void:
 		or task_type == GameDefs.TaskType.FORGE \
 		or task_type == GameDefs.TaskType.ALCHEMY \
 		or task_type == GameDefs.TaskType.FIGHT:
+		if task_type == GameDefs.TaskType.FIGHT:
+			_sync_expedition_map_selection()
 		hud.show_home_action_panel(task_type)
 		hud.refresh(game_state)
 
@@ -77,24 +80,20 @@ func _on_home_action_requested(task_type: int) -> void:
 	elif task_type == GameDefs.TaskType.FARM:
 		hud.show_home_action_panel(task_type)
 	elif task_type == GameDefs.TaskType.FORGE:
-		if not game_state.has_party_member():
-			_push_log("需要先招募角色")
-			return
-		var forge_member_id: String = str(game_state.party_members()[0].get("id", ""))
-		game_state.craft_equipment_for_member(forge_member_id)
+		game_state.craft_equipment()
 	elif task_type == GameDefs.TaskType.ALCHEMY:
-		if not game_state.has_party_member():
-			_push_log("需要先招募角色")
-			return
 		var pill_id: String = game_state.random_known_alchemy_recipe()
 		if pill_id.is_empty():
 			hud.push_log("没有已学丹方")
 			return
-		var alchemy_member_id: String = str(game_state.party_members()[0].get("id", ""))
-		game_state.craft_alchemy_recipe(pill_id, 1, alchemy_member_id)
+		game_state.craft_alchemy_recipe(pill_id, 1)
 	elif task_type == GameDefs.TaskType.FIGHT:
 		if not game_state.has_party_member():
 			_push_log("需要先招募角色")
+			return
+		if battle_map == null or not battle_map.select_map(game_state.selected_expedition_map_id, game_state.expedition_level()):
+			_push_log("请选择已解锁的历练地图")
+			_sync_expedition_map_selection()
 			return
 		if hud != null:
 			hud.hide_home_ui()
@@ -105,7 +104,6 @@ func _process(delta: float) -> void:
 	_bind_scene_nodes()
 	_update_home_camera(delta)
 	game_state.update_buffs(delta)
-	game_state.update_home_production(delta)
 	game_state.update_farm(delta)
 	if combat.active:
 		combat.tick(delta, game_state)
@@ -131,17 +129,19 @@ func _enter_expedition() -> void:
 	if not game_state.has_party_member():
 		_push_log("需要先招募角色")
 		return
+	if battle_map == null or not battle_map.select_map(game_state.selected_expedition_map_id, game_state.expedition_level()):
+		_push_log("所选地图尚未解锁")
+		return
 	expedition_active = true
 	_set_home_camera_active(false)
 	_sync_party_actors()
 	if home_map != null:
 		home_map.visible = false
-	if battle_map != null:
-		battle_map.enter_expedition()
+	battle_map.enter_expedition()
 	_set_party_expedition_run()
 	if hud != null:
 		hud.set_expedition_controls_visible(true)
-	_push_log("进入历练地图，开始寻找怪物")
+	_push_log("进入%s，开始寻找怪物" % battle_map.current_map_name())
 
 
 func _start_enter_expedition_transition() -> void:
@@ -449,6 +449,33 @@ func _push_log(message: String) -> void:
 		hud.push_log(message)
 
 
+func _sync_expedition_map_selection() -> void:
+	if battle_map == null or game_state == null:
+		return
+	var level: int = game_state.expedition_level()
+	var selected_id: String = str(game_state.selected_expedition_map_id)
+	if not battle_map.select_map(selected_id, level):
+		for summary in battle_map.map_summaries(level):
+			if bool(summary.get("unlocked", false)):
+				selected_id = str(summary.get("id", ""))
+				battle_map.select_map(selected_id, level)
+				game_state.set_selected_expedition_map_id(selected_id)
+				break
+	if hud != null:
+		hud.set_expedition_maps(battle_map.map_summaries(level), selected_id)
+
+
+func _on_expedition_map_selected(map_id: String) -> void:
+	if expedition_active or scene_transition_active or battle_map == null:
+		return
+	if not battle_map.select_map(map_id, game_state.expedition_level()):
+		_sync_expedition_map_selection()
+		return
+	game_state.set_selected_expedition_map_id(map_id)
+	_sync_expedition_map_selection()
+	_push_log("已选择历练地图：%s" % battle_map.current_map_name())
+
+
 func _connect_scene_signals() -> void:
 	if home_map != null:
 		var home_callback := Callable(self, "_on_home_node_selected")
@@ -462,6 +489,9 @@ func _connect_scene_signals() -> void:
 		var action_callback := Callable(self, "_on_home_action_requested")
 		if not hud.home_action_requested.is_connected(action_callback):
 			hud.home_action_requested.connect(action_callback)
+		var map_callback := Callable(self, "_on_expedition_map_selected")
+		if not hud.expedition_map_selected.is_connected(map_callback):
+			hud.expedition_map_selected.connect(map_callback)
 		var pan_started_callback := Callable(self, "_on_home_camera_pan_started")
 		if not hud.home_camera_pan_started.is_connected(pan_started_callback):
 			hud.home_camera_pan_started.connect(pan_started_callback)

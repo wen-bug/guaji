@@ -5,11 +5,18 @@ const MAX_SUPPORTED_ENEMIES := 8
 const MapEncounterVariantScript = preload("res://scripts/map/encounters/map_encounter_variant.gd")
 const MapEnemyClassPoolScript = preload("res://scripts/map/encounters/map_enemy_class_pool.gd")
 
+@export_group("地图遭遇")
+## 地图遭遇配置的稳定 ID，用于日志、校验和地图绑定。
 @export var profile_id := "default"
+## 所有随机方案无效时使用的兜底敌人 ID。
 @export var fallback_enemy_id := ""
+## 每名出战成员对应生成的敌人数，最终仍受最小和最大数量限制。
 @export_range(1, 8, 1) var enemies_per_party_member := 2
+## 一次遭遇至少生成的敌人数。
 @export_range(1, 8, 1) var min_enemy_count := 1
+## 一次遭遇最多生成的敌人数，当前上限为 8。
 @export_range(1, 8, 1) var max_enemy_count := 8
+## 按权重抽取的 MapEncounterVariant 资源列表。
 @export var variants: Array[Resource] = []
 
 

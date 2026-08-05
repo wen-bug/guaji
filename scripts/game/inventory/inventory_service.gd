@@ -117,7 +117,7 @@ func use_inventory_item_for_member(instance_id: String, member_id: String) -> bo
 	if item.is_empty():
 		return false
 
-	if DataTables.is_farm_speed_item(str(item.get("item_id", ""))):
+	if item.get("payload", {}).has("permanent_building_quality") or DataTables.is_farm_speed_item(str(item.get("item_id", ""))):
 		return game_state._use_home_item(item)
 
 	match item.get("type", ""):

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/buff.tscn" id="1_base"]
+
+[node name="AttackUpStatusVisual" instance=ExtResource("1_base")]
+tint = Color(1, 0.38, 0.18, 1)

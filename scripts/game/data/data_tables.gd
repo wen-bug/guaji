@@ -127,9 +127,6 @@ const BASIC_RECRUIT_TRAIT_IDS := [
 	"steady_guard",
 	"full_vigor",
 	"good_root",
-	"field_sense",
-	"craft_touch",
-	"pill_sense",
 ]
 
 const INNATE_TRAIT_RARITY_NAMES := {
@@ -242,20 +239,20 @@ const ITEM_DEFS := {
 }
 
 const SKILL_DEFS := {
-	"heal": {"id": "heal", "name": "回春术", "type": "heal", "target_scope": SKILL_TARGET_SELF, "element": "wood", "mp_cost": 6, "cooldown": 5, "damage_multiplier": 0.0, "heal_amount": 7, "heal_multiplier": 1.0, "heal_attribute_multiplier": 1.0, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
-	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "metal", "mp_cost": 12, "cooldown": 5, "base_damage": 13, "damage_multiplier": 1.75, "damage_attribute_multiplier": 1.75, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/thunder_skill.tscn"},
-	"poison": {"id": "poison", "name": "蚀骨毒雾", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "mp_cost": 8, "cooldown": 4, "base_damage": 7, "damage_multiplier": 0.9, "damage_attribute_multiplier": 0.9, "release_distance": 120.0, "priority": 55, "trigger": ["always"], "combat_buffs": [], "effects": [{"kind": "dot", "trigger": "on_hit", "target": "target", "element": "wood", "amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3}], "scene_path": "res://scripts/game/skills/damage/poison_skill.tscn"},
-	"attack_up": {"id": "attack_up", "name": "燃锋诀", "type": "buff", "target_scope": SKILL_TARGET_SELF, "element": "fire", "mp_cost": 5, "cooldown": 6, "damage_multiplier": 0.0, "release_distance": 0.0, "priority": 70, "trigger": ["always"], "combat_buffs": [], "effects": [{"kind": "buff_stat", "target": "self", "stat": "attack", "amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3}], "scene_path": "res://scripts/game/skills/buff/attack_up_skill.tscn"},
-	"spirit_shield": {"id": "spirit_shield", "name": "玄甲术", "type": "defense", "target_scope": SKILL_TARGET_SELF, "element": "earth", "mp_cost": 7, "cooldown": 6, "damage_multiplier": 0.0, "release_distance": 0.0, "priority": 80, "trigger": ["hp_below_60"], "combat_buffs": [], "effects": [{"kind": "shield", "target": "self", "amount": 10, "attribute_multiplier": 0.5, "duration_turns": 3}], "scene_path": "res://scripts/game/skills/buff/spirit_shield_skill.tscn"},
-	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "base_damage": 4, "damage_multiplier": 1.25, "damage_attribute_multiplier": 1.25, "release_distance": 0.0, "priority": 40, "trigger": ["always"], "weight": 1, "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "base_damage": 3, "damage_multiplier": 1.0, "damage_attribute_multiplier": 1.0, "release_distance": 0.0, "priority": 55, "trigger": ["always"], "weight": 1, "combat_buffs": [], "effects": [{"kind": "dot", "trigger": "on_hit", "target": "target", "element": "wood", "amount": 1, "attribute_multiplier": 0.5, "duration": 2}], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "base_damage": 3, "damage_multiplier": 1.1, "damage_attribute_multiplier": 1.1, "release_distance": 0.0, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "combat_buffs": [], "effects": [{"kind": "buff_stat", "trigger": "after_damage", "target": "self", "stat": "attack", "amount": 1, "attribute_multiplier": 0.5, "duration": 2}], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
-	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "base_damage": 5, "damage_multiplier": 1.8, "damage_attribute_multiplier": 1.8, "release_distance": 0.0, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "combat_buffs": [], "effects": [], "scene_path": "res://scripts/game/skills/damage/direct_damage_skill.tscn"},
+	"heal": {"id": "heal", "name": "回春术", "type": "heal", "target_scope": SKILL_TARGET_SELF, "element": "wood", "mp_cost": 6, "cooldown": 5, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "effects": [{"effect_id": "heal", "kind": "heal", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 1.0}]},
+	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "metal", "mp_cost": 12, "cooldown": 5, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 13, "attribute_multiplier": 1.75, "shieldable": true}]},
+	"poison": {"id": "poison", "name": "蚀骨毒雾", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "mp_cost": 8, "cooldown": 4, "release_distance": 120.0, "priority": 55, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 0.9, "shieldable": true}, {"effect_id": "poison", "kind": "status", "target": "hit_targets", "status_id": "poison", "status_kind": "dot", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/poison.png", "status_scene_path": "res://scripts/game/skills/status/visuals/poison.tscn"}]},
+	"attack_up": {"id": "attack_up", "name": "燃锋诀", "type": "buff", "target_scope": SKILL_TARGET_SELF, "element": "fire", "mp_cost": 5, "cooldown": 6, "release_distance": 0.0, "priority": 70, "trigger": ["always"], "effects": [{"effect_id": "attack_up", "kind": "status", "target": "caster", "status_id": "attack_up", "status_kind": "buff_stat", "stat": "attack", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/attack_up.png", "status_scene_path": "res://scripts/game/skills/status/visuals/attack_up.tscn"}]},
+	"spirit_shield": {"id": "spirit_shield", "name": "玄甲术", "type": "defense", "target_scope": SKILL_TARGET_SELF, "element": "earth", "mp_cost": 7, "cooldown": 6, "release_distance": 0.0, "priority": 80, "trigger": ["hp_below_60"], "effects": [{"effect_id": "spirit_shield", "kind": "status", "target": "caster", "status_id": "spirit_shield", "status_kind": "shield", "base_amount": 10, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/spirit_shield.png", "status_scene_path": "res://scripts/game/skills/status/visuals/spirit_shield.tscn"}]},
+	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "release_distance": 0.0, "priority": 40, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 4, "attribute_multiplier": 1.25, "shieldable": true}]},
+	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "release_distance": 0.0, "priority": 55, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.0, "shieldable": true}, {"effect_id": "bleed", "kind": "status", "target": "hit_targets", "status_id": "wolf_bleed", "status_kind": "dot", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/bleed.tscn"}]},
+	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "release_distance": 0.0, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.1, "shieldable": true}, {"effect_id": "howl", "kind": "status", "target": "caster", "requires_hit": true, "status_id": "wolf_howl", "status_kind": "buff_stat", "stat": "attack", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/wolf_howl.tscn"}]},
+	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "release_distance": 0.0, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 5, "attribute_multiplier": 1.8, "shieldable": true}]},
 }
 
 const BASIC_ATTACK_DEFS := {
-	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "", "mp_cost": 0, "cooldown": 0.0, "release_distance": 0.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
-	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "release_distance": 120.0, "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
+	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "", "mp_cost": 0, "cooldown": 0.0, "release_distance": 0.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
+	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "release_distance": 120.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
 }
 
 const ALCHEMY_RECIPE_DEFS := {
@@ -315,45 +312,9 @@ const INNATE_TRAIT_DEFS := {
 	},
 	"good_root": {
 		"name": "良根",
-		"description": "根骨良好，生产和成长潜力更高。",
+		"description": "根骨良好，成长潜力更高。",
 		"effects": [
 			{"kind": "stat_flat", "stat": "root_bone", "amount": 2},
-		],
-	},
-	"craft_hand": {
-		"name": "巧匠",
-		"description": "炼器时更容易引出材料灵性。",
-		"effects": [
-			{"kind": "craft_bonus_flat", "task": "forge", "amount": 1},
-			{"kind": "forge_rarity_upgrade_chance", "task": "forge", "value": 0.05},
-		],
-	},
-	"craft_touch": {
-		"name": "巧手",
-		"description": "手上有准头，炼器属性入口略有提高。",
-		"effects": [
-			{"kind": "craft_bonus_flat", "task": "forge", "amount": 1},
-		],
-	},
-	"pill_heart": {
-		"name": "丹心",
-		"description": "炼丹时更容易额外成丹。",
-		"effects": [
-			{"kind": "alchemy_extra_chance", "task": "alchemy", "value": 0.05},
-		],
-	},
-	"pill_sense": {
-		"name": "丹感",
-		"description": "对火候有感，炼丹额外出丹概率提高。",
-		"effects": [
-			{"kind": "alchemy_extra_chance", "task": "alchemy", "value": 0.04},
-		],
-	},
-	"field_sense": {
-		"name": "识田",
-		"description": "种田时略微提高收成。",
-		"effects": [
-			{"kind": "farm_harvest_bonus_flat", "task": "farm", "amount": 1},
 		],
 	},
 }
@@ -491,6 +452,10 @@ static func item_resource(item_id: String) -> Resource:
 
 static func equipment_resource(template_id: String) -> Resource:
 	return _load_resource(equipment_resource_path(template_id))
+
+
+static func skill_resource(skill_id: String) -> Resource:
+	return _load_resource(skill_resource_path(skill_id))
 
 
 static func item_icon_texture(item_id: String) -> Texture2D:
@@ -638,7 +603,7 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 
 
 static func create_skill(skill_id: String, obtain_source: String = "non_drop") -> Dictionary:
-	var definition: Dictionary = content_definition("skill", skill_id, SKILL_DEFS.get(skill_id, {}))
+	var definition: Dictionary = content_definition("skill", skill_id, core_skill_definition(skill_id))
 	if definition.is_empty():
 		return {}
 	var skill: Dictionary = normalize_skill_definition(definition)
@@ -649,11 +614,31 @@ static func create_skill(skill_id: String, obtain_source: String = "non_drop") -
 	return skill
 
 
+static func core_skill_definition(skill_id: String) -> Dictionary:
+	var definition: Dictionary = SKILL_DEFS.get(skill_id, {}).duplicate(true)
+	var resource: Resource = skill_resource(skill_id)
+	if resource != null and resource.has_method("to_dictionary"):
+		var authored = resource.call("to_dictionary")
+		if authored is Dictionary and not authored.is_empty():
+			definition.merge(authored, true)
+	return definition
+
+
+static func all_core_skill_definitions() -> Dictionary:
+	var result: Dictionary = {}
+	for skill_id in SKILL_DEFS.keys():
+		result[str(skill_id)] = core_skill_definition(str(skill_id))
+	return result
+
+
 static func create_basic_attack(attack_mode: String, base_damage: int = 0) -> Dictionary:
 	var resolved_mode: String = attack_mode if ATTACK_MODES.has(attack_mode) else ATTACK_MODE_MELEE
 	var attack: Dictionary = normalize_skill_definition(content_definition("basic_attack", resolved_mode, BASIC_ATTACK_DEFS[resolved_mode]))
 	attack["type"] = "normal_attack"
-	attack["base_damage"] = maxi(0, base_damage)
+	var effects: Array = attack.get("effects", []).duplicate(true)
+	if not effects.is_empty() and effects[0] is Dictionary:
+		effects[0]["base_amount"] = maxi(0, base_damage)
+	attack["effects"] = effects
 	attack["damage_marker"] = "impact"
 	return attack
 
@@ -730,7 +715,11 @@ static func _skill_effect_tags(skill: Dictionary) -> Array[String]:
 	for raw_effect in effects:
 		if not (raw_effect is Dictionary):
 			continue
-		var kind: String = str(raw_effect.get("kind", ""))
+		var kind: String = str(raw_effect.get("status_kind", raw_effect.get("kind", "")))
+		if str(raw_effect.get("kind", "")) == "damage" and not tags.has("damage"):
+			tags.append("damage")
+		if str(raw_effect.get("kind", "")) == "heal" and not tags.has("heal"):
+			tags.append("heal")
 		if SKILL_BUFF_EFFECT_KINDS.has(kind) and not tags.has("buff"):
 			tags.append("buff")
 		if SKILL_DEBUFF_EFFECT_KINDS.has(kind) and not tags.has("debuff"):
@@ -742,7 +731,7 @@ static func _skill_effect_tags(skill: Dictionary) -> Array[String]:
 	return tags
 
 
-static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: String = DEFAULT_ENEMY_ID) -> Dictionary:
+static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: String = DEFAULT_ENEMY_ID) -> Dictionary:
 	var resolved_enemy_id: String = resolve_enemy_id(enemy_id)
 	var template: Dictionary = content_definition("enemy", resolved_enemy_id, ENEMY_TEMPLATES.get(resolved_enemy_id, ENEMY_TEMPLATES[DEFAULT_ENEMY_ID]))
 	var enemy_level: int = maxi(1, level + int(template.get("level_offset", 0)))
@@ -755,7 +744,7 @@ static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: Strin
 	var attack: int = _enemy_scaled_stat(int(template.get("attack", 1)), enemy_level, multipliers, growth, "attack")
 	var defense: int = _enemy_scaled_stat(int(template.get("defense", 0)), enemy_level, multipliers, growth, "defense")
 	var element_id := str(template.get("element", ""))
-	var element_power := maxi(0, int(template.get("element_power", 0)) + rank_level / 5)
+	var element_power := maxi(0, int(template.get("element_power", 0)) + int(float(rank_level) / 5.0))
 	var skills: Array = template.get("skills", []).duplicate(true) if template.get("skills", []) is Array else []
 	var skill_limit := int(rank.get("skill_count", 0))
 	while skills.size() > skill_limit:
@@ -860,7 +849,7 @@ static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus
 	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", rarity, obtain_source)
 
 
-static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
+static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, _craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
 	var template: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if template.is_empty():
 		return {}
@@ -1026,14 +1015,6 @@ static func innate_trait_effect_summary(raw_trait) -> String:
 				parts.append("%s %+d" % [attribute_display_name(str(effect.get("stat", ""))), int(amount)])
 			"element_flat":
 				parts.append("%s行 %+d" % [element_name(str(effect.get("element", ""))), int(amount)])
-			"alchemy_extra_chance":
-				parts.append("炼丹额外成丹概率 %+d%%" % int(round(amount * 100.0)))
-			"craft_bonus_flat":
-				parts.append("炼器加成 %+d" % int(amount))
-			"farm_harvest_bonus_flat":
-				parts.append("种田收成 %+d" % int(amount))
-			"forge_rarity_upgrade_chance":
-				parts.append("炼器升阶概率 %+d%%" % int(round(amount * 100.0)))
 	return "；".join(parts) if not parts.is_empty() else "暂无直接效果"
 
 
@@ -1043,14 +1024,6 @@ static func innate_trait_compact_summary(raw_trait) -> String:
 		innate_trait_slot_name(innate_trait_slot(raw_trait)),
 		innate_trait_name(raw_trait),
 	]
-
-
-static func forge_duration_seconds(level: int) -> float:
-	return max(300.0, 900.0 - 60.0 * float(maxi(1, level) - 1))
-
-
-static func alchemy_duration_seconds(level: int, amount: int) -> float:
-	return max(180.0, 600.0 - 45.0 * float(maxi(1, level) - 1)) * float(maxi(1, amount))
 
 
 static func farm_growth_multiplier(level: int) -> float:

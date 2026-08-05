@@ -41,7 +41,8 @@
 
 `dot`、`hot`、`shield`、`heal`、`buff_stat`、`debuff_stat`、`damage_flat` 和 `defense_ignore` 仅在 effect 自身提供 `attribute_multiplier` 时缩放，省略时 `amount/value` 是固定值。effect 自身的 `element` 优先于技能元素；两者都为空时读取施法者主五行。`chance`、持续时间、冷却比例与吸血比例不参与属性缩放。已提供的基础值和倍率字段必须是非负数。
 
-自定义场景根脚本必须继承 `SkillSceneBase`，接受 `setup` 后在 `start_cast` 播放表现，并通过既有 impact marker 结算、`finished` 信号结束。不得自行推进战斗回合。最小脚本可以在 `apply_marker` 中调用 `skill_damage_amount`、`scaled_skill_effect`、`attack_context`、`resolve_static_trigger` 和 `apply_effect_events`；完整实现见 `mod_sdk/example_mod`。
+自定义技能场景和状态场景使用与核心内容相同的 v2 契约。释放动画的方法轨道、手工碰撞窗口、`status_visual_scene` 选择和状态动画命名统一见
+[`../skill-authoring.md`](../skill-authoring.md)，本页不重复维护动画接口。Mod 场景和资源必须位于当前 Mod 命名空间目录。
 
 自定义 effect 用 `register_effect_handler(local_id, callable)` 注册。回调签名为 `(effect, trigger, context, owner_role)`，可原地修改 context 或返回需要合并的 Dictionary。未知且未注册的 effect 会被规范化阶段过滤。
 

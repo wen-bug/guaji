@@ -69,6 +69,15 @@ func effect_position() -> Vector2:
 	return combat_visual.effect_position() if combat_visual != null else global_position
 
 
+func bind_combat_status_presentation(status: CombatActorStatus) -> void:
+	if combat_visual != null:
+		combat_visual.bind_combat_status(status)
+
+
+func present_combat_event(event: Dictionary) -> float:
+	return combat_visual.present_combat_event(event) if combat_visual != null else 0.0
+
+
 func select_action(game_state, target_status = null) -> Dictionary:
 	if enemy_data.is_empty():
 		return {}

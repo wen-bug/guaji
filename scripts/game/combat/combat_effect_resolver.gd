@@ -147,7 +147,7 @@ func add_status_effect(target: Dictionary, effect: Dictionary) -> Dictionary:
 		return {}
 	var effects: Array = target.get("combat_effects", [])
 	var status_key: String = _status_identity(status)
-	var stack_mode: String = str(status.get("stack_mode", "overwrite"))
+	var stack_mode: String = str(status.get("stack_mode", "refresh"))
 	for index in range(effects.size()):
 		if not (effects[index] is Dictionary):
 			continue
@@ -156,21 +156,24 @@ func add_status_effect(target: Dictionary, effect: Dictionary) -> Dictionary:
 			continue
 		if stack_mode == "stack":
 			var max_stacks: int = maxi(1, int(status.get("max_stacks", existing.get("max_stacks", 1))))
-			existing["stacks"] = mini(max_stacks, int(existing.get("stacks", 1)) + int(status.get("stacks", 1)))
-			if status.has("remaining_turns"):
-				existing["remaining_turns"] = max(int(existing.get("remaining_turns", 0)), int(status.get("remaining_turns", 0)))
-			if existing.has("amount") and status.has("amount"):
-				existing["amount"] = max(int(existing.get("amount", 0)), int(status.get("amount", 0)))
-				existing["value"] = int(existing.get("amount", existing.get("value", 0)))
+			var old_stacks := int(existing.get("stacks", 1))
+			existing["stacks"] = mini(max_stacks, old_stacks + int(status.get("stacks", 1)))
+			existing["remaining_turns"] = int(status.get("remaining_turns", existing.get("remaining_turns", 1)))
+			existing["first_turn_serial"] = int(status.get("first_turn_serial", existing.get("first_turn_serial", 1)))
+			if str(status.get("kind", "")) == "shield":
+				var per_stack := int(status.get("base_value", status.get("amount", 0)))
+				existing["amount"] = mini(per_stack * max_stacks, int(existing.get("amount", 0)) + int(status.get("amount", 0)))
+				existing["value"] = existing["amount"]
 			effects[index] = existing
 			target["combat_effects"] = effects
-			return existing
+			return {"type": "status_stacked", "actor_id": str(target.get("actor_id", "")), "status": existing.duplicate(true), "previous_stacks": old_stacks}
+		status["application_order"] = int(existing.get("application_order", status.get("application_order", 0)))
 		effects[index] = status
 		target["combat_effects"] = effects
-		return status
+		return {"type": "status_refreshed", "actor_id": str(target.get("actor_id", "")), "status": status.duplicate(true), "previous": existing.duplicate(true)}
 	effects.append(status)
 	target["combat_effects"] = effects
-	return status
+	return {"type": "status_added", "actor_id": str(target.get("actor_id", "")), "status": status.duplicate(true)}
 
 
 func apply_shields(target: Dictionary, incoming_damage: int, context: Dictionary) -> int:
@@ -191,6 +194,9 @@ func apply_shields(target: Dictionary, incoming_damage: int, context: Dictionary
 		shield_amount -= blocked
 		remaining -= blocked
 		context["blocked_by_shield"] = int(context.get("blocked_by_shield", 0)) + blocked
+		var events: Array = context.get("events", [])
+		events.append({"type": "shield_absorbed", "actor_id": str(target.get("actor_id", "")), "status_id": str(effect.get("status_id", "")), "amount": blocked, "remaining": shield_amount})
+		context["events"] = events
 		effect["amount"] = shield_amount
 		effect["value"] = shield_amount
 		effects[index] = effect
@@ -198,6 +204,9 @@ func apply_shields(target: Dictionary, incoming_damage: int, context: Dictionary
 	while write_index < effects.size():
 		var shield: Dictionary = effects[write_index]
 		if str(shield.get("kind", "")) == "shield" and int(shield.get("amount", shield.get("value", 0))) <= 0:
+			var events: Array = context.get("events", [])
+			events.append({"type": "status_removed", "reason": "depleted", "actor_id": str(target.get("actor_id", "")), "status": shield.duplicate(true)})
+			context["events"] = events
 			effects.remove_at(write_index)
 		else:
 			write_index += 1
@@ -342,12 +351,11 @@ func _target_role(effect: Dictionary, owner_role: String) -> String:
 
 
 func _status_from_effect(effect: Dictionary) -> Dictionary:
-	var normalized: Array = normalize_effects([effect])
-	if normalized.is_empty():
-		return {}
-	var status: Dictionary = normalized[0].duplicate(true)
+	var status: Dictionary = effect.duplicate(true)
 	var kind: String = str(status.get("kind", ""))
 	if not STATUS_KINDS.has(kind) and not _is_triggered_status(status):
+		return {}
+	if str(status.get("status_id", "")).is_empty():
 		return {}
 	status["kind"] = kind
 	if kind == "dot" or kind == "hot":
@@ -366,16 +374,17 @@ func _status_from_effect(effect: Dictionary) -> Dictionary:
 		status["uses"] = 1
 	if status.has("uses") and int(status.get("uses", 0)) <= 0:
 		return {}
+	if not status.has("duration_turns") and status.has("duration"):
+		status["duration_turns"] = int(status.get("duration", 1))
 	if status.has("duration_turns") and not status.has("remaining_turns"):
-		status["remaining_turns"] = int(status.get("duration_turns", 1))
+		status["remaining_turns"] = maxi(1, int(status.get("duration_turns", 1)))
 	if not status.has("remaining_turns") and kind != "shield" and not _consumes_on_trigger(status):
 		status["remaining_turns"] = 1
-	if ["buff_stat", "debuff_stat", "shield"].has(kind):
-		status["fresh"] = true
 	if not status.has("stacks"):
 		status["stacks"] = 1
 	if not status.has("stack_mode"):
-		status["stack_mode"] = "overwrite"
+		status["stack_mode"] = "refresh"
+	status["base_value"] = int(status.get("base_value", status.get("value", status.get("amount", 0))))
 	return status
 
 
@@ -386,6 +395,9 @@ func _is_triggered_status(effect: Dictionary) -> bool:
 
 
 func _status_identity(status: Dictionary) -> String:
+	var status_id := str(status.get("status_id", ""))
+	if not status_id.is_empty():
+		return "status_id:%s" % status_id
 	var buff_id: String = str(status.get("buff_id", ""))
 	if not buff_id.is_empty():
 		return "buff_id:%s" % buff_id

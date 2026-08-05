@@ -569,15 +569,6 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="WorkerOption" type="OptionButton" parent="Root/FarmPanel/PanelLayout"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-
 [node name="SeedSlotButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=1813538947]
 custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
@@ -724,15 +715,6 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="WorkerOption" type="OptionButton" parent="Root/ForgePanel/PanelLayout"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-
 [node name="ModeRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1199746731]
 layout_mode = 2
 theme_override_constants/separation = 4
@@ -807,12 +789,6 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "执行"
 
-[node name="ProgressLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=500000002]
-custom_minimum_size = Vector2(300, 20)
-layout_mode = 2
-text = "进度：未开始"
-autowrap_mode = 2
-
 [node name="HintLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=151186608]
 custom_minimum_size = Vector2(300, 42)
 layout_mode = 2
@@ -854,15 +830,6 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
-
-[node name="WorkerOption" type="OptionButton" parent="Root/AlchemyPanel/PanelLayout"]
-custom_minimum_size = Vector2(300, 30)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 
 [node name="RecipeSlotButton" type="Button" parent="Root/AlchemyPanel/PanelLayout" unique_id=1918234530]
 custom_minimum_size = Vector2(300, 34)
@@ -911,12 +878,6 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 disabled = true
 text = "制作"
-
-[node name="ProgressLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=500000003]
-custom_minimum_size = Vector2(300, 20)
-layout_mode = 2
-text = "进度：未开始"
-autowrap_mode = 2
 
 [node name="HintLabel" type="Label" parent="Root/AlchemyPanel/PanelLayout" unique_id=1417538748]
 custom_minimum_size = Vector2(300, 42)
@@ -1057,8 +1018,8 @@ visible = false
 layout_mode = 0
 offset_left = 430.0
 offset_top = 46.0
-offset_right = 606.0
-offset_bottom = 172.0
+offset_right = 722.0
+offset_bottom = 242.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/FightPanel" unique_id=926619473]
@@ -1088,13 +1049,33 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
+[node name="MapRow" type="HBoxContainer" parent="Root/FightPanel/PanelLayout"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MapLabel" type="Label" parent="Root/FightPanel/PanelLayout/MapRow"]
+custom_minimum_size = Vector2(64, 28)
+layout_mode = 2
+text = "历练地图"
+vertical_alignment = 1
+
+[node name="MapOption" type="OptionButton" parent="Root/FightPanel/PanelLayout/MapRow"]
+custom_minimum_size = Vector2(210, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
 [node name="ActionDetail" type="Label" parent="Root/FightPanel/PanelLayout" unique_id=1336005942]
-custom_minimum_size = Vector2(164, 56)
+custom_minimum_size = Vector2(280, 82)
 layout_mode = 2
 autowrap_mode = 2
 
 [node name="ExecuteButton" type="Button" parent="Root/FightPanel/PanelLayout" unique_id=2126297008]
-custom_minimum_size = Vector2(164, 28)
+custom_minimum_size = Vector2(280, 28)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")

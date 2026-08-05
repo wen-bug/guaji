@@ -72,6 +72,8 @@ func _find_best_available_action(game_state, action_type: String, hp_ratio: floa
 	var actor_stats: Dictionary = actor.get("stats", {})
 	var candidates: Array[Dictionary] = []
 	for skill in actor.get("skills", []):
+		if bool(skill.get("disabled", false)):
+			continue
 		if str(skill.get("type", "")) != action_type:
 			continue
 		if not _skill_trigger_matches(skill, hp_ratio, mp_ratio, distance_to_enemy, player_range):

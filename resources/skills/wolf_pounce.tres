@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://bqgrtyl0dco8d"]
+
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Texture2D" uid="uid://57hr6t8cwm18" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Splatters/burst_splatter_001/burst_splatter_001_small_red/frame0000.png" id="2_icon"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="3_effect"]
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("3_effect")
+base_amount = 5
+attribute_multiplier = 1.8
+
+[resource]
+script = ExtResource("1_skill")
+id = "wolf_pounce"
+display_name = "扑杀"
+icon_texture = ExtResource("2_icon")
+type = "damage"
+effect_tags = Array[String](["damage"])
+element = "wood"
+cooldown = 5.0
+priority = 80
+triggers = Array[String](["target_hp_below_35"])
+enemy_only = true
+effects = Array[Resource]([SubResource("Resource_damage")])
+description = "扑向重伤目标并造成高额伤害。"

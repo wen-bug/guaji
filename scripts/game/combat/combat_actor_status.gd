@@ -4,6 +4,8 @@ extends Node
 signal combat_popup_requested(amount: int, world_position: Vector2, target_key: String, damage_type: String, is_heal: bool)
 signal hit_received(amount: int, damage_type: String)
 signal defeated(actor_id: String)
+signal status_changed(event: Dictionary)
+signal combat_events_emitted(events: Array)
 
 const KIND_MEMBER := "member"
 const KIND_ENEMY := "enemy"
@@ -26,6 +28,9 @@ var pending_skill: Dictionary = {}
 var state_machine = CombatActorStateMachineScript.new()
 var effect_resolver: CombatEffectResolver = CombatEffectResolverScript.new()
 var popup_offset: Vector2 = Vector2(0, -24)
+var turn_serial := 0
+var turn_active := false
+var _status_sequence := 0
 
 
 func bind_member(owner_game_state, owner_member_id: String, owner_store: Dictionary = {}, owner_visual: Node = null) -> void:
@@ -38,6 +43,7 @@ func bind_member(owner_game_state, owner_member_id: String, owner_store: Diction
 	data = _member_data()
 	actor_name = str(data.get("name", "成员"))
 	_sync_runtime_arrays_from_store()
+	_bind_presentation()
 
 
 func bind_enemy(enemy_data: Dictionary, owner_visual: Node = null) -> void:
@@ -49,6 +55,7 @@ func bind_enemy(enemy_data: Dictionary, owner_visual: Node = null) -> void:
 	actor_name = str(data.get("name", "敌人"))
 	visual_owner = owner_visual
 	_sync_runtime_arrays_from_store()
+	_bind_presentation()
 
 
 func rebind_store(owner_store: Dictionary) -> void:
@@ -127,13 +134,22 @@ func add_buff(buff: Dictionary) -> void:
 		add_status_effect(effect)
 
 
-func add_status_effect(effect: Dictionary) -> void:
+func add_status_effect(effect: Dictionary) -> Dictionary:
 	if effect.is_empty():
-		return
+		return {}
+	var next_effect := effect.duplicate(true)
+	_status_sequence += 1
+	next_effect["first_turn_serial"] = turn_serial + 1
+	next_effect["application_order"] = _status_sequence
 	var store: Dictionary = _runtime_effect_store()
-	effect_resolver.add_status_effect(store, effect)
+	var event := effect_resolver.add_status_effect(store, next_effect)
 	_apply_runtime_effect_store(store)
 	_write_runtime_arrays_to_store()
+	if not event.is_empty():
+		event["actor_id"] = actor_id
+		status_changed.emit(event.duplicate(true))
+		combat_events_emitted.emit([event.duplicate(true)])
+	return event
 
 
 func resolve_status_trigger(trigger: String, context: Dictionary, rng: RandomNumberGenerator, owner_role: String = "attacker") -> Dictionary:
@@ -149,10 +165,18 @@ func apply_shields(incoming_damage: int, context: Dictionary) -> int:
 	var remaining: int = effect_resolver.apply_shields(store, incoming_damage, context)
 	_apply_runtime_effect_store(store)
 	_write_runtime_arrays_to_store()
+	for event in context.get("events", []):
+		if not (event is Dictionary):
+			continue
+		var event_type := str(event.get("type", ""))
+		if event_type == "shield_absorbed" or event_type.begins_with("status_"):
+			status_changed.emit(event.duplicate(true))
 	return remaining
 
 
 func tick_turn_start() -> Array:
+	turn_serial += 1
+	turn_active = true
 	var events: Array = []
 	for effect in combat_effects:
 		if not (effect is Dictionary):
@@ -160,11 +184,21 @@ func tick_turn_start() -> Array:
 		var amount: int = int(effect.get("value", effect.get("amount", 0))) * maxi(1, int(effect.get("stacks", 1)))
 		if amount <= 0:
 			continue
+		if int(effect.get("first_turn_serial", 1)) > turn_serial:
+			continue
 		match str(effect.get("kind", "")):
 			"dot":
-				events.append(apply_damage(amount, str(effect.get("damage_type", "dot")), {"source": "dot"}))
+				events.append({"type": "status_tick", "actor_id": actor_id, "status": effect.duplicate(true), "amount": amount})
+				var damage_event := apply_damage(amount, str(effect.get("damage_type", "dot")), {"source": "dot", "status_id": str(effect.get("status_id", ""))})
+				var followup_events: Array = damage_event.get("followup_events", [])
+				damage_event.erase("followup_events")
+				events.append(damage_event)
+				events.append_array(followup_events)
 			"hot":
+				events.append({"type": "status_tick", "actor_id": actor_id, "status": effect.duplicate(true), "amount": amount})
 				events.append(apply_heal(amount))
+	if not events.is_empty():
+		combat_events_emitted.emit(events.duplicate(true))
 	return events
 
 
@@ -172,8 +206,35 @@ func tick_turn_end() -> Array:
 	var expired: Array = []
 	_tick_duration_array(combat_buffs, expired)
 	_tick_duration_array(combat_effects, expired)
+	turn_active = false
 	_write_runtime_arrays_to_store()
-	return expired
+	var events: Array = []
+	for effect in expired:
+		var event := {"type": "status_removed", "reason": "expired", "actor_id": actor_id, "status": effect.duplicate(true)}
+		events.append(event)
+		status_changed.emit(event.duplicate(true))
+	if not events.is_empty():
+		combat_events_emitted.emit(events.duplicate(true))
+	return events
+
+
+func clear_status_effects(reason: String = "cleared") -> Array:
+	var events: Array = []
+	for effect in combat_effects:
+		if effect is Dictionary:
+			var event := {"type": "status_removed", "reason": reason, "actor_id": actor_id, "status": effect.duplicate(true)}
+			events.append(event)
+			status_changed.emit(event.duplicate(true))
+	combat_effects.clear()
+	combat_buffs.clear()
+	_write_runtime_arrays_to_store()
+	if not events.is_empty():
+		combat_events_emitted.emit(events.duplicate(true))
+	return events
+
+
+func active_statuses() -> Array:
+	return combat_effects.duplicate(true)
 
 
 func spend_mp(amount: int) -> bool:
@@ -182,6 +243,12 @@ func spend_mp(amount: int) -> bool:
 	if actor_kind != KIND_MEMBER or game_state == null:
 		return true
 	return game_state.spend_mp_for(member_id, amount)
+
+
+func refund_mp(amount: int) -> void:
+	if amount <= 0 or actor_kind != KIND_MEMBER or game_state == null:
+		return
+	game_state.heal_member(member_id, 0, amount)
 
 
 func apply_damage(amount: int, damage_type: String = "physical", source: Dictionary = {}) -> Dictionary:
@@ -205,9 +272,13 @@ func apply_damage(amount: int, damage_type: String = "physical", source: Diction
 		show_combat_popup(result)
 		play_hit_reaction(result)
 		hit_received.emit(final_amount, damage_type)
+	var followup_events: Array = []
 	if new_hp <= 0:
 		state_machine.set_state(CombatActorStateMachineScript.STATE_DEAD)
+		followup_events = clear_status_effects("death")
 		defeated.emit(actor_id)
+	if not followup_events.is_empty():
+		result["followup_events"] = followup_events
 	_sync_visual_data()
 	return result
 
@@ -235,7 +306,7 @@ func apply_heal(amount: int) -> Dictionary:
 	return result
 
 
-func play_hit_reaction(result: Dictionary) -> void:
+func play_hit_reaction(_result: Dictionary) -> void:
 	if visual_owner != null and visual_owner.has_method("play_hurt_feedback"):
 		visual_owner.call("play_hurt_feedback")
 		return
@@ -305,6 +376,8 @@ func _sync_runtime_arrays_from_store() -> void:
 		combat_buffs = combat_store.get("combat_buffs", []).duplicate(true)
 		combat_effects = combat_store.get("combat_effects", []).duplicate(true)
 		skill_cooldowns = combat_store.get("skill_cooldowns", {}).duplicate(true)
+		turn_serial = int(combat_store.get("turn_serial", 0))
+		_status_sequence = int(combat_store.get("status_sequence", combat_effects.size()))
 	elif actor_kind == KIND_ENEMY:
 		combat_effects = data.get("combat_effects", []).duplicate(true)
 
@@ -314,12 +387,14 @@ func _write_runtime_arrays_to_store() -> void:
 		combat_store["combat_buffs"] = combat_buffs
 		combat_store["combat_effects"] = combat_effects
 		combat_store["skill_cooldowns"] = skill_cooldowns
+		combat_store["turn_serial"] = turn_serial
+		combat_store["status_sequence"] = _status_sequence
 	elif actor_kind == KIND_ENEMY:
 		data["combat_effects"] = combat_effects
 
 
 func _runtime_effect_store() -> Dictionary:
-	return {"combat_effects": combat_effects.duplicate(true)}
+	return {"actor_id": actor_id, "combat_effects": combat_effects.duplicate(true)}
 
 
 func _apply_runtime_effect_store(store: Dictionary) -> void:
@@ -353,12 +428,10 @@ func _tick_duration_array(values: Array, expired: Array) -> void:
 	var index: int = 0
 	while index < values.size():
 		var item: Dictionary = values[index]
-		if bool(item.get("fresh", false)):
-			item.erase("fresh")
-			values[index] = item
+		if not item.has("remaining_turns"):
 			index += 1
 			continue
-		if not item.has("remaining_turns"):
+		if int(item.get("first_turn_serial", 1)) > turn_serial:
 			index += 1
 			continue
 		item["remaining_turns"] = int(item.get("remaining_turns", 0)) - 1
@@ -373,3 +446,8 @@ func _tick_duration_array(values: Array, expired: Array) -> void:
 func _sync_visual_data() -> void:
 	if visual_owner != null and actor_kind == KIND_ENEMY and visual_owner.has_method("sync_data"):
 		visual_owner.call("sync_data", data)
+
+
+func _bind_presentation() -> void:
+	if visual_owner != null and visual_owner.has_method("bind_combat_status_presentation"):
+		visual_owner.call("bind_combat_status_presentation", self)

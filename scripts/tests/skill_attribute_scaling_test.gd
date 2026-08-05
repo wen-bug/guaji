@@ -2,6 +2,7 @@ extends Node
 
 const SkillValueResolverScript = preload("res://scripts/game/combat/skill_value_resolver.gd")
 const ModSchemaValidatorScript = preload("res://scripts/modding/internal/mod_schema_validator.gd")
+const CombatSkillExecutorScript = preload("res://scripts/game/combat/combat_skill_executor.gd")
 
 class FakeGameState:
 	extends RefCounted
@@ -71,6 +72,7 @@ func _check_player_scaling() -> void:
 	_expect_equal("thunder level-one value", SkillValueResolverScript.damage_amount(DataTables.create_skill("thunder"), caster), 14)
 	_expect_equal("heal level-one value", SkillValueResolverScript.heal_amount(DataTables.create_skill("heal"), caster), 8)
 	game_state.member["elements"]["metal"] = 5
+	_expect_equal("caster metal mutation", caster.total_element("metal"), 5)
 	_expect_equal("thunder metal scaling", SkillValueResolverScript.damage_amount(DataTables.create_skill("thunder"), caster), 21)
 	game_state.member["elements"]["fire"] = 4
 	var attack_effect: Dictionary = DataTables.create_skill("attack_up").get("effects", [])[0]
@@ -88,7 +90,7 @@ func _check_enemy_scaling() -> void:
 	var expected_damage := {"wolf_bite": 7, "wolf_bleed": 6, "wolf_howl": 6, "wolf_pounce": 10}
 	for skill_id in expected_damage:
 		_expect_equal("enemy %s scaling" % skill_id, SkillValueResolverScript.damage_amount(DataTables.create_skill(skill_id), caster), expected_damage[skill_id])
-	var bleed_effect: Dictionary = DataTables.create_skill("wolf_bleed").get("effects", [])[0]
+	var bleed_effect: Dictionary = DataTables.create_skill("wolf_bleed").get("effects", [])[1]
 	var scaled_bleed := SkillValueResolverScript.scaled_effect(bleed_effect, "wood", caster)
 	_expect_equal("enemy dot scaling", int(scaled_bleed.get("amount", 0)), 2)
 	caster.free()
@@ -137,38 +139,35 @@ func _check_scene_integration() -> void:
 	player.bind_member(game_state, "hero")
 	var target := CombatActorStatus.new()
 	target.bind_enemy({"id": "target", "name": "目标", "hp": 100, "max_hp": 100, "defense": 0, "elements": {}, "weak_element": "water"})
-	var damage_scene := DirectDamageSkill.new()
-	damage_scene.setup(player, [target], DataTables.create_skill("thunder"), CombatEffectResolver.new(), RandomNumberGenerator.new())
-	damage_scene.apply_marker("impact")
-	_expect_equal("direct damage scene scaling", int(damage_scene.last_result.get("damage", 0)), 21)
-	var fixed_damage_scene := DirectDamageSkill.new()
-	fixed_damage_scene.setup(player, [target], {"id": "fixed", "type": "damage", "element": "metal", "base_damage": 9, "damage_multiplier": 99.0}, CombatEffectResolver.new(), RandomNumberGenerator.new())
-	fixed_damage_scene.apply_marker("impact")
-	_expect_equal("direct damage scene fixed value", int(fixed_damage_scene.last_result.get("damage", 0)), 9)
+	var executor = CombatSkillExecutorScript.new()
+	var resolver := CombatEffectResolver.new()
+	var random := RandomNumberGenerator.new()
+	var damage_result := executor.execute(player, [target], DataTables.create_skill("thunder"), resolver, random)
+	_expect_equal("direct damage executor scaling", int(damage_result.get("damage", 0)), 21)
+	var fixed_damage := {
+		"id": "fixed",
+		"type": "damage",
+		"element": "metal",
+		"effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 9}],
+	}
+	var fixed_result := executor.execute(player, [target], fixed_damage, resolver, random)
+	_expect_equal("direct damage executor fixed value", int(fixed_result.get("damage", 0)), 9)
 
 	game_state.member["stats"]["hp"] = 50
-	var heal_scene := HealSkill.new()
-	heal_scene.setup(player, [player], DataTables.create_skill("heal"), CombatEffectResolver.new(), RandomNumberGenerator.new())
-	heal_scene.apply_marker("impact")
-	_expect_equal("heal scene scaling", int(heal_scene.last_result.get("heal", 0)), 8)
+	var heal_result := executor.execute(player, [player], DataTables.create_skill("heal"), resolver, random)
+	_expect_equal("heal executor scaling", int(heal_result.get("heal", 0)), 8)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
 	var wolf := CombatActorStatus.new()
 	wolf.bind_enemy(DataTables.create_enemy(1, rng, "forest_wolf"))
-	var bleed_scene := DirectDamageSkill.new()
-	bleed_scene.setup(wolf, [player], DataTables.create_skill("wolf_bleed"), CombatEffectResolver.new(), rng)
-	bleed_scene.apply_marker("impact")
+	executor.execute(wolf, [player], DataTables.create_skill("wolf_bleed"), resolver, rng)
 	var dot_amount := 0
 	for effect in player.combat_effects:
 		if effect is Dictionary and str(effect.get("kind", "")) == "dot":
 			dot_amount = int(effect.get("value", effect.get("amount", 0)))
 	_expect_equal("enemy dot scene scaling", dot_amount, 2)
 
-	damage_scene.free()
-	fixed_damage_scene.free()
-	heal_scene.free()
-	bleed_scene.free()
 	player.free()
 	target.free()
 	wolf.free()

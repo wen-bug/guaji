@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://cy26em1x83syc"]
+
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Texture2D" uid="uid://282ug81tyt7r" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Impacts/directional_impact_001/directional_impact_001_small_blue/frame0000.png" id="2_icon"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="3_effect"]
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("3_effect")
+base_amount = 4
+attribute_multiplier = 1.25
+
+[resource]
+script = ExtResource("1_skill")
+id = "wolf_bite"
+display_name = "撕咬"
+icon_texture = ExtResource("2_icon")
+type = "damage"
+effect_tags = Array[String](["damage"])
+element = "wood"
+cooldown = 2.0
+priority = 40
+enemy_only = true
+effects = Array[Resource]([SubResource("Resource_damage")])
+description = "林狼撕咬单个敌人。"

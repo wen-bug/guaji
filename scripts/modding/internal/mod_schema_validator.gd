@@ -2,9 +2,9 @@ class_name ModSchemaValidator
 extends RefCounted
 
 const ModContentRegistryScript = preload("res://scripts/modding/api/mod_content_registry.gd")
-const MANIFEST_SCHEMA_VERSION := 1
-const MOD_API_VERSION := 1
-const GAME_VERSION := "0.1.0"
+const MANIFEST_SCHEMA_VERSION := 2
+const MOD_API_VERSION := 2
+const GAME_VERSION := "0.2.0"
 
 var _mod_id_regex := RegEx.new()
 var _local_id_regex := RegEx.new()
@@ -83,8 +83,8 @@ func validate_content_document(document: Dictionary) -> Array[String]:
 	for key in document.keys():
 		if not ["schema_version", "kind", "entries"].has(str(key)):
 			errors.append("内容文件包含未知字段: %s" % key)
-	if int(document.get("schema_version", 0)) != 1:
-		errors.append("内容文件 schema_version 必须为 1")
+	if int(document.get("schema_version", 0)) != 2:
+		errors.append("内容文件 schema_version 必须为 2；v1 已停止支持")
 	var kind := str(document.get("kind", ""))
 	if not ModContentRegistryScript.KINDS.has(kind):
 		errors.append("不支持的内容 kind: %s" % kind)
@@ -125,8 +125,8 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 	var required: Dictionary = {
 		"item": ["name", "type"],
 		"equipment": ["name", "slot"],
-		"skill": ["name", "scene_path"],
-		"basic_attack": ["name", "scene_path"],
+		"skill": ["name", "type", "effects"],
+		"basic_attack": ["name", "effects"],
 		"recipe": ["result_item_id", "materials"],
 		"trait": ["name", "effects"],
 		"enemy": ["name", "visual_id", "scene_path"],
@@ -151,10 +151,30 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 			if data.has(field) and (typeof(data.get(field)) not in [TYPE_INT, TYPE_FLOAT] or float(data.get(field)) < 0.0):
 				errors.append("%s:%s %s 必须为非负数" % [kind, content_id, field])
 		var effects = data.get("effects", [])
-		if effects is Array:
+		if not (effects is Array):
+			errors.append("%s:%s effects 必须为数组" % [kind, content_id])
+		else:
 			for effect in effects:
-				if effect is Dictionary and effect.has("attribute_multiplier") and (typeof(effect.get("attribute_multiplier")) not in [TYPE_INT, TYPE_FLOAT] or float(effect.get("attribute_multiplier")) < 0.0):
+				if not (effect is Dictionary):
+					errors.append("%s:%s effects 元素必须为对象" % [kind, content_id])
+					continue
+				if str(effect.get("impact_id", "impact")).strip_edges().is_empty():
+					errors.append("%s:%s effect.impact_id 不能为空" % [kind, content_id])
+				if effect.has("attribute_multiplier") and (typeof(effect.get("attribute_multiplier")) not in [TYPE_INT, TYPE_FLOAT] or float(effect.get("attribute_multiplier")) < 0.0):
 					errors.append("%s:%s effect.attribute_multiplier 必须为非负数" % [kind, content_id])
+				if str(effect.get("kind", "")) == "status":
+					if str(effect.get("status_id", "")).is_empty():
+						errors.append("%s:%s status effect 缺少 status_id" % [kind, content_id])
+					if not ["dot", "hot", "shield", "buff_stat", "debuff_stat"].has(str(effect.get("status_kind", ""))):
+						errors.append("%s:%s status_kind 无效" % [kind, content_id])
+					if int(effect.get("duration_turns", 0)) < 1:
+						errors.append("%s:%s duration_turns 必须至少为 1" % [kind, content_id])
+					if not ["refresh", "stack"].has(str(effect.get("stack_mode", "refresh"))):
+						errors.append("%s:%s stack_mode 无效" % [kind, content_id])
+					if int(effect.get("max_stacks", 1)) < 1:
+						errors.append("%s:%s max_stacks 必须至少为 1" % [kind, content_id])
+					if str(effect.get("status_scene_path", "")).is_empty():
+						errors.append("%s:%s status effect 缺少 status_scene_path" % [kind, content_id])
 	if kind == "appearance" and not ["party", "enemy"].has(str(data.get("kind", ""))):
 		errors.append("appearance:%s kind 必须为 party 或 enemy" % content_id)
 	if kind == "appearance" and int(data.get("contract_version", 1)) != 1:
