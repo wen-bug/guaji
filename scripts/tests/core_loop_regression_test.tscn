@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://ckp36fc50ftt0"]
+
+[ext_resource type="Script" uid="uid://dmye8w5wqa6cb" path="res://scripts/tests/core_loop_regression_test.gd" id="1_sj2s5"]
+
+[node name="CoreLoopRegressionTest" type="Node" unique_id=847534505]
+script = ExtResource("1_sj2s5")

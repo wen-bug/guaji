@@ -49,3 +49,15 @@
 自定义 AI 条件回调签名为 `(skill, actor_data, target_status) -> bool`。技能 trigger 填写完整条件 ID。核心条件和效果触发阶段顺序不可覆盖。
 
 核心 trigger 为 `always`、`hp_below_50`、`hp_below_35`、`target_hp_below_35`。自定义 ID 必须由当前 Mod 或硬依赖注册。未注册的 effect 或 AI condition 会使当前 Mod 的整个注册事务回滚。
+
+
+## 当前目标契约
+
+Mod 技能必须使用：
+
+- `target_scope`：决定阵营和目标语义，如自身、友方或敌方。
+- `target_mode`：只描述作用规模，值只能为 `single` 或 `aoe`。
+
+自身、单体友方和单体敌方均标记为 `single`；全体友方和全体敌方标记为 `aoe`。技能不配置距离，也不按距离判断可用性。`release_distance` 仅为旧内容兼容字段，加载时忽略。
+
+普通攻击的接近距离、攻击范围与 Hitbox 属于战斗执行层，不应写入技能定义。

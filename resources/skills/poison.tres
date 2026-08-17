@@ -1,17 +1,17 @@
-[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://d4ch5sefm32dc"]
+[gd_resource type="Resource" format=3 uid="uid://d4ch5sefm32dc"]
 
-[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1"]
 [ext_resource type="Texture2D" uid="uid://cy5pmk84amjuw" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_poison_001/spell_poison_001_small_green/frame0005.png" id="2_icon"]
-[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="3_effect"]
 [ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/poison.tscn" id="4_status"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
 
 [sub_resource type="Resource" id="Resource_damage"]
-script = ExtResource("3_effect")
+script = ExtResource("skill_effect_def_script")
 base_amount = 7
 attribute_multiplier = 0.9
 
 [sub_resource type="Resource" id="Resource_poison"]
-script = ExtResource("3_effect")
+script = ExtResource("skill_effect_def_script")
 effect_id = "poison"
 kind = "status"
 target = "hit_targets"
@@ -22,7 +22,7 @@ duration_turns = 3
 status_visual_scene = ExtResource("4_status")
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("skill_def_script")
 id = "poison"
 display_name = "蚀骨毒雾"
 icon_texture = ExtResource("2_icon")
@@ -36,7 +36,6 @@ effect_tags = Array[String](["damage", "debuff", "dot"])
 has_debuff = true
 element = "wood"
 mp_cost = 8
-release_distance = 120.0
 priority = 55
 effects = Array[Resource]([SubResource("Resource_damage"), SubResource("Resource_poison")])
 description = "以毒雾侵蚀敌人，造成木属性伤害并附加三回合中毒。"

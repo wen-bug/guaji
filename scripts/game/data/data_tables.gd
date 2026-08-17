@@ -11,6 +11,7 @@ const ITEM_TYPE_MATERIAL := "material"
 const ITEM_TYPE_CROP := "crop"
 const ITEM_TYPE_PILL := "pill"
 const ITEM_TYPE_ALCHEMY_RECIPE := "alchemy_recipe"
+const ITEM_TYPE_BLUEPRINT := "blueprint"
 
 const ITEM_ICON_ROOT := "res://assets/items"
 const EQUIPMENT_ICON_ROOT := "res://assets/equipment"
@@ -46,6 +47,8 @@ const ITEM_ID_SKILL_BOOK_POISON := "skill_book_poison"
 const ITEM_ID_SKILL_BOOK_HEAL := "skill_book_heal"
 const ITEM_ID_SKILL_BOOK_ATTACK_UP := "skill_book_attack_up"
 const ITEM_ID_SKILL_BOOK_SPIRIT_SHIELD := "skill_book_spirit_shield"
+const ITEM_ID_MANUAL_FRAGMENT := "manual_fragment"
+const ITEM_ID_SKILL_BOOK_WATER_COLD_TALISMAN := "skill_book_water_cold_talisman"
 
 const ATTACK_MODE_MELEE := "melee"
 const ATTACK_MODE_RANGED := "ranged"
@@ -159,6 +162,20 @@ const EQUIPMENT_RARITY_NAMES := {
 	"t4": "四阶",
 	"t5": "五阶",
 }
+const EQUIPMENT_EQUIP_LEVEL_REQUIREMENTS := {
+	"t1": 1,
+	"t2": 5,
+	"t3": 10,
+	"t4": 15,
+	"t5": 20,
+}
+const EQUIPMENT_SALVAGE_ORE := {
+	"t1": 1,
+	"t2": 2,
+	"t3": 4,
+	"t4": 7,
+	"t5": 12,
+}
 const EQUIPMENT_RARITY_WEIGHTS := {
 	"t1": 55,
 	"t2": 28,
@@ -191,6 +208,14 @@ const EQUIPMENT_NORMAL_ATTRIBUTE_STATS := ["attack", "defense", "max_hp", "max_m
 const EQUIPMENT_ELEMENT_ATTRIBUTE_STATS := ["element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
 
 const ENEMY_RANK_ORDER := ["t1", "t2", "t3", "t4", "t5"]
+const ENEMY_CLASS_NORMAL := "normal"
+const ENEMY_CLASS_ELITE := "elite"
+const ENEMY_CLASS_BOSS := "boss"
+const ENEMY_CLASS_EQUIPMENT_CHANCES := {
+	ENEMY_CLASS_NORMAL: 0.05,
+	ENEMY_CLASS_ELITE: 0.12,
+	ENEMY_CLASS_BOSS: 0.25,
+}
 const ENEMY_RANK_DEFS := {
 	"t1": {"name": "一阶", "min_level": 1, "max_level": 20, "skill_count": 0, "stat_multipliers": {"max_hp": 1.0, "attack": 1.0, "defense": 1.0}, "level_growth": {"max_hp": 4.0, "attack": 1.0, "defense": 0.33}, "element_attack_ratio": 0.15, "base_drop_chance": 0.55, "drop_categories": ["basic_material"], "drop_rarity_weights": {"t1": 90, "t2": 10, "t3": 0, "t4": 0, "t5": 0}},
 	"t2": {"name": "二阶", "min_level": 21, "max_level": 40, "skill_count": 1, "stat_multipliers": {"max_hp": 1.35, "attack": 1.30, "defense": 1.25}, "level_growth": {"max_hp": 5.0, "attack": 1.2, "defense": 0.40}, "element_attack_ratio": 0.25, "base_drop_chance": 0.60, "drop_categories": ["basic_material", "attribute_crop"], "drop_rarity_weights": {"t1": 70, "t2": 25, "t3": 5, "t4": 0, "t5": 0}},
@@ -219,7 +244,7 @@ const ITEM_DEFS := {
 	"spirit_stone_water": {"item_no": 1013, "name": "水灵石", "description": "可用于强化水行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_water", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
 	"refine_talisman": {"item_no": 1014, "name": "洗练符", "description": "用于装备洗练。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"recipe_pill": {"item_no": 1015, "name": "调息丹方", "description": "学习后可炼制调息丹。", "type": ITEM_TYPE_ALCHEMY_RECIPE, "stackable": true, "usable": true, "payload": {"recipe_id": "pill"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"pill": {"item_no": 1016, "name": "调息丹", "description": "恢复生命和法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp": 18, "mp": 12}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"pill": {"item_no": 1016, "name": "调息丹", "description": "恢复 15% 最大生命和法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp_ratio": 0.15, "mp_ratio": 0.15}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
 	"breakthrough_pill": {"item_no": 1017, "name": "破境丹", "description": "达到等级上限时可突破。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"breakthrough": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
 	"blade_grass": {"item_no": 1019, "name": "刃纹草", "description": "蕴含锋锐气息的攻击属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
 	"ironroot": {"item_no": 1020, "name": "铁根藤", "description": "根须坚韧的防御属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
@@ -236,27 +261,64 @@ const ITEM_DEFS := {
 	"skill_book_heal": {"item_no": 1031, "name": "回春术技能书", "description": "使用后令选中角色永久学会回春术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "heal", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
 	"skill_book_attack_up": {"item_no": 1032, "name": "燃锋诀技能书", "description": "使用后令选中角色永久学会燃锋诀。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "attack_up", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
 	"skill_book_spirit_shield": {"item_no": 1033, "name": "玄甲术技能书", "description": "使用后令选中角色永久学会玄甲术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "spirit_shield", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
+	"blueprint_weapon": {"item_no": 1034, "name": "武器图纸", "description": "使用后永久解锁武器定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "weapon"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"blueprint_helmet": {"item_no": 1035, "name": "头盔图纸", "description": "使用后永久解锁头盔定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "helmet"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"blueprint_armor": {"item_no": 1036, "name": "护甲图纸", "description": "使用后永久解锁护甲定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "armor"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"blueprint_leggings": {"item_no": 1037, "name": "胫甲图纸", "description": "使用后永久解锁胫甲定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "leggings"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"blueprint_gloves": {"item_no": 1038, "name": "护手图纸", "description": "使用后永久解锁护手定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "gloves"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"blueprint_accessory": {"item_no": 1039, "name": "饰品图纸", "description": "使用后永久解锁饰品定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "accessory"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"manual_fragment": {"item_no": 1040, "name": "功法残页", "description": "用于在招募建筑兑换功法。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"skill_book_water_cold_talisman": {"item_no": 1041, "name": "寒潮符技能书", "description": "使用后令选中角色永久学会寒潮符。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "water_cold_talisman", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
+	"life_pill": {"item_no": 1042, "name": "归元丹", "description": "恢复 25% 最大生命。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp_ratio": 0.25}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"spirit_pill": {"item_no": 1043, "name": "聚灵丹", "description": "恢复 25% 最大法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"mp_ratio": 0.25}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
+	"attack_pill": {"item_no": 1044, "name": "破军丹", "description": "攻击 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "attack", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "attack"},
+	"defense_pill": {"item_no": 1045, "name": "玄甲丹", "description": "防御 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "defense", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "defense"},
+	"wood_pill": {"item_no": 1046, "name": "青木丹", "description": "木行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_wood", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
+	"fire_pill": {"item_no": 1047, "name": "赤焰丹", "description": "火行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_fire", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
+	"earth_pill": {"item_no": 1048, "name": "厚土丹", "description": "土行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_earth", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
+	"metal_pill": {"item_no": 1049, "name": "玄金丹", "description": "金行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_metal", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
+	"water_pill": {"item_no": 1050, "name": "玄水丹", "description": "水行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_water", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
+}
+
+const SKILL_EXCHANGE_DEFS := {
+	"thunder": {"book_item_id": "skill_book_thunder", "element_stone_id": "spirit_stone_metal", "fragment_cost": 3, "stone_cost": 1},
+	"poison": {"book_item_id": "skill_book_poison", "element_stone_id": "spirit_stone_wood", "fragment_cost": 3, "stone_cost": 1},
+	"heal": {"book_item_id": "skill_book_heal", "element_stone_id": "spirit_stone_wood", "fragment_cost": 3, "stone_cost": 1},
+	"attack_up": {"book_item_id": "skill_book_attack_up", "element_stone_id": "spirit_stone_fire", "fragment_cost": 3, "stone_cost": 1},
+	"spirit_shield": {"book_item_id": "skill_book_spirit_shield", "element_stone_id": "spirit_stone_earth", "fragment_cost": 3, "stone_cost": 1},
+	"water_cold_talisman": {"book_item_id": "skill_book_water_cold_talisman", "element_stone_id": "spirit_stone_water", "fragment_cost": 3, "stone_cost": 1},
 }
 
 const SKILL_DEFS := {
-	"heal": {"id": "heal", "name": "回春术", "type": "heal", "target_scope": SKILL_TARGET_SELF, "element": "wood", "mp_cost": 6, "cooldown": 5, "release_distance": 96.0, "priority": 90, "trigger": ["hp_below_35"], "effects": [{"effect_id": "heal", "kind": "heal", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 1.0}]},
-	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "metal", "mp_cost": 12, "cooldown": 5, "release_distance": 140.0, "priority": 60, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 13, "attribute_multiplier": 1.75, "shieldable": true}]},
-	"poison": {"id": "poison", "name": "蚀骨毒雾", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "mp_cost": 8, "cooldown": 4, "release_distance": 120.0, "priority": 55, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 0.9, "shieldable": true}, {"effect_id": "poison", "kind": "status", "target": "hit_targets", "status_id": "poison", "status_kind": "dot", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/poison.png", "status_scene_path": "res://scripts/game/skills/status/visuals/poison.tscn"}]},
-	"attack_up": {"id": "attack_up", "name": "燃锋诀", "type": "buff", "target_scope": SKILL_TARGET_SELF, "element": "fire", "mp_cost": 5, "cooldown": 6, "release_distance": 0.0, "priority": 70, "trigger": ["always"], "effects": [{"effect_id": "attack_up", "kind": "status", "target": "caster", "status_id": "attack_up", "status_kind": "buff_stat", "stat": "attack", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/attack_up.png", "status_scene_path": "res://scripts/game/skills/status/visuals/attack_up.tscn"}]},
-	"spirit_shield": {"id": "spirit_shield", "name": "玄甲术", "type": "defense", "target_scope": SKILL_TARGET_SELF, "element": "earth", "mp_cost": 7, "cooldown": 6, "release_distance": 0.0, "priority": 80, "trigger": ["hp_below_60"], "effects": [{"effect_id": "spirit_shield", "kind": "status", "target": "caster", "status_id": "spirit_shield", "status_kind": "shield", "base_amount": 10, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/spirit_shield.png", "status_scene_path": "res://scripts/game/skills/status/visuals/spirit_shield.tscn"}]},
-	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "release_distance": 0.0, "priority": 40, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 4, "attribute_multiplier": 1.25, "shieldable": true}]},
-	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "release_distance": 0.0, "priority": 55, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.0, "shieldable": true}, {"effect_id": "bleed", "kind": "status", "target": "hit_targets", "status_id": "wolf_bleed", "status_kind": "dot", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/bleed.tscn"}]},
-	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "release_distance": 0.0, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.1, "shieldable": true}, {"effect_id": "howl", "kind": "status", "target": "caster", "requires_hit": true, "status_id": "wolf_howl", "status_kind": "buff_stat", "stat": "attack", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/wolf_howl.tscn"}]},
-	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "release_distance": 0.0, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 5, "attribute_multiplier": 1.8, "shieldable": true}]},
+	"heal": {"id": "heal", "name": "回春术", "type": "heal", "target_scope": SKILL_TARGET_SELF, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "mp_cost": 6, "cooldown": 5, "priority": 90, "trigger": ["hp_below_35"], "effects": [{"effect_id": "heal", "kind": "heal", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 1.0}]},
+	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "metal", "mp_cost": 12, "cooldown": 5, "priority": 60, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 13, "attribute_multiplier": 1.75, "shieldable": true}]},
+	"poison": {"id": "poison", "name": "蚀骨毒雾", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "target_mode": SKILL_TARGET_MODE_AOE, "element": "wood", "mp_cost": 8, "cooldown": 4, "priority": 55, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 0.9, "shieldable": true}, {"effect_id": "poison", "kind": "status", "target": "hit_targets", "status_id": "poison", "status_kind": "dot", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/poison.png", "status_scene_path": "res://scripts/game/skills/status/visuals/poison.tscn"}]},
+	"attack_up": {"id": "attack_up", "name": "燃锋诀", "type": "buff", "target_scope": SKILL_TARGET_SELF, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "fire", "mp_cost": 5, "cooldown": 6, "priority": 70, "trigger": ["always"], "effects": [{"effect_id": "attack_up", "kind": "status", "target": "caster", "status_id": "attack_up", "status_kind": "buff_stat", "stat": "attack", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/attack_up.png", "status_scene_path": "res://scripts/game/skills/status/visuals/attack_up.tscn"}]},
+	"spirit_shield": {"id": "spirit_shield", "name": "玄甲术", "type": "defense", "target_scope": SKILL_TARGET_SELF, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "earth", "mp_cost": 7, "cooldown": 6, "priority": 80, "trigger": ["hp_below_60"], "effects": [{"effect_id": "spirit_shield", "kind": "status", "target": "caster", "status_id": "spirit_shield", "status_kind": "shield", "base_amount": 10, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/spirit_shield.png", "status_scene_path": "res://scripts/game/skills/status/visuals/spirit_shield.tscn"}]},
+	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "priority": 40, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 4, "attribute_multiplier": 1.25, "shieldable": true}]},
+	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "priority": 55, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.0, "shieldable": true}, {"effect_id": "bleed", "kind": "status", "target": "hit_targets", "status_id": "wolf_bleed", "status_kind": "dot", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/bleed.tscn"}]},
+	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "target_mode": SKILL_TARGET_MODE_AOE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.1, "shieldable": true}, {"effect_id": "howl", "kind": "status", "target": "caster", "requires_hit": true, "status_id": "wolf_howl", "status_kind": "buff_stat", "stat": "attack", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/wolf_howl.tscn"}]},
+	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 5, "attribute_multiplier": 1.8, "shieldable": true}]},
+	"water_cold_talisman": {"id": "water_cold_talisman", "name": "寒潮符", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "water", "mp_cost": 6, "cooldown": 3, "priority": 45, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 1.10, "shieldable": true}, {"effect_id": "cold", "kind": "status", "target": "hit_targets", "status_id": "cold", "status_kind": "debuff_stat", "stat": "attack", "base_amount": -1, "attribute_multiplier": 0.0, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/debuff.tscn"}]},
 }
 
 const BASIC_ATTACK_DEFS := {
-	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "", "mp_cost": 0, "cooldown": 0.0, "release_distance": 0.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
-	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "release_distance": 120.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
+	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 0.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
+	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 120.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
 }
 
 const ALCHEMY_RECIPE_DEFS := {
-	"pill": {"result_item_id": "pill", "materials": [{"item_id": "herb", "amount": 2}]},
+	"pill": {"result_item_id": "pill", "unlock_building_level": 1, "materials": [{"item_id": "herb", "amount": 2}]},
+	"breakthrough_pill": {"result_item_id": "breakthrough_pill", "unlock_building_level": 2, "materials": [{"item_id": "pill", "amount": 1}, {"item_id": "herb", "amount": 8}]},
+	"life_pill": {"result_item_id": "life_pill", "unlock_building_level": 3, "materials": [{"item_id": "blood_ginseng", "amount": 2}, {"item_id": "herb", "amount": 4}]},
+	"spirit_pill": {"result_item_id": "spirit_pill", "unlock_building_level": 3, "materials": [{"item_id": "spirit_lotus", "amount": 2}, {"item_id": "herb", "amount": 4}]},
+	"attack_pill": {"result_item_id": "attack_pill", "unlock_building_level": 4, "materials": [{"item_id": "blade_grass", "amount": 2}, {"item_id": "herb", "amount": 5}]},
+	"defense_pill": {"result_item_id": "defense_pill", "unlock_building_level": 4, "materials": [{"item_id": "ironroot", "amount": 2}, {"item_id": "herb", "amount": 5}]},
+	"wood_pill": {"result_item_id": "wood_pill", "unlock_building_level": 5, "materials": [{"item_id": "woodvine", "amount": 2}, {"item_id": "herb", "amount": 6}]},
+	"fire_pill": {"result_item_id": "fire_pill", "unlock_building_level": 5, "materials": [{"item_id": "flame_flower", "amount": 2}, {"item_id": "herb", "amount": 6}]},
+	"earth_pill": {"result_item_id": "earth_pill", "unlock_building_level": 5, "materials": [{"item_id": "earth_moss", "amount": 2}, {"item_id": "herb", "amount": 6}]},
+	"metal_pill": {"result_item_id": "metal_pill", "unlock_building_level": 5, "materials": [{"item_id": "metal_reed", "amount": 2}, {"item_id": "herb", "amount": 6}]},
+	"water_pill": {"result_item_id": "water_pill", "unlock_building_level": 5, "materials": [{"item_id": "water_orchid", "amount": 2}, {"item_id": "herb", "amount": 6}]},
 }
 
 const EQUIPMENT_DEFS := {
@@ -320,8 +382,16 @@ const INNATE_TRAIT_DEFS := {
 }
 
 const ENEMY_TEMPLATES := {
-	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "skills": [], "drop_profile": {"base_chance": 0.0, "items": []}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
-	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "element_power": 3, "weak_element": "fire", "element_attack_ratio": 0.05, "skills": ["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"], "drop_profile": {"base_chance": 0.55}, "drops": {"herb": {"chance": 0.55, "min": 1, "max": 2}, "ore": {"chance": 0.30, "min": 1, "max": 1}, "spirit_stone": {"chance": 0.10, "min": 1, "max": 1}}, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
+	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "skills": [], "drop_profile": {"base_chance": 0.0, "items": []}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
+	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "element_power": 3, "weak_element": "fire", "element_attack_ratio": 0.05, "skills": ["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"], "skill_unlock_rank": "t2", "drop_profile": {"base_chance": 0.55}, "drops": {"herb": {"chance": 0.55, "min": 1, "max": 2}, "ore": {"chance": 0.30, "min": 1, "max": 1}, "spirit_stone": {"chance": 0.10, "min": 1, "max": 1}, "woodvine": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_wood": {"chance": 0.08, "min": 1, "max": 1}}, "use_rank_drop_pool": false, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
+	"venom_spider": {"id": "venom_spider", "visual_id": "spider", "name": "毒纹蛛", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 26, "attack": 7, "defense": 1, "element": "wood", "element_power": 4, "weak_element": "fire", "skills": ["poison"], "skill_unlock_rank": "t2", "drops": {"woodvine": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_wood": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 11, "use_drop": true},
+	"blight_shaman": {"id": "blight_shaman", "visual_id": "shaman", "name": "腐木巫祝", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 35, "attack": 8, "defense": 2, "element": "wood", "element_power": 6, "weak_element": "fire", "skills": ["poison", "heal"], "skill_unlock_rank": "t1", "drops": {"woodvine": {"chance": 0.40, "min": 1, "max": 1}, "spirit_stone_wood": {"chance": 0.15, "min": 1, "max": 1}}, "exp": 18, "use_drop": true},
+	"ember_gnome": {"id": "ember_gnome", "visual_id": "gnome", "name": "灰烬地精", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 34, "attack": 9, "defense": 2, "element": "fire", "element_power": 5, "weak_element": "water", "skills": ["attack_up"], "skill_unlock_rank": "t2", "drops": {"flame_flower": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_fire": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 13, "use_drop": true},
+	"stone_lizard": {"id": "stone_lizard", "visual_id": "lizard", "name": "岩甲蜥", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 44, "attack": 8, "defense": 4, "element": "earth", "element_power": 6, "weak_element": "wood", "skills": ["spirit_shield"], "skill_unlock_rank": "t2", "drops": {"earth_moss": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_earth": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 15, "use_drop": true},
+	"stone_overlord": {"id": "stone_overlord", "visual_id": "minotaur", "name": "镇岳兽王", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 52, "attack": 11, "defense": 5, "element": "earth", "element_power": 8, "weak_element": "wood", "skills": ["wolf_pounce", "wolf_howl"], "skill_unlock_rank": "t1", "drops": {"earth_moss": {"chance": 0.40, "min": 1, "max": 1}, "spirit_stone_earth": {"chance": 0.15, "min": 1, "max": 1}}, "exp": 24, "use_drop": true},
+	"iron_lancer": {"id": "iron_lancer", "visual_id": "lancer", "name": "玄锋枪卒", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 48, "attack": 12, "defense": 4, "element": "metal", "element_power": 8, "weak_element": "fire", "skills": ["thunder"], "skill_unlock_rank": "t2", "drops": {"metal_reed": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_metal": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 18, "use_drop": true},
+	"tide_fish": {"id": "tide_fish", "visual_id": "paddle_fish", "name": "潮鳍鱼妖", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 54, "attack": 13, "defense": 5, "element": "water", "element_power": 9, "weak_element": "earth", "skills": ["water_cold_talisman"], "skill_unlock_rank": "t2", "drops": {"water_orchid": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_water": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 20, "use_drop": true},
+	"abyssal_turtle": {"id": "abyssal_turtle", "visual_id": "turtle", "name": "沉渊玄龟", "encounter_class": "boss", "enemy_class": ENEMY_CLASS_BOSS, "reference_stat_multipliers": {"max_hp": 3.0, "attack": 1.8, "defense": 1.8}, "experience_multiplier": 5.0, "max_hp": 90, "attack": 16, "defense": 8, "element": "water", "element_power": 14, "weak_element": "earth", "skills": ["spirit_shield", "water_cold_talisman"], "skill_unlock_rank": "t1", "drops": {"water_orchid": {"chance": 1.0, "min": 2, "max": 3}, "spirit_stone_water": {"chance": 0.50, "min": 1, "max": 2}, "ore": {"chance": 1.0, "min": 2, "max": 4}}, "use_rank_drop_pool": false, "equipment_drop_chance": 0.25, "exp": 50, "use_drop": true},
 }
 
 const ENEMY_SCENE_PATHS := {
@@ -411,6 +481,17 @@ static func item_icon_path(item_id: String) -> String:
 	if icon_name.is_empty():
 		return ""
 	return "%s/%s.png" % [ITEM_ICON_ROOT, icon_name]
+
+
+static func blueprint_item_id(template_id: String) -> String:
+	return "blueprint_%s" % template_id
+
+
+static func blueprint_template_id(item_id: String) -> String:
+	var definition: Dictionary = item_definition(item_id)
+	if str(definition.get("type", "")) != ITEM_TYPE_BLUEPRINT:
+		return ""
+	return str(definition.get("payload", {}).get("equipment_template_id", ""))
 
 
 static func equipment_icon_name(template_id: String) -> String:
@@ -650,6 +731,7 @@ static func normalize_skill_definition(definition: Dictionary) -> Dictionary:
 		scope = _default_skill_target_scope(str(skill.get("type", "")))
 	skill["target_scope"] = scope
 	skill["target_mode"] = SKILL_TARGET_MODE_AOE if scope in [SKILL_TARGET_ALL_ALLIES, SKILL_TARGET_ALL_ENEMIES] else SKILL_TARGET_MODE_SINGLE
+	skill.erase("release_distance")
 	skill["is_aoe"] = skill["target_mode"] == SKILL_TARGET_MODE_AOE
 	var tags: Array[String] = _skill_effect_tags(skill)
 	skill["effect_tags"] = tags
@@ -740,9 +822,10 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 	var rank_level: int = enemy_rank_level(enemy_level)
 	var multipliers: Dictionary = rank.get("stat_multipliers", {})
 	var growth: Dictionary = rank.get("level_growth", {})
-	var max_hp: int = _enemy_scaled_stat(int(template.get("max_hp", 1)), enemy_level, multipliers, growth, "max_hp")
-	var attack: int = _enemy_scaled_stat(int(template.get("attack", 1)), enemy_level, multipliers, growth, "attack")
-	var defense: int = _enemy_scaled_stat(int(template.get("defense", 0)), enemy_level, multipliers, growth, "defense")
+	var reference_multipliers: Dictionary = template.get("reference_stat_multipliers", {})
+	var max_hp: int = maxi(1, roundi(float(_enemy_scaled_stat(int(template.get("max_hp", 1)), enemy_level, multipliers, growth, "max_hp")) * float(reference_multipliers.get("max_hp", 1.0))))
+	var attack: int = maxi(1, roundi(float(_enemy_scaled_stat(int(template.get("attack", 1)), enemy_level, multipliers, growth, "attack")) * float(reference_multipliers.get("attack", 1.0))))
+	var defense: int = maxi(0, roundi(float(_enemy_scaled_stat(int(template.get("defense", 0)), enemy_level, multipliers, growth, "defense")) * float(reference_multipliers.get("defense", 1.0))))
 	var element_id := str(template.get("element", ""))
 	var element_power := maxi(0, int(template.get("element_power", 0)) + int(float(rank_level) / 5.0))
 	var skills: Array = template.get("skills", []).duplicate(true) if template.get("skills", []) is Array else []
@@ -750,6 +833,12 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 	while skills.size() > skill_limit:
 		skills.pop_back()
 	var drop_profile: Dictionary = rank_drop_profile(rank_id, template.get("drop_profile", {}))
+	var enemy_class: String = str(template.get("enemy_class", ENEMY_CLASS_NORMAL))
+	var drop_chance_bonus: float = float(template.get("drop_chance_bonus", 0.15 if enemy_class == ENEMY_CLASS_ELITE else 0.0))
+	if drop_chance_bonus > 0.0:
+		drop_profile["base_chance"] = clampf(float(drop_profile.get("base_chance", 0.0)) + drop_chance_bonus, 0.0, 1.0)
+	var use_rank_drop_pool: bool = bool(template.get("use_rank_drop_pool", not bool(template.get("is_training_dummy", false))))
+	var equipment_drop_chance: float = clampf(float(template.get("equipment_drop_chance", ENEMY_CLASS_EQUIPMENT_CHANCES.get(enemy_class, 0.05))), 0.0, 1.0)
 	var element_ratio := 0.0 if bool(template.get("is_training_dummy", false)) else float(rank.get("element_attack_ratio", 0.0)) + float(template.get("element_attack_ratio", 0.0))
 	return {
 		"id": str(template.get("id", resolved_enemy_id)),
@@ -763,6 +852,12 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 		"rank": rank_id,
 		"rank_name": str(rank.get("name", rank_id)),
 		"rank_level": rank_level,
+		"enemy_class": enemy_class,
+		"encounter_class": str(template.get("encounter_class", enemy_class)),
+		"reference_stat_multipliers": reference_multipliers.duplicate(true),
+		"experience_multiplier": float(template.get("experience_multiplier", 1.0)),
+		"drop_chance_bonus": drop_chance_bonus,
+		"skill_unlock_rank": str(template.get("skill_unlock_rank", "t2")),
 		"move_speed": float(template.get("move_speed", 120.0)),
 		"player_move_speed": float(template.get("player_move_speed", 120.0)),
 		"attack_range": float(template.get("attack_range", 88.0)),
@@ -777,10 +872,12 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 		"skill_cooldowns": {},
 		"drop_profile": drop_profile,
 		"drops": template.get("drops", {}).duplicate(true),
+		"use_rank_drop_pool": use_rank_drop_pool,
+		"equipment_drop_chance": equipment_drop_chance,
 		"effects": template.get("effects", []).duplicate(true),
 		"combat_effects": [],
 		"turn_start_processed": false,
-		"exp": int(template.get("exp", 5)) + enemy_level * 2,
+		"exp": roundi(float(int(template.get("exp", 5)) + enemy_level * 2) * float(template.get("experience_multiplier", 1.0))),
 		"use_drop": bool(template.get("use_drop", true)),
 		"is_training_dummy": bool(template.get("is_training_dummy", false)),
 }
@@ -849,7 +946,7 @@ static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus
 	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", rarity, obtain_source)
 
 
-static func create_equipment_from_template(template_id: String, level: int, rng: RandomNumberGenerator, _craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
+static func create_equipment_from_template(template_id: String, _level: int, rng: RandomNumberGenerator, _craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
 	var template: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if template.is_empty():
 		return {}
@@ -859,7 +956,7 @@ static func create_equipment_from_template(template_id: String, level: int, rng:
 	var rarity_name: String = str(EQUIPMENT_RARITY_NAMES.get(rarity, "一阶"))
 	var slot := str(template.get("slot", template_id))
 	var equipment_name: String = str(template.get("name", slot_name(slot)))
-	var equipment_level := maxi(1, level)
+	var equipment_level := 1
 	var base_attributes := generate_equipment_base_attributes(rarity, rng)
 	return {
 		"instance_id": "%s_%d_%d" % [template_id, Time.get_ticks_usec(), rng.randi()],
@@ -891,7 +988,7 @@ static func create_equipment_from_template(template_id: String, level: int, rng:
 		"defense_bonus": 0,
 		"enhance_attack_bonus": 0,
 		"enhance_defense_bonus": 0,
-		"equip_requirement": {"stat": "level", "min": maxi(1, equipment_level * (rarity_index + 1))},
+		"equip_requirement": {"stat": "level", "min": equipment_equip_level_requirement(rarity)},
 		"affixes": [],
 	}
 
@@ -1103,6 +1200,14 @@ static func slot_name(slot_id: String) -> String:
 
 static func equipment_rarity_name(rarity: String) -> String:
 	return EQUIPMENT_RARITY_NAMES.get(rarity, rarity)
+
+
+static func equipment_equip_level_requirement(rarity: String) -> int:
+	return int(EQUIPMENT_EQUIP_LEVEL_REQUIREMENTS.get(rarity, 1))
+
+
+static func equipment_salvage_ore(rarity: String) -> int:
+	return int(EQUIPMENT_SALVAGE_ORE.get(rarity, 1))
 
 
 static func random_equipment_rarity(rng: RandomNumberGenerator) -> String:

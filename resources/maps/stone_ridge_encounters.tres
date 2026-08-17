@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MapEncounterProfile" format=3 uid="uid://pfmy4kt10kpe"]
+
+[ext_resource type="Script" uid="uid://dqxec0smrpfbv" path="res://scripts/map/encounters/map_encounter_profile.gd" id="1_rf3ll"]
+[ext_resource type="Script" uid="uid://du1tadapfg6p8" path="res://scripts/map/encounters/map_enemy_class_pool.gd" id="2_lr02o"]
+[ext_resource type="Script" uid="uid://deqbyop35ux1r" path="res://scripts/map/encounters/map_encounter_variant.gd" id="3_okja1"]
+
+[sub_resource type="Resource" id="Resource_cy5lp"]
+script = ExtResource("2_lr02o")
+weight = 0.86
+enemy_ids = Array[String](["stone_lizard"])
+
+[sub_resource type="Resource" id="Resource_lq55h"]
+script = ExtResource("2_lr02o")
+encounter_class = "elite"
+weight = 0.14
+enemy_ids = Array[String](["stone_overlord"])
+
+[sub_resource type="Resource" id="Resource_cj3rt"]
+script = ExtResource("3_okja1")
+id = "stone_ridge_standard"
+class_pools = Array[Resource]([SubResource("Resource_cy5lp"), SubResource("Resource_lq55h")])
+
+[resource]
+script = ExtResource("1_rf3ll")
+profile_id = "stone_ridge_encounters"
+fallback_enemy_id = "stone_lizard"
+variants = Array[Resource]([SubResource("Resource_cj3rt")])

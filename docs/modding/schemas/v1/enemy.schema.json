@@ -24,6 +24,53 @@
     },
     "drops": {
       "type": "object"
+    },
+    "encounter_class": {
+      "enum": [
+        "normal",
+        "elite",
+        "boss"
+      ]
+    },
+    "enemy_class": {
+      "enum": [
+        "normal",
+        "elite",
+        "boss"
+      ]
+    },
+    "reference_stat_multipliers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "experience_multiplier": {
+      "type": "number",
+      "minimum": 0
+    },
+    "drop_chance_bonus": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "equipment_drop_chance": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "use_rank_drop_pool": {
+      "type": "boolean"
+    },
+    "skill_unlock_rank": {
+      "enum": [
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5"
+      ]
     }
   }
 }

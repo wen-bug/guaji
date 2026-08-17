@@ -200,3 +200,12 @@ effects[1] = status(dot, status_visual_scene = poison.tscn)
 - 状态场景根节点继承 `StatusVisualBase`，节点命名正确且没有方法轨道。
 - `loop` 循环，其他状态事件动画非循环。
 - 运行技能场景契约检查和 Godot 测试。
+
+
+## Schema 14 保存检查
+
+- 技能资源同时定义 `target_scope` 和 `target_mode`。
+- `target_mode` 只能是 `single` 或 `aoe`，不再区分 self/ally/enemy；阵营语义由 `target_scope` 表达。
+- 本体与新 Mod 技能不得写入 `release_distance`，UI 也不显示技能距离。
+- 技能可用性不得引用距离；只有普通攻击场景保留内部接近、范围和 Hitbox 数据。
+- 敌人技能遵循同一规则。

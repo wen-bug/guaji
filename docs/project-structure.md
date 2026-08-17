@@ -359,3 +359,14 @@ HUD 控制脚本：
 - `scripts/game/combat/combat_controller.gd`：单场自动战斗控制器，只处理当前遇怪战斗，不负责怪物刷新频率。
 - `scripts/ui/hud.gd`：提供 `ExpeditionHud` 返回入口和 `LoadingOverlay` 加载过渡，不恢复手动战斗控件。
 - `docs/battle-expedition.md`：记录家园入口、加载过渡、历练跑图、随机遇怪、自动战斗、返回家园和战后继续跑图的流程。
+
+
+## Schema 14 核心闭环文件
+
+- `scripts/game/core/game_state.gd`：建筑上限、招募初始化、突破、图纸、定向打造、分解、功法兑换、丹药配方、`reward_progress` 与 Schema 14 迁移。
+- `scripts/game/data/data_tables.gd`：1034-1050 物品、六类兑换功法、丹药配方、五行敌人和掉落元数据。
+- `scripts/ui/hud.gd`：建筑上限提示、功法兑换页、定向打造、灵石转换和分解确认；永久建筑品质不再出现在普通炼器 HUD。
+- `resources/maps/*_encounters.tres`：五张地图的普通池、14% 精英替换与沉渊泽 1% Boss 位置概率。
+- `scripts/tests/core_loop_regression_test.*`：掉落、成长、装备、技能/丹药和地图阶段回归。
+- `scripts/tests/economy_simulation_test.*`：首小时固定种子资源、历练 1-46 建筑上限、回收价值和突破可达性模拟。
+- `docs/modding/schemas/v1/`：技能 `single/aoe`、敌人类别/倍率/掉落字段和配方建筑等级字段。

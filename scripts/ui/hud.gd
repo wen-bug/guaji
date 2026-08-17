@@ -9,6 +9,7 @@ const MENU_DROP := 2
 const MENU_ENHANCE := 3
 const MENU_AFFIX := 4
 const MENU_EQUIP := 5
+const MENU_SALVAGE := 6
 const FORGE_MODE_CRAFT := "craft"
 const FORGE_MODE_ENHANCE := "enhance"
 const FORGE_MODE_REFINE := "refine"
@@ -16,7 +17,8 @@ const PARTY_MAX_SIZE := 4
 const ROSTER_MAX_SIZE := 8
 const INVENTORY_CATEGORIES := [
 	{"type": DataTables.ITEM_TYPE_SKILL_BOOK, "label": "技能书", "node": "SkillBookButton"},
-	{"type": DataTables.ITEM_TYPE_ALCHEMY_RECIPE, "label": "图纸", "node": "RecipeButton"},
+	{"type": DataTables.ITEM_TYPE_ALCHEMY_RECIPE, "label": "丹方", "node": "RecipeButton"},
+	{"type": DataTables.ITEM_TYPE_BLUEPRINT, "label": "装备图纸", "node": "BlueprintButton"},
 	{"type": DataTables.ITEM_TYPE_EQUIPMENT, "label": "装备", "node": "EquipmentButton"},
 	{"type": DataTables.ITEM_TYPE_MATERIAL, "label": "材料", "node": "MaterialButton"},
 	{"type": DataTables.ITEM_TYPE_CROP, "label": "作物", "node": "CropButton"},
@@ -212,6 +214,19 @@ var menu_button_hover_tween: Tween = null
 var scene_transition_tween: Tween = null
 var mod_manager_button: Button = null
 var mod_manager_panel: Control = null
+var forge_blueprint_row: HBoxContainer = null
+var forge_blueprint_option: OptionButton = null
+var forge_target_button: Button = null
+var salvage_confirmation_dialog: ConfirmationDialog = null
+var pending_salvage_instance_id := ""
+var recruit_mode_recruit_button: Button = null
+var recruit_mode_manual_button: Button = null
+var recruit_manual_page: VBoxContainer = null
+var manual_exchange_list: ItemList = null
+var manual_exchange_button: Button = null
+var spirit_stone_row: HBoxContainer = null
+var spirit_stone_option: OptionButton = null
+var spirit_stone_convert_button: Button = null
 
 
 func _ready() -> void:
@@ -240,6 +255,8 @@ func _ready() -> void:
 	$Root/DebugPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): debug_panel.visible = false)
 	window_drag_button.button_down.connect(_on_window_drag_button_down)
 	window_drag_button.button_up.connect(_on_window_drag_button_up)
+	_ensure_equipment_loop_controls()
+	_ensure_progression_exchange_controls()
 	_connect_farm_controls()
 	_connect_forge_controls()
 	_connect_alchemy_controls()
@@ -263,6 +280,147 @@ func _ready() -> void:
 	loading_overlay.modulate.a = 0.0
 	_setup_mod_manager()
 
+
+func _ensure_equipment_loop_controls() -> void:
+	if not category_row.has_node("BlueprintButton"):
+		var blueprint_button := Button.new()
+		blueprint_button.name = "BlueprintButton"
+		blueprint_button.custom_minimum_size = Vector2(92.0, 34.0)
+		category_row.add_child(blueprint_button)
+	var forge_layout := get_node_or_null("Root/ForgePanel/PanelLayout") as VBoxContainer
+	if forge_layout != null:
+		var forge_hint := forge_layout.get_node_or_null("HintLabel") as Label
+		if forge_hint != null:
+			forge_hint.custom_minimum_size.y = 23.0
+		forge_blueprint_row = forge_layout.get_node_or_null("BlueprintForgeRow") as HBoxContainer
+		if forge_blueprint_row == null:
+			forge_blueprint_row = HBoxContainer.new()
+			forge_blueprint_row.name = "BlueprintForgeRow"
+			forge_layout.add_child(forge_blueprint_row)
+		forge_blueprint_option = forge_blueprint_row.get_node_or_null("BlueprintOption") as OptionButton
+		if forge_blueprint_option == null:
+			forge_blueprint_option = OptionButton.new()
+			forge_blueprint_option.name = "BlueprintOption"
+			forge_blueprint_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			forge_blueprint_option.custom_minimum_size = Vector2(0.0, 34.0)
+			forge_blueprint_row.add_child(forge_blueprint_option)
+		forge_target_button = forge_blueprint_row.get_node_or_null("TargetForgeButton") as Button
+		if forge_target_button == null:
+			forge_target_button = Button.new()
+			forge_target_button.name = "TargetForgeButton"
+			forge_target_button.text = "定向打造"
+			forge_target_button.custom_minimum_size = Vector2(112.0, 34.0)
+			forge_blueprint_row.add_child(forge_target_button)
+		forge_target_button.pressed.connect(_on_target_forge_pressed)
+	var root := get_node_or_null("Root")
+	if root != null:
+		salvage_confirmation_dialog = root.get_node_or_null("SalvageConfirmationDialog") as ConfirmationDialog
+		if salvage_confirmation_dialog == null:
+			salvage_confirmation_dialog = ConfirmationDialog.new()
+			salvage_confirmation_dialog.name = "SalvageConfirmationDialog"
+			salvage_confirmation_dialog.title = "确认分解"
+			salvage_confirmation_dialog.dialog_text = "分解只返还阶级矿石，不返还强化和洗练材料。"
+			root.add_child(salvage_confirmation_dialog)
+		salvage_confirmation_dialog.confirmed.connect(_on_salvage_confirmed)
+
+func _ensure_progression_exchange_controls() -> void:
+	var recruit_layout := get_node_or_null("Root/RecruitPanel/PanelLayout") as VBoxContainer
+	if recruit_layout != null:
+		var mode_row := recruit_layout.get_node_or_null("RecruitModeRow") as HBoxContainer
+		if mode_row == null:
+			mode_row = HBoxContainer.new()
+			mode_row.name = "RecruitModeRow"
+			recruit_layout.add_child(mode_row)
+			recruit_layout.move_child(mode_row, 1)
+		recruit_mode_recruit_button = mode_row.get_node_or_null("RecruitModeButton") as Button
+		if recruit_mode_recruit_button == null:
+			recruit_mode_recruit_button = Button.new()
+			recruit_mode_recruit_button.name = "RecruitModeButton"
+			recruit_mode_recruit_button.text = "招募"
+			recruit_mode_recruit_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			mode_row.add_child(recruit_mode_recruit_button)
+		recruit_mode_manual_button = mode_row.get_node_or_null("ManualModeButton") as Button
+		if recruit_mode_manual_button == null:
+			recruit_mode_manual_button = Button.new()
+			recruit_mode_manual_button.name = "ManualModeButton"
+			recruit_mode_manual_button.text = "功法兑换"
+			recruit_mode_manual_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			mode_row.add_child(recruit_mode_manual_button)
+		recruit_manual_page = recruit_layout.get_node_or_null("ManualExchangePage") as VBoxContainer
+		if recruit_manual_page == null:
+			recruit_manual_page = VBoxContainer.new()
+			recruit_manual_page.name = "ManualExchangePage"
+			var title := Label.new()
+			title.text = "功法兑换"
+			recruit_manual_page.add_child(title)
+			manual_exchange_list = ItemList.new()
+			manual_exchange_list.name = "ManualExchangeList"
+			manual_exchange_list.custom_minimum_size = Vector2(320.0, 110.0)
+			recruit_manual_page.add_child(manual_exchange_list)
+			manual_exchange_button = Button.new()
+			manual_exchange_button.name = "ManualExchangeButton"
+			manual_exchange_button.text = "兑换功法"
+			recruit_manual_page.add_child(manual_exchange_button)
+			recruit_layout.add_child(recruit_manual_page)
+		else:
+			manual_exchange_list = recruit_manual_page.get_node_or_null("ManualExchangeList") as ItemList
+			manual_exchange_button = recruit_manual_page.get_node_or_null("ManualExchangeButton") as Button
+		if manual_exchange_button != null:
+			manual_exchange_button.pressed.connect(_on_manual_exchange_pressed)
+		if manual_exchange_list != null:
+			manual_exchange_list.item_selected.connect(func(_index): manual_exchange_button.disabled = false)
+		recruit_mode_recruit_button.pressed.connect(func(): _set_recruit_exchange_page(false))
+		recruit_mode_manual_button.pressed.connect(func(): _set_recruit_exchange_page(true))
+		_set_recruit_exchange_page(false)
+	var forge_layout := get_node_or_null("Root/ForgePanel/PanelLayout") as VBoxContainer
+	if forge_layout != null:
+		spirit_stone_row = forge_layout.get_node_or_null("SpiritStoneRow") as HBoxContainer
+		if spirit_stone_row == null:
+			spirit_stone_row = HBoxContainer.new()
+			spirit_stone_row.name = "SpiritStoneRow"
+			forge_layout.add_child(spirit_stone_row)
+		spirit_stone_option = spirit_stone_row.get_node_or_null("SpiritStoneOption") as OptionButton
+		if spirit_stone_option == null:
+			spirit_stone_option = OptionButton.new()
+			spirit_stone_option.name = "SpiritStoneOption"
+			spirit_stone_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			for element_id in ["wood", "fire", "earth", "metal", "water"]:
+				spirit_stone_option.add_item(DataTables.element_name(element_id))
+				spirit_stone_option.set_item_metadata(spirit_stone_option.item_count - 1, element_id)
+			spirit_stone_row.add_child(spirit_stone_option)
+		spirit_stone_convert_button = spirit_stone_row.get_node_or_null("SpiritStoneConvertButton") as Button
+		if spirit_stone_convert_button == null:
+			spirit_stone_convert_button = Button.new()
+			spirit_stone_convert_button.name = "SpiritStoneConvertButton"
+			spirit_stone_convert_button.text = "灵石 x3 转换"
+			spirit_stone_convert_button.custom_minimum_size = Vector2(116.0, 0.0)
+			spirit_stone_row.add_child(spirit_stone_convert_button)
+		spirit_stone_convert_button.pressed.connect(_on_spirit_stone_convert_pressed)
+
+
+func _set_recruit_exchange_page(show_manual: bool) -> void:
+	if recruit_manual_page != null:
+		recruit_manual_page.visible = show_manual
+	if recruit_mode_recruit_button != null:
+		recruit_mode_recruit_button.disabled = not show_manual
+	if recruit_mode_manual_button != null:
+		recruit_mode_manual_button.disabled = show_manual
+	var recruit_layout := get_node_or_null("Root/RecruitPanel/PanelLayout")
+	if recruit_layout == null:
+		return
+	for node_name in [
+		"ActionDetail",
+		"RecruitUpgradeButton",
+		"CandidateList",
+		"RecruitButton",
+		"ButtonRow",
+		"PartyLabel",
+		"PartyList",
+		"PartyButtonRow",
+	]:
+		var control := recruit_layout.get_node_or_null(node_name) as Control
+		if control != null:
+			control.visible = not show_manual
 
 func _setup_mod_manager() -> void:
 	var root := get_node_or_null("Root") as Control
@@ -1158,6 +1316,10 @@ func _refresh_building_upgrade_button(button: Button, building_id: String) -> vo
 		button.text = "%s已满级" % DataTables.building_name(building_id)
 		button.disabled = true
 		return
+	if level >= current_game_state.building_level_cap():
+		button.text = "历练%d解锁%d级" % [current_game_state.next_building_level_requirement(building_id), level + 1]
+		button.disabled = true
+		return
 	var cost: Dictionary = current_game_state.building_upgrade_cost(building_id)
 	var item_id: String = str(cost.get("item_id", ""))
 	var amount: int = int(cost.get("amount", 0))
@@ -1171,15 +1333,19 @@ func _building_level_summary(building_id: String) -> String:
 		return ""
 	var level: int = current_game_state.building_level(building_id)
 	var max_level: int = DataTables.building_max_level(building_id)
+	var level_cap: int = current_game_state.building_level_cap()
+	var summary := "%s %d/%d｜上限%d" % [DataTables.building_name(building_id), level, max_level, level_cap]
+	if level >= max_level:
+		return "%s  已满级" % summary
+	var requirement: int = current_game_state.next_building_level_requirement(building_id)
+	if level >= level_cap:
+		return "%s｜下级需历练%d" % [summary, requirement]
 	var cost: Dictionary = current_game_state.building_upgrade_cost(building_id)
-	if cost.is_empty():
-		return "%s等级：%d/%d  已满级" % [DataTables.building_name(building_id), level, max_level]
-	return "%s等级：%d/%d  升级：%s x%d" % [
-		DataTables.building_name(building_id),
-		level,
-		max_level,
+	return "%s｜升级%s x%d｜下级需历练%d" % [
+		summary,
 		DataTables.resource_name(str(cost.get("item_id", ""))),
 		int(cost.get("amount", 0)),
+		requirement,
 	]
 
 
@@ -1638,6 +1804,7 @@ func _refresh_recruit_panel() -> void:
 	]
 	_refresh_recruit_candidate_list()
 	_refresh_recruit_party_list()
+	_refresh_manual_exchange_page()
 	var candidate_selected := not selected_recruit_candidate_id.is_empty()
 	recruit_button.disabled = not candidate_selected or not current_game_state.can_recruit()
 	if current_game_state.roster_member_count() >= ROSTER_MAX_SIZE:
@@ -2056,7 +2223,10 @@ func _show_inventory_slot_menu(slot_index: int) -> void:
 	if selected_item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		inventory_menu.add_item("强化", MENU_ENHANCE)
 		inventory_menu.add_item("洗练", MENU_AFFIX)
-	inventory_menu.add_item("丢弃", MENU_DROP)
+		inventory_menu.add_item("分解", MENU_SALVAGE)
+		inventory_menu.set_item_disabled(inventory_menu.item_count - 1, current_game_state.is_equipment_equipped(selected_inventory_instance_id))
+	else:
+		inventory_menu.add_item("丢弃", MENU_DROP)
 	if use_scope == DataTables.ITEM_USE_SCOPE_HOME and inventory_menu.item_count > 0:
 		inventory_menu.set_item_disabled(0, false)
 	var mouse_position: Vector2 = get_viewport().get_mouse_position()
@@ -2104,6 +2274,10 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 			current_game_state.enhance_equipment(selected_inventory_instance_id)
 		MENU_AFFIX:
 			current_game_state.add_equipment_affix(selected_inventory_instance_id)
+		MENU_SALVAGE:
+			pending_salvage_instance_id = selected_inventory_instance_id
+			if salvage_confirmation_dialog != null:
+				salvage_confirmation_dialog.popup_centered()
 		MENU_DROP:
 			current_game_state.drop_inventory_item(selected_inventory_instance_id)
 
@@ -2378,12 +2552,15 @@ func _refresh_forge_panel() -> void:
 	if not [FORGE_MODE_CRAFT, FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode):
 		selected_forge_mode = FORGE_MODE_CRAFT
 	_refresh_building_upgrade_button(forge_upgrade_button, "forge")
+	_refresh_spirit_stone_conversion()
 
 	forge_craft_mode_button.disabled = selected_forge_mode == FORGE_MODE_CRAFT
 	forge_enhance_mode_button.disabled = selected_forge_mode == FORGE_MODE_ENHANCE
 	forge_refine_mode_button.disabled = selected_forge_mode == FORGE_MODE_REFINE
 	_clear_forge_material_grid()
 
+	if forge_blueprint_row != null:
+		forge_blueprint_row.visible = selected_forge_mode == FORGE_MODE_CRAFT
 	if selected_forge_mode == FORGE_MODE_CRAFT:
 		_refresh_forge_craft_panel()
 	else:
@@ -2396,12 +2573,11 @@ func _refresh_forge_craft_panel() -> void:
 	forge_action_button.text = "立即炼器"
 	var material_cost: int = current_game_state.forge_material_cost()
 	forge_action_button.disabled = not current_game_state.can_craft_equipment()
-	forge_detail.text = "%s\n装备等级：%d  永久品质：%d  升阶率：%d%%" % [
+	forge_detail.text = "%s\n随机炼器  升阶率：%d%%" % [
 		_building_level_summary("forge"),
-		current_game_state.expedition_level(),
-		current_game_state.building_output_quality("forge"),
 		int(round(current_game_state.forge_rarity_upgrade_chance() * 100.0)),
 	]
+	_refresh_forge_blueprint_options()
 	forge_material_grid.add_child(_create_forge_material_slot("material", "矿石", current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE), material_cost))
 	if forge_action_button.disabled:
 		forge_hint_label.text = "矿石不足，炼器需要 %d 个矿石" % material_cost
@@ -2654,3 +2830,95 @@ func _create_alchemy_material_slot(material: Dictionary, craft_amount: int) -> P
 		count_label.modulate = Color(1.0, 0.2, 0.2)
 	layout.add_child(count_label)
 	return slot
+
+
+func _refresh_forge_blueprint_options() -> void:
+	if forge_blueprint_option == null or forge_target_button == null or current_game_state == null:
+		return
+	var previous_id := ""
+	if forge_blueprint_option.selected >= 0:
+		previous_id = str(forge_blueprint_option.get_item_metadata(forge_blueprint_option.selected))
+	forge_blueprint_option.clear()
+	var unlocked: Array = current_game_state.unlocked_blueprint_templates()
+	unlocked.sort()
+	for template_id in unlocked:
+		var definition: Dictionary = DataTables.EQUIPMENT_DEFS.get(str(template_id), {})
+		forge_blueprint_option.add_item(DataTables.slot_name(str(definition.get("slot", template_id))))
+		forge_blueprint_option.set_item_metadata(forge_blueprint_option.item_count - 1, str(template_id))
+		if str(template_id) == previous_id:
+			forge_blueprint_option.select(forge_blueprint_option.item_count - 1)
+	forge_blueprint_option.disabled = forge_blueprint_option.item_count == 0
+	forge_target_button.disabled = forge_blueprint_option.item_count == 0 or not current_game_state.can_craft_equipment()
+
+
+func _on_target_forge_pressed() -> void:
+	if current_game_state == null or forge_blueprint_option == null or forge_blueprint_option.selected < 0:
+		return
+	var template_id := str(forge_blueprint_option.get_item_metadata(forge_blueprint_option.selected))
+	if current_game_state.craft_equipment_from_template(template_id):
+		_refresh_forge_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()
+
+
+func _on_salvage_confirmed() -> void:
+	if current_game_state == null or pending_salvage_instance_id.is_empty():
+		return
+	current_game_state.salvage_equipment(pending_salvage_instance_id)
+	pending_salvage_instance_id = ""
+	_refresh_after_inventory_action()
+
+
+func _refresh_manual_exchange_page() -> void:
+	if manual_exchange_list == null or manual_exchange_button == null or current_game_state == null:
+		return
+	var previous_id := ""
+	if manual_exchange_list.get_selected_items().size() > 0:
+		previous_id = str(manual_exchange_list.get_item_metadata(manual_exchange_list.get_selected_items()[0]))
+	manual_exchange_list.clear()
+	var skill_ids: Array = DataTables.SKILL_EXCHANGE_DEFS.keys()
+	skill_ids.sort()
+	for skill_id in skill_ids:
+		var exchange: Dictionary = DataTables.SKILL_EXCHANGE_DEFS.get(skill_id, {})
+		var skill: Dictionary = DataTables.create_skill(str(skill_id))
+		var stone_id := str(exchange.get("element_stone_id", ""))
+		var label := "%s  残页3 + %s1" % [str(skill.get("name", skill_id)), DataTables.resource_name(stone_id)]
+		manual_exchange_list.add_item(label)
+		manual_exchange_list.set_item_metadata(manual_exchange_list.item_count - 1, str(skill_id))
+		if str(skill_id) == previous_id:
+			manual_exchange_list.select(manual_exchange_list.item_count - 1)
+	manual_exchange_button.disabled = manual_exchange_list.get_selected_items().is_empty()
+
+
+func _on_manual_exchange_pressed() -> void:
+	if current_game_state == null or manual_exchange_list == null:
+		return
+	var selected := manual_exchange_list.get_selected_items()
+	if selected.is_empty():
+		return
+	var skill_id := str(manual_exchange_list.get_item_metadata(selected[0]))
+	if current_game_state.exchange_skill_manual(skill_id):
+		_refresh_manual_exchange_page()
+		if inventory_panel.visible:
+			_refresh_inventory()
+
+
+func _refresh_spirit_stone_conversion() -> void:
+	if spirit_stone_option == null or spirit_stone_convert_button == null or current_game_state == null:
+		return
+	var unlocked: bool = current_game_state.building_level("forge") >= 3
+	if spirit_stone_row != null:
+		spirit_stone_row.visible = unlocked
+	spirit_stone_option.visible = unlocked
+	spirit_stone_convert_button.visible = unlocked
+	spirit_stone_convert_button.disabled = not unlocked or current_game_state.inventory_item_count(DataTables.ITEM_ID_SPIRIT_STONE) < 3
+
+
+func _on_spirit_stone_convert_pressed() -> void:
+	if current_game_state == null or spirit_stone_option == null or spirit_stone_option.selected < 0:
+		return
+	var element_id := str(spirit_stone_option.get_item_metadata(spirit_stone_option.selected))
+	if current_game_state.convert_spirit_stones(element_id):
+		_refresh_forge_panel()
+		if inventory_panel.visible:
+			_refresh_inventory()

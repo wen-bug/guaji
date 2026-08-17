@@ -51,18 +51,9 @@ func select_player_action(game_state, player_range: float, distance_to_enemy: fl
 		"id": str(basic_attack.get("id", "basic_attack")),
 		"attack_mode": str(basic_attack.get("attack_mode", DataTables.ATTACK_MODE_MELEE)),
 		"priority": 0,
-		"range": max(player_range, float(basic_attack.get("release_distance", 0.0))),
+		"range": max(player_range, float(basic_attack.get("basic_attack_range", 0.0))),
 		"cooldown_group": "",
 	}
-
-
-func preferred_player_release_distance(action: Dictionary, player_range: float) -> float:
-	if action.is_empty():
-		return player_range
-	if str(action.get("source", "")) == ACTION_SOURCE_SKILL:
-		var skill: Dictionary = DataTables.create_skill(str(action.get("id", "")))
-		return _skill_release_distance(skill, player_range)
-	return max(player_range, float(action.get("range", player_range)))
 
 
 func _find_best_available_action(game_state, action_type: String, hp_ratio: float, mp_ratio: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, player_range: float, distance_to_enemy: float, member: Dictionary = {}) -> Dictionary:
@@ -87,7 +78,6 @@ func _find_best_available_action(game_state, action_type: String, hp_ratio: floa
 			"action_type": action_type,
 			"id": str(skill.get("id", "")),
 			"priority": int(skill.get("priority", 0)),
-			"range": float(skill.get("release_distance", player_range)),
 			"cooldown_group": str(skill.get("cooldown_group", action_type)),
 		})
 
@@ -115,7 +105,7 @@ func _pill_action_from_item(item: Dictionary, requested_type: String) -> Diction
 	var action_type: String = _pill_action_type(payload)
 	if action_type != requested_type:
 		return {}
-	var cooldown_group: String = "%s_pill" % action_type
+	var cooldown_group: String = str(payload.get("cooldown_group", "%s_pill" % action_type))
 	return {
 		"source": ACTION_SOURCE_PILL,
 		"action_type": action_type,
@@ -124,14 +114,14 @@ func _pill_action_from_item(item: Dictionary, requested_type: String) -> Diction
 		"priority": _pill_priority(action_type),
 		"range": 0.0,
 		"cooldown_group": cooldown_group,
-		"cooldown": 2,
+		"cooldown": maxi(1, int(payload.get("cooldown", 2))),
 	}
 
 
 func _pill_action_type(payload: Dictionary) -> String:
-	if int(payload.get("hp", 0)) > 0:
+	if int(payload.get("hp", 0)) > 0 or float(payload.get("hp_ratio", 0.0)) > 0.0:
 		return ACTION_TYPE_HEAL
-	if int(payload.get("mp", 0)) > 0:
+	if int(payload.get("mp", 0)) > 0 or float(payload.get("mp_ratio", 0.0)) > 0.0:
 		return ACTION_TYPE_RESOURCE
 	if str(payload.get("stat", "")) == "defense":
 		return ACTION_TYPE_DEFENSE
@@ -154,7 +144,7 @@ func _pill_priority(action_type: String) -> int:
 			return 0
 
 
-func _skill_trigger_matches(skill: Dictionary, hp_ratio: float, mp_ratio: float, distance_to_enemy: float, player_range: float) -> bool:
+func _skill_trigger_matches(skill: Dictionary, hp_ratio: float, mp_ratio: float, _distance_to_enemy: float, _player_range: float) -> bool:
 	var triggers: Array = skill.get("trigger", ["always"])
 	if triggers.is_empty():
 		return true
@@ -172,10 +162,5 @@ func _skill_trigger_matches(skill: Dictionary, hp_ratio: float, mp_ratio: float,
 				if mp_ratio <= PLAYER_MP_RESOURCE_THRESHOLD:
 					return true
 			"enemy_in_range":
-				if distance_to_enemy <= player_range:
-					return true
+				return true
 	return false
-
-
-func _skill_release_distance(skill: Dictionary, player_range: float) -> float:
-	return max(player_range, float(skill.get("release_distance", player_range)))

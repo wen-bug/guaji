@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MapEncounterProfile" format=3 uid="uid://c8mdhoeqenrl5"]
+
+[ext_resource type="Script" uid="uid://dqxec0smrpfbv" path="res://scripts/map/encounters/map_encounter_profile.gd" id="1_qeop0"]
+[ext_resource type="Script" uid="uid://du1tadapfg6p8" path="res://scripts/map/encounters/map_enemy_class_pool.gd" id="2_2qah5"]
+[ext_resource type="Script" uid="uid://deqbyop35ux1r" path="res://scripts/map/encounters/map_encounter_variant.gd" id="3_v0inq"]
+
+[sub_resource type="Resource" id="Resource_wen3i"]
+script = ExtResource("2_2qah5")
+enemy_ids = Array[String](["ember_gnome"])
+
+[sub_resource type="Resource" id="Resource_6sukd"]
+script = ExtResource("3_v0inq")
+id = "ember_valley_standard"
+class_pools = Array[Resource]([SubResource("Resource_wen3i")])
+
+[resource]
+script = ExtResource("1_qeop0")
+profile_id = "ember_valley_encounters"
+fallback_enemy_id = "ember_gnome"
+variants = Array[Resource]([SubResource("Resource_6sukd")])

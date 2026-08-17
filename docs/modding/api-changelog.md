@@ -10,3 +10,13 @@
 - 存档 Schema 升至 10，支持缺失 Mod 内容休眠与恢复。
 
 API 1 内只允许增加可选字段和带默认值的方法。废弃接口至少保留一个游戏次版本并在日志警告；删除或改变既有参数语义必须升级 MOD_API_VERSION。
+
+
+## API 1 / Game Schema 14
+
+- 新增建筑等级上限查询、完整胜利奖励进度、图纸解锁、定向打造、装备分解、功法兑换、灵石转换和建筑配方解锁接口。
+- 存档新增 `reward_progress`，不属于任务系统。
+- 技能统一为 `target_scope + target_mode`，后者只接受 `single/aoe`；旧 `release_distance` 接受但忽略。
+- 敌人 Schema 新增类别、参考倍率、经验倍率、掉率加成、装备率、技能阶位与阶级池开关。
+- 配方 Schema 新增 `unlock_building_level`。
+- 永久建筑品质接口继续保留，但普通 HUD 不展示。

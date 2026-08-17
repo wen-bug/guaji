@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="MapEncounterProfile" format=3 uid="uid://xsim2wnvwaei"]
+
+[ext_resource type="Script" uid="uid://dqxec0smrpfbv" path="res://scripts/map/encounters/map_encounter_profile.gd" id="1_80c2u"]
+[ext_resource type="Script" uid="uid://du1tadapfg6p8" path="res://scripts/map/encounters/map_enemy_class_pool.gd" id="2_hvqka"]
+[ext_resource type="Script" uid="uid://deqbyop35ux1r" path="res://scripts/map/encounters/map_encounter_variant.gd" id="3_4xvio"]
+
+[sub_resource type="Resource" id="Resource_dqggt"]
+script = ExtResource("2_hvqka")
+weight = 0.99
+enemy_ids = Array[String](["tide_fish"])
+
+[sub_resource type="Resource" id="Resource_7m0kt"]
+script = ExtResource("2_hvqka")
+encounter_class = "boss"
+weight = 0.01
+enemy_ids = Array[String](["abyssal_turtle"])
+
+[sub_resource type="Resource" id="Resource_tg8lm"]
+script = ExtResource("3_4xvio")
+id = "abyssal_marsh_standard"
+class_pools = Array[Resource]([SubResource("Resource_dqggt"), SubResource("Resource_7m0kt")])
+
+[resource]
+script = ExtResource("1_80c2u")
+profile_id = "abyssal_marsh_encounters"
+fallback_enemy_id = "tide_fish"
+variants = Array[Resource]([SubResource("Resource_tg8lm")])

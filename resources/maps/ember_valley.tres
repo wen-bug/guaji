@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionMapDefinition" format=3 uid="uid://b7dfgcp0osmkn"]
+
+[ext_resource type="Resource" uid="uid://c8mdhoeqenrl5" path="res://resources/maps/ember_valley_encounters.tres" id="1_yf33b"]
+[ext_resource type="Script" uid="uid://calmvk4jtr2fx" path="res://scripts/map/expedition_map_definition.gd" id="2_d1441"]
+
+[resource]
+script = ExtResource("2_d1441")
+map_id = "ember_valley"
+display_name = "赤焰谷"
+description = "火行灰烬与熔岩交错的历练地。"
+unlock_expedition_level = 6
+encounter_profile = ExtResource("1_yf33b")
+background_color = Color(0.24, 0.07, 0.04, 1)
+ground_color = Color(0.36, 0.12, 0.05, 1)

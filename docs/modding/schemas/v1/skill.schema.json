@@ -6,7 +6,9 @@
   "additionalProperties": true,
   "required": [
     "name",
-    "scene_path"
+    "scene_path",
+    "target_scope",
+    "target_mode"
   ],
   "properties": {
     "name": {
@@ -37,10 +39,18 @@
     },
     "release_distance": {
       "type": "number",
-      "minimum": 0
+      "minimum": 0,
+      "deprecated": true,
+      "description": "Legacy field accepted for compatibility and ignored by runtime."
     },
     "effects": {
       "type": "array"
+    },
+    "target_mode": {
+      "enum": [
+        "single",
+        "aoe"
+      ]
     }
   }
 }

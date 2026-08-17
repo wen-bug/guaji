@@ -309,6 +309,13 @@ func base_member_stats() -> Dictionary:
 	}
 
 
+func next_exp_for_level(level: int) -> int:
+	var next_exp := 40
+	for _level in range(1, maxi(1, level)):
+		next_exp = int(next_exp * 1.35) + 20
+	return next_exp
+
+
 func base_member_elements() -> Dictionary:
 	return {
 		"wood": 1,
@@ -366,7 +373,7 @@ func sanitize_equipped_for_member(member_id: String, member_equipped: Dictionary
 
 
 func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
-	var target_level: int = game_state.expedition_level()
+	var target_level: int = clampi(game_state.building_level("recruit"), 1, 10)
 	var candidate: Dictionary = {
 		"id": "companion_%d_%d" % [Time.get_ticks_usec(), game_state.rng.randi()],
 		"candidate_id": "candidate_%d_%d" % [index, game_state.rng.randi()],
@@ -383,6 +390,9 @@ func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
 	}
 	var candidate_stats: Dictionary = candidate["stats"]
 	candidate_stats["level"] = target_level
+	candidate_stats["stage"] = 1 + floori(float(target_level - 1) / 10.0)
+	candidate_stats["level_cap"] = int(candidate_stats["stage"]) * 10
+	candidate_stats["next_exp"] = next_exp_for_level(target_level)
 	var point_count: int = maxi(0, (target_level - 1) * LEVEL_ATTRIBUTE_POINTS)
 	apply_companion_attribute_points_to(candidate, point_count)
 	candidate_stats["hp"] = candidate_stats["max_hp"]
@@ -569,22 +579,12 @@ func ensure_level_cap_open_for_member(member: Dictionary) -> bool:
 	var member_stats: Dictionary = member.get("stats", {})
 	if int(member_stats.get("level", 1)) < int(member_stats.get("level_cap", 10)):
 		return true
-	if try_breakthrough_for_member(member):
-		return true
-	game_state.log_added.emit("%s已达到等级上限 %d；请使用突破丹或提升根骨" % [member.get("name", "成员"), int(member_stats.get("level_cap", 10))])
+	game_state.log_added.emit("%s已达到等级上限 %d；请使用破境丹" % [member.get("name", "成员"), int(member_stats.get("level_cap", 10))])
 	return false
 
 
-func try_breakthrough_for_member(member: Dictionary) -> bool:
-	var member_stats: Dictionary = member.get("stats", {})
-	if int(member_stats.get("level", 1)) < int(member_stats.get("level_cap", 10)):
-		return false
-	if int(member_stats.get("root_bone", 0)) <= int(member_stats.get("level", 1)):
-		return false
-	unlock_next_stage_for_member(member)
-	game_state.log_added.emit("%s根骨突破至阶段 %d" % [member.get("name", "成员"), int(member_stats.get("stage", 1))])
-	game_state.changed.emit()
-	return true
+func try_breakthrough_for_member(_member: Dictionary) -> bool:
+	return false
 
 
 func unlock_next_stage_for_member(member: Dictionary) -> void:

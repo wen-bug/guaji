@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionMapDefinition" format=3 uid="uid://bwn6frv7611r0"]
+
+[ext_resource type="Resource" uid="uid://pfmy4kt10kpe" path="res://resources/maps/stone_ridge_encounters.tres" id="1_lh87j"]
+[ext_resource type="Script" uid="uid://calmvk4jtr2fx" path="res://scripts/map/expedition_map_definition.gd" id="2_xrgv8"]
+
+[resource]
+script = ExtResource("2_xrgv8")
+map_id = "stone_ridge"
+display_name = "镇岳岭"
+description = "土行岩岭，防御型敌人盘踞。"
+unlock_expedition_level = 11
+encounter_profile = ExtResource("1_lh87j")
+background_color = Color(0.16, 0.14, 0.1, 1)
+ground_color = Color(0.29, 0.25, 0.16, 1)

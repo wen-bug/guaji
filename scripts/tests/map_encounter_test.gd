@@ -95,18 +95,28 @@ func _check_default_map() -> void:
 		var ids := map.roll_encounter(int(entry[0]), 1, rng)
 		_expect_equal("default count for party %d" % int(entry[0]), ids.size(), int(entry[1]))
 		for enemy_id in ids:
-			_expect_string("default enemy", enemy_id, "forest_wolf")
+			_expect_true("forest enemy belongs to configured pool", ["forest_wolf", "venom_spider", "blight_shaman"].has(enemy_id))
 	map.free()
 
 
 func _check_map_selection() -> void:
 	var map := BATTLE_MAP_SCENE.instantiate() as BattleMap
 	var summaries := map.map_summaries(1)
-	_expect_equal("configured map count", summaries.size(), 2)
+	_expect_equal("configured map count", summaries.size(), 6)
 	_expect_true("forest map selectable", map.select_map("verdant_forest", 1))
 	_expect_string("forest map name", map.current_map_name(), "青木林")
 	var forest_ids := map.roll_encounter(1, 1, _seeded_rng(9))
-	_expect_array("forest encounter", forest_ids, ["forest_wolf", "forest_wolf"])
+	_expect_equal("forest encounter count", forest_ids.size(), 2)
+	for enemy_id in forest_ids:
+		_expect_true("forest encounter pool", ["forest_wolf", "venom_spider", "blight_shaman"].has(enemy_id))
+	_expect_true("ember locked before level 6", not map.select_map("ember_valley", 5))
+	_expect_true("ember opens at level 6", map.select_map("ember_valley", 6))
+	_expect_array("ember pool", map.roll_encounter(1, 6, _seeded_rng(9)), ["ember_gnome", "ember_gnome"])
+	_expect_true("stone opens at level 11", map.select_map("stone_ridge", 11))
+	_expect_true("metal opens at level 16", map.select_map("metal_road", 16))
+	_expect_true("abyss opens at level 21", map.select_map("abyssal_marsh", 21))
+	for enemy_id in map.roll_encounter(4, 21, _seeded_rng(91)):
+		_expect_true("abyss pool", ["tide_fish", "abyssal_turtle"].has(enemy_id))
 	_expect_true("training map selectable", map.select_map("training_ground", 1))
 	_expect_string("training map name", map.current_map_name(), "试炼场")
 	_expect_array("training encounter", map.roll_encounter(4, 1, _seeded_rng(9)), ["training_dummy"])

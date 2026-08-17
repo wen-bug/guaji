@@ -1,27 +1,30 @@
-[gd_scene load_steps=5 format=3 uid="uid://bdl5feyi8qwb7"]
+[gd_scene format=3 uid="uid://bdl5feyi8qwb7"]
 
 [ext_resource type="Script" uid="uid://cijx4vhhgahhx" path="res://scripts/map/battle_map.gd" id="1_battle_map"]
-[ext_resource type="Resource" path="res://resources/maps/default_expedition_encounters.tres" id="2_encounters"]
-[ext_resource type="Resource" path="res://resources/maps/verdant_forest.tres" id="3_forest"]
+[ext_resource type="Resource" uid="uid://b8c7qwmoee10j" path="res://resources/maps/verdant_forest.tres" id="3_forest"]
+[ext_resource type="Resource" uid="uid://b7dfgcp0osmkn" path="res://resources/maps/ember_valley.tres" id="3_fs37d"]
+[ext_resource type="Resource" uid="uid://bwn6frv7611r0" path="res://resources/maps/stone_ridge.tres" id="4_6h7ld"]
 [ext_resource type="Resource" path="res://resources/maps/training_ground.tres" id="4_training"]
+[ext_resource type="Resource" uid="uid://bi7o3t6u10dyi" path="res://resources/maps/metal_road.tres" id="5_lhm3o"]
+[ext_resource type="Resource" uid="uid://c1fb2ggfvcip3" path="res://resources/maps/abyssal_marsh.tres" id="6_g2dxb"]
+[ext_resource type="Resource" uid="uid://bjc1pgn84ywlj" path="res://resources/maps/verdant_forest_encounters.tres" id="7_3ahlm"]
 
 [node name="BattleMap" type="Node2D" unique_id=712539348]
 script = ExtResource("1_battle_map")
-map_definitions = Array[Resource]([ExtResource("3_forest"), ExtResource("4_training")])
-default_map_id = "verdant_forest"
-encounter_profile = ExtResource("2_encounters")
+map_definitions = Array[Resource]([ExtResource("3_forest"), ExtResource("3_fs37d"), ExtResource("4_6h7ld"), ExtResource("5_lhm3o"), ExtResource("6_g2dxb"), ExtResource("4_training")])
+encounter_profile = ExtResource("7_3ahlm")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1617126533]
+z_index = -100
 offset_right = 960.0
 offset_bottom = 480.0
 mouse_filter = 2
 color = Color(0.055, 0.13, 0.085, 1)
-z_index = -100
 
-[node name="Ground" type="ColorRect" parent="."]
+[node name="Ground" type="ColorRect" parent="." unique_id=420748798]
+z_index = -99
 offset_top = 326.0
 offset_right = 960.0
 offset_bottom = 480.0
 mouse_filter = 2
 color = Color(0.16, 0.29, 0.14, 1)
-z_index = -99

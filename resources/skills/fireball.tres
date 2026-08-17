@@ -15,5 +15,4 @@ effect_tags = Array[String](["damage"])
 element = "fire"
 mp_cost = 0
 cooldown = 0.0
-release_distance = 120.0
 description = "远程角色使用的火属性普通攻击。"

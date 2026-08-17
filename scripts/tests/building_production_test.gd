@@ -56,7 +56,7 @@ func _check_character_free_production() -> void:
 	var forged_level := 0
 	for item in state.inventory_items_for_type(DataTables.ITEM_TYPE_EQUIPMENT):
 		forged_level = int(item.get("equipment_level", 0))
-	_expect_equal("forge uses expedition level", forged_level, 17)
+	_expect_equal("forge tier requirement is decoupled from expedition", forged_level, 1)
 
 	var pills_before := state.inventory_item_count("pill")
 	var herbs_before := state.inventory_item_count("herb")

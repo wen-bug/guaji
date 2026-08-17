@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://bncimxw76ytkf"]
 
 [ext_resource type="Script" uid="uid://gvdftb51q2gw" path="res://scripts/ui/hud.gd" id="1_hud"]
-[ext_resource type="Script" uid="uid://b2o03po0j8x7j" path="res://scripts/ui/inventory_detail_view.gd" id="2_inventory_detail_view"]
-[ext_resource type="Script" uid="uid://etup5p2paolr" path="res://scripts/ui/damage_popup_manager.gd" id="3_damage_popup_manager"]
+[ext_resource type="Script" path="res://scripts/ui/inventory_detail_view.gd" id="2_inventory_detail"]
+[ext_resource type="Script" path="res://scripts/ui/damage_popup_manager.gd" id="3_damage_popup"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
 content_margin_left = 10.0
@@ -257,53 +257,54 @@ layout_mode = 2
 max_columns = 4
 same_column_width = true
 fixed_column_width = 100
-fixed_icon_size = Vector2i(0, 0)
 
-[node name="ContentRow" type="HBoxContainer" parent="Root/MemberInfoPanel/PanelLayout"]
+[node name="ContentRow" type="HBoxContainer" parent="Root/MemberInfoPanel/PanelLayout" unique_id=1908515242]
 custom_minimum_size = Vector2(424, 258)
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="PortraitPanel" type="PanelContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow"]
+[node name="PortraitPanel" type="PanelContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow" unique_id=1932688167]
 custom_minimum_size = Vector2(136, 258)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_title")
 
-[node name="PortraitLayout" type="VBoxContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel"]
+[node name="PortraitLayout" type="VBoxContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel" unique_id=583816944]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="PortraitViewportContainer" type="SubViewportContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout"]
+[node name="PortraitViewportContainer" type="SubViewportContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout" unique_id=786915666]
 custom_minimum_size = Vector2(128, 218)
 layout_mode = 2
-stretch = true
 mouse_filter = 2
+stretch = true
 
-[node name="PortraitViewport" type="SubViewport" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer"]
+[node name="PortraitViewport" type="SubViewport" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer" unique_id=858524546]
 transparent_bg = true
 handle_input_locally = false
 size = Vector2i(128, 218)
-render_target_update_mode = 4
+render_target_update_mode = 0
 
-[node name="PortraitRoot" type="Node2D" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport"]
+[node name="PortraitRoot" type="Node2D" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport" unique_id=1840254162]
 position = Vector2(64, 104)
 
-[node name="PortraitName" type="Label" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout"]
+[node name="PortraitName" type="Label" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout" unique_id=855406929]
 custom_minimum_size = Vector2(128, 24)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
-horizontal_alignment = 1
 text = "暂无角色"
+horizontal_alignment = 1
 text_overrun_behavior = 3
 
-[node name="InfoTabs" type="TabContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow"]
+[node name="InfoTabs" type="TabContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow" unique_id=428509404]
 custom_minimum_size = Vector2(280, 258)
 layout_mode = 2
 size_flags_horizontal = 3
+current_tab = 0
 
-[node name="属性" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+[node name="属性" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs" unique_id=1555911093]
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 0
 
 [node name="AttributeGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性" unique_id=174227289]
 layout_mode = 2
@@ -312,38 +313,38 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 3
 columns = 2
 
-[node name="命格" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+[node name="命格" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs" unique_id=1322566815]
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 1
 
 [node name="TraitGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/命格" unique_id=700000011]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/v_separation = 6
-columns = 1
 
-[node name="装备" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+[node name="装备" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs" unique_id=1580088193]
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 2
 
 [node name="EquipmentGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备" unique_id=2044326899]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/v_separation = 6
-columns = 1
 
-[node name="技能" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs"]
+[node name="技能" type="ScrollContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs" unique_id=1753779208]
 visible = false
 layout_mode = 2
 horizontal_scroll_mode = 0
+metadata/_tab_index = 3
 
 [node name="SkillGrid" type="GridContainer" parent="Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/技能" unique_id=1617409243]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/v_separation = 6
-columns = 1
 
 [node name="InventoryPanel" type="PanelContainer" parent="Root" unique_id=1318300020]
 visible = false
@@ -459,7 +460,7 @@ offset_top = 6.0
 offset_right = 948.0
 offset_bottom = 202.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-script = ExtResource("2_inventory_detail_view")
+script = ExtResource("2_inventory_detail")
 
 [node name="DetailLayout" type="HBoxContainer" parent="Root/InventoryItemDetailPanel" unique_id=579077130]
 layout_mode = 2
@@ -522,7 +523,6 @@ custom_minimum_size = Vector2(320, 116)
 layout_mode = 2
 mouse_filter = 2
 scroll_active = false
-fit_content = false
 
 [node name="UseButton" type="Button" parent="Root/InventoryItemDetailPanel/DetailLayout/DetailColumn" unique_id=500000020]
 custom_minimum_size = Vector2(120, 28)
@@ -690,7 +690,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/ForgePanel" unique_id=209043123]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="Header" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1458774509]
 layout_mode = 2
@@ -770,7 +770,7 @@ custom_minimum_size = Vector2(292, 86)
 layout_mode = 2
 
 [node name="MaterialGrid" type="GridContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1877475221]
-custom_minimum_size = Vector2(300, 132)
+custom_minimum_size = Vector2(0, 88)
 layout_mode = 2
 columns = 2
 
@@ -1009,8 +1009,8 @@ text = "放生"
 
 [node name="ReleaseConfirmationDialog" type="ConfirmationDialog" parent="Root" unique_id=700000013]
 title = "确认放生"
-dialog_text = "放生后角色将永久消失，且不会返还招募资源。"
 ok_button_text = "确认放生"
+dialog_text = "放生后角色将永久消失，且不会返还招募资源。"
 cancel_button_text = "取消"
 
 [node name="FightPanel" type="PanelContainer" parent="Root" unique_id=2124618921]
@@ -1049,17 +1049,17 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
-[node name="MapRow" type="HBoxContainer" parent="Root/FightPanel/PanelLayout"]
+[node name="MapRow" type="HBoxContainer" parent="Root/FightPanel/PanelLayout" unique_id=610322620]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="MapLabel" type="Label" parent="Root/FightPanel/PanelLayout/MapRow"]
+[node name="MapLabel" type="Label" parent="Root/FightPanel/PanelLayout/MapRow" unique_id=261208132]
 custom_minimum_size = Vector2(64, 28)
 layout_mode = 2
 text = "历练地图"
 vertical_alignment = 1
 
-[node name="MapOption" type="OptionButton" parent="Root/FightPanel/PanelLayout/MapRow"]
+[node name="MapOption" type="OptionButton" parent="Root/FightPanel/PanelLayout/MapRow" unique_id=1614974555]
 custom_minimum_size = Vector2(210, 28)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -1343,7 +1343,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-script = ExtResource("3_damage_popup_manager")
+script = ExtResource("3_damage_popup")
 
 [node name="LoadingOverlay" type="ColorRect" parent="Root" unique_id=600000303]
 visible = false

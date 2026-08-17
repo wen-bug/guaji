@@ -15,7 +15,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 13
+const SAVE_SCHEMA_VERSION = 14
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -61,6 +61,12 @@ var building_levels: Dictionary = {
 	"alchemy": 1,
 	"farm": 1,
 }
+var reward_progress: Dictionary = {
+	"valid_victories": 0,
+	"manual_fragment_progress": 0,
+	"blueprint_pity": 0,
+	"unlocked_blueprints": [],
+}
 var permanent_building_bonuses: Dictionary = {
 	"farm": {"output_quality": 0},
 	"forge": {"output_quality": 0},
@@ -80,13 +86,14 @@ func _init() -> void:
 	party_service = PartyService.new(self)
 	rng.randomize()
 	_ensure_building_state()
+	_ensure_building_unlocked_recipes()
+	_ensure_reward_progress()
 	_ensure_account_progression()
 	_ensure_permanent_building_bonuses()
 	_ensure_farm_slots()
 	_ensure_party_state()
 	add_inventory_item(RECRUIT_RESOURCE_ID, 1, false)
 	add_inventory_item("herb", 1, false)
-	add_inventory_item("recipe_pill", 1, false)
 	_grant_missing_starter_skill_books()
 	_seed_test_inventory_if_enabled()
 	generate_recruit_candidates(false)
@@ -142,6 +149,7 @@ func to_save_data() -> Dictionary:
 		"farm_speed_buffs": farm_speed_buffs.duplicate(true),
 		"progress_states": progress_states.duplicate(true),
 		"building_levels": building_levels.duplicate(true),
+		"reward_progress": reward_progress.duplicate(true),
 		"permanent_building_bonuses": permanent_building_bonuses.duplicate(true),
 		"orphaned_mod_data": orphaned_mod_data.duplicate(true),
 	}
@@ -200,9 +208,13 @@ func load_save_data(data: Dictionary) -> void:
 		farm_speed_buffs.assign(_duplicate_array(data.get("farm_speed_buffs", [])))
 	if data.has("building_levels"):
 		_load_dictionary_values(building_levels, data.get("building_levels", {}))
+	if data.has("reward_progress"):
+		_load_dictionary_values(reward_progress, data.get("reward_progress", {}))
+	_ensure_reward_progress()
 	if data.has("permanent_building_bonuses"):
 		_load_dictionary_values(permanent_building_bonuses, data.get("permanent_building_bonuses", {}))
 	_ensure_building_state()
+	_ensure_building_unlocked_recipes()
 	if loaded_schema_version < 5:
 		account_progression = {
 			"expedition_level": 1,
@@ -216,6 +228,7 @@ func load_save_data(data: Dictionary) -> void:
 	_resolve_member_skill_references()
 	_quarantine_unknown_mod_content()
 	_sanitize_loaded_inventory()
+	_migrate_legacy_recipe_items()
 	if loaded_schema_version < 12:
 		_migrate_removed_production_traits()
 		_settle_legacy_production_jobs(legacy_production_jobs)
@@ -232,6 +245,8 @@ func load_save_data(data: Dictionary) -> void:
 	if loaded_schema_version < 3 and party_member_count() <= 0 and recruit_stone_count() <= 0:
 		add_inventory_item(RECRUIT_RESOURCE_ID, 1, false)
 	_ensure_recruit_candidate_growth()
+	if loaded_schema_version < 14:
+		_migrate_schema_14_progression()
 	_migrate_free_points_to_auto_growth()
 	if recruit_candidates.is_empty():
 		generate_recruit_candidates(false)
@@ -561,9 +576,24 @@ func building_level(building_id: String) -> int:
 	return clampi(int(building_levels.get(building_id, 1)), 1, DataTables.building_max_level(building_id))
 
 
+func building_level_cap() -> int:
+	return mini(10, 1 + floori(float(expedition_level() - 1) / 5.0))
+
+
+func building_level_requirement(level: int) -> int:
+	return 1 + maxi(0, level - 1) * 5
+
+
+func next_building_level_requirement(building_id: String) -> int:
+	var next_level: int = building_level(building_id) + 1
+	if next_level > DataTables.building_max_level(building_id):
+		return 0
+	return building_level_requirement(next_level)
+
+
 func building_upgrade_cost(building_id: String) -> Dictionary:
 	var level: int = building_level(building_id)
-	if level >= DataTables.building_max_level(building_id):
+	if level >= DataTables.building_max_level(building_id) or level >= building_level_cap():
 		return {}
 	return DataTables.building_upgrade_cost(building_id, level)
 
@@ -583,6 +613,9 @@ func upgrade_building(building_id: String) -> bool:
 	if current_level >= max_level:
 		log_added.emit("%s已满级" % DataTables.building_name(building_id))
 		return false
+	if current_level >= building_level_cap():
+		log_added.emit("%s升级至 %d 级需要历练等级 %d" % [DataTables.building_name(building_id), current_level + 1, next_building_level_requirement(building_id)])
+		return false
 	var cost: Dictionary = building_upgrade_cost(building_id)
 	var item_id: String = str(cost.get("item_id", ""))
 	var amount: int = int(cost.get("amount", 0))
@@ -592,6 +625,7 @@ func upgrade_building(building_id: String) -> bool:
 		log_added.emit("%s不足，升级需要 %s x%d" % [DataTables.resource_name(item_id), DataTables.resource_name(item_id), amount])
 		return false
 	building_levels[building_id] = current_level + 1
+	_ensure_building_unlocked_recipes()
 	log_added.emit("%s等级提升至 %d" % [DataTables.building_name(building_id), int(building_levels[building_id])])
 	changed.emit()
 	return true
@@ -748,6 +782,8 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	item["slot"] = str(item.get("slot", "weapon"))
 	item["rarity"] = str(item.get("rarity", "t1"))
 	item["equipment_level"] = maxi(1, int(item.get("equipment_level", 1)))
+	if DataTables.EQUIPMENT_DEFS.has(item_id):
+		item["equip_requirement"] = {"stat": "level", "min": DataTables.equipment_equip_level_requirement(str(item["rarity"]))}
 	item["icon_name"] = str(item.get("icon_name", DataTables.equipment_icon_name(item_id)))
 	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id)))
 	item["resource_path"] = str(item.get("resource_path", DataTables.equipment_resource_path(item_id)))
@@ -1350,6 +1386,32 @@ func forge_rarity_upgrade_chance() -> float:
 	return clampf(level_chance + quality_chance, 0.0, 0.95)
 
 
+func craft_equipment_from_template(template_id: String) -> bool:
+	if not unlocked_blueprint_templates().has(template_id):
+		log_added.emit("尚未解锁该装备图纸")
+		return false
+	var cost := forge_material_cost()
+	if not spend_resource(DataTables.ITEM_ID_ORE, cost):
+		log_added.emit("矿石不足，定向打造需要 %d 个矿石" % cost)
+		return false
+	var output_count: int = 2 if building_level(BUILDING_FORGE) >= 6 else 1
+	var names: Array[String] = []
+	for _index in range(output_count):
+		var rarity: String = DataTables.random_equipment_rarity(rng)
+		if rng.randf() < forge_rarity_upgrade_chance():
+			rarity = DataTables.upgrade_equipment_rarity(rarity, 1)
+		var equipment := DataTables.create_equipment_from_template(template_id, 1, rng, 0, "", rarity, "non_drop")
+		if equipment.is_empty():
+			add_inventory_item(DataTables.ITEM_ID_ORE, cost, false)
+			return false
+		add_equipment(equipment)
+		names.append(str(equipment.get("name", "装备")))
+	add_task_experience(GameDefs.TaskType.FORGE, 5)
+	log_added.emit("定向打造完成：%s" % "、".join(names))
+	changed.emit()
+	return true
+
+
 func craft_equipment() -> bool:
 	var cost := forge_material_cost()
 	if not spend_resource(DataTables.ITEM_ID_ORE, cost):
@@ -1370,7 +1432,7 @@ func craft_equipment() -> bool:
 			rarity = DataTables.upgrade_equipment_rarity(rarity, 1)
 		var equipment: Dictionary = DataTables.create_equipment_from_template(
 			str(template_ids[rng.randi_range(0, template_ids.size() - 1)]),
-			expedition_level(),
+			1,
 			rng,
 			0,
 			"",
@@ -1735,18 +1797,20 @@ func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
 		changed.emit()
 		return true
 
-	var hp_amount: int = int(payload.get("hp", 0))
-	var mp_amount: int = int(payload.get("mp", 0))
 	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
 		log_added.emit("需要先招募角色")
 		return false
+	var max_hp: int = _total_stat_for_member(member, "max_hp")
+	var max_mp: int = _total_stat_for_member(member, "max_mp")
+	var hp_amount: int = int(payload.get("hp", 0)) + ceili(float(max_hp) * clampf(float(payload.get("hp_ratio", 0.0)), 0.0, 1.0))
+	var mp_amount: int = int(payload.get("mp", 0)) + ceili(float(max_mp) * clampf(float(payload.get("mp_ratio", 0.0)), 0.0, 1.0))
 	var member_stats: Dictionary = member.get("stats", {})
 	var old_hp: int = int(member_stats.get("hp", 0))
 	var old_mp: int = int(member_stats.get("mp", 0))
 
-	member_stats["hp"] = min(_total_stat_for_member(member, "max_hp"), old_hp + hp_amount)
-	member_stats["mp"] = min(_total_stat_for_member(member, "max_mp"), old_mp + mp_amount)
+	member_stats["hp"] = min(max_hp, old_hp + hp_amount)
+	member_stats["mp"] = min(max_mp, old_mp + mp_amount)
 	if int(member_stats.get("hp", 0)) == old_hp and int(member_stats.get("mp", 0)) == old_mp:
 		log_added.emit("气血和法力已满")
 		return false
@@ -2334,3 +2398,185 @@ func _attribute_gains_text(gains: Dictionary) -> String:
 			continue
 		parts.append("%s+%d" % [_attribute_log_name(str(stat_id)), int(gains.get(stat_id, 0))])
 	return "、".join(parts)
+
+
+func _ensure_building_unlocked_recipes() -> void:
+	var alchemy_level: int = building_level(BUILDING_ALCHEMY)
+	var recipe_ids: Array = DataTables.ALCHEMY_RECIPE_DEFS.keys()
+	for registered_id in DataTables.content_ids("recipe", DataTables.ALCHEMY_RECIPE_DEFS):
+		if not recipe_ids.has(registered_id):
+			recipe_ids.append(registered_id)
+	for recipe_id in recipe_ids:
+		var recipe: Dictionary = DataTables.alchemy_recipe_def(str(recipe_id))
+		var unlock_level: int = maxi(1, int(recipe.get("unlock_building_level", 1)))
+		if alchemy_level >= unlock_level and not known_alchemy_recipes.has(str(recipe_id)):
+			known_alchemy_recipes.append(str(recipe_id))
+
+
+func _migrate_schema_14_progression() -> void:
+	for collection in [companions, recruit_candidates]:
+		for member in collection:
+			if not (member is Dictionary):
+				continue
+			var stats: Dictionary = member.get("stats", {})
+			var level: int = maxi(1, int(stats.get("level", 1)))
+			var old_next_exp: int = maxi(1, int(stats.get("next_exp", 40)))
+			var old_exp: int = maxi(0, int(stats.get("exp", 0)))
+			var new_next_exp: int = party_service.next_exp_for_level(level)
+			stats["exp"] = floori(float(old_exp) / float(old_next_exp) * float(new_next_exp))
+			stats["next_exp"] = new_next_exp
+			stats["stage"] = 1 + floori(float(level - 1) / 10.0)
+			stats["level_cap"] = int(stats["stage"]) * 10
+
+
+func _ensure_reward_progress() -> void:
+	reward_progress["valid_victories"] = maxi(0, int(reward_progress.get("valid_victories", 0)))
+	reward_progress["manual_fragment_progress"] = maxi(0, int(reward_progress.get("manual_fragment_progress", 0)))
+	reward_progress["blueprint_pity"] = maxi(0, int(reward_progress.get("blueprint_pity", 0)))
+	var unlocked: Array = reward_progress.get("unlocked_blueprints", []) if reward_progress.get("unlocked_blueprints", []) is Array else []
+	var kept: Array[String] = []
+	for template_id in unlocked:
+		var resolved_id := str(template_id)
+		if DataTables.EQUIPMENT_DEFS.has(resolved_id) and not kept.has(resolved_id):
+			kept.append(resolved_id)
+	reward_progress["unlocked_blueprints"] = kept
+
+
+func unlocked_blueprint_templates() -> Array:
+	_ensure_reward_progress()
+	return reward_progress.get("unlocked_blueprints", []).duplicate()
+
+
+func use_equipment_blueprint(item: Dictionary) -> bool:
+	var template_id: String = DataTables.blueprint_template_id(str(item.get("item_id", "")))
+	if template_id.is_empty() or not DataTables.EQUIPMENT_DEFS.has(template_id):
+		return false
+	var unlocked: Array = reward_progress.get("unlocked_blueprints", [])
+	_remove_inventory_count(str(item.get("item_id", "")), 1)
+	if unlocked.has(template_id):
+		add_inventory_item(DataTables.ITEM_ID_ORE, 4, false)
+		log_added.emit("重复图纸已转化为矿石 x4")
+	else:
+		unlocked.append(template_id)
+		reward_progress["unlocked_blueprints"] = unlocked
+		log_added.emit("永久解锁%s定向打造" % DataTables.slot_name(str(DataTables.EQUIPMENT_DEFS.get(template_id, {}).get("slot", template_id))))
+	changed.emit()
+	return true
+
+
+func register_full_encounter_victory(eligible: bool = true) -> Dictionary:
+	var result := {"eligible": eligible, "blueprint_item_id": ""}
+	if not eligible:
+		return result
+	_ensure_reward_progress()
+	reward_progress["valid_victories"] = int(reward_progress.get("valid_victories", 0)) + 1
+	reward_progress["manual_fragment_progress"] = int(reward_progress.get("manual_fragment_progress", 0)) + 1
+	if int(reward_progress["manual_fragment_progress"]) >= 5:
+		reward_progress["manual_fragment_progress"] = int(reward_progress["manual_fragment_progress"]) - 5
+		add_inventory_item(DataTables.ITEM_ID_MANUAL_FRAGMENT, 1, false)
+		result["manual_fragment_amount"] = 1
+		log_added.emit("五次完整清场获得功法残页 x1")
+	reward_progress["blueprint_pity"] = int(reward_progress.get("blueprint_pity", 0)) + 1
+	var unlocked: Array = reward_progress.get("unlocked_blueprints", [])
+	var template_ids: Array = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
+	var candidates: Array[String] = []
+	for template_id in template_ids:
+		var resolved_id := str(template_id)
+		if unlocked.has(resolved_id):
+			continue
+		if inventory_item_count(DataTables.blueprint_item_id(resolved_id)) <= 0:
+			candidates.append(resolved_id)
+	if candidates.is_empty() and unlocked.size() >= template_ids.size():
+		for template_id in template_ids:
+			candidates.append(str(template_id))
+	var should_award := not candidates.is_empty() and (int(reward_progress["blueprint_pity"]) >= 10 or rng.randf() < 0.10)
+	if should_award:
+		var template_id: String = candidates[rng.randi_range(0, candidates.size() - 1)]
+		var blueprint_item_id := DataTables.blueprint_item_id(template_id)
+		add_inventory_item(blueprint_item_id, 1, false)
+		reward_progress["blueprint_pity"] = 0
+		result["blueprint_item_id"] = blueprint_item_id
+		log_added.emit("完整清场获得%s" % DataTables.resource_name(blueprint_item_id))
+	changed.emit()
+	return result
+
+
+func is_equipment_equipped(instance_id: String) -> bool:
+	var item: Dictionary = inventory_item_by_instance(instance_id)
+	if item.is_empty():
+		return false
+	if bool(item.get("equipped", false)) or not str(item.get("equipped_by", "")).is_empty():
+		return true
+	for member in companions:
+		if not (member is Dictionary):
+			continue
+		for equipped_id in member.get("equipped", {}).values():
+			if str(equipped_id) == instance_id:
+				return true
+	return false
+
+
+func salvage_equipment(instance_id: String) -> bool:
+	var item: Dictionary = inventory_item_by_instance(instance_id)
+	if item.is_empty() or str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+		return false
+	if is_equipment_equipped(instance_id):
+		log_added.emit("已装备物品不能分解")
+		return false
+	var ore_amount: int = DataTables.equipment_salvage_ore(str(item.get("rarity", "t1")))
+	for index in range(inventory.size()):
+		if str(inventory[index].get("instance_id", "")) == instance_id:
+			inventory.remove_at(index)
+			add_inventory_item(DataTables.ITEM_ID_ORE, ore_amount, false)
+			log_added.emit("分解%s，返还矿石 x%d" % [str(item.get("name", "装备")), ore_amount])
+			changed.emit()
+			return true
+	return false
+
+
+func _migrate_legacy_recipe_items() -> void:
+	var legacy_count: int = inventory_item_count(DataTables.ITEM_ID_RECIPE_PILL)
+	if legacy_count > 0:
+		_remove_inventory_count(DataTables.ITEM_ID_RECIPE_PILL, legacy_count)
+	if not known_alchemy_recipes.has("pill"):
+		known_alchemy_recipes.append("pill")
+
+
+func exchange_skill_manual(skill_id: String) -> bool:
+	var exchange: Dictionary = DataTables.SKILL_EXCHANGE_DEFS.get(skill_id, {})
+	if exchange.is_empty():
+		return false
+	var fragment_cost: int = int(exchange.get("fragment_cost", 3))
+	var stone_cost: int = int(exchange.get("stone_cost", 1))
+	var stone_id: String = str(exchange.get("element_stone_id", ""))
+	if inventory_item_count(DataTables.ITEM_ID_MANUAL_FRAGMENT) < fragment_cost or inventory_item_count(stone_id) < stone_cost:
+		log_added.emit("兑换功法需要残页 x%d、%s x%d" % [fragment_cost, DataTables.resource_name(stone_id), stone_cost])
+		return false
+	_remove_inventory_count(DataTables.ITEM_ID_MANUAL_FRAGMENT, fragment_cost)
+	_remove_inventory_count(stone_id, stone_cost)
+	var book_item_id: String = str(exchange.get("book_item_id", ""))
+	add_inventory_item(book_item_id, 1, false)
+	log_added.emit("兑换%s" % DataTables.resource_name(book_item_id))
+	changed.emit()
+	return true
+
+
+func convert_spirit_stones(element_id: String) -> bool:
+	if building_level(BUILDING_FORGE) < 3:
+		log_added.emit("炼器建筑 3 级开放五行灵石转换")
+		return false
+	var stone_ids := {
+		"wood": DataTables.ITEM_ID_SPIRIT_STONE_WOOD,
+		"fire": DataTables.ITEM_ID_SPIRIT_STONE_FIRE,
+		"earth": DataTables.ITEM_ID_SPIRIT_STONE_EARTH,
+		"metal": DataTables.ITEM_ID_SPIRIT_STONE_METAL,
+		"water": DataTables.ITEM_ID_SPIRIT_STONE_WATER,
+	}
+	var result_id: String = str(stone_ids.get(element_id, ""))
+	if result_id.is_empty() or inventory_item_count(DataTables.ITEM_ID_SPIRIT_STONE) < 3:
+		return false
+	_remove_inventory_count(DataTables.ITEM_ID_SPIRIT_STONE, 3)
+	add_inventory_item(result_id, 1, false)
+	log_added.emit("灵石 x3 转换为%s x1" % DataTables.resource_name(result_id))
+	changed.emit()
+	return true

@@ -1,14 +1,13 @@
-[gd_resource type="Resource" script_class="ExpeditionMapDefinition" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ExpeditionMapDefinition" format=3 uid="uid://b8c7qwmoee10j"]
 
-[ext_resource type="Script" path="res://scripts/map/expedition_map_definition.gd" id="1_definition"]
-[ext_resource type="Resource" path="res://resources/maps/default_expedition_encounters.tres" id="2_encounters"]
+[ext_resource type="Script" uid="uid://calmvk4jtr2fx" path="res://scripts/map/expedition_map_definition.gd" id="1_definition"]
+[ext_resource type="Resource" uid="uid://bjc1pgn84ywlj" path="res://resources/maps/verdant_forest_encounters.tres" id="1_v2dog"]
 
 [resource]
 script = ExtResource("1_definition")
 map_id = "verdant_forest"
 display_name = "青木林"
-description = "林狼出没的初阶历练地，适合稳定获取基础材料。"
-unlock_expedition_level = 1
-encounter_profile = ExtResource("2_encounters")
+description = "木行初阶历练地。"
+encounter_profile = ExtResource("1_v2dog")
 background_color = Color(0.055, 0.13, 0.085, 1)
 ground_color = Color(0.16, 0.29, 0.14, 1)

@@ -126,3 +126,20 @@ for each position:
 - 普通敌人均有三个按阶技能，精英均有四个按阶技能；所有技能均有稳定 ID、倍率或效果、冷却、优先级和触发条件。
 - 形象池保持普通/精英分离，现有 14 个候选形象不在缺少用户配置时擅自分池。
 - 本文、`docs/boss-encounters.md` 与 `docs/battle-expedition.md` 不再沿用旧版整场替换、Boss 等级分池或固定单体规则。
+
+
+## 当前实现：首批五行敌人
+
+| enemy_id | 名称 | 类别 | 形象 |
+|---|---|---|---|
+| `forest_wolf` | 林狼 | normal | wolf |
+| `venom_spider` | 毒纹蛛 | normal | spider |
+| `blight_shaman` | 腐木巫祝 | elite | shaman |
+| `ember_gnome` | 灰烬地精 | normal | gnome |
+| `stone_lizard` | 岩甲蜥 | normal | lizard |
+| `stone_overlord` | 镇岳兽王 | elite | minotaur |
+| `iron_lancer` | 玄锋枪卒 | normal | lancer |
+| `tide_fish` | 潮鳍鱼妖 | normal | paddle_fish |
+| `abyssal_turtle` | 沉渊玄龟 | boss | turtle |
+
+敌人数据已补充 `encounter_class`、`enemy_class`、参考属性倍率、经验倍率、掉率加成、装备掉率、技能解锁阶位和 `use_rank_drop_pool`。精英阶级池概率额外 +15%，装备率 12%；普通装备率 5%；Boss 使用独立表、装备率 25%。敌人技能同样只使用 `single/aoe`，不保存距离字段。

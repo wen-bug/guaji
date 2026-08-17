@@ -1,9 +1,9 @@
 # Godot 4+ specific ignores
 .godot/
-/android/
-/assets/
-/addons/
+android/
+assets/
+addons/
 ./tests/
-./vscode/
 .agents/
 .godot_user/
+.vscode/

@@ -1,18 +1,18 @@
-[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://dg13bklhua18l"]
+[gd_resource type="Resource" format=3 uid="uid://dg13bklhua18l"]
 
-[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1"]
 [ext_resource type="Texture2D" uid="uid://bsq5nvsp8uj7m" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_heal_001/spell_heal_001_small_red/frame0008.png" id="2_icon"]
-[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="3_effect"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
 
 [sub_resource type="Resource" id="Resource_heal"]
-script = ExtResource("3_effect")
+script = ExtResource("skill_effect_def_script")
 effect_id = "heal"
 kind = "heal"
 base_amount = 7
 attribute_multiplier = 1.0
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("skill_def_script")
 id = "heal"
 display_name = "回春术"
 icon_texture = ExtResource("2_icon")
@@ -23,7 +23,6 @@ target_scope = "self"
 effect_tags = Array[String](["heal"])
 element = "wood"
 mp_cost = 6
-release_distance = 96.0
 priority = 90
 triggers = Array[String](["hp_below_35"])
 effects = Array[Resource]([SubResource("Resource_heal")])

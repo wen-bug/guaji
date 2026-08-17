@@ -36,8 +36,6 @@ extends Resource
 @export var mp_cost := 0
 ## 基础冷却回合数，按施法者自身回合递减。
 @export var cooldown := 0.0
-## AI 允许释放技能的最大距离；自身技能通常为 0。
-@export var release_distance := 0.0
 ## AI 候选技能优先级，数值越高越优先。
 @export var priority := 0
 ## AI 使用条件 ID 列表，例如 always 或 hp_below_35。
@@ -71,7 +69,6 @@ func setup(skill_id: String, data: Dictionary) -> SkillDef:
 	element = data.get("element", "")
 	mp_cost = int(data.get("mp_cost", 0))
 	cooldown = float(data.get("cooldown", 0.0))
-	release_distance = float(data.get("release_distance", 0.0))
 	priority = int(data.get("priority", 0))
 	triggers.assign(data.get("trigger", ["always"]))
 	enemy_only = bool(data.get("enemy_only", false))
@@ -92,10 +89,10 @@ func to_dictionary() -> Dictionary:
 		"icon_path": icon_path,
 		"type": type,
 		"target_scope": target_scope,
+		"target_mode": target_mode,
 		"element": element,
 		"mp_cost": mp_cost,
 		"cooldown": cooldown,
-		"release_distance": release_distance,
 		"priority": priority,
 		"trigger": triggers.duplicate(),
 		"enemy_only": enemy_only,

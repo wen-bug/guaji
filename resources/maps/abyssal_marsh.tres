@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionMapDefinition" format=3 uid="uid://c1fb2ggfvcip3"]
+
+[ext_resource type="Resource" uid="uid://xsim2wnvwaei" path="res://resources/maps/abyssal_marsh_encounters.tres" id="1_gcxem"]
+[ext_resource type="Script" uid="uid://calmvk4jtr2fx" path="res://scripts/map/expedition_map_definition.gd" id="2_dy3oo"]
+
+[resource]
+script = ExtResource("2_dy3oo")
+map_id = "abyssal_marsh"
+display_name = "沉渊泽"
+description = "水行深泽，偶有玄龟现身。"
+unlock_expedition_level = 21
+encounter_profile = ExtResource("1_gcxem")
+background_color = Color(0.035, 0.1, 0.13, 1)
+ground_color = Color(0.08, 0.21, 0.22, 1)

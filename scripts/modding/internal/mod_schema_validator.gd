@@ -125,7 +125,7 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 	var required: Dictionary = {
 		"item": ["name", "type"],
 		"equipment": ["name", "slot"],
-		"skill": ["name", "type", "effects"],
+		"skill": ["name", "type", "target_scope", "target_mode", "effects"],
 		"basic_attack": ["name", "effects"],
 		"recipe": ["result_item_id", "materials"],
 		"trait": ["name", "effects"],
@@ -144,7 +144,9 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 		var target_scope := str(data.get("target_scope", "single_enemy"))
 		if not ["self", "single_ally", "all_allies", "single_enemy", "all_enemies"].has(target_scope):
 			errors.append("%s:%s target_scope 无效" % [kind, content_id])
-		for field in ["mp_cost", "cooldown", "release_distance"]:
+		if data.has("target_mode") and not ["single", "aoe"].has(str(data.get("target_mode", ""))):
+			errors.append("%s:%s target_mode 只能为 single 或 aoe" % [kind, content_id])
+		for field in ["mp_cost", "cooldown"]:
 			if float(data.get(field, 0.0)) < 0.0:
 				errors.append("%s:%s %s 不能为负数" % [kind, content_id, field])
 		for field in ["base_damage", "damage_attribute_multiplier", "heal_amount", "heal_attribute_multiplier"]:
@@ -175,6 +177,15 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 						errors.append("%s:%s max_stacks 必须至少为 1" % [kind, content_id])
 					if str(effect.get("status_scene_path", "")).is_empty():
 						errors.append("%s:%s status effect 缺少 status_scene_path" % [kind, content_id])
+	if kind == "enemy":
+		var enemy_class := str(data.get("enemy_class", data.get("encounter_class", "normal")))
+		if not ["normal", "elite", "boss"].has(enemy_class):
+			errors.append("enemy:%s enemy_class 无效" % content_id)
+		for field in ["experience_multiplier", "drop_chance_bonus", "equipment_drop_chance"]:
+			if data.has(field) and (typeof(data.get(field)) not in [TYPE_INT, TYPE_FLOAT] or float(data.get(field)) < 0.0):
+				errors.append("enemy:%s %s 必须为非负数" % [content_id, field])
+		if data.has("skill_unlock_rank") and not ["t1", "t2", "t3", "t4", "t5"].has(str(data.get("skill_unlock_rank", ""))):
+			errors.append("enemy:%s skill_unlock_rank 无效" % content_id)
 	if kind == "appearance" and not ["party", "enemy"].has(str(data.get("kind", ""))):
 		errors.append("appearance:%s kind 必须为 party 或 enemy" % content_id)
 	if kind == "appearance" and int(data.get("contract_version", 1)) != 1:

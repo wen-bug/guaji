@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ExpeditionMapDefinition" format=3 uid="uid://bi7o3t6u10dyi"]
+
+[ext_resource type="Resource" uid="uid://5272pu8lva1q" path="res://resources/maps/metal_road_encounters.tres" id="1_auci4"]
+[ext_resource type="Script" uid="uid://calmvk4jtr2fx" path="res://scripts/map/expedition_map_definition.gd" id="2_ao2he"]
+
+[resource]
+script = ExtResource("2_ao2he")
+map_id = "metal_road"
+display_name = "玄金道"
+description = "金行古道，枪卒巡弋。"
+unlock_expedition_level = 16
+encounter_profile = ExtResource("1_auci4")
+background_color = Color(0.11, 0.13, 0.15, 1)
+ground_color = Color(0.25, 0.27, 0.28, 1)

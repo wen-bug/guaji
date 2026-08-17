@@ -62,3 +62,12 @@
 技能、敌人、配方等引用使用完整内容 ID。Mod 可以引用硬依赖提供的内容 ID，但不能引用其私有资源路径。资源路径、配方材料、敌人技能、自定义 effect/condition 和场景存在性会在注册提交前统一检查，因此同一 Mod 内允许前向引用。形象 fallback 环会拒绝。
 
 本体 ID 为兼容旧存档保持短 ID，例如 `heal`。Mod 新内容必须使用自动命名空间，不能伪造本体短 ID。
+
+
+## Schema 14 内容字段
+
+技能内容必须提供 `target_scope` 与 `target_mode`；`target_mode` 仅允许 `single` 或 `aoe`。`release_distance` 为废弃兼容字段，导入后忽略。
+
+敌人内容可提供 `encounter_class`、`enemy_class`、`reference_stat_multipliers`、`experience_multiplier`、`drop_chance_bonus`、`equipment_drop_chance`、`skill_unlock_rank` 与 `use_rank_drop_pool`。配方可提供 `unlock_building_level`。
+
+显式掉落与阶级池独立结算；需要完全独立奖励表的敌人应设置 `use_rank_drop_pool = false`。

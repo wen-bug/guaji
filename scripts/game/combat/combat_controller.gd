@@ -362,10 +362,10 @@ func _tick_party_approach(combatant: Dictionary, actor: Node, delta: float) -> v
 	var target_position := current_enemy_node.melee_approach_position()
 	var reached := false
 	if attack_mode == DataTables.ATTACK_MODE_RANGED:
-		var release_distance: float = float(action.get("range", enemy.get("player_attack_range", 96.0)))
-		reached = _distance_to_enemy(combatant) <= release_distance
+		var basic_attack_range: float = float(action.get("range", enemy.get("player_attack_range", 96.0)))
+		reached = _distance_to_enemy(combatant) <= basic_attack_range
 		if not reached:
-			target_position = _ranged_approach_position(combatant, release_distance)
+			target_position = _ranged_approach_position(combatant, basic_attack_range)
 			reached = _move_actor_toward(combatant, actor, target_position, delta)
 	else:
 		reached = _move_actor_toward(combatant, actor, target_position, delta)
@@ -674,6 +674,13 @@ func _on_enemy_death_finished() -> void:
 	if enemy_group_index + 1 < enemy_group.size():
 		_advance_enemy_group()
 		return
+	var reward_eligible := true
+	for defeated_enemy in enemy_group:
+		if bool(defeated_enemy.get("is_training_dummy", false)):
+			reward_eligible = false
+			break
+	if pending_game_state.has_method("register_full_encounter_victory"):
+		pending_game_state.call("register_full_encounter_victory", reward_eligible)
 	_combat_result = RESULT_VICTORY
 	_emit_mod_event(&"combat_finished", {
 		"result": RESULT_VICTORY,
@@ -739,15 +746,12 @@ func _grant_victory_rewards() -> void:
 func _resolve_drops(game_state) -> void:
 	if not bool(enemy.get("use_drop", true)):
 		return
+	_resolve_explicit_drops(game_state)
+	if not bool(enemy.get("use_rank_drop_pool", true)):
+		return
 	var profile: Dictionary = enemy.get("drop_profile", {})
 	var items: Array = profile.get("items", []) if profile.get("items", []) is Array else []
 	if items.is_empty():
-		for item_id in enemy.get("drops", {}).keys():
-			var drop_def: Dictionary = enemy.get("drops", {}).get(item_id, {})
-			if game_state.rng.randf() <= clampf(float(drop_def.get("chance", 0.0)), 0.0, 1.0):
-				var low := maxi(1, int(drop_def.get("min", 1)))
-				var high := maxi(low, int(drop_def.get("max", low)))
-				game_state.gain_resource(str(item_id), game_state.rng.randi_range(low, high))
 		return
 	var rank_level := int(enemy.get("rank_level", 1))
 	var level_steps := mini(3, floori(float(rank_level - 1) / 5.0))
@@ -770,6 +774,19 @@ func _resolve_drops(game_state) -> void:
 		return
 	var selected_id: String = str(matching[game_state.rng.randi_range(0, matching.size() - 1)])
 	game_state.gain_resource(selected_id, 1)
+
+
+func _resolve_explicit_drops(game_state) -> void:
+	var explicit_drops = enemy.get("drops", {})
+	if not (explicit_drops is Dictionary):
+		return
+	for item_id in explicit_drops.keys():
+		var drop_def: Dictionary = explicit_drops.get(item_id, {})
+		if game_state.rng.randf() > clampf(float(drop_def.get("chance", 0.0)), 0.0, 1.0):
+			continue
+		var low := maxi(1, int(drop_def.get("min", 1)))
+		var high := maxi(low, int(drop_def.get("max", low)))
+		game_state.gain_resource(str(item_id), game_state.rng.randi_range(low, high))
 
 
 func _roll_drop_rarity(weights, rng: RandomNumberGenerator) -> String:
@@ -1040,13 +1057,13 @@ func _move_actor_toward(combatant: Dictionary, actor: Node, target: Vector2, del
 	return current_position.distance_to(target) <= POSITION_EPSILON
 
 
-func _ranged_approach_position(combatant: Dictionary, release_distance: float) -> Vector2:
+func _ranged_approach_position(combatant: Dictionary, basic_attack_range: float) -> Vector2:
 	var enemy_position: Vector2 = current_enemy_node.combat_position()
 	var actor_position: Vector2 = combatant.get("position", Vector2.ZERO)
 	var direction: Vector2 = actor_position.direction_to(enemy_position) * -1.0
 	if direction == Vector2.ZERO:
 		direction = Vector2.LEFT
-	return enemy_position + direction * max(0.0, release_distance)
+	return enemy_position + direction * max(0.0, basic_attack_range)
 
 
 func _move_enemy_toward(target: Vector2, delta: float) -> bool:

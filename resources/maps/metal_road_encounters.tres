@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MapEncounterProfile" format=3 uid="uid://5272pu8lva1q"]
+
+[ext_resource type="Script" uid="uid://dqxec0smrpfbv" path="res://scripts/map/encounters/map_encounter_profile.gd" id="1_aqvex"]
+[ext_resource type="Script" uid="uid://du1tadapfg6p8" path="res://scripts/map/encounters/map_enemy_class_pool.gd" id="2_8khc4"]
+[ext_resource type="Script" uid="uid://deqbyop35ux1r" path="res://scripts/map/encounters/map_encounter_variant.gd" id="3_7oh5p"]
+
+[sub_resource type="Resource" id="Resource_rxaef"]
+script = ExtResource("2_8khc4")
+enemy_ids = Array[String](["iron_lancer"])
+
+[sub_resource type="Resource" id="Resource_8ekof"]
+script = ExtResource("3_7oh5p")
+id = "metal_road_standard"
+class_pools = Array[Resource]([SubResource("Resource_rxaef")])
+
+[resource]
+script = ExtResource("1_aqvex")
+profile_id = "metal_road_encounters"
+fallback_enemy_id = "iron_lancer"
+variants = Array[Resource]([SubResource("Resource_8ekof")])
