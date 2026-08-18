@@ -288,7 +288,20 @@ func ensure_member_shape(member: Dictionary) -> void:
 	member["skills"] = member_skills
 	member["innate_traits"] = member.get("innate_traits", []) if member.get("innate_traits", []) is Array else []
 	member["growth_primary_stats"] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
+	member["enhance_pill_uses_by_tier"] = _sanitized_usage_counts(member.get("enhance_pill_uses_by_tier", {}))
+	member["enhance_pill_uses_by_item"] = _sanitized_usage_counts(member.get("enhance_pill_uses_by_item", {}))
 	clamp_member_runtime_stats(member)
+
+
+func _sanitized_usage_counts(raw_value) -> Dictionary:
+	var result: Dictionary = {}
+	if not (raw_value is Dictionary):
+		return result
+	for raw_key in raw_value.keys():
+		var key := str(raw_key)
+		if not key.is_empty():
+			result[key] = maxi(0, int(raw_value.get(raw_key, 0)))
+	return result
 
 
 func base_member_stats() -> Dictionary:
@@ -387,6 +400,8 @@ func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
 		"skills": [],
 		"innate_traits": random_basic_recruit_traits(),
 		"growth_primary_stats": random_growth_primary_stats(),
+		"enhance_pill_uses_by_tier": {},
+		"enhance_pill_uses_by_item": {},
 	}
 	var candidate_stats: Dictionary = candidate["stats"]
 	candidate_stats["level"] = target_level

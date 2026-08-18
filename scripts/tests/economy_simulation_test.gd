@@ -32,13 +32,17 @@ func _simulate_first_hour() -> void:
 	var herb := state.inventory_item_count("herb")
 	var ore := state.inventory_item_count("ore")
 	var spirit := state.inventory_item_count("spirit_stone")
-	var crop := state.inventory_item_count("woodvine")
-	var stone := state.inventory_item_count("spirit_stone_wood")
-	_expect_true("first hour herb remains primary", herb >= 70 and herb <= 130)
+	var crop_total := 0
+	for item_id in DataTables.ENEMY_DROP_CATEGORY_ITEMS["attribute_crop"]:
+		crop_total += state.inventory_item_count(str(item_id))
+	var elite_material_total := 0
+	for item_id in DataTables.ENEMY_DROP_CATEGORY_ITEMS["element_stone"] + DataTables.ENEMY_DROP_CATEGORY_ITEMS["production_material"]:
+		elite_material_total += state.inventory_item_count(str(item_id))
+	_expect_true("first hour herb remains primary", herb >= 45 and herb <= 88)
 	_expect_true("first hour ore remains available", ore >= 20 and ore <= 52)
 	_expect_true("first hour spirit stones remain scarce", spirit >= 4 and spirit <= 22)
-	_expect_true("element crop does not replace basics", crop >= 10 and crop <= 38)
-	_expect_true("element stones remain supplementary", stone >= 2 and stone <= 18)
+	_expect_true("attribute crops remain supplementary", crop_total >= 8 and crop_total <= 42)
+	_expect_equal("normal enemies do not drop elite materials", elite_material_total, 0)
 
 
 func _simulate_levels_1_to_46() -> void:

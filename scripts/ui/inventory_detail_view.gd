@@ -124,7 +124,18 @@ func _item_meta_text(item: Dictionary, game_state, member_id: String = "") -> St
 		parts.append("洗练 %d" % int(item.get("refine_count", 0)))
 	elif item.get("type", "") == DataTables.ITEM_TYPE_PILL:
 		var payload: Dictionary = item.get("payload", {})
-		if payload.get("effect_mode", "instant") == "duration":
+		var enhance_data = payload.get("permanent_attribute_enhance", {})
+		if enhance_data is Dictionary and enhance_data.get("effects", []) is Array:
+			var effect_parts: Array[String] = []
+			for raw_effect in enhance_data.get("effects", []):
+				if raw_effect is Dictionary:
+					effect_parts.append("%s +%d" % [DataTables.attribute_display_name(str(raw_effect.get("stat", ""))), int(raw_effect.get("amount", 1))])
+			parts.append("效果：永久强化 %s" % " / ".join(effect_parts))
+			var tier_id := str(enhance_data.get("tier_id", ""))
+			var tier_limit := DataTables.permanent_attribute_enhance_tier_limit(tier_id)
+			if game_state != null and not member_id.is_empty() and tier_limit > 0:
+				parts.append("%s用量：%d/%d" % [DataTables.permanent_attribute_enhance_tier_name(tier_id), game_state.permanent_attribute_enhance_tier_uses_for(member_id, tier_id), tier_limit])
+		elif payload.get("effect_mode", "instant") == "duration":
 			parts.append("效果：%s +%d" % [DataTables.attribute_display_name(str(payload.get("stat", ""))), int(payload.get("amount", 0))])
 			parts.append("持续：%d 秒" % int(payload.get("duration", 0)))
 		else:

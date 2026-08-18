@@ -37,7 +37,22 @@
 | appearance | kind、scene_path、fallback_id、contract_version | kind=party/enemy，contract_version=1 |
 | dialogue | text、scenes、states、weight、cooldown_seconds、custom_conditions | 数组=[]、weight=1、cooldown_seconds=0 |
 
+同次击杀中，显式 `drops`、类别池和旧阶级池若命中相同 `item_id`，只按最先成功的来源发放一次，后续来源不会重抽。该规则不改变现有 Mod 字段格式。
+
 可使用物品可声明 `payload.permanent_building_quality = {"building_id": "forge", "amount": 1}`。`building_id` 仅接受 `farm`、`forge`、`alchemy`，`amount` 必须为正整数；成功使用后消耗一个物品并永久累加账号建筑品质。当前只有 `forge` 品质参与产出计算。
+
+可使用物品还可声明永久角色属性强化：
+
+```json
+{
+  "permanent_attribute_enhance": {
+    "tier_id": "t1",
+    "effects": [{"stat": "attack"}]
+  }
+}
+```
+
+`tier_id` 当前只接受 `t1`，每名角色共享上限 100 次。`effects` 必须为非空数组；`stat` 仅接受五项普通属性和五行属性，不能重复；`amount` 必须为正整数，省略时默认为 1。一颗多属性道具只计一次使用次数。失败校验不会消耗物品。
 
 `target_scope` 枚举为 `self`、`single_ally`、`all_allies`、`single_enemy`、`all_enemies`。appearance 的 `kind` 仅为 `party` 或 `enemy`。字段未写时由业务层使用上述默认值；兼容字段只会新增且必须带默认值。
 
@@ -64,7 +79,7 @@
 本体 ID 为兼容旧存档保持短 ID，例如 `heal`。Mod 新内容必须使用自动命名空间，不能伪造本体短 ID。
 
 
-## Schema 14 内容字段
+## Schema 15 内容字段
 
 技能内容必须提供 `target_scope` 与 `target_mode`；`target_mode` 仅允许 `single` 或 `aoe`。`release_distance` 为废弃兼容字段，导入后忽略。
 

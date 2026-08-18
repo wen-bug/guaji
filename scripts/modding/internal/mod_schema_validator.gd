@@ -5,6 +5,8 @@ const ModContentRegistryScript = preload("res://scripts/modding/api/mod_content_
 const MANIFEST_SCHEMA_VERSION := 2
 const MOD_API_VERSION := 2
 const GAME_VERSION := "0.2.0"
+const PERMANENT_ATTRIBUTE_ENHANCE_STATS := ["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+const PERMANENT_ATTRIBUTE_ENHANCE_TIERS := ["t1"]
 
 var _mod_id_regex := RegEx.new()
 var _local_id_regex := RegEx.new()
@@ -140,6 +142,35 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 			errors.append("%s:%s 缺少字段 %s" % [kind, content_id, field])
 		elif field in ["name", "scene_path", "visual_id", "slot", "result_item_id", "text"] and str(data.get(field, "")).strip_edges().is_empty():
 			errors.append("%s:%s 字段 %s 不能为空" % [kind, content_id, field])
+	if kind == "item":
+		var payload = data.get("payload", {})
+		if data.has("payload") and not (payload is Dictionary):
+			errors.append("item:%s payload 必须为对象" % content_id)
+		elif payload is Dictionary and payload.has("permanent_attribute_enhance"):
+			var enhance_data = payload.get("permanent_attribute_enhance")
+			if not (enhance_data is Dictionary):
+				errors.append("item:%s permanent_attribute_enhance 必须为对象" % content_id)
+			else:
+				var tier_id := str(enhance_data.get("tier_id", ""))
+				if not PERMANENT_ATTRIBUTE_ENHANCE_TIERS.has(tier_id):
+					errors.append("item:%s permanent_attribute_enhance.tier_id 无效" % content_id)
+				var effects = enhance_data.get("effects", [])
+				if not (effects is Array) or effects.is_empty():
+					errors.append("item:%s permanent_attribute_enhance.effects 必须为非空数组" % content_id)
+				else:
+					var seen_stats: Dictionary = {}
+					for effect in effects:
+						if not (effect is Dictionary):
+							errors.append("item:%s permanent_attribute_enhance.effects 元素必须为对象" % content_id)
+							continue
+						var stat_id := str(effect.get("stat", ""))
+						if not PERMANENT_ATTRIBUTE_ENHANCE_STATS.has(stat_id):
+							errors.append("item:%s permanent_attribute_enhance.stat 无效" % content_id)
+						elif seen_stats.has(stat_id):
+							errors.append("item:%s permanent_attribute_enhance.stat 不能重复" % content_id)
+						seen_stats[stat_id] = true
+						if effect.has("amount") and (typeof(effect.get("amount")) != TYPE_INT or int(effect.get("amount", 0)) <= 0):
+							errors.append("item:%s permanent_attribute_enhance.amount 必须为正整数" % content_id)
 	if kind in ["skill", "basic_attack"]:
 		var target_scope := str(data.get("target_scope", "single_enemy"))
 		if not ["self", "single_ally", "all_allies", "single_enemy", "all_enemies"].has(target_scope):

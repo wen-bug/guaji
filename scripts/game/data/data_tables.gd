@@ -49,6 +49,23 @@ const ITEM_ID_SKILL_BOOK_ATTACK_UP := "skill_book_attack_up"
 const ITEM_ID_SKILL_BOOK_SPIRIT_SHIELD := "skill_book_spirit_shield"
 const ITEM_ID_MANUAL_FRAGMENT := "manual_fragment"
 const ITEM_ID_SKILL_BOOK_WATER_COLD_TALISMAN := "skill_book_water_cold_talisman"
+const ITEM_ID_T1_ATTACK_ENHANCE_PILL := "t1_attack_enhance_pill"
+const ITEM_ID_T1_DEFENSE_ENHANCE_PILL := "t1_defense_enhance_pill"
+const ITEM_ID_T1_MAX_HP_ENHANCE_PILL := "t1_max_hp_enhance_pill"
+const ITEM_ID_T1_MAX_MP_ENHANCE_PILL := "t1_max_mp_enhance_pill"
+const ITEM_ID_T1_ROOT_BONE_ENHANCE_PILL := "t1_root_bone_enhance_pill"
+const ITEM_ID_T1_WOOD_ENHANCE_PILL := "t1_wood_enhance_pill"
+const ITEM_ID_T1_FIRE_ENHANCE_PILL := "t1_fire_enhance_pill"
+const ITEM_ID_T1_EARTH_ENHANCE_PILL := "t1_earth_enhance_pill"
+const ITEM_ID_T1_METAL_ENHANCE_PILL := "t1_metal_enhance_pill"
+const ITEM_ID_T1_WATER_ENHANCE_PILL := "t1_water_enhance_pill"
+const ITEM_ID_MARKET_TOKEN := "market_token"
+
+const MARKET_REFRESH_SECONDS := 600
+const MARKET_OFFER_COUNT := 6
+const MARKET_MANUAL_REFRESH_COSTS := [2, 4, 8, 16]
+const MARKET_COMMISSION_VALUES := [2, 4, 6]
+const MARKET_COMMISSION_REWARDS := [3, 6, 9]
 
 const ATTACK_MODE_MELEE := "melee"
 const ATTACK_MODE_RANGED := "ranged"
@@ -86,6 +103,13 @@ const ITEM_GAIN_TARGET_LABELS := {
 	"water": "水",
 }
 
+const PERMANENT_ATTRIBUTE_ENHANCE_STATS := [
+	"attack", "defense", "max_hp", "max_mp", "root_bone",
+	"element_wood", "element_fire", "element_earth", "element_metal", "element_water",
+]
+const PERMANENT_ATTRIBUTE_ENHANCE_TIER_LIMITS := {"t1": 100}
+const PERMANENT_ATTRIBUTE_ENHANCE_TIER_NAMES := {"t1": "一阶"}
+
 const ELEMENT_IDS := ["wood", "fire", "earth", "metal", "water"]
 const ELEMENT_NAMES := {
 	"wood": "木",
@@ -98,6 +122,7 @@ const ELEMENT_ATTRIBUTE_PREFIX := "element_"
 
 const OBTAIN_SOURCE_NAMES := {
 	"drop": "掉落",
+	"crafted": "打造",
 	"non_drop": "非掉落",
 	"debug": "调试",
 }
@@ -232,6 +257,181 @@ const ENEMY_DROP_CATEGORY_ITEMS := {
 	"rare_material": ["pill", "breakthrough_pill"],
 }
 
+const ENEMY_CLASS_DROP_PROFILES := {
+	ENEMY_CLASS_NORMAL: {
+		"mode": "independent",
+		"entries": [
+			{"item_id": "herb", "chance": 0.55, "amount": 1},
+			{"item_id": "ore", "chance": 0.30, "amount": 1},
+			{"item_id": "spirit_stone", "chance": 0.10, "amount": 1},
+			{"item_id": "blade_grass", "chance": 0.02, "amount": 1},
+			{"item_id": "ironroot", "chance": 0.02, "amount": 1},
+			{"item_id": "blood_ginseng", "chance": 0.02, "amount": 1},
+			{"item_id": "spirit_lotus", "chance": 0.02, "amount": 1},
+			{"item_id": "bone_bamboo", "chance": 0.02, "amount": 1},
+			{"item_id": "woodvine", "chance": 0.02, "amount": 1},
+			{"item_id": "flame_flower", "chance": 0.02, "amount": 1},
+			{"item_id": "earth_moss", "chance": 0.02, "amount": 1},
+			{"item_id": "metal_reed", "chance": 0.02, "amount": 1},
+			{"item_id": "water_orchid", "chance": 0.02, "amount": 1},
+		],
+	},
+	ENEMY_CLASS_ELITE: {
+		"mode": "independent",
+		"entries": [
+			{"item_id": "spirit_stone_wood", "chance": 0.10, "amount": 1},
+			{"item_id": "spirit_stone_fire", "chance": 0.10, "amount": 1},
+			{"item_id": "spirit_stone_earth", "chance": 0.10, "amount": 1},
+			{"item_id": "spirit_stone_metal", "chance": 0.10, "amount": 1},
+			{"item_id": "spirit_stone_water", "chance": 0.10, "amount": 1},
+			{"item_id": "farm_speed_talisman", "chance": 0.05, "amount": 1},
+			{"item_id": "refine_talisman", "chance": 0.05, "amount": 1},
+		],
+	},
+	ENEMY_CLASS_BOSS: {
+		"mode": "weighted_one",
+		"entries": [
+			{"item_id": "pill", "weight": 1, "amount": 1},
+			{"item_id": "breakthrough_pill", "weight": 1, "amount": 1},
+		],
+	},
+}
+
+const MARKET_RECYCLE_DEFS := {
+	"herb": {"amount": 10, "tokens": 1},
+	"ore": {"amount": 8, "tokens": 1},
+	"blade_grass": {"amount": 5, "tokens": 1},
+	"ironroot": {"amount": 5, "tokens": 1},
+	"blood_ginseng": {"amount": 5, "tokens": 1},
+	"spirit_lotus": {"amount": 5, "tokens": 1},
+	"bone_bamboo": {"amount": 5, "tokens": 1},
+	"woodvine": {"amount": 5, "tokens": 1},
+	"flame_flower": {"amount": 5, "tokens": 1},
+	"earth_moss": {"amount": 5, "tokens": 1},
+	"metal_reed": {"amount": 5, "tokens": 1},
+	"water_orchid": {"amount": 5, "tokens": 1},
+	"spirit_stone": {"amount": 3, "tokens": 1},
+	"spirit_stone_wood": {"amount": 2, "tokens": 1},
+	"spirit_stone_fire": {"amount": 2, "tokens": 1},
+	"spirit_stone_earth": {"amount": 2, "tokens": 1},
+	"spirit_stone_metal": {"amount": 2, "tokens": 1},
+	"spirit_stone_water": {"amount": 2, "tokens": 1},
+	"farm_speed_talisman": {"amount": 1, "tokens": 2},
+	"refine_talisman": {"amount": 1, "tokens": 2},
+	"manual_fragment": {"amount": 2, "tokens": 1},
+	"pill": {"amount": 5, "tokens": 1},
+	"life_pill": {"amount": 5, "tokens": 1},
+	"spirit_pill": {"amount": 5, "tokens": 1},
+	"attack_pill": {"amount": 5, "tokens": 1},
+	"defense_pill": {"amount": 5, "tokens": 1},
+	"wood_pill": {"amount": 5, "tokens": 1},
+	"fire_pill": {"amount": 5, "tokens": 1},
+	"earth_pill": {"amount": 5, "tokens": 1},
+	"metal_pill": {"amount": 5, "tokens": 1},
+	"water_pill": {"amount": 5, "tokens": 1},
+	"breakthrough_pill": {"amount": 3, "tokens": 1},
+	"recipe_pill": {"amount": 1, "tokens": 2, "valuable": true},
+	"blueprint_weapon": {"amount": 1, "tokens": 2, "valuable": true},
+	"blueprint_helmet": {"amount": 1, "tokens": 2, "valuable": true},
+	"blueprint_armor": {"amount": 1, "tokens": 2, "valuable": true},
+	"blueprint_leggings": {"amount": 1, "tokens": 2, "valuable": true},
+	"blueprint_gloves": {"amount": 1, "tokens": 2, "valuable": true},
+	"blueprint_accessory": {"amount": 1, "tokens": 2, "valuable": true},
+	"skill_book_thunder": {"amount": 1, "tokens": 2, "valuable": true},
+	"skill_book_poison": {"amount": 1, "tokens": 2, "valuable": true},
+	"skill_book_heal": {"amount": 1, "tokens": 2, "valuable": true},
+	"skill_book_attack_up": {"amount": 1, "tokens": 2, "valuable": true},
+	"skill_book_spirit_shield": {"amount": 1, "tokens": 2, "valuable": true},
+	"skill_book_water_cold_talisman": {"amount": 1, "tokens": 2, "valuable": true},
+	"t1_attack_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_defense_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_max_hp_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_max_mp_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_root_bone_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_wood_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_fire_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_earth_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_metal_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+	"t1_water_enhance_pill": {"amount": 2, "tokens": 1, "valuable": true},
+}
+
+const MARKET_GOODS_POOLS := {
+	"basic": {"weight": 40, "entries": [
+		{"item_id": "herb", "amount": 8, "price": 2},
+		{"item_id": "ore", "amount": 6, "price": 2},
+		{"item_id": "blade_grass", "amount": 4, "price": 2},
+		{"item_id": "ironroot", "amount": 4, "price": 2},
+		{"item_id": "blood_ginseng", "amount": 4, "price": 2},
+		{"item_id": "spirit_lotus", "amount": 4, "price": 2},
+		{"item_id": "bone_bamboo", "amount": 4, "price": 2},
+		{"item_id": "woodvine", "amount": 4, "price": 2},
+		{"item_id": "flame_flower", "amount": 4, "price": 2},
+		{"item_id": "earth_moss", "amount": 4, "price": 2},
+		{"item_id": "metal_reed", "amount": 4, "price": 2},
+		{"item_id": "water_orchid", "amount": 4, "price": 2},
+	]},
+	"production": {"weight": 25, "entries": [
+		{"item_id": "spirit_stone", "amount": 2, "price": 4},
+		{"item_id": "spirit_stone_wood", "amount": 1, "price": 3},
+		{"item_id": "spirit_stone_fire", "amount": 1, "price": 3},
+		{"item_id": "spirit_stone_earth", "amount": 1, "price": 3},
+		{"item_id": "spirit_stone_metal", "amount": 1, "price": 3},
+		{"item_id": "spirit_stone_water", "amount": 1, "price": 3},
+		{"item_id": "farm_speed_talisman", "amount": 1, "price": 6},
+		{"item_id": "refine_talisman", "amount": 1, "price": 6},
+		{"item_id": "manual_fragment", "amount": 1, "price": 4},
+	]},
+	"pill": {"weight": 20, "entries": [
+		{"item_id": "pill", "amount": 1, "price": 4, "recipe_id": "pill"},
+		{"item_id": "breakthrough_pill", "amount": 1, "price": 8, "recipe_id": "breakthrough_pill"},
+		{"item_id": "life_pill", "amount": 1, "price": 4, "recipe_id": "life_pill"},
+		{"item_id": "spirit_pill", "amount": 1, "price": 4, "recipe_id": "spirit_pill"},
+		{"item_id": "attack_pill", "amount": 1, "price": 4, "recipe_id": "attack_pill"},
+		{"item_id": "defense_pill", "amount": 1, "price": 4, "recipe_id": "defense_pill"},
+		{"item_id": "wood_pill", "amount": 1, "price": 4, "recipe_id": "wood_pill"},
+		{"item_id": "fire_pill", "amount": 1, "price": 4, "recipe_id": "fire_pill"},
+		{"item_id": "earth_pill", "amount": 1, "price": 4, "recipe_id": "earth_pill"},
+		{"item_id": "metal_pill", "amount": 1, "price": 4, "recipe_id": "metal_pill"},
+		{"item_id": "water_pill", "amount": 1, "price": 4, "recipe_id": "water_pill"},
+	]},
+	"knowledge": {"weight": 10, "entries": [
+		{"item_id": "recipe_pill", "amount": 1, "price": 16},
+		{"item_id": "blueprint_weapon", "amount": 1, "price": 16, "min_expedition_level": 6},
+		{"item_id": "blueprint_helmet", "amount": 1, "price": 16, "min_expedition_level": 6},
+		{"item_id": "blueprint_armor", "amount": 1, "price": 16, "min_expedition_level": 6},
+		{"item_id": "blueprint_leggings", "amount": 1, "price": 16, "min_expedition_level": 6},
+		{"item_id": "blueprint_gloves", "amount": 1, "price": 16, "min_expedition_level": 6},
+		{"item_id": "blueprint_accessory", "amount": 1, "price": 16, "min_expedition_level": 6},
+	]},
+	"rare": {"weight": 5, "entries": [
+		{"item_id": "skill_book_thunder", "amount": 1, "price": 32, "min_expedition_level": 6},
+		{"item_id": "skill_book_poison", "amount": 1, "price": 32, "min_expedition_level": 6},
+		{"item_id": "skill_book_heal", "amount": 1, "price": 32, "min_expedition_level": 6},
+		{"item_id": "skill_book_attack_up", "amount": 1, "price": 32, "min_expedition_level": 6},
+		{"item_id": "skill_book_spirit_shield", "amount": 1, "price": 32, "min_expedition_level": 6},
+		{"item_id": "skill_book_water_cold_talisman", "amount": 1, "price": 32, "min_expedition_level": 6},
+		{"item_id": "t1_attack_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 6},
+		{"item_id": "t1_defense_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 6},
+		{"item_id": "t1_max_hp_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 6},
+		{"item_id": "t1_max_mp_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 6},
+		{"item_id": "t1_root_bone_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 6},
+		{"item_id": "t1_wood_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 7},
+		{"item_id": "t1_fire_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 7},
+		{"item_id": "t1_earth_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 7},
+		{"item_id": "t1_metal_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 7},
+		{"item_id": "t1_water_enhance_pill", "amount": 1, "price": 24, "min_alchemy_level": 7},
+	]},
+}
+
+const MARKET_COMMISSION_ITEM_IDS := [
+	"herb", "ore", "blade_grass", "ironroot", "blood_ginseng", "spirit_lotus", "bone_bamboo",
+	"woodvine", "flame_flower", "earth_moss", "metal_reed", "water_orchid", "spirit_stone",
+	"spirit_stone_wood", "spirit_stone_fire", "spirit_stone_earth", "spirit_stone_metal",
+	"spirit_stone_water", "farm_speed_talisman", "refine_talisman", "manual_fragment", "pill",
+	"life_pill", "spirit_pill", "attack_pill", "defense_pill", "wood_pill", "fire_pill",
+	"earth_pill", "metal_pill", "water_pill", "breakthrough_pill",
+]
+
 const ITEM_DEFS := {
 	"herb": {"item_no": 1001, "name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 600.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 	"ore": {"item_no": 1004, "name": "矿石", "description": "通用炼器材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
@@ -278,6 +478,17 @@ const ITEM_DEFS := {
 	"earth_pill": {"item_no": 1048, "name": "厚土丹", "description": "土行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_earth", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
 	"metal_pill": {"item_no": 1049, "name": "玄金丹", "description": "金行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_metal", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
 	"water_pill": {"item_no": 1050, "name": "玄水丹", "description": "水行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_water", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
+	"t1_attack_enhance_pill": {"item_no": 1051, "name": "一阶攻击强化丹", "description": "永久强化所选角色的攻击属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "attack"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "attack"},
+	"t1_defense_enhance_pill": {"item_no": 1052, "name": "一阶防御强化丹", "description": "永久强化所选角色的防御属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "defense"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "defense"},
+	"t1_max_hp_enhance_pill": {"item_no": 1053, "name": "一阶气血强化丹", "description": "永久强化所选角色的气血上限。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "max_hp"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "max_hp"},
+	"t1_max_mp_enhance_pill": {"item_no": 1054, "name": "一阶法力强化丹", "description": "永久强化所选角色的法力上限。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "max_mp"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "max_mp"},
+	"t1_root_bone_enhance_pill": {"item_no": 1055, "name": "一阶根骨强化丹", "description": "永久强化所选角色的根骨属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "root_bone"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "root_bone"},
+	"t1_wood_enhance_pill": {"item_no": 1056, "name": "一阶木行强化丹", "description": "永久强化所选角色的木行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_wood"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
+	"t1_fire_enhance_pill": {"item_no": 1057, "name": "一阶火行强化丹", "description": "永久强化所选角色的火行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_fire"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
+	"t1_earth_enhance_pill": {"item_no": 1058, "name": "一阶土行强化丹", "description": "永久强化所选角色的土行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_earth"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
+	"t1_metal_enhance_pill": {"item_no": 1059, "name": "一阶金行强化丹", "description": "永久强化所选角色的金行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_metal"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
+	"t1_water_enhance_pill": {"item_no": 1060, "name": "一阶水行强化丹", "description": "永久强化所选角色的水行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_water"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
+	"market_token": {"item_no": 1061, "name": "坊市令", "description": "通过坊市委托与回收获得，用于购买和刷新坊市商品。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"market_currency": true}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 }
 
 const SKILL_EXCHANGE_DEFS := {
@@ -319,6 +530,16 @@ const ALCHEMY_RECIPE_DEFS := {
 	"earth_pill": {"result_item_id": "earth_pill", "unlock_building_level": 5, "materials": [{"item_id": "earth_moss", "amount": 2}, {"item_id": "herb", "amount": 6}]},
 	"metal_pill": {"result_item_id": "metal_pill", "unlock_building_level": 5, "materials": [{"item_id": "metal_reed", "amount": 2}, {"item_id": "herb", "amount": 6}]},
 	"water_pill": {"result_item_id": "water_pill", "unlock_building_level": 5, "materials": [{"item_id": "water_orchid", "amount": 2}, {"item_id": "herb", "amount": 6}]},
+	"t1_attack_enhance_pill": {"result_item_id": "t1_attack_enhance_pill", "unlock_building_level": 6, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "blade_grass", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone", "amount": 2}]},
+	"t1_defense_enhance_pill": {"result_item_id": "t1_defense_enhance_pill", "unlock_building_level": 6, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "ironroot", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone", "amount": 2}]},
+	"t1_max_hp_enhance_pill": {"result_item_id": "t1_max_hp_enhance_pill", "unlock_building_level": 6, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "blood_ginseng", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone", "amount": 2}]},
+	"t1_max_mp_enhance_pill": {"result_item_id": "t1_max_mp_enhance_pill", "unlock_building_level": 6, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "spirit_lotus", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone", "amount": 2}]},
+	"t1_root_bone_enhance_pill": {"result_item_id": "t1_root_bone_enhance_pill", "unlock_building_level": 6, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "bone_bamboo", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone", "amount": 2}]},
+	"t1_wood_enhance_pill": {"result_item_id": "t1_wood_enhance_pill", "unlock_building_level": 7, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "woodvine", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone_wood", "amount": 2}]},
+	"t1_fire_enhance_pill": {"result_item_id": "t1_fire_enhance_pill", "unlock_building_level": 7, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "flame_flower", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone_fire", "amount": 2}]},
+	"t1_earth_enhance_pill": {"result_item_id": "t1_earth_enhance_pill", "unlock_building_level": 7, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "earth_moss", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone_earth", "amount": 2}]},
+	"t1_metal_enhance_pill": {"result_item_id": "t1_metal_enhance_pill", "unlock_building_level": 7, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "metal_reed", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone_metal", "amount": 2}]},
+	"t1_water_enhance_pill": {"result_item_id": "t1_water_enhance_pill", "unlock_building_level": 7, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "water_orchid", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone_water", "amount": 2}]},
 }
 
 const EQUIPMENT_DEFS := {
@@ -383,15 +604,15 @@ const INNATE_TRAIT_DEFS := {
 
 const ENEMY_TEMPLATES := {
 	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "skills": [], "drop_profile": {"base_chance": 0.0, "items": []}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
-	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "element_power": 3, "weak_element": "fire", "element_attack_ratio": 0.05, "skills": ["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"], "skill_unlock_rank": "t2", "drop_profile": {"base_chance": 0.55}, "drops": {"herb": {"chance": 0.55, "min": 1, "max": 2}, "ore": {"chance": 0.30, "min": 1, "max": 1}, "spirit_stone": {"chance": 0.10, "min": 1, "max": 1}, "woodvine": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_wood": {"chance": 0.08, "min": 1, "max": 1}}, "use_rank_drop_pool": false, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
-	"venom_spider": {"id": "venom_spider", "visual_id": "spider", "name": "毒纹蛛", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 26, "attack": 7, "defense": 1, "element": "wood", "element_power": 4, "weak_element": "fire", "skills": ["poison"], "skill_unlock_rank": "t2", "drops": {"woodvine": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_wood": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 11, "use_drop": true},
-	"blight_shaman": {"id": "blight_shaman", "visual_id": "shaman", "name": "腐木巫祝", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 35, "attack": 8, "defense": 2, "element": "wood", "element_power": 6, "weak_element": "fire", "skills": ["poison", "heal"], "skill_unlock_rank": "t1", "drops": {"woodvine": {"chance": 0.40, "min": 1, "max": 1}, "spirit_stone_wood": {"chance": 0.15, "min": 1, "max": 1}}, "exp": 18, "use_drop": true},
-	"ember_gnome": {"id": "ember_gnome", "visual_id": "gnome", "name": "灰烬地精", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 34, "attack": 9, "defense": 2, "element": "fire", "element_power": 5, "weak_element": "water", "skills": ["attack_up"], "skill_unlock_rank": "t2", "drops": {"flame_flower": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_fire": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 13, "use_drop": true},
-	"stone_lizard": {"id": "stone_lizard", "visual_id": "lizard", "name": "岩甲蜥", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 44, "attack": 8, "defense": 4, "element": "earth", "element_power": 6, "weak_element": "wood", "skills": ["spirit_shield"], "skill_unlock_rank": "t2", "drops": {"earth_moss": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_earth": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 15, "use_drop": true},
-	"stone_overlord": {"id": "stone_overlord", "visual_id": "minotaur", "name": "镇岳兽王", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 52, "attack": 11, "defense": 5, "element": "earth", "element_power": 8, "weak_element": "wood", "skills": ["wolf_pounce", "wolf_howl"], "skill_unlock_rank": "t1", "drops": {"earth_moss": {"chance": 0.40, "min": 1, "max": 1}, "spirit_stone_earth": {"chance": 0.15, "min": 1, "max": 1}}, "exp": 24, "use_drop": true},
-	"iron_lancer": {"id": "iron_lancer", "visual_id": "lancer", "name": "玄锋枪卒", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 48, "attack": 12, "defense": 4, "element": "metal", "element_power": 8, "weak_element": "fire", "skills": ["thunder"], "skill_unlock_rank": "t2", "drops": {"metal_reed": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_metal": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 18, "use_drop": true},
-	"tide_fish": {"id": "tide_fish", "visual_id": "paddle_fish", "name": "潮鳍鱼妖", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 54, "attack": 13, "defense": 5, "element": "water", "element_power": 9, "weak_element": "earth", "skills": ["water_cold_talisman"], "skill_unlock_rank": "t2", "drops": {"water_orchid": {"chance": 0.20, "min": 1, "max": 1}, "spirit_stone_water": {"chance": 0.08, "min": 1, "max": 1}}, "exp": 20, "use_drop": true},
-	"abyssal_turtle": {"id": "abyssal_turtle", "visual_id": "turtle", "name": "沉渊玄龟", "encounter_class": "boss", "enemy_class": ENEMY_CLASS_BOSS, "reference_stat_multipliers": {"max_hp": 3.0, "attack": 1.8, "defense": 1.8}, "experience_multiplier": 5.0, "max_hp": 90, "attack": 16, "defense": 8, "element": "water", "element_power": 14, "weak_element": "earth", "skills": ["spirit_shield", "water_cold_talisman"], "skill_unlock_rank": "t1", "drops": {"water_orchid": {"chance": 1.0, "min": 2, "max": 3}, "spirit_stone_water": {"chance": 0.50, "min": 1, "max": 2}, "ore": {"chance": 1.0, "min": 2, "max": 4}}, "use_rank_drop_pool": false, "equipment_drop_chance": 0.25, "exp": 50, "use_drop": true},
+	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "element_power": 3, "weak_element": "fire", "element_attack_ratio": 0.05, "skills": ["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
+	"venom_spider": {"id": "venom_spider", "visual_id": "spider", "name": "毒纹蛛", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 26, "attack": 7, "defense": 1, "element": "wood", "element_power": 4, "weak_element": "fire", "skills": ["poison"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 11, "use_drop": true},
+	"blight_shaman": {"id": "blight_shaman", "visual_id": "shaman", "name": "腐木巫祝", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 35, "attack": 8, "defense": 2, "element": "wood", "element_power": 6, "weak_element": "fire", "skills": ["poison", "heal"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 18, "use_drop": true},
+	"ember_gnome": {"id": "ember_gnome", "visual_id": "gnome", "name": "灰烬地精", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 34, "attack": 9, "defense": 2, "element": "fire", "element_power": 5, "weak_element": "water", "skills": ["attack_up"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 13, "use_drop": true},
+	"stone_lizard": {"id": "stone_lizard", "visual_id": "lizard", "name": "岩甲蜥", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 44, "attack": 8, "defense": 4, "element": "earth", "element_power": 6, "weak_element": "wood", "skills": ["spirit_shield"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 15, "use_drop": true},
+	"stone_overlord": {"id": "stone_overlord", "visual_id": "minotaur", "name": "镇岳兽王", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 52, "attack": 11, "defense": 5, "element": "earth", "element_power": 8, "weak_element": "wood", "skills": ["wolf_pounce", "wolf_howl"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 24, "use_drop": true},
+	"iron_lancer": {"id": "iron_lancer", "visual_id": "lancer", "name": "玄锋枪卒", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 48, "attack": 12, "defense": 4, "element": "metal", "element_power": 8, "weak_element": "fire", "skills": ["thunder"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 18, "use_drop": true},
+	"tide_fish": {"id": "tide_fish", "visual_id": "paddle_fish", "name": "潮鳍鱼妖", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 54, "attack": 13, "defense": 5, "element": "water", "element_power": 9, "weak_element": "earth", "skills": ["water_cold_talisman"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 20, "use_drop": true},
+	"abyssal_turtle": {"id": "abyssal_turtle", "visual_id": "turtle", "name": "沉渊玄龟", "encounter_class": "boss", "enemy_class": ENEMY_CLASS_BOSS, "reference_stat_multipliers": {"max_hp": 3.0, "attack": 1.8, "defense": 1.8}, "experience_multiplier": 5.0, "max_hp": 90, "attack": 16, "defense": 8, "element": "water", "element_power": 14, "weak_element": "earth", "skills": ["spirit_shield", "water_cold_talisman"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "equipment_drop_chance": 0.25, "exp": 50, "use_drop": true},
 }
 
 const ENEMY_SCENE_PATHS := {
@@ -837,6 +1058,8 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 	var drop_chance_bonus: float = float(template.get("drop_chance_bonus", 0.15 if enemy_class == ENEMY_CLASS_ELITE else 0.0))
 	if drop_chance_bonus > 0.0:
 		drop_profile["base_chance"] = clampf(float(drop_profile.get("base_chance", 0.0)) + drop_chance_bonus, 0.0, 1.0)
+	var use_class_drop_pool: bool = bool(template.get("use_class_drop_pool", false))
+	var class_drop_profile: Dictionary = enemy_class_drop_profile(enemy_class) if use_class_drop_pool else {}
 	var use_rank_drop_pool: bool = bool(template.get("use_rank_drop_pool", not bool(template.get("is_training_dummy", false))))
 	var equipment_drop_chance: float = clampf(float(template.get("equipment_drop_chance", ENEMY_CLASS_EQUIPMENT_CHANCES.get(enemy_class, 0.05))), 0.0, 1.0)
 	var element_ratio := 0.0 if bool(template.get("is_training_dummy", false)) else float(rank.get("element_attack_ratio", 0.0)) + float(template.get("element_attack_ratio", 0.0))
@@ -872,6 +1095,8 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 		"skill_cooldowns": {},
 		"drop_profile": drop_profile,
 		"drops": template.get("drops", {}).duplicate(true),
+		"class_drop_profile": class_drop_profile,
+		"use_class_drop_pool": use_class_drop_pool,
 		"use_rank_drop_pool": use_rank_drop_pool,
 		"equipment_drop_chance": equipment_drop_chance,
 		"effects": template.get("effects", []).duplicate(true),
@@ -915,13 +1140,73 @@ static func rank_drop_profile(rank_id: String, override_data) -> Dictionary:
 				profile[key] = override_data[key].duplicate(true) if override_data[key] is Array or override_data[key] is Dictionary else override_data[key]
 		if override_data.has("base_chance"):
 			profile["base_chance"] = clampf(float(override_data.get("base_chance", profile["base_chance"])), 0.0, 1.0)
-	if profile["items"].is_empty():
+	var expanded_items: Array = profile["items"].duplicate(true) if profile["items"] is Array else []
+	if expanded_items.is_empty():
+		var drop_table := content_definition("drop_table", "enemy_drop_categories", {"categories": ENEMY_DROP_CATEGORY_ITEMS})
 		for category in profile["categories"]:
-			var drop_table := content_definition("drop_table", "enemy_drop_categories", {"categories": ENEMY_DROP_CATEGORY_ITEMS})
 			for item_id in drop_table.get("categories", {}).get(str(category), []):
-				if content_has("item", str(item_id), ITEM_DEFS):
-					profile["items"].append(item_id)
+				expanded_items.append(item_id)
+	var unique_items: Array = []
+	var seen_item_ids: Dictionary = {}
+	for item_id in expanded_items:
+		var resolved_id := str(item_id)
+		if seen_item_ids.has(resolved_id) or not content_has("item", resolved_id, ITEM_DEFS):
+			continue
+		seen_item_ids[resolved_id] = true
+		unique_items.append(resolved_id)
+	profile["items"] = unique_items
 	return profile
+
+
+static func enemy_class_drop_profile(enemy_class: String) -> Dictionary:
+	if not enemy_class_drop_profile_errors().is_empty():
+		return {}
+	var profile = ENEMY_CLASS_DROP_PROFILES.get(enemy_class, {})
+	return profile.duplicate(true) if profile is Dictionary else {}
+
+
+static func enemy_class_drop_profile_errors() -> Array[String]:
+	var errors: Array[String] = []
+	var assigned_classes: Dictionary = {}
+	for enemy_class in [ENEMY_CLASS_NORMAL, ENEMY_CLASS_ELITE, ENEMY_CLASS_BOSS]:
+		var profile = ENEMY_CLASS_DROP_PROFILES.get(enemy_class, {})
+		if not (profile is Dictionary):
+			errors.append("%s drop profile must be a dictionary" % enemy_class)
+			continue
+		var mode := str(profile.get("mode", ""))
+		if not ["independent", "weighted_one"].has(mode):
+			errors.append("%s drop profile has invalid mode" % enemy_class)
+		var entries = profile.get("entries", [])
+		if not (entries is Array) or entries.is_empty():
+			errors.append("%s drop profile must contain entries" % enemy_class)
+			continue
+		var local_item_ids: Dictionary = {}
+		for entry_value in entries:
+			if not (entry_value is Dictionary):
+				errors.append("%s drop entry must be a dictionary" % enemy_class)
+				continue
+			var entry: Dictionary = entry_value
+			var item_id := str(entry.get("item_id", ""))
+			if item_id.is_empty() or item_definition(item_id).is_empty():
+				errors.append("%s drop entry references unknown item %s" % [enemy_class, item_id])
+				continue
+			if local_item_ids.has(item_id):
+				errors.append("%s drop profile repeats %s" % [enemy_class, item_id])
+				continue
+			local_item_ids[item_id] = true
+			if assigned_classes.has(item_id):
+				errors.append("%s is shared by %s and %s" % [item_id, assigned_classes[item_id], enemy_class])
+			else:
+				assigned_classes[item_id] = enemy_class
+			if int(entry.get("amount", 0)) <= 0:
+				errors.append("%s drop entry has invalid amount" % item_id)
+			if mode == "independent":
+				var chance := float(entry.get("chance", 0.0))
+				if chance <= 0.0 or chance > 1.0:
+					errors.append("%s drop entry has invalid chance" % item_id)
+			elif float(entry.get("weight", 0.0)) <= 0.0:
+				errors.append("%s drop entry has invalid weight" % item_id)
+	return errors
 
 
 static func resolve_enemy_id(enemy_id: String) -> String:
@@ -1188,6 +1473,14 @@ static func attribute_display_name(stat_id: String) -> String:
 	if stat_id.begins_with(ELEMENT_ATTRIBUTE_PREFIX):
 		return element_name(element_id_from_attribute(stat_id))
 	return stat_id
+
+
+static func permanent_attribute_enhance_tier_limit(tier_id: String) -> int:
+	return int(PERMANENT_ATTRIBUTE_ENHANCE_TIER_LIMITS.get(tier_id, 0))
+
+
+static func permanent_attribute_enhance_tier_name(tier_id: String) -> String:
+	return str(PERMANENT_ATTRIBUTE_ENHANCE_TIER_NAMES.get(tier_id, tier_id))
 
 
 static func obtain_source_name(source_id: String) -> String:

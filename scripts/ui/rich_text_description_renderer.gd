@@ -65,7 +65,22 @@ static func build_item_segments(item: Dictionary, game_state = null, member_id: 
 					_append_description_effect(segments, effect, game_state, member_id)
 	elif str(item.get("type", "")) == DataTables.ITEM_TYPE_PILL:
 		var payload: Dictionary = item.get("payload", {})
-		if str(payload.get("effect_mode", "instant")) == "duration":
+		var enhance_data = payload.get("permanent_attribute_enhance", {})
+		if enhance_data is Dictionary and enhance_data.get("effects", []) is Array:
+			var display_effects: Array = []
+			for raw_effect in enhance_data.get("effects", []):
+				if raw_effect is Dictionary:
+					var effect: Dictionary = raw_effect.duplicate(true)
+					effect["amount"] = int(effect.get("amount", 1))
+					display_effects.append(effect)
+			_append_attribute_group(segments, "永久强化", display_effects, false)
+			var tier_id := str(enhance_data.get("tier_id", ""))
+			var tier_limit := DataTables.permanent_attribute_enhance_tier_limit(tier_id)
+			if game_state != null and not member_id.is_empty() and tier_limit > 0:
+				_append_line_start(segments)
+				_append_text(segments, "%s用量：" % DataTables.permanent_attribute_enhance_tier_name(tier_id), ROLE_SECONDARY)
+				_append_text(segments, "%d/%d" % [game_state.permanent_attribute_enhance_tier_uses_for(member_id, tier_id), tier_limit], ROLE_MULTIPLIER)
+		elif str(payload.get("effect_mode", "instant")) == "duration":
 			_append_line_start(segments)
 			_append_text(segments, "持续：", ROLE_SECONDARY)
 			_append_text(segments, "%d 秒" % int(payload.get("duration", 0)), ROLE_MULTIPLIER)

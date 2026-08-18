@@ -15,11 +15,11 @@ extends Resource
 
 @export_group("分类与目标")
 ## 技能行为分类，例如 damage、heal、buff 或 defense。
-@export var type := ""
+@export_enum("normal_attack", "damage", "heal", "buff", "defense", "resource") var type := "damage"
 ## 目标范围，例如 self、single_enemy、all_enemies 或 all_allies。
-@export var target_scope := "single_enemy"
+@export_enum("self", "single_ally", "all_allies", "single_enemy", "all_enemies") var target_scope := "single_enemy"
 ## HUD 和兼容逻辑使用的目标模式，例如 single 或 aoe。
-@export var target_mode := "single"
+@export_enum("single", "aoe") var target_mode := "single"
 ## 是否为范围技能；应与 target_scope 和 target_mode 保持一致。
 @export var is_aoe := false
 ## 用于检索和展示的效果标签，例如 damage、dot、shield。
@@ -59,7 +59,7 @@ func setup(skill_id: String, data: Dictionary) -> SkillDef:
 	display_name = data.get("name", skill_id)
 	icon_name = data.get("icon_name", skill_id)
 	icon_path = data.get("icon_path", "res://assets/skills/%s.png" % icon_name)
-	type = data.get("type", "")
+	type = data.get("type", "damage")
 	target_scope = data.get("target_scope", "single_enemy")
 	target_mode = data.get("target_mode", "single")
 	is_aoe = bool(data.get("is_aoe", target_mode == "aoe"))

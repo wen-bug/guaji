@@ -61,21 +61,22 @@ func _check_drop_layers() -> void:
 	var state := _fresh_state()
 	var controller := CombatController.new()
 	controller.enemy = DataTables.create_enemy(1, state.rng, "forest_wolf")
+	_expect_true("forest wolf class pool enabled", bool(controller.enemy.get("use_class_drop_pool", false)))
 	_expect_true("forest wolf rank pool disabled", not bool(controller.enemy.get("use_rank_drop_pool", true)))
 	_expect_approx("forest wolf equipment rate", float(controller.enemy.get("equipment_drop_chance", 0.0)), 0.05)
+	controller.enemy["class_drop_profile"] = {
+		"mode": "independent",
+		"entries": [{"item_id": "herb", "chance": 1.0, "amount": 1}],
+	}
 	controller.enemy["drop_profile"] = {
 		"base_chance": 1.0,
-		"items": ["pill"],
+		"items": ["herb"],
 		"rarity_weights": {"t1": 100},
 	}
 	controller.enemy["drops"] = {"herb": {"chance": 1.0, "min": 1, "max": 1}}
-	controller._resolve_drops(state)
-	_expect_equal("explicit forest drop resolves", state.inventory_item_count("herb"), 1)
-	_expect_equal("disabled forest rank pool does not duplicate", state.inventory_item_count("pill"), 0)
 	controller.enemy["use_rank_drop_pool"] = true
 	controller._resolve_drops(state)
-	_expect_equal("explicit and rank drops resolve separately", state.inventory_item_count("herb"), 2)
-	_expect_equal("rank pool resolves when enabled", state.inventory_item_count("pill"), 1)
+	_expect_equal("overlapping drop sources award item once", state.inventory_item_count("herb"), 1)
 
 
 func _check_stage_2_progression() -> void:
@@ -150,7 +151,7 @@ func _check_stage_2_progression() -> void:
 	_expect_equal("schema 14 migrates equip requirement", int(migrated_equipment.get("equip_requirement", {}).get("min", 0)), 15)
 	_expect_equal("schema 14 preserves enhancement", int(migrated_equipment.get("enhance_count", 0)), 3)
 	_expect_equal("schema 14 preserves refinement", migrated_equipment.get("refine_affixes", []).size(), 1)
-	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 14)
+	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 16)
 
 
 func _check_stage_3_equipment_loop() -> void:
@@ -286,10 +287,18 @@ func _check_stage_5_enemies() -> void:
 	_expect_approx("boss equipment chance", float(boss.get("equipment_drop_chance", 0.0)), 0.25)
 	_expect_equal("elite encounter class", str(elite.get("encounter_class", "")), "elite")
 	_expect_equal("boss encounter class", str(boss.get("encounter_class", "")), "boss")
-	_expect_true("elite rank pool bonus applied", float(elite.get("drop_profile", {}).get("base_chance", 0.0)) >= 0.70)
+	_expect_true("class drop profiles validate", DataTables.enemy_class_drop_profile_errors().is_empty())
+	_expect_true("normal class pool enabled", bool(normal.get("use_class_drop_pool", false)))
+	_expect_true("elite class pool enabled", bool(elite.get("use_class_drop_pool", false)))
+	_expect_true("boss class pool enabled", bool(boss.get("use_class_drop_pool", false)))
+	_expect_true("normal rank pool disabled", not bool(normal.get("use_rank_drop_pool", true)))
+	_expect_true("elite rank pool disabled", not bool(elite.get("use_rank_drop_pool", true)))
 	_expect_true("boss rank pool disabled", not bool(boss.get("use_rank_drop_pool", true)))
-	_expect_approx("normal crop drop", float(normal.get("drops", {}).get("water_orchid", {}).get("chance", 0.0)), 0.20)
-	_expect_approx("elite crop drop", float(elite.get("drops", {}).get("earth_moss", {}).get("chance", 0.0)), 0.40)
+	_expect_equal("normal drop entry count", normal.get("class_drop_profile", {}).get("entries", []).size(), 13)
+	_expect_equal("elite drop entry count", elite.get("class_drop_profile", {}).get("entries", []).size(), 7)
+	_expect_equal("boss drop entry count", boss.get("class_drop_profile", {}).get("entries", []).size(), 2)
+	_expect_equal("boss drop mode", str(boss.get("class_drop_profile", {}).get("mode", "")), "weighted_one")
+	_expect_true("core enemies have no explicit material drops", normal.get("drops", {}).is_empty() and elite.get("drops", {}).is_empty() and boss.get("drops", {}).is_empty())
 
 
 func _expect_true(label: String, condition: bool) -> void:

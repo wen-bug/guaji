@@ -8,8 +8,8 @@ extends Resource
 @export var id := ""
 ## 物品编号；已发布编号只能追加，不能复用或修改。
 @export var item_no := 0
-## 物品分类 ID，例如 material、skill_book 或 consumable。
-@export var type := ""
+## 物品分类 ID，例如 material、skill_book 或 pill。
+@export_enum("skill_book", "equipment", "material", "crop", "pill", "alchemy_recipe", "blueprint") var type := "material"
 ## HUD 和物品详情中显示的中文名称。
 @export var display_name := ""
 
@@ -28,10 +28,10 @@ extends Resource
 @export var stackable := true
 ## 是否允许玩家主动使用该物品。
 @export var usable := false
-## 可使用场景范围，例如 home；空字符串表示没有主动使用入口。
-@export var use_scope := ""
+## 可使用场景范围；none 表示没有主动使用入口。
+@export_enum("none", "home", "combat") var use_scope := "none"
 ## 物品获得时关联的五行或成长目标；无目标时填写 none。
-@export var gain_target := "none"
+@export_enum("none", "attack", "defense", "max_hp", "max_mp", "root_bone", "wood", "fire", "earth", "metal", "water") var gain_target := "none"
 ## 按物品类型解释的附加数据，例如技能书的 skill_id。
 @export var payload: Dictionary = {}
 
@@ -39,14 +39,14 @@ extends Resource
 func setup(def_id: String, data: Dictionary) -> ItemDef:
 	id = def_id
 	item_no = int(data.get("item_no", 0))
-	type = data.get("type", "")
+	type = data.get("type", "material")
 	display_name = data.get("name", data.get("display_name", def_id))
 	icon_name = data.get("icon_name", def_id)
 	icon_path = data.get("icon_path", "res://assets/items/%s.png" % icon_name)
 	description = data.get("description", "")
 	stackable = bool(data.get("stackable", true))
 	usable = bool(data.get("usable", false))
-	use_scope = data.get("use_scope", "")
+	use_scope = data.get("use_scope", "none")
 	gain_target = data.get("gain_target", "none")
 	payload = data.get("payload", {}).duplicate(true)
 	return self

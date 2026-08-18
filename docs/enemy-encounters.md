@@ -142,4 +142,4 @@ for each position:
 | `tide_fish` | 潮鳍鱼妖 | normal | paddle_fish |
 | `abyssal_turtle` | 沉渊玄龟 | boss | turtle |
 
-敌人数据已补充 `encounter_class`、`enemy_class`、参考属性倍率、经验倍率、掉率加成、装备掉率、技能解锁阶位和 `use_rank_drop_pool`。精英阶级池概率额外 +15%，装备率 12%；普通装备率 5%；Boss 使用独立表、装备率 25%。敌人技能同样只使用 `single/aoe`，不保存距离字段。
+现有战斗敌人启用 `use_class_drop_pool` 并关闭旧阶级材料池：六个普通敌人共享草药 55%、矿石 30%、灵石 10% 和十种属性作物各 2% 的独立判定池；两个精英共享五种五行灵石各 10%、丰收符和洗练符各 5% 的独立判定池；沉渊玄龟每次在调息丹与破境丹中等权必出一个。三个材料池互不重叠，全部从 t1 开放，同一击杀不重复发放同一 `item_id`。普通、精英、Boss 的独立装备率仍为 5%/12%/25%。`training_dummy` 保持无掉落；敌人技能仍只使用 `single/aoe`，不保存距离字段。

@@ -1,6 +1,8 @@
 class_name GameState
 extends RefCounted
 
+const MarketServiceScript = preload("res://scripts/game/core/market_service.gd")
+
 signal changed
 signal log_added(message: String)
 
@@ -15,7 +17,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 14
+const SAVE_SCHEMA_VERSION = 16
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -41,6 +43,7 @@ var task_exp: Dictionary = {
 }
 var inventory: Array = []
 var inventory_service: InventoryService
+var market_service
 var known_alchemy_recipes: Array = []
 var companions: Array = []
 var party_order: Array = []
@@ -72,6 +75,13 @@ var permanent_building_bonuses: Dictionary = {
 	"forge": {"output_quality": 0},
 	"alchemy": {"output_quality": 0},
 }
+var market_state: Dictionary = {
+	"next_free_refresh_unix": 0,
+	"paid_refresh_count": 0,
+	"market_rng_state": {},
+	"offers": [],
+	"commissions": [],
+}
 var orphaned_mod_data: Dictionary = {
 	"inventory": [],
 	"recipes": [],
@@ -83,6 +93,7 @@ var orphaned_mod_data: Dictionary = {
 
 func _init() -> void:
 	inventory_service = InventoryService.new(self)
+	market_service = MarketServiceScript.new(self)
 	party_service = PartyService.new(self)
 	rng.randomize()
 	_ensure_building_state()
@@ -97,6 +108,7 @@ func _init() -> void:
 	_grant_missing_starter_skill_books()
 	_seed_test_inventory_if_enabled()
 	generate_recruit_candidates(false)
+	market_service.ensure_state()
 
 
 func _seed_test_inventory_if_enabled() -> void:
@@ -151,6 +163,7 @@ func to_save_data() -> Dictionary:
 		"building_levels": building_levels.duplicate(true),
 		"reward_progress": reward_progress.duplicate(true),
 		"permanent_building_bonuses": permanent_building_bonuses.duplicate(true),
+		"market_state": market_state.duplicate(true),
 		"orphaned_mod_data": orphaned_mod_data.duplicate(true),
 	}
 	var api = _mod_api()
@@ -183,6 +196,8 @@ func load_save_data(data: Dictionary) -> void:
 	_load_dictionary_values(task_exp, data.get("task_exp", {}))
 	if data.has("inventory"):
 		inventory = _duplicate_array(data.get("inventory", []))
+	if data.has("market_state") and data.get("market_state") is Dictionary:
+		market_state = data.get("market_state", {}).duplicate(true)
 	if data.has("known_alchemy_recipes"):
 		known_alchemy_recipes.clear()
 		for recipe_id in data.get("known_alchemy_recipes", []):
@@ -255,6 +270,7 @@ func load_save_data(data: Dictionary) -> void:
 	clear_progress_state(BUILDING_ALCHEMY)
 	_clamp_runtime_stats()
 	_refresh_farm_progress_state()
+	market_service.ensure_state()
 	changed.emit()
 
 
@@ -1400,7 +1416,7 @@ func craft_equipment_from_template(template_id: String) -> bool:
 		var rarity: String = DataTables.random_equipment_rarity(rng)
 		if rng.randf() < forge_rarity_upgrade_chance():
 			rarity = DataTables.upgrade_equipment_rarity(rarity, 1)
-		var equipment := DataTables.create_equipment_from_template(template_id, 1, rng, 0, "", rarity, "non_drop")
+		var equipment := DataTables.create_equipment_from_template(template_id, 1, rng, 0, "", rarity, "crafted")
 		if equipment.is_empty():
 			add_inventory_item(DataTables.ITEM_ID_ORE, cost, false)
 			return false
@@ -1437,7 +1453,7 @@ func craft_equipment() -> bool:
 			0,
 			"",
 			rarity,
-			"non_drop"
+			"crafted"
 		)
 		add_equipment(equipment)
 		names.append(str(equipment.get("name", "装备")))
@@ -1578,6 +1594,54 @@ func inventory_item_count(item_id: String) -> int:
 
 func inventory_total_for_type(type_id: String) -> int:
 	return inventory_service.inventory_total_for_type(type_id)
+
+
+func market_offers(now_unix: int = -1) -> Array:
+	return market_service.offers(now_unix)
+
+
+func market_commissions(now_unix: int = -1) -> Array:
+	return market_service.commissions(now_unix)
+
+
+func market_seconds_until_refresh(now_unix: int = -1) -> int:
+	return market_service.seconds_until_refresh(now_unix)
+
+
+func market_manual_refresh_cost() -> int:
+	return market_service.manual_refresh_cost()
+
+
+func refresh_market() -> bool:
+	return market_service.paid_refresh()
+
+
+func buy_market_offer(slot_index: int) -> bool:
+	return market_service.buy_offer(slot_index)
+
+
+func complete_market_commission(commission_index: int) -> bool:
+	return market_service.complete_commission(commission_index)
+
+
+func market_recyclable_item_ids() -> Array[String]:
+	return market_service.recyclable_item_ids()
+
+
+func market_recycle_definition(item_id: String) -> Dictionary:
+	return market_service.recycle_definition(item_id)
+
+
+func market_recycle_preview(item_id: String, amount: int) -> int:
+	return market_service.recycle_preview(item_id, amount)
+
+
+func recycle_market_item(item_id: String, amount: int, confirmed_valuable: bool = false) -> bool:
+	return market_service.recycle_item(item_id, amount, confirmed_valuable)
+
+
+func market_validation_errors() -> Array[String]:
+	return market_service.validation_errors()
 
 
 func inventory_item_by_instance(instance_id: String) -> Dictionary:
@@ -1766,6 +1830,97 @@ func _use_alchemy_recipe(item: Dictionary) -> bool:
 	known_alchemy_recipes.append(recipe_id)
 	_remove_inventory_count(item["item_id"], 1)
 	log_added.emit("学会丹方：%s" % DataTables.resource_name(recipe_id))
+	changed.emit()
+	return true
+
+
+func permanent_attribute_enhance_tier_uses_for(member_id: String, tier_id: String) -> int:
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		return 0
+	var uses = member.get("enhance_pill_uses_by_tier", {})
+	return maxi(0, int(uses.get(tier_id, 0))) if uses is Dictionary else 0
+
+
+func permanent_attribute_enhance_item_uses_for(member_id: String, item_id: String) -> int:
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		return 0
+	var uses = member.get("enhance_pill_uses_by_item", {})
+	return maxi(0, int(uses.get(item_id, 0))) if uses is Dictionary else 0
+
+
+func _use_permanent_attribute_item_for_member(item: Dictionary, member_id: String) -> bool:
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		log_added.emit("需要先招募角色")
+		return false
+	var item_id := str(item.get("item_id", ""))
+	var enhance_data = item.get("payload", {}).get("permanent_attribute_enhance", {})
+	if item_id.is_empty() or not (enhance_data is Dictionary):
+		log_added.emit("永久强化道具配置无效")
+		return false
+	var tier_id := str(enhance_data.get("tier_id", ""))
+	var tier_limit := DataTables.permanent_attribute_enhance_tier_limit(tier_id)
+	if tier_limit <= 0:
+		log_added.emit("永久强化道具阶级无效")
+		return false
+	var tier_uses := permanent_attribute_enhance_tier_uses_for(member_id, tier_id)
+	if tier_uses >= tier_limit:
+		log_added.emit("%s强化丹使用次数已达到上限 %d" % [DataTables.permanent_attribute_enhance_tier_name(tier_id), tier_limit])
+		return false
+	var raw_effects = enhance_data.get("effects", [])
+	if not (raw_effects is Array) or raw_effects.is_empty():
+		log_added.emit("永久强化道具效果无效")
+		return false
+	var effects: Array = []
+	var seen_stats: Dictionary = {}
+	for raw_effect in raw_effects:
+		if not (raw_effect is Dictionary):
+			log_added.emit("永久强化道具效果无效")
+			return false
+		var stat_id := str(raw_effect.get("stat", ""))
+		var raw_amount = raw_effect.get("amount", 1)
+		if not DataTables.PERMANENT_ATTRIBUTE_ENHANCE_STATS.has(stat_id) or seen_stats.has(stat_id):
+			log_added.emit("永久强化道具属性无效")
+			return false
+		if typeof(raw_amount) != TYPE_INT or int(raw_amount) <= 0:
+			log_added.emit("永久强化道具数值无效")
+			return false
+		seen_stats[stat_id] = true
+		effects.append({"stat": stat_id, "amount": int(raw_amount)})
+
+	var member_stats: Dictionary = member.get("stats", {})
+	var member_elements: Dictionary = member.get("elements", {})
+	var gains: Dictionary = {}
+	for effect in effects:
+		var stat_id := str(effect.get("stat", ""))
+		var amount := int(effect.get("amount", 1))
+		if stat_id.begins_with(DataTables.ELEMENT_ATTRIBUTE_PREFIX):
+			var element_id := DataTables.element_id_from_attribute(stat_id)
+			member_elements[element_id] = int(member_elements.get(element_id, 0)) + amount
+		else:
+			member_stats[stat_id] = int(member_stats.get(stat_id, 0)) + amount
+			if stat_id == "max_hp":
+				member_stats["hp"] = mini(_total_stat_for_member(member, "max_hp"), int(member_stats.get("hp", 0)) + amount)
+			elif stat_id == "max_mp":
+				member_stats["mp"] = mini(_total_stat_for_member(member, "max_mp"), int(member_stats.get("mp", 0)) + amount)
+		gains[stat_id] = amount
+
+	var uses_by_tier: Dictionary = member.get("enhance_pill_uses_by_tier", {})
+	var uses_by_item: Dictionary = member.get("enhance_pill_uses_by_item", {})
+	uses_by_tier[tier_id] = tier_uses + 1
+	uses_by_item[item_id] = maxi(0, int(uses_by_item.get(item_id, 0))) + 1
+	member["enhance_pill_uses_by_tier"] = uses_by_tier
+	member["enhance_pill_uses_by_item"] = uses_by_item
+	_remove_inventory_count(item_id, 1)
+	log_added.emit("%s使用%s，永久强化%s；%s剩余 %d 次" % [
+		member.get("name", "成员"),
+		item.get("name", "强化丹"),
+		_attribute_gains_text(gains),
+		DataTables.permanent_attribute_enhance_tier_name(tier_id),
+		tier_limit - tier_uses - 1,
+	])
 	changed.emit()
 	return true
 
@@ -2169,11 +2324,14 @@ func craft_alchemy_recipe(recipe_id: String, amount: int) -> bool:
 		_remove_inventory_count(str(material.get("item_id", "")), required)
 
 	var level: int = building_level(BUILDING_ALCHEMY)
-	var result_count: int = amount * (2 if level >= 6 else 1)
+	var allow_output_multiplier: bool = bool(recipe.get("allow_output_multiplier", true))
+	var allow_bonus_output: bool = bool(recipe.get("allow_bonus_output", true))
+	var result_count: int = amount * (2 if level >= 6 and allow_output_multiplier else 1)
 	var extra_chance := clampf(0.02 * float(level - 1), 0.0, 0.95)
-	for _index in range(amount):
-		if rng.randf() < extra_chance:
-			result_count += 1
+	if allow_bonus_output:
+		for _index in range(amount):
+			if rng.randf() < extra_chance:
+				result_count += 1
 	add_inventory_item(result_item_id, result_count, false)
 	add_task_experience(GameDefs.TaskType.ALCHEMY, 5)
 	log_added.emit("炼丹完成：%s x%d" % [DataTables.resource_name(result_item_id), result_count])
@@ -2523,7 +2681,7 @@ func salvage_equipment(instance_id: String) -> bool:
 	if is_equipment_equipped(instance_id):
 		log_added.emit("已装备物品不能分解")
 		return false
-	var ore_amount: int = DataTables.equipment_salvage_ore(str(item.get("rarity", "t1")))
+	var ore_amount: int = 1 if str(item.get("obtain_source", "non_drop")) == "crafted" else DataTables.equipment_salvage_ore(str(item.get("rarity", "t1")))
 	for index in range(inventory.size()):
 		if str(inventory[index].get("instance_id", "")) == instance_id:
 			inventory.remove_at(index)

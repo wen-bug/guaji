@@ -746,9 +746,73 @@ func _grant_victory_rewards() -> void:
 func _resolve_drops(game_state) -> void:
 	if not bool(enemy.get("use_drop", true)):
 		return
-	_resolve_explicit_drops(game_state)
-	if not bool(enemy.get("use_rank_drop_pool", true)):
+	var awarded_item_ids: Dictionary = {}
+	_resolve_explicit_drops(game_state, awarded_item_ids)
+	if bool(enemy.get("use_class_drop_pool", false)):
+		_resolve_class_drops(game_state, awarded_item_ids)
+	if bool(enemy.get("use_rank_drop_pool", true)):
+		_resolve_rank_drop(game_state, awarded_item_ids)
+
+
+func _resolve_explicit_drops(game_state, awarded_item_ids: Dictionary) -> void:
+	var explicit_drops = enemy.get("drops", {})
+	if not (explicit_drops is Dictionary):
 		return
+	for item_id in explicit_drops.keys():
+		var drop_def: Dictionary = explicit_drops.get(item_id, {})
+		if game_state.rng.randf() > clampf(float(drop_def.get("chance", 0.0)), 0.0, 1.0):
+			continue
+		var low := maxi(1, int(drop_def.get("min", 1)))
+		var high := maxi(low, int(drop_def.get("max", low)))
+		_award_unique_drop(game_state, awarded_item_ids, str(item_id), game_state.rng.randi_range(low, high))
+
+
+func _resolve_class_drops(game_state, awarded_item_ids: Dictionary) -> void:
+	var profile = enemy.get("class_drop_profile", {})
+	if not (profile is Dictionary):
+		return
+	var entries = profile.get("entries", [])
+	if not (entries is Array) or entries.is_empty():
+		return
+	match str(profile.get("mode", "")):
+		"independent":
+			for entry_value in entries:
+				if not (entry_value is Dictionary):
+					continue
+				var entry: Dictionary = entry_value
+				if game_state.rng.randf() > clampf(float(entry.get("chance", 0.0)), 0.0, 1.0):
+					continue
+				_award_unique_drop(game_state, awarded_item_ids, str(entry.get("item_id", "")), int(entry.get("amount", 1)))
+		"weighted_one":
+			_resolve_weighted_class_drop(game_state, awarded_item_ids, entries)
+
+
+func _resolve_weighted_class_drop(game_state, awarded_item_ids: Dictionary, entries: Array) -> void:
+	var candidates: Array[Dictionary] = []
+	var total_weight := 0.0
+	for entry_value in entries:
+		if not (entry_value is Dictionary):
+			continue
+		var entry: Dictionary = entry_value
+		var item_id := str(entry.get("item_id", ""))
+		var weight := float(entry.get("weight", 0.0))
+		if item_id.is_empty() or weight <= 0.0 or DataTables.item_definition(item_id).is_empty():
+			continue
+		candidates.append(entry)
+		total_weight += weight
+	if candidates.is_empty() or total_weight <= 0.0:
+		return
+	var roll: float = float(game_state.rng.randf()) * total_weight
+	var cursor := 0.0
+	for index in range(candidates.size()):
+		var entry: Dictionary = candidates[index]
+		cursor += float(entry.get("weight", 0.0))
+		if roll < cursor or index == candidates.size() - 1:
+			_award_unique_drop(game_state, awarded_item_ids, str(entry.get("item_id", "")), int(entry.get("amount", 1)))
+			return
+
+
+func _resolve_rank_drop(game_state, awarded_item_ids: Dictionary) -> void:
 	var profile: Dictionary = enemy.get("drop_profile", {})
 	var items: Array = profile.get("items", []) if profile.get("items", []) is Array else []
 	if items.is_empty():
@@ -773,20 +837,17 @@ func _resolve_drops(game_state) -> void:
 	if matching.is_empty():
 		return
 	var selected_id: String = str(matching[game_state.rng.randi_range(0, matching.size() - 1)])
-	game_state.gain_resource(selected_id, 1)
+	_award_unique_drop(game_state, awarded_item_ids, selected_id, 1)
 
 
-func _resolve_explicit_drops(game_state) -> void:
-	var explicit_drops = enemy.get("drops", {})
-	if not (explicit_drops is Dictionary):
-		return
-	for item_id in explicit_drops.keys():
-		var drop_def: Dictionary = explicit_drops.get(item_id, {})
-		if game_state.rng.randf() > clampf(float(drop_def.get("chance", 0.0)), 0.0, 1.0):
-			continue
-		var low := maxi(1, int(drop_def.get("min", 1)))
-		var high := maxi(low, int(drop_def.get("max", low)))
-		game_state.gain_resource(str(item_id), game_state.rng.randi_range(low, high))
+func _award_unique_drop(game_state, awarded_item_ids: Dictionary, item_id: String, amount: int) -> bool:
+	if item_id.is_empty() or amount <= 0 or awarded_item_ids.has(item_id):
+		return false
+	if DataTables.item_definition(item_id).is_empty():
+		return false
+	game_state.gain_resource(item_id, amount)
+	awarded_item_ids[item_id] = true
+	return true
 
 
 func _roll_drop_rarity(weights, rng: RandomNumberGenerator) -> String:

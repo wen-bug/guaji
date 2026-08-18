@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "t1_metal_enhance_pill"
+item_no = 1059
+type = "pill"
+display_name = "一阶金行强化丹"
+icon_name = "t1_metal_enhance_pill"
+icon_path = "res://assets/items/t1_metal_enhance_pill.png"
+description = "永久强化所选角色的金行属性。"
+stackable = true
+usable = true
+use_scope = "home"
+gain_target = "metal"
+payload = {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_metal"}]}}

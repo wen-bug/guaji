@@ -119,6 +119,8 @@ func use_inventory_item_for_member(instance_id: String, member_id: String) -> bo
 
 	if item.get("payload", {}).has("permanent_building_quality") or DataTables.is_farm_speed_item(str(item.get("item_id", ""))):
 		return game_state._use_home_item(item)
+	if item.get("payload", {}).has("permanent_attribute_enhance"):
+		return game_state._use_permanent_attribute_item_for_member(item, member_id)
 
 	match item.get("type", ""):
 		DataTables.ITEM_TYPE_EQUIPMENT:
@@ -158,10 +160,13 @@ func drop_inventory_item(instance_id: String) -> bool:
 
 
 func resource_summary() -> String:
-	return "作物:%d 材料:%d 丹药:%d" % [
+	var market_token_count := inventory_item_count(DataTables.ITEM_ID_MARKET_TOKEN)
+	var material_count := maxi(0, inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL) - market_token_count)
+	return "作物:%d 材料:%d 丹药:%d 坊市令:%d" % [
 		inventory_total_for_type(DataTables.ITEM_TYPE_CROP),
-		inventory_total_for_type(DataTables.ITEM_TYPE_MATERIAL),
+		material_count,
 		inventory_total_for_type(DataTables.ITEM_TYPE_PILL),
+		market_token_count,
 	]
 
 

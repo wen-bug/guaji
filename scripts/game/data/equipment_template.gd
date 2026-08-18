@@ -6,8 +6,8 @@ extends Resource
 @export_group("基础信息｜ID、槽位、名称")
 ## 装备模板的稳定内容 ID；存档中的装备实例通过它解析当前定义。
 @export var item_id := ""
-## 实际穿戴槽位 ID，例如 weapon、armor 或 accessory_1。
-@export var slot := ""
+## 装备模板槽位 ID，例如 weapon、armor 或 accessory。
+@export_enum("weapon", "helmet", "armor", "leggings", "gloves", "accessory") var slot := "weapon"
 ## 不包含阶位前缀的装备基础名称。
 @export var base_name := ""
 ## Inspector 和静态列表使用的显示名称；运行时实例可追加阶位文本。
@@ -34,7 +34,7 @@ extends Resource
 
 func setup(data: Dictionary) -> EquipmentTemplate:
 	item_id = data.get("item_id", "")
-	slot = data.get("slot", "")
+	slot = data.get("slot", "weapon")
 	base_name = data.get("base_name", data.get("name", ""))
 	display_name = data.get("display_name", base_name)
 	slot_label = data.get("slot_label", slot)

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "market_token"
+item_no = 1061
+type = "material"
+display_name = "坊市令"
+icon_name = "market_token"
+icon_path = "res://assets/items/market_token.png"
+description = "通过坊市委托与回收获得，用于购买和刷新坊市商品。"
+stackable = true
+usable = false
+use_scope = "none"
+gain_target = "none"
+payload = {"market_currency": true}

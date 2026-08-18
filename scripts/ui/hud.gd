@@ -227,6 +227,22 @@ var manual_exchange_button: Button = null
 var spirit_stone_row: HBoxContainer = null
 var spirit_stone_option: OptionButton = null
 var spirit_stone_convert_button: Button = null
+var market_button: Button = null
+var market_panel: PanelContainer = null
+var market_token_label: Label = null
+var market_timer_label: Label = null
+var market_refresh_button: Button = null
+var market_tabs: TabContainer = null
+var market_offer_grid: GridContainer = null
+var market_commission_list: VBoxContainer = null
+var market_recycle_option: OptionButton = null
+var market_recycle_amount: SpinBox = null
+var market_recycle_preview_label: Label = null
+var market_recycle_button: Button = null
+var market_recycle_confirmation: ConfirmationDialog = null
+var pending_market_recycle_item_id := ""
+var pending_market_recycle_amount := 0
+var market_clock_accumulator := 0.0
 
 
 func _ready() -> void:
@@ -257,6 +273,7 @@ func _ready() -> void:
 	window_drag_button.button_up.connect(_on_window_drag_button_up)
 	_ensure_equipment_loop_controls()
 	_ensure_progression_exchange_controls()
+	_ensure_market_controls()
 	_connect_farm_controls()
 	_connect_forge_controls()
 	_connect_alchemy_controls()
@@ -279,6 +296,351 @@ func _ready() -> void:
 	loading_overlay.visible = false
 	loading_overlay.modulate.a = 0.0
 	_setup_mod_manager()
+
+
+func _ensure_market_controls() -> void:
+	var root := get_node_or_null("Root") as Control
+	var menu_layout := get_node_or_null("Root/MenuPanel/MenuLayout") as VBoxContainer
+	if root == null or menu_layout == null:
+		return
+	market_button = menu_layout.get_node_or_null("MarketButton") as Button
+	if market_button == null:
+		market_button = Button.new()
+		market_button.name = "MarketButton"
+		market_button.text = "坊市"
+		market_button.custom_minimum_size = Vector2(120.0, 28.0)
+		_style_market_button(market_button)
+		menu_layout.add_child(market_button)
+		market_button.pressed.connect(_open_market_panel)
+		menu_panel.reset_size()
+	market_panel = root.get_node_or_null("MarketPanel") as PanelContainer
+	if market_panel != null:
+		return
+	market_panel = PanelContainer.new()
+	market_panel.name = "MarketPanel"
+	market_panel.visible = false
+	market_panel.position = Vector2(170.0, 28.0)
+	market_panel.custom_minimum_size = Vector2(620.0, 420.0)
+	market_panel.add_theme_stylebox_override("panel", _create_panel_style(PANEL_FILL_COLOR, PANEL_BORDER_COLOR, 2, 8))
+	root.add_child(market_panel)
+
+	var layout := VBoxContainer.new()
+	layout.name = "PanelLayout"
+	layout.add_theme_constant_override("separation", 7)
+	market_panel.add_child(layout)
+
+	var header := HBoxContainer.new()
+	header.name = "Header"
+	layout.add_child(header)
+	var title := Label.new()
+	title.text = "坊市"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_color_override("font_color", Color(1.0, 0.93, 0.73))
+	header.add_child(title)
+	market_token_label = Label.new()
+	market_token_label.name = "TokenLabel"
+	header.add_child(market_token_label)
+	market_timer_label = Label.new()
+	market_timer_label.name = "TimerLabel"
+	market_timer_label.custom_minimum_size.x = 110.0
+	header.add_child(market_timer_label)
+	var close_button := Button.new()
+	close_button.text = "关闭"
+	_style_market_button(close_button)
+	close_button.pressed.connect(func(): market_panel.visible = false)
+	header.add_child(close_button)
+
+	var action_row := HBoxContainer.new()
+	action_row.name = "ActionRow"
+	layout.add_child(action_row)
+	var cycle_label := Label.new()
+	cycle_label.text = "货架与委托每 10 分钟自然更新"
+	cycle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.add_child(cycle_label)
+	market_refresh_button = Button.new()
+	market_refresh_button.name = "RefreshButton"
+	_style_market_button(market_refresh_button)
+	market_refresh_button.pressed.connect(_on_market_refresh_pressed)
+	action_row.add_child(market_refresh_button)
+
+	market_tabs = TabContainer.new()
+	market_tabs.name = "MarketTabs"
+	market_tabs.custom_minimum_size = Vector2(596.0, 330.0)
+	market_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout.add_child(market_tabs)
+
+	var shelf_page := ScrollContainer.new()
+	shelf_page.name = "货架"
+	market_tabs.add_child(shelf_page)
+	market_offer_grid = GridContainer.new()
+	market_offer_grid.name = "OfferGrid"
+	market_offer_grid.columns = 2
+	market_offer_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_offer_grid.add_theme_constant_override("h_separation", 8)
+	market_offer_grid.add_theme_constant_override("v_separation", 8)
+	shelf_page.add_child(market_offer_grid)
+
+	var commission_scroll := ScrollContainer.new()
+	commission_scroll.name = "委托"
+	market_tabs.add_child(commission_scroll)
+	market_commission_list = VBoxContainer.new()
+	market_commission_list.name = "CommissionList"
+	market_commission_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_commission_list.add_theme_constant_override("separation", 8)
+	commission_scroll.add_child(market_commission_list)
+
+	var recycle_page := VBoxContainer.new()
+	recycle_page.name = "回收"
+	recycle_page.add_theme_constant_override("separation", 10)
+	market_tabs.add_child(recycle_page)
+	market_recycle_option = OptionButton.new()
+	market_recycle_option.name = "RecycleItemOption"
+	market_recycle_option.custom_minimum_size = Vector2(0.0, 38.0)
+	recycle_page.add_child(market_recycle_option)
+	var amount_row := HBoxContainer.new()
+	recycle_page.add_child(amount_row)
+	var amount_label := Label.new()
+	amount_label.text = "回收数量"
+	amount_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	amount_row.add_child(amount_label)
+	market_recycle_amount = SpinBox.new()
+	market_recycle_amount.name = "RecycleAmount"
+	market_recycle_amount.custom_minimum_size.x = 150.0
+	market_recycle_amount.allow_greater = false
+	market_recycle_amount.allow_lesser = false
+	amount_row.add_child(market_recycle_amount)
+	market_recycle_preview_label = Label.new()
+	market_recycle_preview_label.name = "RecyclePreview"
+	market_recycle_preview_label.custom_minimum_size.y = 50.0
+	recycle_page.add_child(market_recycle_preview_label)
+	market_recycle_button = Button.new()
+	market_recycle_button.name = "RecycleButton"
+	market_recycle_button.text = "确认回收"
+	_style_market_button(market_recycle_button)
+	recycle_page.add_child(market_recycle_button)
+
+	market_recycle_confirmation = ConfirmationDialog.new()
+	market_recycle_confirmation.name = "MarketRecycleConfirmation"
+	market_recycle_confirmation.title = "确认回收贵重物品"
+	root.add_child(market_recycle_confirmation)
+	market_recycle_option.item_selected.connect(_on_market_recycle_item_selected)
+	market_recycle_amount.value_changed.connect(_on_market_recycle_amount_changed)
+	market_recycle_button.pressed.connect(_on_market_recycle_pressed)
+	market_recycle_confirmation.confirmed.connect(_on_market_recycle_confirmed)
+
+
+func _style_market_button(button: Button) -> void:
+	button.add_theme_stylebox_override("normal", _create_button_style(BUTTON_FILL_COLOR, BUTTON_BORDER_COLOR))
+	button.add_theme_stylebox_override("hover", _create_button_style(BUTTON_HOVER_FILL_COLOR, BUTTON_HOVER_BORDER_COLOR))
+	button.add_theme_stylebox_override("pressed", _create_button_style(BUTTON_PRESSED_FILL_COLOR, BUTTON_PRESSED_BORDER_COLOR))
+	button.add_theme_stylebox_override("disabled", _create_button_style(BUTTON_DISABLED_FILL_COLOR, BUTTON_DISABLED_BORDER_COLOR))
+	button.add_theme_stylebox_override("focus", _create_button_style(BUTTON_FOCUS_FILL_COLOR, BUTTON_FOCUS_BORDER_COLOR))
+
+
+func _open_market_panel() -> void:
+	_ensure_menu_panel_refs()
+	_close_popup_panels()
+	menu_panel.visible = false
+	market_panel.visible = true
+	_refresh_market_panel()
+	market_panel.reset_size()
+	_apply_saved_panel_position(market_panel)
+	call_deferred("_apply_saved_panel_position_if_visible", market_panel)
+
+
+func _refresh_market_panel() -> void:
+	if current_game_state == null or market_panel == null:
+		return
+	_refresh_market_header()
+	_refresh_market_offers()
+	_refresh_market_commissions()
+	_refresh_market_recycle_options()
+
+
+func _refresh_market_header() -> void:
+	if current_game_state == null:
+		return
+	var seconds: int = int(current_game_state.market_seconds_until_refresh())
+	var minutes := floori(float(seconds) / 60.0)
+	var remainder: int = seconds % 60
+	market_token_label.text = "坊市令 %d" % current_game_state.inventory_item_count(DataTables.ITEM_ID_MARKET_TOKEN)
+	market_timer_label.text = "%02d:%02d" % [minutes, remainder]
+	var cost: int = int(current_game_state.market_manual_refresh_cost())
+	market_refresh_button.text = "刷新 · %d" % cost
+	market_refresh_button.disabled = current_game_state.inventory_item_count(DataTables.ITEM_ID_MARKET_TOKEN) < cost
+
+
+func _refresh_market_offers() -> void:
+	_clear_control_children(market_offer_grid)
+	var token_count: int = int(current_game_state.inventory_item_count(DataTables.ITEM_ID_MARKET_TOKEN))
+	for offer in current_game_state.market_offers():
+		if not (offer is Dictionary):
+			continue
+		var slot_index := int(offer.get("slot_index", market_offer_grid.get_child_count()))
+		var item_id := str(offer.get("item_id", ""))
+		var amount := int(offer.get("amount", 0))
+		var price := int(offer.get("price", 0))
+		var sold := bool(offer.get("sold", false))
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(286.0, 82.0)
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.text = "%s  x%d\n%s" % [
+			DataTables.resource_name(item_id),
+			amount,
+			"已售罄" if sold else "坊市令 x%d" % price,
+		]
+		button.tooltip_text = str(DataTables.item_definition(item_id).get("description", ""))
+		button.disabled = sold or token_count < price
+		_style_market_button(button)
+		button.pressed.connect(func(index = slot_index): _on_market_offer_pressed(index))
+		market_offer_grid.add_child(button)
+
+
+func _refresh_market_commissions() -> void:
+	_clear_control_children(market_commission_list)
+	var commission_index := 0
+	for commission in current_game_state.market_commissions():
+		if not (commission is Dictionary):
+			continue
+		var parts: Array[String] = []
+		var can_submit := true
+		for requirement in commission.get("requirements", []):
+			var item_id := str(requirement.get("item_id", ""))
+			var amount := int(requirement.get("amount", 0))
+			var owned: int = int(current_game_state.inventory_item_count(item_id))
+			parts.append("%s %d/%d" % [DataTables.resource_name(item_id), owned, amount])
+			if owned < amount:
+				can_submit = false
+		var completed := bool(commission.get("completed", false))
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(570.0, 78.0)
+		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		button.text = "%s\n%s" % [
+			" · ".join(parts),
+			"已完成" if completed else "提交 · 坊市令 x%d" % int(commission.get("reward", 0)),
+		]
+		button.disabled = completed or not can_submit
+		_style_market_button(button)
+		button.pressed.connect(func(index = commission_index): _on_market_commission_pressed(index))
+		market_commission_list.add_child(button)
+		commission_index += 1
+
+
+func _refresh_market_recycle_options() -> void:
+	var previous_item_id := _selected_market_recycle_item_id()
+	market_recycle_option.clear()
+	for item_id in current_game_state.market_recyclable_item_ids():
+		var definition: Dictionary = current_game_state.market_recycle_definition(item_id)
+		var index := market_recycle_option.item_count
+		market_recycle_option.add_item("%s  持有%d  每%d换%d" % [
+			DataTables.resource_name(item_id),
+			current_game_state.inventory_item_count(item_id),
+			int(definition.get("amount", 1)),
+			int(definition.get("tokens", 1)),
+		])
+		market_recycle_option.set_item_metadata(index, item_id)
+		if item_id == previous_item_id:
+			market_recycle_option.select(index)
+	if market_recycle_option.item_count <= 0:
+		market_recycle_amount.min_value = 0.0
+		market_recycle_amount.max_value = 0.0
+		market_recycle_amount.value = 0.0
+		market_recycle_button.disabled = true
+		market_recycle_preview_label.text = "暂无满足完整批次的可回收物品"
+		return
+	_on_market_recycle_item_selected(market_recycle_option.selected)
+
+
+func _selected_market_recycle_item_id() -> String:
+	if market_recycle_option == null or market_recycle_option.item_count <= 0 or market_recycle_option.selected < 0:
+		return ""
+	return str(market_recycle_option.get_item_metadata(market_recycle_option.selected))
+
+
+func _on_market_recycle_item_selected(_index: int) -> void:
+	var item_id := _selected_market_recycle_item_id()
+	var definition: Dictionary = current_game_state.market_recycle_definition(item_id)
+	var batch := maxi(1, int(definition.get("amount", 1)))
+	var owned: int = int(current_game_state.inventory_item_count(item_id))
+	market_recycle_amount.min_value = float(batch)
+	market_recycle_amount.max_value = float(floori(float(owned) / float(batch)) * batch)
+	market_recycle_amount.step = float(batch)
+	market_recycle_amount.value = float(batch)
+	_refresh_market_recycle_preview()
+
+
+func _on_market_recycle_amount_changed(_value: float) -> void:
+	_refresh_market_recycle_preview()
+
+
+func _refresh_market_recycle_preview() -> void:
+	if current_game_state == null:
+		return
+	var item_id := _selected_market_recycle_item_id()
+	var amount := int(market_recycle_amount.value)
+	var reward: int = int(current_game_state.market_recycle_preview(item_id, amount))
+	var definition: Dictionary = current_game_state.market_recycle_definition(item_id)
+	market_recycle_preview_label.text = "回收 %s x%d  获得坊市令 x%d%s" % [
+		DataTables.resource_name(item_id),
+		amount,
+		reward,
+		"  · 贵重物品需再次确认" if bool(definition.get("valuable", false)) else "",
+	]
+	market_recycle_button.disabled = reward <= 0
+
+
+func _on_market_offer_pressed(slot_index: int) -> void:
+	if current_game_state != null and current_game_state.buy_market_offer(slot_index):
+		_refresh_market_panel()
+
+
+func _on_market_commission_pressed(commission_index: int) -> void:
+	if current_game_state != null and current_game_state.complete_market_commission(commission_index):
+		_refresh_market_panel()
+
+
+func _on_market_refresh_pressed() -> void:
+	if current_game_state != null and current_game_state.refresh_market():
+		_refresh_market_panel()
+
+
+func _on_market_recycle_pressed() -> void:
+	if current_game_state == null:
+		return
+	var item_id := _selected_market_recycle_item_id()
+	var amount := int(market_recycle_amount.value)
+	var definition: Dictionary = current_game_state.market_recycle_definition(item_id)
+	if bool(definition.get("valuable", false)):
+		pending_market_recycle_item_id = item_id
+		pending_market_recycle_amount = amount
+		market_recycle_confirmation.dialog_text = "确认回收%s x%d？贵重物品回收后无法恢复。" % [DataTables.resource_name(item_id), amount]
+		market_recycle_confirmation.popup_centered()
+		return
+	if current_game_state.recycle_market_item(item_id, amount):
+		_refresh_market_panel()
+
+
+func _on_market_recycle_confirmed() -> void:
+	if current_game_state != null and current_game_state.recycle_market_item(pending_market_recycle_item_id, pending_market_recycle_amount, true):
+		_refresh_market_panel()
+	pending_market_recycle_item_id = ""
+	pending_market_recycle_amount = 0
+
+
+func _process(delta: float) -> void:
+	if market_panel == null or not market_panel.visible or current_game_state == null:
+		return
+	market_clock_accumulator += delta
+	if market_clock_accumulator < 1.0:
+		return
+	market_clock_accumulator = 0.0
+	var previous_refresh := int(current_game_state.market_state.get("next_free_refresh_unix", 0))
+	current_game_state.market_offers()
+	var current_refresh := int(current_game_state.market_state.get("next_free_refresh_unix", 0))
+	if current_refresh != previous_refresh:
+		_refresh_market_panel()
+	else:
+		_refresh_market_header()
 
 
 func _ensure_equipment_loop_controls() -> void:
@@ -582,6 +944,8 @@ func refresh(game_state) -> void:
 		_refresh_member_info(current_game_state)
 	if recruit_panel.visible:
 		_refresh_recruit_panel()
+	if market_panel != null and market_panel.visible:
+		_refresh_market_panel()
 	_refresh_visible_action_details()
 
 
@@ -1440,6 +1804,7 @@ func _draggable_panels() -> Array[Control]:
 		alchemy_panel,
 		recruit_panel,
 		fight_panel,
+		market_panel,
 		debug_panel,
 	]
 
@@ -1656,7 +2021,7 @@ func _viewport_size() -> Vector2:
 
 
 func _close_popup_panels() -> void:
-	for panel_path in ["Root/MemberInfoPanel", "Root/InventoryPanel", "Root/FarmPanel", "Root/ForgePanel", "Root/AlchemyPanel", "Root/RecruitPanel", "Root/FightPanel", "Root/DebugPanel"]:
+	for panel_path in ["Root/MemberInfoPanel", "Root/InventoryPanel", "Root/FarmPanel", "Root/ForgePanel", "Root/AlchemyPanel", "Root/RecruitPanel", "Root/FightPanel", "Root/MarketPanel", "Root/DebugPanel"]:
 		var panel: Control = get_node_or_null(panel_path) as Control
 		if panel != null:
 			panel.visible = false
@@ -2763,10 +3128,14 @@ func _refresh_alchemy_panel() -> void:
 	elif max_count <= 0:
 		alchemy_hint_label.text = "材料不足"
 	else:
-		var output_multiplier := 2 if current_game_state.building_level("alchemy") >= 6 else 1
+		var recipe: Dictionary = DataTables.alchemy_recipe_def(selected_alchemy_recipe_id)
+		var allow_output_multiplier: bool = bool(recipe.get("allow_output_multiplier", true))
+		var allow_bonus_output: bool = bool(recipe.get("allow_bonus_output", true))
+		var output_multiplier := 2 if current_game_state.building_level("alchemy") >= 6 and allow_output_multiplier else 1
+		var bonus_output_chance := 0.02 * float(current_game_state.building_level("alchemy") - 1) if allow_bonus_output else 0.0
 		alchemy_hint_label.text = "立即完成；每份基础产出 x%d，额外出丹率 %d%%" % [
 			output_multiplier,
-			int(round(0.02 * float(current_game_state.building_level("alchemy") - 1) * 100.0)),
+			int(round(bonus_output_chance * 100.0)),
 		]
 
 
