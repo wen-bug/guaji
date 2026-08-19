@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://dxf1xc4xd218d"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_yvype"]
+
+[resource]
+script = ExtResource("1_yvype")
+id = "stone_lizard"
+display_name = "岩甲蜥"
+visual_id = "lizard"
+max_hp = 44
+attack = 8
+defense = 4
+element = "earth"
+element_power = 6
+skills = Array[String](["spirit_shield"])
+exp = 15
+use_class_drop_pool = true

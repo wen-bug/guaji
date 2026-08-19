@@ -287,7 +287,8 @@ func ensure_member_shape(member: Dictionary) -> void:
 		skill["replaceable"] = false
 	member["skills"] = member_skills
 	member["innate_traits"] = member.get("innate_traits", []) if member.get("innate_traits", []) is Array else []
-	member["growth_primary_stats"] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
+	ensure_member_growth_shape(member)
+	member["combat_affinity"] = normalized_member_combat_affinity(str(member.get("combat_affinity", "")), str(member.get("id", "")))
 	member["enhance_pill_uses_by_tier"] = _sanitized_usage_counts(member.get("enhance_pill_uses_by_tier", {}))
 	member["enhance_pill_uses_by_item"] = _sanitized_usage_counts(member.get("enhance_pill_uses_by_item", {}))
 	clamp_member_runtime_stats(member)
@@ -387,6 +388,7 @@ func sanitize_equipped_for_member(member_id: String, member_equipped: Dictionary
 
 func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
 	var target_level: int = clampi(game_state.building_level("recruit"), 1, 10)
+	var growth_stats: Array[String] = random_growth_primary_stats()
 	var candidate: Dictionary = {
 		"id": "companion_%d_%d" % [Time.get_ticks_usec(), game_state.rng.randi()],
 		"candidate_id": "candidate_%d_%d" % [index, game_state.rng.randi()],
@@ -399,7 +401,10 @@ func create_recruit_candidate(index: int, used_names: Dictionary) -> Dictionary:
 		"attack_mode": DataTables.ATTACK_MODE_MELEE,
 		"skills": [],
 		"innate_traits": random_basic_recruit_traits(),
-		"growth_primary_stats": random_growth_primary_stats(),
+		"growth_primary_stat": growth_stats[0],
+		"growth_secondary_stats": [growth_stats[1], growth_stats[2]],
+		"growth_primary_stats": growth_stats.duplicate(),
+		"combat_affinity": random_combat_affinity(),
 		"enhance_pill_uses_by_tier": {},
 		"enhance_pill_uses_by_item": {},
 	}
@@ -459,9 +464,11 @@ func candidate_by_id(candidate_id: String) -> Dictionary:
 
 
 func growth_summary_for_member_data(member: Dictionary) -> String:
-	var primary_stats: Array[String] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
-	member["growth_primary_stats"] = primary_stats
-	return "主属性 %s" % attribute_list_text(primary_stats)
+	ensure_member_growth_shape(member)
+	return "主属性 %s；副属性 %s" % [
+		game_state._attribute_log_name(str(member.get("growth_primary_stat", ""))),
+		attribute_list_text(member.get("growth_secondary_stats", [])),
+	]
 
 
 func ensure_recruit_candidate_growth() -> void:
@@ -506,14 +513,18 @@ func apply_auto_attribute_points_to(member: Dictionary, point_count: int) -> Dic
 
 func apply_companion_attribute_points_to(member: Dictionary, point_count: int) -> Dictionary:
 	var gains: Dictionary = {}
-	var primary_stats: Array[String] = normalized_growth_primary_stats(member.get("growth_primary_stats", []))
-	member["growth_primary_stats"] = primary_stats
-	var primary_count: int = int(floor(float(maxi(0, point_count)) * 0.8))
-	for _index in range(primary_count):
-		var target: String = str(primary_stats[game_state.rng.randi_range(0, primary_stats.size() - 1)])
-		apply_attribute_point_to(member, target, gains)
-	for _index in range(maxi(0, point_count - primary_count)):
-		var target: String = str(RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, RANDOM_POINT_TARGETS.size() - 1)])
+	ensure_member_growth_shape(member)
+	var primary_stat := str(member.get("growth_primary_stat", "attack"))
+	var secondary_stats: Array = member.get("growth_secondary_stats", [])
+	for _index in range(maxi(0, point_count)):
+		var roll: float = float(game_state.rng.randf())
+		var target := primary_stat
+		if roll >= 0.8:
+			target = str(RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, RANDOM_POINT_TARGETS.size() - 1)])
+		elif roll >= 0.65:
+			target = str(secondary_stats[1])
+		elif roll >= 0.5:
+			target = str(secondary_stats[0])
 		apply_attribute_point_to(member, target, gains)
 	return gains
 
@@ -530,7 +541,7 @@ func random_growth_primary_stats() -> Array[String]:
 	return result
 
 
-func normalized_growth_primary_stats(raw_value) -> Array[String]:
+func normalized_growth_primary_stats(raw_value, member_id: String = "") -> Array[String]:
 	var result: Array[String] = []
 	if raw_value is Array:
 		for target in raw_value:
@@ -539,14 +550,59 @@ func normalized_growth_primary_stats(raw_value) -> Array[String]:
 				result.append(stat_id)
 			if result.size() >= 3:
 				break
-	while result.size() < 3:
-		var candidate: String = str(RANDOM_POINT_TARGETS[game_state.rng.randi_range(0, RANDOM_POINT_TARGETS.size() - 1)])
+	var start_index := posmod(member_id.hash(), RANDOM_POINT_TARGETS.size())
+	for offset in range(RANDOM_POINT_TARGETS.size()):
+		if result.size() >= 3:
+			break
+		var candidate: String = str(RANDOM_POINT_TARGETS[(start_index + offset) % RANDOM_POINT_TARGETS.size()])
 		if not result.has(candidate):
 			result.append(candidate)
 	return result
 
 
-func attribute_list_text(stat_ids: Array[String]) -> String:
+func ensure_member_growth_shape(member: Dictionary) -> void:
+	var legacy_stats: Array[String] = normalized_growth_primary_stats(member.get("growth_primary_stats", []), str(member.get("id", member.get("candidate_id", ""))))
+	var primary_stat := str(member.get("growth_primary_stat", legacy_stats[0]))
+	if not RANDOM_POINT_TARGETS.has(primary_stat):
+		primary_stat = legacy_stats[0]
+	var secondary_stats: Array[String] = []
+	var raw_secondary = member.get("growth_secondary_stats", [legacy_stats[1], legacy_stats[2]])
+	if raw_secondary is Array:
+		for value in raw_secondary:
+			var stat_id := str(value)
+			if RANDOM_POINT_TARGETS.has(stat_id) and stat_id != primary_stat and not secondary_stats.has(stat_id):
+				secondary_stats.append(stat_id)
+	while secondary_stats.size() < 2:
+		for stat_id in legacy_stats:
+			if str(stat_id) != primary_stat and not secondary_stats.has(str(stat_id)):
+				secondary_stats.append(str(stat_id))
+				break
+		if secondary_stats.size() < 2:
+			for candidate in legacy_stats:
+				if str(candidate) != primary_stat and not secondary_stats.has(str(candidate)):
+					secondary_stats.append(str(candidate))
+					break
+	member["growth_primary_stat"] = primary_stat
+	member["growth_secondary_stats"] = secondary_stats
+	member["growth_primary_stats"] = [primary_stat, secondary_stats[0], secondary_stats[1]]
+
+
+func random_combat_affinity() -> String:
+	return str(DataTables.COMBAT_AFFINITY_IDS[game_state.rng.randi_range(0, DataTables.COMBAT_AFFINITY_IDS.size() - 1)])
+
+
+func normalized_member_combat_affinity(value: String, member_id: String) -> String:
+	if DataTables.COMBAT_AFFINITY_IDS.has(value):
+		return value
+	return stable_combat_affinity_for_id(member_id)
+
+
+func stable_combat_affinity_for_id(member_id: String) -> String:
+	var index := posmod(member_id.hash(), DataTables.COMBAT_AFFINITY_IDS.size())
+	return str(DataTables.COMBAT_AFFINITY_IDS[index])
+
+
+func attribute_list_text(stat_ids: Array) -> String:
 	var names: Array[String] = []
 	for stat_id in stat_ids:
 		names.append(game_state._attribute_log_name(str(stat_id)))

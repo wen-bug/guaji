@@ -158,7 +158,7 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_selection = "", 
 		"enemy_count": enemy_group.size(),
 		"party_member_ids": party_combatants.map(func(value): return str(value.get("member_id", ""))),
 	})
-	log_added.emit("遭遇%s（共%d只），弱%s" % [enemy.get("name", "敌人"), enemy_group.size(), DataTables.element_name(str(enemy.get("weak_element", "")))])
+	log_added.emit("遭遇%s（共%d只），属性%s" % [enemy.get("name", "敌人"), enemy_group.size(), DataTables.combat_affinity_name(str(enemy.get("combat_affinity", "normal")))])
 
 
 func _normalized_encounter_enemy_ids(enemy_selection, legacy_enemy_count: int) -> Array[String]:
@@ -617,10 +617,10 @@ func _on_enemy_hit_candidate(action_id: int, target_id: String) -> void:
 	if target == null or not target.is_alive():
 		return
 	var action := _enemy_pending_action
-	var skill: Dictionary = _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))), str(action.get("element", "")))
+	var skill: Dictionary = _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))))
 	var targets := _skill_targets(enemy_actor_status, skill, target)
 	var result := combat_skill_executor.execute(enemy_actor_status, targets, skill, combat_effect_resolver, pending_game_state.rng)
-	log_added.emit("%s攻击%s，造成%d点伤害" % [enemy.get("name", "敌人"), target.actor_name, int(result.get("damage", 0))])
+	log_added.emit("%s攻击%s，造成%d点伤害%s" % [enemy.get("name", "敌人"), target.actor_name, int(result.get("damage", 0)), _affinity_result_suffix(result)])
 	_check_combat_result()
 
 
@@ -725,7 +725,7 @@ func _advance_enemy_group() -> void:
 	_enemy_turn_started = false
 	_enemy_death_waiting = false
 	_rewards_granted = false
-	log_added.emit("下一只%s进入战斗（剩余 %d）" % [enemy.get("name", "敌人"), enemy_group.size() - enemy_group_index])
+	log_added.emit("下一只%s进入战斗，属性%s（剩余 %d）" % [enemy.get("name", "敌人"), DataTables.combat_affinity_name(str(enemy.get("combat_affinity", "normal"))), enemy_group.size() - enemy_group_index])
 
 
 func _grant_victory_rewards() -> void:
@@ -737,6 +737,10 @@ func _grant_victory_rewards() -> void:
 	for combatant in party_combatants:
 		pending_game_state.add_exp_for_member(str(combatant.get("member_id", "")), exp_amount)
 	_resolve_drops(pending_game_state)
+	if str(enemy.get("enemy_class", enemy.get("encounter_class", "normal"))) == DataTables.ENEMY_CLASS_BOSS:
+		var boss_tier := DataTables.EQUIPMENT_RARITY_ORDER.find(str(enemy.get("rank", "t1"))) + 1
+		pending_game_state.add_inventory_item(DataTables.ITEM_ID_ASCENSION_STONE, maxi(1, boss_tier), false)
+		log_added.emit("Boss掉落升阶石 x%d" % maxi(1, boss_tier))
 	if bool(enemy.get("use_drop", true)) and pending_game_state.rng.randf() < float(enemy.get("equipment_drop_chance", 0.0)):
 		var rarity_weights: Dictionary = enemy.get("drop_profile", {}).get("rarity_weights", {})
 		pending_game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", pending_game_state.expedition_level())), pending_game_state.rng, pending_game_state.craft_bonus(), "drop", rarity_weights))
@@ -922,9 +926,8 @@ func _on_combat_popup_requested(amount: int, world_position: Vector2, target_key
 	damage_popup_requested.emit(amount, world_position, target_key, damage_type, is_heal)
 
 
-func _basic_attack_skill(base_damage: int, element_id: String) -> Dictionary:
+func _basic_attack_skill(base_damage: int) -> Dictionary:
 	var attack: Dictionary = DataTables.create_basic_attack(DataTables.ATTACK_MODE_MELEE, base_damage)
-	attack["element"] = element_id
 	return attack
 
 
@@ -933,11 +936,12 @@ func _resolve_party_basic_attack(combatant: Dictionary, caster: CombatActorStatu
 	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
 	var attack: Dictionary = DataTables.create_basic_attack(attack_mode, caster.total_stat("attack"))
 	var result := combat_skill_executor.execute(caster, [enemy_actor_status], attack, combat_effect_resolver, pending_game_state.rng)
-	log_added.emit("%s使用%s命中%s，造成%d点伤害" % [
+	log_added.emit("%s使用%s命中%s，造成%d点伤害%s" % [
 		caster.actor_name,
 		attack.get("name", "普通攻击"),
 		enemy.get("name", "敌人"),
 		int(result.get("damage", 0)),
+		_affinity_result_suffix(result),
 	])
 	_check_combat_result()
 
@@ -1021,6 +1025,15 @@ func _complete_enemy_skill() -> void:
 
 
 func _on_skill_combat_events(events: Array) -> void:
+	for event in events:
+		if not (event is Dictionary) or str(event.get("type", "")) != "damage":
+			continue
+		var source: Dictionary = event.get("source", {})
+		if str(source.get("source", "")) == "dot":
+			continue
+		var relation := str(source.get("affinity_relation", DataTables.AFFINITY_RELATION_NEUTRAL))
+		if relation != DataTables.AFFINITY_RELATION_NEUTRAL:
+			log_added.emit("%s受到%d点伤害%s" % [str(event.get("actor_name", "目标")), int(event.get("amount", 0)), _affinity_relation_suffix(relation)])
 	_queue_presentation(events)
 
 
@@ -1029,6 +1042,8 @@ func _queue_presentation(events: Array, done: Callable = Callable()) -> bool:
 	for event in events:
 		if not (event is Dictionary):
 			continue
+		if str(event.get("type", "")) == "status_tick" and str(event.get("affinity_relation", DataTables.AFFINITY_RELATION_NEUTRAL)) != DataTables.AFFINITY_RELATION_NEUTRAL:
+			log_added.emit("持续伤害%d%s" % [int(event.get("amount", 0)), _affinity_relation_suffix(str(event.get("affinity_relation", "")))])
 		if str(event.get("type", "")) in ["status_added", "status_refreshed", "status_stacked", "status_tick", "shield_absorbed", "status_removed"]:
 			_presentation_events.append(event.duplicate(true))
 			queued = true
@@ -1038,6 +1053,27 @@ func _queue_presentation(events: Array, done: Callable = Callable()) -> bool:
 		_presentation_active = true
 		_start_next_presentation_event()
 	return queued or _presentation_active
+
+
+func _affinity_result_suffix(result: Dictionary) -> String:
+	var suffix := "（暴击）" if bool(result.get("critical", false)) else ""
+	for target_result in result.get("target_results", []):
+		if target_result is Dictionary:
+			var relation := str(target_result.get("affinity_relation", DataTables.AFFINITY_RELATION_NEUTRAL))
+			if relation != DataTables.AFFINITY_RELATION_NEUTRAL:
+				suffix += _affinity_relation_suffix(relation)
+				break
+	return suffix
+
+
+func _affinity_relation_suffix(relation: String) -> String:
+	match relation:
+		DataTables.AFFINITY_RELATION_OVERCOME:
+			return "（克制）"
+		DataTables.AFFINITY_RELATION_RESTRAINED:
+			return "（被克）"
+		_:
+			return ""
 
 
 func _wait_for_presentation(done: Callable) -> bool:

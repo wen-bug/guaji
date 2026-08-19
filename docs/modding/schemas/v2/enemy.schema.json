@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://guaji.example/schemas/mod/v1/enemy.schema.json",
-  "title": "enemy definition v1",
+  "$id": "https://guaji.example/schemas/mod/v2/enemy.schema.json",
+  "title": "enemy definition v2",
   "type": "object",
   "additionalProperties": true,
   "required": [
@@ -61,6 +61,9 @@
       "maximum": 1
     },
     "use_rank_drop_pool": {
+      "type": "boolean"
+    },
+    "use_class_drop_pool": {
       "type": "boolean"
     },
     "skill_unlock_rank": {

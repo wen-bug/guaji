@@ -1,6 +1,6 @@
 # Mod 存档与迁移
 
-GameState Schema 10 保存 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
+Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 18 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
 
 当已加载版本与存档 profile 不同，入口实例调用 `migrate_save(data, from_version, to_version)`。必须返回新的 Dictionary；返回其他类型会将该 Mod 标记为失败，并保留导入前数据。
 
@@ -8,7 +8,15 @@ GameState Schema 10 保存 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_
 
 覆盖类 Mod 不改变内容 ID，因此不会触发休眠；作者负责让新定义兼容旧实例字段。
 
+## Schema 18
 
+Schema 18 将核心装备迁移为十四个稳定模板、固定阶位基础值、强化分配和最多三条战斗词条。旧 `weapon/accessory` 映射到金剑/木饰品；旧图纸按每张矿石 x4 补偿后移除。Mod 存储命名空间和 API 2 内容版本不变。
+
+## Schema 17
+
+角色和招募候选新增 `combat_affinity`、`growth_primary_stat` 和 `growth_secondary_stats`。Schema 16 及更早角色按稳定 ID 映射到普通和五行六类，不消耗存档 RNG；旧 `growth_primary_stats` 的第一项迁移为主属性，后两项迁移为副属性。迁移不重新分配已有属性，只影响后续升级。
+
+本轮没有修改 Mod API 2 的敌人 Schema。缺少核心运行时字段的 Mod 敌人按普通属性处理，也不获得核心敌人的主副属性点成长。
 
 ## Schema 16
 

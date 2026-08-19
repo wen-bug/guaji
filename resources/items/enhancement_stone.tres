@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://0aypgfrbmxyt"]
+
+[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1_ef8xb"]
+
+[resource]
+script = ExtResource("1_ef8xb")
+id = "enhancement_stone"
+item_no = 1062
+display_name = "强化石"
+icon_name = "spirit_stone"
+icon_path = "res://assets/items/spirit_stone.png"
+description = "用于为装备固定基础属性分配强化点。"

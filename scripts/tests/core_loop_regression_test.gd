@@ -112,9 +112,9 @@ func _check_stage_2_progression() -> void:
 	_expect_equal("pill raises level cap", int(candidate_stats.get("level_cap", 0)), 20)
 	_expect_equal("pill raises stage", int(candidate_stats.get("stage", 0)), 2)
 
-	var equipment := DataTables.create_equipment_from_template("weapon", 99, state.rng, 0, "", "t5", "test")
+	var equipment := DataTables.create_equipment_from_template("weapon_metal_sword", 99, state.rng, 0, "", "t5", "test")
 	_expect_equal("new equipment ignores expedition level", int(equipment.get("equipment_level", 0)), 1)
-	_expect_equal("tier five equip requirement", int(equipment.get("equip_requirement", {}).get("min", 0)), 20)
+	_expect_true("tier five has no equip requirement", equipment.get("equip_requirement", {}).is_empty())
 
 	var migrated := _fresh_state()
 	migrated.load_save_data({
@@ -148,26 +148,18 @@ func _check_stage_2_progression() -> void:
 	_expect_equal("schema 14 recalculates cap", int(migrated_stats.get("level_cap", 0)), 20)
 	_expect_equal("schema 14 keeps exp progress ratio", int(migrated_stats.get("exp", 0)), floori(float(migrated.party_service.next_exp_for_level(16)) * 0.5))
 	var migrated_equipment: Dictionary = migrated.inventory_items_for_type(DataTables.ITEM_TYPE_EQUIPMENT)[0]
-	_expect_equal("schema 14 migrates equip requirement", int(migrated_equipment.get("equip_requirement", {}).get("min", 0)), 15)
+	_expect_true("schema 18 removes equip requirement", migrated_equipment.get("equip_requirement", {}).is_empty())
 	_expect_equal("schema 14 preserves enhancement", int(migrated_equipment.get("enhance_count", 0)), 3)
 	_expect_equal("schema 14 preserves refinement", migrated_equipment.get("refine_affixes", []).size(), 1)
-	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 16)
+	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 18)
 
 
 func _check_stage_3_equipment_loop() -> void:
 	var state := _fresh_state()
-	state.reward_progress["blueprint_pity"] = 9
 	var reward: Dictionary = state.register_full_encounter_victory(true)
-	var blueprint_item_id := str(reward.get("blueprint_item_id", ""))
-	_expect_true("tenth valid victory guarantees blueprint", not blueprint_item_id.is_empty())
-	_expect_equal("pity resets on blueprint", int(state.reward_progress.get("blueprint_pity", -1)), 0)
-	var blueprint_instance_id := ""
-	for item in state.inventory:
-		if str(item.get("item_id", "")) == blueprint_item_id:
-			blueprint_instance_id = str(item.get("instance_id", ""))
-	_expect_true("blueprint item can be used", state.use_inventory_item(blueprint_instance_id))
-	var template_id := DataTables.blueprint_template_id(blueprint_item_id)
-	_expect_true("blueprint permanently unlocks template", state.unlocked_blueprint_templates().has(template_id))
+	_expect_equal("victory no longer awards blueprint", str(reward.get("blueprint_item_id", "")), "")
+	var template_id := "weapon_metal_sword"
+	_expect_true("all templates can be targeted", state.unlocked_blueprint_templates().has(template_id))
 
 	state.add_inventory_item("ore", 4, false)
 	var equipment_before := state.inventory_total_for_type(DataTables.ITEM_TYPE_EQUIPMENT)
@@ -175,11 +167,11 @@ func _check_stage_3_equipment_loop() -> void:
 	_expect_equal("targeted forge uses four ore", state.inventory_item_count("ore"), 0)
 	_expect_equal("targeted forge creates equipment", state.inventory_total_for_type(DataTables.ITEM_TYPE_EQUIPMENT), equipment_before + 1)
 
-	var salvaged := DataTables.create_equipment_from_template("weapon", 1, state.rng, 0, "", "t5", "test")
+	var salvaged := DataTables.create_equipment_from_template("weapon_metal_sword", 1, state.rng, 0, "", "t5", "test")
 	state.add_equipment(salvaged)
-	var ore_before := state.inventory_item_count("ore")
+	var stones_before := state.inventory_item_count(DataTables.ITEM_ID_ENHANCEMENT_STONE)
 	_expect_true("unequipped item can be salvaged", state.salvage_equipment(str(salvaged.get("instance_id", ""))))
-	_expect_equal("tier five salvage returns twelve ore", state.inventory_item_count("ore"), ore_before + 12)
+	_expect_equal("tier five salvage returns five stones", state.inventory_item_count(DataTables.ITEM_ID_ENHANCEMENT_STONE), stones_before + 5)
 
 	var protected := DataTables.create_equipment_from_template("helmet", 1, state.rng, 0, "", "t2", "test")
 	protected["equipped"] = true
@@ -188,15 +180,6 @@ func _check_stage_3_equipment_loop() -> void:
 	_expect_true("equipped item cannot be salvaged", not state.salvage_equipment(str(protected.get("instance_id", ""))))
 	_expect_true("protected equipment remains", not state.inventory_item_by_instance(str(protected.get("instance_id", ""))).is_empty())
 
-	state.reward_progress["unlocked_blueprints"] = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
-	state.add_inventory_item("blueprint_weapon", 1, false)
-	var duplicate_instance_id := ""
-	for item in state.inventory:
-		if str(item.get("item_id", "")) == "blueprint_weapon":
-			duplicate_instance_id = str(item.get("instance_id", ""))
-	var duplicate_ore_before := state.inventory_item_count("ore")
-	_expect_true("duplicate blueprint can be used", state.use_inventory_item(duplicate_instance_id))
-	_expect_equal("duplicate blueprint converts to four ore", state.inventory_item_count("ore"), duplicate_ore_before + 4)
 	_expect_equal("reward progress is saved", int(state.to_save_data().get("reward_progress", {}).get("valid_victories", 0)), 1)
 
 

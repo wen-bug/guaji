@@ -1,35 +1,16 @@
 # Mod 技能
 
-技能 data 至少包含 `name` 与 `scene_path`。常用字段包括 `type`、`target_scope`、`mp_cost`、`cooldown`、`release_distance`、`base_damage`、`damage_attribute_multiplier`、`heal_amount`、`heal_attribute_multiplier`、`trigger`、`priority`、`effects`。
+API 2 的新增技能由场景和资源共同定义。内容 JSON 只声明当前 Mod 内的 `scene_path`；运行时实例化场景，从根节点绑定的 `SkillDef` 读取标准化数据。
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "kind": "skill",
   "entries": [
     {
       "operation": "add",
       "local_id": "storm",
       "data": {
-        "name": "天雷",
-        "type": "damage",
-        "target_scope": "all_enemies",
-        "element": "metal",
-        "mp_cost": 10,
-        "cooldown": 4,
-        "base_damage": 8,
-        "damage_attribute_multiplier": 1.2,
-        "release_distance": 140,
-        "priority": 70,
-        "trigger": ["com.author.example:target_ready"],
-        "effects": [
-          {
-            "kind": "com.author.example:spirit_burn",
-            "trigger": "before_hit",
-            "target": "enemy",
-            "amount": 2
-          }
-        ],
         "scene_path": "res://mods/com.author.example/scenes/storm.tscn"
       }
     }
@@ -37,27 +18,21 @@
 }
 ```
 
-所有属性倍率字段都可省略。伤害存在 `damage_attribute_multiplier` 时按 `floor(base_damage + 对应五行属性 * 倍率)` 结算；只有 `base_damage` 时是固定伤害；两者都没有时兼容旧 `总攻击 * damage_multiplier`。治疗对 `heal_amount` 和 `heal_attribute_multiplier` 使用相同规则，显式 `heal_amount: 0` 也是固定 0。
+## 资源契约
 
-`dot`、`hot`、`shield`、`heal`、`buff_stat`、`debuff_stat`、`damage_flat` 和 `defense_ignore` 仅在 effect 自身提供 `attribute_multiplier` 时缩放，省略时 `amount/value` 是固定值。effect 自身的 `element` 优先于技能元素；两者都为空时读取施法者主五行。`chance`、持续时间、冷却比例与吸血比例不参与属性缩放。已提供的基础值和倍率字段必须是非负数。
+- 场景根节点继承 `SkillSceneBase` 并绑定 `SkillDef`。
+- `SkillDef.id` 必须等于内容 `local_id`；运行时自动加 Mod 命名空间。
+- `SkillDef` 必须提供 `display_name`、`type`、`target_scope`、`target_mode` 和 `effects`。
+- `target_mode` 只表示单体或群体；API 2 不使用技能距离。
+- 场景必须包含 `AnimationPlayer` 的 `RESET` 和非循环 `cast` 动画。
+- `cast` 方法轨道必须调用 `impact()` 和 `finish_cast()`；每个效果的 `impact_id` 都要有对应关键帧。
 
-自定义技能场景和状态场景使用与核心内容相同的 v2 契约。释放动画的方法轨道、手工碰撞窗口、`status_visual_scene` 选择和状态动画命名统一见
-[`../skill-authoring.md`](../skill-authoring.md)，本页不重复维护动画接口。Mod 场景和资源必须位于当前 Mod 命名空间目录。
+`SkillEffectDef.kind` 支持 `damage`、`heal`、`status` 和 `cooldown`。状态还必须声明 `status_id`、状态类型、持续回合和继承 `StatusVisualBase` 的表现资源。完整场景规则见[技能与状态动画制作](../skill-authoring.md)。
 
-自定义 effect 用 `register_effect_handler(local_id, callable)` 注册。回调签名为 `(effect, trigger, context, owner_role)`，可原地修改 context 或返回需要合并的 Dictionary。未知且未注册的 effect 会被规范化阶段过滤。
+## 自定义处理器
 
-自定义 AI 条件回调签名为 `(skill, actor_data, target_status) -> bool`。技能 trigger 填写完整条件 ID。核心条件和效果触发阶段顺序不可覆盖。
+`context.register_effect_handler(local_id, callable)` 注册自定义效果。技能场景执行器调用 `(effect, context) -> Dictionary`，其中 context 提供施法者、目标、技能和 RNG；装备、命格等触发式效果管线调用 `(effect, trigger, context, owner_role) -> Dictionary`。需要复用同一处理器时，应为后三个参数提供默认值。返回值可以包含 `events` 和 `cooldown_multiplier`。
 
-核心 trigger 为 `always`、`hp_below_50`、`hp_below_35`、`target_hp_below_35`。自定义 ID 必须由当前 Mod 或硬依赖注册。未注册的 effect 或 AI condition 会使当前 Mod 的整个注册事务回滚。
+`register_ai_condition()` 仍属于公开注册接口并会参与引用校验，但当前核心 `CombatAI` 只执行内置触发条件；Mod 不应依赖自定义 AI 条件决定技能释放。
 
-
-## 当前目标契约
-
-Mod 技能必须使用：
-
-- `target_scope`：决定阵营和目标语义，如自身、友方或敌方。
-- `target_mode`：只描述作用规模，值只能为 `single` 或 `aoe`。
-
-自身、单体友方和单体敌方均标记为 `single`；全体友方和全体敌方标记为 `aoe`。技能不配置距离，也不按距离判断可用性。`release_distance` 仅为旧内容兼容字段，加载时忽略。
-
-普通攻击的接近距离、攻击范围与 Hitbox 属于战斗执行层，不应写入技能定义。
+核心触发条件以 `CombatAI` 当前实现为准。未注册的自定义效果或条件引用会使整个 Mod 注册事务回滚。

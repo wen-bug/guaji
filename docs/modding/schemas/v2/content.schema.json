@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://guaji.example/schemas/mod/v1/content.schema.json",
-  "title": "Guaji Mod Content Envelope v1",
+  "$id": "https://guaji.example/schemas/mod/v2/content.schema.json",
+  "title": "Guaji Mod Content Envelope v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -11,7 +11,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "enum": [

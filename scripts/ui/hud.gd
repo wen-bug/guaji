@@ -10,9 +10,11 @@ const MENU_ENHANCE := 3
 const MENU_AFFIX := 4
 const MENU_EQUIP := 5
 const MENU_SALVAGE := 6
+const MENU_ASCEND := 7
 const FORGE_MODE_CRAFT := "craft"
 const FORGE_MODE_ENHANCE := "enhance"
 const FORGE_MODE_REFINE := "refine"
+const FORGE_MODE_ASCEND := "ascend"
 const PARTY_MAX_SIZE := 4
 const ROSTER_MAX_SIZE := 8
 const INVENTORY_CATEGORIES := [
@@ -191,6 +193,9 @@ var selected_farm_speed_item_id: String = ""
 var farm_controls_connected: bool = false
 var selected_forge_mode: String = FORGE_MODE_CRAFT
 var selected_forge_equipment_instance_id: String = ""
+var selected_forge_stat_id: String = ""
+var selected_forge_affix_index := 0
+var forge_target_option: OptionButton = null
 var forge_controls_connected: bool = false
 var selected_party_member_id: String = ""
 var selected_recruit_candidate_id: String = ""
@@ -651,6 +656,23 @@ func _ensure_equipment_loop_controls() -> void:
 		category_row.add_child(blueprint_button)
 	var forge_layout := get_node_or_null("Root/ForgePanel/PanelLayout") as VBoxContainer
 	if forge_layout != null:
+		var mode_row := forge_layout.get_node_or_null("ModeRow") as HBoxContainer
+		if mode_row != null and mode_row.get_node_or_null("ForgeAscendButton") == null:
+			var ascend_button := Button.new()
+			ascend_button.name = "ForgeAscendButton"
+			ascend_button.text = "升阶"
+			ascend_button.custom_minimum_size = Vector2(72.0, 34.0)
+			mode_row.add_child(ascend_button)
+			ascend_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_ASCEND))
+		forge_target_option = forge_layout.get_node_or_null("ForgeTargetOption") as OptionButton
+		if forge_target_option == null:
+			forge_target_option = OptionButton.new()
+			forge_target_option.name = "ForgeTargetOption"
+			forge_target_option.custom_minimum_size = Vector2(0.0, 34.0)
+			forge_target_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			forge_layout.add_child(forge_target_option)
+			forge_layout.move_child(forge_target_option, forge_equipment_slot_button.get_index() + 1)
+			forge_target_option.item_selected.connect(_on_forge_target_selected)
 		var forge_hint := forge_layout.get_node_or_null("HintLabel") as Label
 		if forge_hint != null:
 			forge_hint.custom_minimum_size.y = 23.0
@@ -681,7 +703,7 @@ func _ensure_equipment_loop_controls() -> void:
 			salvage_confirmation_dialog = ConfirmationDialog.new()
 			salvage_confirmation_dialog.name = "SalvageConfirmationDialog"
 			salvage_confirmation_dialog.title = "确认分解"
-			salvage_confirmation_dialog.dialog_text = "分解只返还阶级矿石，不返还强化和洗练材料。"
+			salvage_confirmation_dialog.dialog_text = "分解将获得阶位与强化投入对应的强化石，词条和洗练投入不返还。"
 			root.add_child(salvage_confirmation_dialog)
 		salvage_confirmation_dialog.confirmed.connect(_on_salvage_confirmed)
 
@@ -1121,11 +1143,12 @@ func _refresh_member_info_attributes(game_state) -> void:
 	_add_attribute_row("法力", "%d/%d" % [int(member_stats.get("mp", 0)), game_state.total_stat_for(member_id, "max_mp")])
 	_add_attribute_row("经验", "%d/%d" % [int(member_stats.get("exp", 0)), int(member_stats.get("next_exp", 0))])
 	_add_attribute_row("成长", game_state.growth_summary_for(member_id))
+	_add_attribute_row("属性", DataTables.combat_affinity_name(game_state.combat_affinity_for(member_id)))
 	_add_attribute_row("攻击", str(game_state.total_attack_for(member_id)))
 	_add_attribute_row("防御", str(game_state.total_defense_for(member_id)))
 	_add_attribute_row("根骨", str(game_state.total_stat_for(member_id, "root_bone")))
 	_add_attribute_row("五行", game_state.element_summary_for(member_id))
-	_add_attribute_row("主五行", DataTables.element_name(game_state.dominant_element_for(member_id)))
+	_add_attribute_row("最高五行", DataTables.element_name(game_state.dominant_element_for(member_id)))
 
 
 func _add_attribute_row(label_text: String, value_text: String) -> void:
@@ -2198,8 +2221,9 @@ func _refresh_recruit_candidate_list() -> void:
 		var trait_text := _trait_summary(traits)
 		if not traits.is_empty():
 			trait_text += " %s" % DataTables.innate_trait_effect_summary(traits[0])
-		var label := "%s Lv.%d 攻%d 防%d 根%d | %s" % [
+		var label := "%s [%s] Lv.%d 攻%d 防%d 根%d | %s" % [
 			str(candidate.get("name", "候选人")),
+			DataTables.combat_affinity_name(str(candidate.get("combat_affinity", "normal"))),
 			int(stats_data.get("level", 1)),
 			int(stats_data.get("attack", 0)),
 			int(stats_data.get("defense", 0)),
@@ -2208,7 +2232,8 @@ func _refresh_recruit_candidate_list() -> void:
 		]
 		var item_index := recruit_candidate_list.add_item(label)
 		recruit_candidate_list.set_item_metadata(item_index, candidate_id)
-		recruit_candidate_list.set_item_tooltip(item_index, "%s\n%s" % [
+		recruit_candidate_list.set_item_tooltip(item_index, "属性 %s\n%s\n%s" % [
+			DataTables.combat_affinity_name(str(candidate.get("combat_affinity", "normal"))),
 			current_game_state.growth_summary_for_member_data(candidate),
 			_trait_detail_summary(traits),
 		])
@@ -2236,9 +2261,10 @@ func _refresh_recruit_party_list() -> void:
 		var member_id: String = str(member.get("id", ""))
 		var member_stats: Dictionary = member.get("stats", {})
 		var active: bool = bool(current_game_state.is_member_active(member_id))
-		var label := "%s %s  Lv.%d  血%d/%d 法%d/%d" % [
+		var label := "%s %s [%s]  Lv.%d  血%d/%d 法%d/%d" % [
 			"[出战 %d]" % (current_game_state.party_order.find(member_id) + 1) if active else "[候补]",
 			str(member.get("name", "成员")),
+			DataTables.combat_affinity_name(str(member.get("combat_affinity", "normal"))),
 			int(member_stats.get("level", 1)),
 			int(member_stats.get("hp", 0)),
 			current_game_state.total_stat_for(member_id, "max_hp"),
@@ -2588,6 +2614,7 @@ func _show_inventory_slot_menu(slot_index: int) -> void:
 	if selected_item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		inventory_menu.add_item("强化", MENU_ENHANCE)
 		inventory_menu.add_item("洗练", MENU_AFFIX)
+		inventory_menu.add_item("升阶", MENU_ASCEND)
 		inventory_menu.add_item("分解", MENU_SALVAGE)
 		inventory_menu.set_item_disabled(inventory_menu.item_count - 1, current_game_state.is_equipment_equipped(selected_inventory_instance_id))
 	else:
@@ -2636,9 +2663,11 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 		MENU_EQUIP:
 			current_game_state.equip_item_for_member(selected_inventory_instance_id, selected_party_member_id)
 		MENU_ENHANCE:
-			current_game_state.enhance_equipment(selected_inventory_instance_id)
+			_open_forge_for_inventory_equipment(FORGE_MODE_ENHANCE)
 		MENU_AFFIX:
-			current_game_state.add_equipment_affix(selected_inventory_instance_id)
+			_open_forge_for_inventory_equipment(FORGE_MODE_REFINE)
+		MENU_ASCEND:
+			_open_forge_for_inventory_equipment(FORGE_MODE_ASCEND)
 		MENU_SALVAGE:
 			pending_salvage_instance_id = selected_inventory_instance_id
 			if salvage_confirmation_dialog != null:
@@ -2661,6 +2690,13 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 	else:
 		var hovered_item: Dictionary = current_game_state.inventory_item_by_instance(hovered_inventory_instance_id)
 		_refresh_inventory_detail(hovered_item)
+
+
+func _open_forge_for_inventory_equipment(mode: String) -> void:
+	selected_forge_equipment_instance_id = selected_inventory_instance_id
+	selected_forge_mode = mode
+	show_home_action_panel(GameDefs.TaskType.FORGE)
+	_refresh_forge_panel()
 
 
 func _inventory_item_source_text(item: Dictionary) -> String:
@@ -2882,6 +2918,16 @@ func _on_forge_equipment_selected(index: int) -> void:
 	_refresh_forge_panel()
 
 
+func _on_forge_target_selected(index: int) -> void:
+	if forge_target_option == null or index < 0 or index >= forge_target_option.item_count:
+		return
+	if selected_forge_mode == FORGE_MODE_ENHANCE:
+		selected_forge_stat_id = str(forge_target_option.get_item_metadata(index))
+	elif selected_forge_mode == FORGE_MODE_REFINE:
+		selected_forge_affix_index = int(forge_target_option.get_item_metadata(index))
+	_refresh_forge_panel()
+
+
 func _on_forge_action_pressed() -> void:
 	_ensure_menu_panel_refs()
 	if current_game_state == null:
@@ -2898,9 +2944,11 @@ func _on_forge_action_pressed() -> void:
 		return
 	var succeeded: bool = false
 	if selected_forge_mode == FORGE_MODE_ENHANCE:
-		succeeded = current_game_state.enhance_equipment(selected_forge_equipment_instance_id)
+		succeeded = current_game_state.enhance_equipment(selected_forge_equipment_instance_id, selected_forge_stat_id)
 	elif selected_forge_mode == FORGE_MODE_REFINE:
-		succeeded = current_game_state.add_equipment_affix(selected_forge_equipment_instance_id)
+		succeeded = current_game_state.refine_equipment_affix(selected_forge_equipment_instance_id, selected_forge_affix_index)
+	elif selected_forge_mode == FORGE_MODE_ASCEND:
+		succeeded = current_game_state.ascend_equipment(selected_forge_equipment_instance_id)
 	if succeeded:
 		_refresh_forge_equipment_list()
 		_refresh_forge_panel()
@@ -2914,7 +2962,7 @@ func _refresh_forge_panel() -> void:
 	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
-	if not [FORGE_MODE_CRAFT, FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode):
+	if not [FORGE_MODE_CRAFT, FORGE_MODE_ENHANCE, FORGE_MODE_REFINE, FORGE_MODE_ASCEND].has(selected_forge_mode):
 		selected_forge_mode = FORGE_MODE_CRAFT
 	_refresh_building_upgrade_button(forge_upgrade_button, "forge")
 	_refresh_spirit_stone_conversion()
@@ -2925,7 +2973,9 @@ func _refresh_forge_panel() -> void:
 	_clear_forge_material_grid()
 
 	if forge_blueprint_row != null:
-		forge_blueprint_row.visible = selected_forge_mode == FORGE_MODE_CRAFT
+		forge_blueprint_row.visible = false
+	if forge_target_option != null:
+		forge_target_option.visible = [FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode)
 	if selected_forge_mode == FORGE_MODE_CRAFT:
 		_refresh_forge_craft_panel()
 	else:
@@ -2959,6 +3009,7 @@ func _refresh_forge_equipment_action_panel() -> void:
 		forge_equipment_slot_button.text = "选择装备"
 	else:
 		forge_equipment_slot_button.text = str(selected_item.get("name", "装备"))
+	_refresh_forge_target_options(selected_item)
 
 	var has_selection: bool = not selected_forge_equipment_instance_id.is_empty()
 	forge_action_button.disabled = not has_selection
@@ -2968,8 +3019,43 @@ func _refresh_forge_equipment_action_panel() -> void:
 	elif selected_forge_mode == FORGE_MODE_REFINE:
 		forge_action_button.text = "洗练装备"
 		_refresh_forge_refine_cost(selected_item)
+	elif selected_forge_mode == FORGE_MODE_ASCEND:
+		forge_action_button.text = "升阶装备"
+		_refresh_forge_ascension_cost(selected_item)
 	if not has_selection:
 		forge_hint_label.text = "请选择装备"
+
+
+func _refresh_forge_target_options(item: Dictionary) -> void:
+	if forge_target_option == null:
+		return
+	forge_target_option.clear()
+	if item.is_empty():
+		return
+	if selected_forge_mode == FORGE_MODE_ENHANCE:
+		var stats: Array[String] = []
+		for attribute in item.get("base_attributes", []):
+			var stat_id := str(attribute.get("stat", ""))
+			if not stat_id.is_empty() and not stats.has(stat_id):
+				stats.append(stat_id)
+		if not stats.has(selected_forge_stat_id):
+			selected_forge_stat_id = stats[0] if not stats.is_empty() else ""
+		for stat_id in stats:
+			var points := int(item.get("enhancement_allocations", {}).get(stat_id, 0))
+			var index := forge_target_option.item_count
+			forge_target_option.add_item("%s（%d 点）" % [DataTables.attribute_display_name(stat_id), points])
+			forge_target_option.set_item_metadata(index, stat_id)
+			if stat_id == selected_forge_stat_id:
+				forge_target_option.select(index)
+	elif selected_forge_mode == FORGE_MODE_REFINE:
+		var affixes: Array = item.get("affixes", [])
+		selected_forge_affix_index = clampi(selected_forge_affix_index, 0, maxi(0, affixes.size() - 1))
+		for affix_index in range(mini(3, affixes.size())):
+			var index := forge_target_option.item_count
+			forge_target_option.add_item("词条 %d：%s" % [affix_index + 1, DataTables.equipment_affix_text(affixes[affix_index])])
+			forge_target_option.set_item_metadata(index, affix_index)
+			if affix_index == selected_forge_affix_index:
+				forge_target_option.select(index)
 
 
 func _refresh_forge_enhance_cost(item: Dictionary) -> void:
@@ -2977,7 +3063,7 @@ func _refresh_forge_enhance_cost(item: Dictionary) -> void:
 	var current_level := int(item.get("enhance_count", 0)) if not item.is_empty() else 0
 	var limit := DataTables.equipment_enhance_limit(rarity)
 	var cost := DataTables.equipment_enhance_cost(rarity, current_level + 1)
-	forge_detail.text = "强化消耗：随机基础属性对应灵石 x%d" % cost
+	forge_detail.text = "强化消耗：强化石 x%d" % cost
 	if item.is_empty():
 		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
 		return
@@ -2985,15 +3071,12 @@ func _refresh_forge_enhance_cost(item: Dictionary) -> void:
 		forge_action_button.disabled = true
 		forge_hint_label.text = "强化已达到上限：+%d" % limit
 		return
-	var stone_ids := _matching_enhance_stone_ids(item)
-	if stone_ids.is_empty():
-		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
-		forge_hint_label.text = "缺少可强化该装备属性的灵石"
+	var stone_count: int = current_game_state.inventory_item_count(DataTables.ITEM_ID_ENHANCEMENT_STONE)
+	forge_material_grid.add_child(_create_forge_material_slot(DataTables.ITEM_ID_ENHANCEMENT_STONE, DataTables.resource_name(DataTables.ITEM_ID_ENHANCEMENT_STONE), stone_count, cost))
+	if stone_count < cost:
+		forge_hint_label.text = "缺少强化石"
 	else:
-		for item_id in stone_ids:
-			var current: int = current_game_state.inventory_item_count(item_id)
-			forge_material_grid.add_child(_create_forge_material_slot(item_id, DataTables.resource_name(item_id), current, cost))
-		forge_hint_label.text = "随机强化基础属性：+%d → +%d（上限 +%d）" % [current_level, current_level + 1, limit]
+		forge_hint_label.text = "强化固定基础属性：+%d → +%d（上限 +%d）" % [current_level, current_level + 1, limit]
 
 
 func _refresh_forge_refine_cost(item: Dictionary) -> void:
@@ -3006,7 +3089,26 @@ func _refresh_forge_refine_cost(item: Dictionary) -> void:
 	if current < cost:
 		forge_hint_label.text = "洗练符不足"
 	else:
-		forge_hint_label.text = "重洗随机属性；强化等级 +%d 保持不变" % int(item.get("enhance_count", 0))
+		forge_hint_label.text = "替换一个词条槽；强化等级 +%d 保持不变" % int(item.get("enhance_count", 0))
+
+
+func _refresh_forge_ascension_cost(item: Dictionary) -> void:
+	var costs: Dictionary = current_game_state.equipment_ascension_cost(str(item.get("instance_id", ""))) if not item.is_empty() else {}
+	if costs.is_empty():
+		forge_detail.text = "五阶装备不可继续升阶"
+		forge_action_button.disabled = true
+		forge_hint_label.text = "请选择可升阶装备"
+		return
+	forge_detail.text = "升阶消耗：矿石 x%d、升阶石 x%d" % [int(costs.get(DataTables.ITEM_ID_ORE, 0)), int(costs.get(DataTables.ITEM_ID_ASCENSION_STONE, 0))]
+	var enough := true
+	for item_id in costs:
+		var amount := int(costs[item_id])
+		var current: int = current_game_state.inventory_item_count(str(item_id))
+		forge_material_grid.add_child(_create_forge_material_slot(str(item_id), DataTables.resource_name(str(item_id)), current, amount))
+		if current < amount:
+			enough = false
+	forge_action_button.disabled = not enough
+	forge_hint_label.text = "保留强化分配、词条与洗练次数" if enough else "升阶材料不足"
 
 
 func _refresh_forge_equipment_list() -> void:
@@ -3208,9 +3310,9 @@ func _refresh_forge_blueprint_options() -> void:
 	if forge_blueprint_option.selected >= 0:
 		previous_id = str(forge_blueprint_option.get_item_metadata(forge_blueprint_option.selected))
 	forge_blueprint_option.clear()
-	var unlocked: Array = current_game_state.unlocked_blueprint_templates()
-	unlocked.sort()
-	for template_id in unlocked:
+	var available_templates: Array = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
+	available_templates.sort()
+	for template_id in available_templates:
 		var definition: Dictionary = DataTables.EQUIPMENT_DEFS.get(str(template_id), {})
 		forge_blueprint_option.add_item(DataTables.slot_name(str(definition.get("slot", template_id))))
 		forge_blueprint_option.set_item_metadata(forge_blueprint_option.item_count - 1, str(template_id))

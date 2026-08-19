@@ -1,3 +1,4 @@
+@tool
 ## 装备模板静态资源。Inspector 中直接显示中文分类，悬停字段可查看中文用途说明。
 class_name EquipmentTemplate
 extends Resource
@@ -31,6 +32,10 @@ extends Resource
 ## 详情面板使用的结构化效果说明列表，不直接参与战斗结算。
 @export var description_effects := []
 
+@export_group("阶位数值｜固定基础属性")
+## 各阶固定基础属性。键为 t1..t5，值为 [{"stat": String, "amount": int}]。
+@export var tier_base_attributes: Dictionary = {}
+
 
 func setup(data: Dictionary) -> EquipmentTemplate:
 	item_id = data.get("item_id", "")
@@ -43,4 +48,5 @@ func setup(data: Dictionary) -> EquipmentTemplate:
 	requirement_stat = data.get("requirement_stat", "")
 	description = data.get("description", "")
 	description_effects = data.get("description_effects", []).duplicate(true)
+	tier_base_attributes = data.get("tier_base_attributes", {}).duplicate(true)
 	return self

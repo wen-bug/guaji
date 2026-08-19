@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://tfv73sr052qx"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_ja7u3"]
+
+[resource]
+script = ExtResource("1_ja7u3")
+id = "iron_lancer"
+display_name = "玄锋枪卒"
+visual_id = "lancer"
+max_hp = 48
+attack = 12
+defense = 4
+element = "metal"
+element_power = 8
+skills = Array[String](["thunder"])
+exp = 18
+use_class_drop_pool = true

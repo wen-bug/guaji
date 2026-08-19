@@ -17,7 +17,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 16
+const SAVE_SCHEMA_VERSION = 18
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -196,6 +196,8 @@ func load_save_data(data: Dictionary) -> void:
 	_load_dictionary_values(task_exp, data.get("task_exp", {}))
 	if data.has("inventory"):
 		inventory = _duplicate_array(data.get("inventory", []))
+	if loaded_schema_version < 18:
+		_migrate_schema_18_equipment_inventory()
 	if data.has("market_state") and data.get("market_state") is Dictionary:
 		market_state = data.get("market_state", {}).duplicate(true)
 	if data.has("known_alchemy_recipes"):
@@ -226,6 +228,9 @@ func load_save_data(data: Dictionary) -> void:
 	if data.has("reward_progress"):
 		_load_dictionary_values(reward_progress, data.get("reward_progress", {}))
 	_ensure_reward_progress()
+	if loaded_schema_version < 18:
+		reward_progress["blueprint_pity"] = 0
+		reward_progress["unlocked_blueprints"] = []
 	if data.has("permanent_building_bonuses"):
 		_load_dictionary_values(permanent_building_bonuses, data.get("permanent_building_bonuses", {}))
 	_ensure_building_state()
@@ -257,6 +262,8 @@ func load_save_data(data: Dictionary) -> void:
 	_sanitize_active_buffs()
 	_sanitize_farm_speed_buffs()
 	_ensure_party_state()
+	if loaded_schema_version < 17:
+		_migrate_schema_17_affinity_growth()
 	if loaded_schema_version < 3 and party_member_count() <= 0 and recruit_stone_count() <= 0:
 		add_inventory_item(RECRUIT_RESOURCE_ID, 1, false)
 	_ensure_recruit_candidate_growth()
@@ -793,22 +800,37 @@ func _sanitize_loaded_stack_item(item: Dictionary) -> void:
 
 func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	var item_id: String = str(item.get("item_id", ""))
+	if item_id == "weapon":
+		item_id = "weapon_metal_sword"
+	elif item_id == "accessory":
+		item_id = "accessory_wood"
+	item["item_id"] = item_id
 	item["stackable"] = false
 	item["usable"] = bool(item.get("usable", true))
-	item["slot"] = str(item.get("slot", "weapon"))
+	var definition: Dictionary = DataTables.content_definition("equipment", item_id, DataTables.EQUIPMENT_DEFS.get(item_id, {}))
+	item["slot"] = str(definition.get("slot", item.get("slot", "weapon")))
 	item["rarity"] = str(item.get("rarity", "t1"))
 	item["equipment_level"] = maxi(1, int(item.get("equipment_level", 1)))
-	if DataTables.EQUIPMENT_DEFS.has(item_id):
-		item["equip_requirement"] = {"stat": "level", "min": DataTables.equipment_equip_level_requirement(str(item["rarity"]))}
+	item["equip_requirement"] = {}
 	item["icon_name"] = str(item.get("icon_name", DataTables.equipment_icon_name(item_id)))
 	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id)))
-	item["resource_path"] = str(item.get("resource_path", DataTables.equipment_resource_path(item_id)))
-	item["base_attributes"] = _duplicate_array(item.get("base_attributes", []))
-	item["attribute_generation_version"] = maxi(0, int(item.get("attribute_generation_version", 0)))
+	item["resource_path"] = DataTables.equipment_resource_path(item_id)
+	item["base_attributes"] = DataTables.equipment_tier_base_attributes(item_id, str(item["rarity"]))
+	item["attribute_generation_version"] = 2
 	item["description_effects"] = _duplicate_array(item.get("description_effects", DataTables.equipment_template_description_effects(item_id)))
-	item["enhanced_attributes"] = _duplicate_array(item.get("enhanced_attributes", []))
+	var allocations: Dictionary = item.get("enhancement_allocations", {}) if item.get("enhancement_allocations", {}) is Dictionary else {}
+	if allocations.is_empty() and int(item.get("enhance_count", 0)) > 0 and not item["base_attributes"].is_empty():
+		allocations[str(item["base_attributes"][0].get("stat", "attack"))] = int(item.get("enhance_count", 0))
+	item["enhancement_allocations"] = allocations
+	_sync_enhanced_attributes(item)
 	item["refine_affixes"] = _duplicate_array(item.get("refine_affixes", []))
-	item["affixes"] = _duplicate_array(item.get("affixes", []))
+	var affixes := _duplicate_array(item.get("affixes", []))
+	var affix_limit := DataTables.equipment_affix_count(str(item["rarity"]))
+	if affixes.is_empty():
+		affixes = DataTables.generate_stable_equipment_affixes(str(item["rarity"]), str(item.get("instance_id", item_id)))
+	if affixes.size() > affix_limit:
+		affixes.resize(affix_limit)
+	item["affixes"] = affixes
 	item["enhance_count"] = maxi(0, int(item.get("enhance_count", 0)))
 	item["refine_count"] = maxi(0, int(item.get("refine_count", 0)))
 	item["equipped"] = bool(item.get("equipped", false))
@@ -817,8 +839,35 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 		item["equipped"] = false
 		item["equipped_by"] = ""
 		item.erase("equipped_slot")
-	item["equip_requirement"] = item.get("equip_requirement", {}) if item.get("equip_requirement", {}) is Dictionary else {}
 	_update_equipment_compat_bonuses(item)
+	var rarity_name := DataTables.equipment_rarity_name(str(item["rarity"]))
+	item["name"] = "%s·%s" % [rarity_name, str(definition.get("name", item.get("name", item_id)))]
+	item["description"] = "%s等级装备" % rarity_name
+
+
+func _migrate_schema_18_equipment_inventory() -> void:
+	var blueprint_compensation := 0
+	var kept: Array = []
+	for raw_item in inventory:
+		if not (raw_item is Dictionary):
+			kept.append(raw_item)
+			continue
+		var item: Dictionary = raw_item
+		var item_id := str(item.get("item_id", ""))
+		if item_id.begins_with("blueprint_"):
+			blueprint_compensation += maxi(1, int(item.get("count", 1))) * 4
+			continue
+		if item_id == "weapon":
+			item["item_id"] = "weapon_metal_sword"
+		elif item_id == "accessory":
+			item["item_id"] = "accessory_wood"
+		kept.append(item)
+	inventory = kept
+	if blueprint_compensation > 0:
+		add_inventory_item(DataTables.ITEM_ID_ORE, blueprint_compensation, false)
+		reward_progress["blueprint_pity"] = 0
+		reward_progress["unlocked_blueprints"] = []
+		log_added.emit("旧装备图纸已移除，补偿矿石 x%d" % blueprint_compensation)
 
 
 func _migrate_equipment_attribute_model() -> void:
@@ -1009,6 +1058,13 @@ func dominant_element_for(member_id: String) -> String:
 	if member.is_empty():
 		return ""
 	return _dominant_element_for_member(member)
+
+
+func combat_affinity_for(member_id: String) -> String:
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		return DataTables.COMBAT_AFFINITY_NORMAL
+	return DataTables.normalize_combat_affinity(str(member.get("combat_affinity", DataTables.COMBAT_AFFINITY_NORMAL)))
 
 
 func element_damage_bonus_for(member_id: String, element_id: String) -> int:
@@ -1403,8 +1459,8 @@ func forge_rarity_upgrade_chance() -> float:
 
 
 func craft_equipment_from_template(template_id: String) -> bool:
-	if not unlocked_blueprint_templates().has(template_id):
-		log_added.emit("尚未解锁该装备图纸")
+	if not DataTables.content_has("equipment", template_id, DataTables.EQUIPMENT_DEFS):
+		log_added.emit("装备模板不存在")
 		return false
 	var cost := forge_material_cost()
 	if not spend_resource(DataTables.ITEM_ID_ORE, cost):
@@ -2345,7 +2401,7 @@ func alchemy_material_cost(item_id: String, base_amount: int, craft_amount: int)
 	return base_amount * craft_amount
 
 
-func enhance_equipment(instance_id: String) -> bool:
+func enhance_equipment(instance_id: String, stat_id: String = "") -> bool:
 	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty() or item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
 		return false
@@ -2357,43 +2413,106 @@ func enhance_equipment(instance_id: String) -> bool:
 		return false
 	var next_level := current_level + 1
 	var cost := DataTables.equipment_enhance_cost(rarity, next_level)
-	var stone: Dictionary = _random_enhance_stone(item)
-	if stone.is_empty():
+	var allowed_stats: Array[String] = []
+	for attribute in item.get("base_attributes", []):
+		var base_stat := str(attribute.get("stat", ""))
+		if not base_stat.is_empty() and not allowed_stats.has(base_stat):
+			allowed_stats.append(base_stat)
+	if allowed_stats.is_empty():
 		log_added.emit("装备没有可强化的基础属性")
 		return false
-	if not spend_resource(stone["item_id"], cost):
-		log_added.emit("%s不足，强化需要 %d 个" % [DataTables.resource_name(str(stone["item_id"])), cost])
+	if stat_id.is_empty():
+		stat_id = allowed_stats[0]
+	if not allowed_stats.has(stat_id):
+		log_added.emit("该装备不能强化%s" % DataTables.attribute_display_name(stat_id))
 		return false
-	var enhanced_attributes: Array = item.get("enhanced_attributes", [])
-	enhanced_attributes.append({
-		"stat": stone["stat"],
-		"amount": 1,
-		"quality": stone["quality"],
-	})
-	item["enhanced_attributes"] = enhanced_attributes
+	if not spend_resource(DataTables.ITEM_ID_ENHANCEMENT_STONE, cost):
+		log_added.emit("强化石不足，强化需要 %d 个" % cost)
+		return false
+	var allocations: Dictionary = item.get("enhancement_allocations", {})
+	allocations[stat_id] = maxi(0, int(allocations.get(stat_id, 0))) + 1
+	item["enhancement_allocations"] = allocations
 	item["enhance_count"] = next_level
 	item["enhance_level"] = item["enhance_count"]
+	_sync_enhanced_attributes(item)
 	_update_equipment_compat_bonuses(item)
 	set_progress_state("forge", "completed", "已强化%s至 +%d" % [item["name"], item["enhance_count"]])
 	log_added.emit("强化%s至 +%d" % [item["name"], item["enhance_count"]])
+	changed.emit()
 	return true
 
 
 func add_equipment_affix(instance_id: String) -> bool:
+	return refine_equipment_affix(instance_id, 0)
+
+
+func refine_equipment_affix(instance_id: String, affix_index: int) -> bool:
 	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty() or item.get("type", "") != DataTables.ITEM_TYPE_EQUIPMENT:
+		return false
+	var affixes: Array = item.get("affixes", [])
+	if affix_index < 0 or affix_index >= affixes.size() or affix_index >= 3:
+		log_added.emit("请选择有效的词条槽")
 		return false
 	var cost: int = int(item.get("refine_count", 0)) + 1
 	if not spend_resource("refine_talisman", cost):
 		log_added.emit("洗练符不足")
 		return false
-	item["base_attributes"] = DataTables.generate_equipment_base_attributes(str(item.get("rarity", "t1")), rng)
-	item["refine_affixes"] = []
-	_reroll_enhanced_attributes(item)
+	var old_affix: Dictionary = affixes[affix_index]
+	var old_id := str(old_affix.get("id", old_affix.get("type", "")))
+	var candidates: Array = DataTables.EQUIPMENT_AFFIX_DEFS.keys()
+	candidates.erase(old_id)
+	var new_id := str(candidates[rng.randi_range(0, candidates.size() - 1)])
+	affixes[affix_index] = {"id": new_id, "value": DataTables.equipment_affix(new_id).get("value", 0)}
+	item["affixes"] = affixes
 	item["refine_count"] = int(item.get("refine_count", 0)) + 1
 	_update_equipment_compat_bonuses(item)
-	set_progress_state("forge", "completed", "已洗练%s的随机属性" % item["name"])
-	log_added.emit("洗练%s，强化等级保持 +%d" % [item["name"], int(item.get("enhance_count", 0))])
+	set_progress_state("forge", "completed", "已洗练%s的第%d条词条" % [item["name"], affix_index + 1])
+	log_added.emit("洗练%s：%s" % [item["name"], DataTables.equipment_affix_text(affixes[affix_index])])
+	changed.emit()
+	return true
+
+
+func equipment_ascension_cost(instance_id: String) -> Dictionary:
+	var item := inventory_item_by_instance(instance_id)
+	if item.is_empty() or str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+		return {}
+	return DataTables.equipment_ascension_cost(str(item.get("rarity", "t1")))
+
+
+func ascend_equipment(instance_id: String) -> bool:
+	var item := inventory_item_by_instance(instance_id)
+	if item.is_empty() or str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+		return false
+	var rarity := str(item.get("rarity", "t1"))
+	var cost := DataTables.equipment_ascension_cost(rarity)
+	if cost.is_empty():
+		log_added.emit("五阶装备不能继续升阶")
+		return false
+	for item_id in cost:
+		if inventory_item_count(str(item_id)) < int(cost[item_id]):
+			log_added.emit("%s不足，升阶需要 %d 个" % [DataTables.resource_name(str(item_id)), int(cost[item_id])])
+			return false
+	for item_id in cost:
+		_remove_inventory_count(str(item_id), int(cost[item_id]))
+	var next_rarity := DataTables.upgrade_equipment_rarity(rarity, 1)
+	item["rarity"] = next_rarity
+	item["base_attributes"] = DataTables.equipment_tier_base_attributes(str(item.get("item_id", "")), next_rarity)
+	var affixes: Array = item.get("affixes", [])
+	var target_count := DataTables.equipment_affix_count(next_rarity)
+	while affixes.size() < target_count:
+		affixes.append(DataTables.generate_equipment_affixes("t1", rng)[0])
+	item["affixes"] = affixes
+	item["equip_requirement"] = {}
+	var definition: Dictionary = DataTables.content_definition("equipment", str(item.get("item_id", "")), DataTables.EQUIPMENT_DEFS.get(str(item.get("item_id", "")), {}))
+	var rarity_name := DataTables.equipment_rarity_name(next_rarity)
+	item["name"] = "%s·%s" % [rarity_name, str(definition.get("name", item.get("name", "装备")))]
+	item["description"] = "%s等级装备" % rarity_name
+	_sync_enhanced_attributes(item)
+	_update_equipment_compat_bonuses(item)
+	set_progress_state("forge", "completed", "%s已升至%s" % [item["name"], rarity_name])
+	log_added.emit("%s升阶成功" % item["name"])
+	changed.emit()
 	return true
 
 
@@ -2427,6 +2546,36 @@ func _equipment_attribute_bonus(stat_id: String) -> int:
 	return value
 
 
+func equipment_combat_modifiers_for(member_id: String) -> Dictionary:
+	var result := {
+		"direct_damage_percent": 0.0,
+		"critical_chance": 0.0,
+		"critical_multiplier": 1.5,
+		"leech_percent": 0.0,
+		"defense_ignore": 0,
+		"direct_damage_reduction": 0.0,
+		"direct_heal_percent": 0.0,
+	}
+	var member := member_by_id(member_id)
+	if member.is_empty():
+		return result
+	for item in _equipped_items_for_member(member):
+		for affix in item.get("affixes", []):
+			if not (affix is Dictionary):
+				continue
+			var affix_id := str(affix.get("id", affix.get("type", "")))
+			if not result.has(affix_id):
+				continue
+			var value = affix.get("value", DataTables.equipment_affix(affix_id).get("value", 0))
+			if affix_id == "defense_ignore":
+				result[affix_id] = int(result[affix_id]) + int(value)
+			else:
+				result[affix_id] = float(result[affix_id]) + float(value)
+	for capped_id in DataTables.EQUIPMENT_COMBAT_MODIFIER_CAPS:
+		result[capped_id] = minf(float(result.get(capped_id, 0.0)), DataTables.equipment_combat_modifier_cap(str(capped_id)))
+	return result
+
+
 func _total_requirement_stat_excluding_slot(stat_id: String, excluded_slot: String) -> int:
 	var member: Dictionary = member_by_id(default_party_member_id())
 	if member.is_empty():
@@ -2450,6 +2599,27 @@ func _item_equipment_attribute_value(item: Dictionary, stat_id: String) -> int:
 	if flat_value == 0:
 		return 0
 	return flat_value
+
+
+func _sync_enhanced_attributes(item: Dictionary) -> void:
+	var allocations: Dictionary = item.get("enhancement_allocations", {}) if item.get("enhancement_allocations", {}) is Dictionary else {}
+	var enhanced_attributes: Array = []
+	var total := 0
+	for stat_id in allocations:
+		var points := maxi(0, int(allocations[stat_id]))
+		if points <= 0:
+			continue
+		total += points
+		enhanced_attributes.append({
+			"stat": str(stat_id),
+			"amount": points * DataTables.equipment_attribute_unit_amount(str(stat_id)),
+			"quality": "allocated",
+			"points": points,
+		})
+	item["enhancement_allocations"] = allocations
+	item["enhanced_attributes"] = enhanced_attributes
+	item["enhance_count"] = total
+	item["enhance_level"] = total
 
 
 func _random_enhance_stone(item: Dictionary) -> Dictionary:
@@ -2587,39 +2757,29 @@ func _migrate_schema_14_progression() -> void:
 			stats["level_cap"] = int(stats["stage"]) * 10
 
 
+func _migrate_schema_17_affinity_growth() -> void:
+	for collection in [companions, recruit_candidates]:
+		for member in collection:
+			if not (member is Dictionary):
+				continue
+			member["combat_affinity"] = party_service.stable_combat_affinity_for_id(str(member.get("id", member.get("candidate_id", ""))))
+			party_service.ensure_member_growth_shape(member)
+
+
 func _ensure_reward_progress() -> void:
 	reward_progress["valid_victories"] = maxi(0, int(reward_progress.get("valid_victories", 0)))
 	reward_progress["manual_fragment_progress"] = maxi(0, int(reward_progress.get("manual_fragment_progress", 0)))
-	reward_progress["blueprint_pity"] = maxi(0, int(reward_progress.get("blueprint_pity", 0)))
-	var unlocked: Array = reward_progress.get("unlocked_blueprints", []) if reward_progress.get("unlocked_blueprints", []) is Array else []
-	var kept: Array[String] = []
-	for template_id in unlocked:
-		var resolved_id := str(template_id)
-		if DataTables.EQUIPMENT_DEFS.has(resolved_id) and not kept.has(resolved_id):
-			kept.append(resolved_id)
-	reward_progress["unlocked_blueprints"] = kept
+	reward_progress["blueprint_pity"] = 0
+	reward_progress["unlocked_blueprints"] = []
 
 
 func unlocked_blueprint_templates() -> Array:
-	_ensure_reward_progress()
-	return reward_progress.get("unlocked_blueprints", []).duplicate()
+	return DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
 
 
 func use_equipment_blueprint(item: Dictionary) -> bool:
-	var template_id: String = DataTables.blueprint_template_id(str(item.get("item_id", "")))
-	if template_id.is_empty() or not DataTables.EQUIPMENT_DEFS.has(template_id):
-		return false
-	var unlocked: Array = reward_progress.get("unlocked_blueprints", [])
-	_remove_inventory_count(str(item.get("item_id", "")), 1)
-	if unlocked.has(template_id):
-		add_inventory_item(DataTables.ITEM_ID_ORE, 4, false)
-		log_added.emit("重复图纸已转化为矿石 x4")
-	else:
-		unlocked.append(template_id)
-		reward_progress["unlocked_blueprints"] = unlocked
-		log_added.emit("永久解锁%s定向打造" % DataTables.slot_name(str(DataTables.EQUIPMENT_DEFS.get(template_id, {}).get("slot", template_id))))
-	changed.emit()
-	return true
+	log_added.emit("装备图纸已退出当前系统")
+	return false
 
 
 func register_full_encounter_victory(eligible: bool = true) -> Dictionary:
@@ -2634,27 +2794,6 @@ func register_full_encounter_victory(eligible: bool = true) -> Dictionary:
 		add_inventory_item(DataTables.ITEM_ID_MANUAL_FRAGMENT, 1, false)
 		result["manual_fragment_amount"] = 1
 		log_added.emit("五次完整清场获得功法残页 x1")
-	reward_progress["blueprint_pity"] = int(reward_progress.get("blueprint_pity", 0)) + 1
-	var unlocked: Array = reward_progress.get("unlocked_blueprints", [])
-	var template_ids: Array = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
-	var candidates: Array[String] = []
-	for template_id in template_ids:
-		var resolved_id := str(template_id)
-		if unlocked.has(resolved_id):
-			continue
-		if inventory_item_count(DataTables.blueprint_item_id(resolved_id)) <= 0:
-			candidates.append(resolved_id)
-	if candidates.is_empty() and unlocked.size() >= template_ids.size():
-		for template_id in template_ids:
-			candidates.append(str(template_id))
-	var should_award := not candidates.is_empty() and (int(reward_progress["blueprint_pity"]) >= 10 or rng.randf() < 0.10)
-	if should_award:
-		var template_id: String = candidates[rng.randi_range(0, candidates.size() - 1)]
-		var blueprint_item_id := DataTables.blueprint_item_id(template_id)
-		add_inventory_item(blueprint_item_id, 1, false)
-		reward_progress["blueprint_pity"] = 0
-		result["blueprint_item_id"] = blueprint_item_id
-		log_added.emit("完整清场获得%s" % DataTables.resource_name(blueprint_item_id))
 	changed.emit()
 	return result
 
@@ -2681,12 +2820,13 @@ func salvage_equipment(instance_id: String) -> bool:
 	if is_equipment_equipped(instance_id):
 		log_added.emit("已装备物品不能分解")
 		return false
-	var ore_amount: int = 1 if str(item.get("obtain_source", "non_drop")) == "crafted" else DataTables.equipment_salvage_ore(str(item.get("rarity", "t1")))
+	var tier := DataTables.EQUIPMENT_RARITY_ORDER.find(str(item.get("rarity", "t1"))) + 1
+	var stone_amount := maxi(1, tier) + floori(float(int(item.get("enhance_count", 0))) / 2.0)
 	for index in range(inventory.size()):
 		if str(inventory[index].get("instance_id", "")) == instance_id:
 			inventory.remove_at(index)
-			add_inventory_item(DataTables.ITEM_ID_ORE, ore_amount, false)
-			log_added.emit("分解%s，返还矿石 x%d" % [str(item.get("name", "装备")), ore_amount])
+			add_inventory_item(DataTables.ITEM_ID_ENHANCEMENT_STONE, stone_amount, false)
+			log_added.emit("分解%s，获得强化石 x%d" % [str(item.get("name", "装备")), stone_amount])
 			changed.emit()
 			return true
 	return false

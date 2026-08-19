@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://guaji.example/schemas/mod/v1/drop_table.schema.json",
-  "title": "drop_table definition v1",
+  "$id": "https://guaji.example/schemas/mod/v2/drop_table.schema.json",
+  "title": "drop_table definition v2",
   "type": "object",
   "additionalProperties": true,
   "required": [],

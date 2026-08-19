@@ -82,7 +82,8 @@ func combat_snapshot() -> Dictionary:
 		"defense": total_stat("defense"),
 		"elements": _elements().duplicate(true),
 		"dominant_element": dominant_element(),
-		"weak_element": str(data.get("weak_element", "")),
+		"combat_affinity": combat_affinity(),
+		"equipment_modifiers": equipment_combat_modifiers(),
 		"combat_buffs": combat_buffs.duplicate(true),
 		"combat_effects": combat_effects.duplicate(true),
 		"temp_stats": temp_stats.duplicate(true),
@@ -123,6 +124,26 @@ func dominant_element() -> String:
 			best_value = value
 			best_id = str(element_id)
 	return best_id
+
+
+func combat_affinity() -> String:
+	if actor_kind == KIND_MEMBER and game_state != null and game_state.has_method("combat_affinity_for"):
+		return DataTables.normalize_combat_affinity(str(game_state.combat_affinity_for(member_id)))
+	return DataTables.normalize_combat_affinity(str(data.get("combat_affinity", DataTables.COMBAT_AFFINITY_NORMAL)))
+
+
+func equipment_combat_modifiers() -> Dictionary:
+	if actor_kind == KIND_MEMBER and game_state != null and game_state.has_method("equipment_combat_modifiers_for"):
+		return game_state.equipment_combat_modifiers_for(member_id)
+	return {
+		"direct_damage_percent": 0.0,
+		"critical_chance": 0.0,
+		"critical_multiplier": 1.5,
+		"leech_percent": 0.0,
+		"defense_ignore": 0,
+		"direct_damage_reduction": 0.0,
+		"direct_heal_percent": 0.0,
+	}
 
 
 func add_buff(buff: Dictionary) -> void:
@@ -188,8 +209,17 @@ func tick_turn_start() -> Array:
 			continue
 		match str(effect.get("kind", "")):
 			"dot":
-				events.append({"type": "status_tick", "actor_id": actor_id, "status": effect.duplicate(true), "amount": amount})
-				var damage_event := apply_damage(amount, str(effect.get("damage_type", "dot")), {"source": "dot", "status_id": str(effect.get("status_id", ""))})
+				var damage_affinity := DataTables.normalize_combat_affinity(str(effect.get("damage_affinity", DataTables.COMBAT_AFFINITY_NORMAL)))
+				var affinity_relation := DataTables.combat_affinity_relation(damage_affinity, combat_affinity())
+				var final_amount := DataTables.apply_combat_affinity_multiplier(amount, affinity_relation)
+				events.append({"type": "status_tick", "actor_id": actor_id, "status": effect.duplicate(true), "amount": final_amount, "base_amount": amount, "damage_affinity": damage_affinity, "affinity_relation": affinity_relation})
+				var damage_event := apply_damage(final_amount, str(effect.get("damage_type", "dot")), {
+					"source": "dot",
+					"status_id": str(effect.get("status_id", "")),
+					"damage_affinity": damage_affinity,
+					"target_affinity": combat_affinity(),
+					"affinity_relation": affinity_relation,
+				})
 				var followup_events: Array = damage_event.get("followup_events", [])
 				damage_event.erase("followup_events")
 				events.append(damage_event)

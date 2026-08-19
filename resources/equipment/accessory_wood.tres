@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://brjh2e3mc3vg8"]
+
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_50r66"]
+
+[resource]
+script = ExtResource("1_50r66")
+item_id = "accessory_wood"
+slot = "accessory"
+base_name = "青木佩"
+display_name = "青木佩"
+slot_label = "accessory"
+icon_name = "accessory"
+icon_path = "res://assets/equipment/accessory.png"
+description = "青木佩装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 2.0,
+"stat": "element_wood"
+}],
+"t2": [{
+"amount": 5.0,
+"stat": "element_wood"
+}],
+"t3": [{
+"amount": 10.0,
+"stat": "element_wood"
+}],
+"t4": [{
+"amount": 18.0,
+"stat": "element_wood"
+}],
+"t5": [{
+"amount": 30.0,
+"stat": "element_wood"
+}]
+}

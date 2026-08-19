@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://uvde3pjrllfu"]
+
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_3fjen"]
+
+[resource]
+script = ExtResource("1_3fjen")
+item_id = "accessory_water"
+slot = "accessory"
+base_name = "沧水环"
+display_name = "沧水环"
+slot_label = "accessory"
+icon_name = "accessory"
+icon_path = "res://assets/equipment/accessory.png"
+description = "沧水环装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 2.0,
+"stat": "element_water"
+}],
+"t2": [{
+"amount": 5.0,
+"stat": "element_water"
+}],
+"t3": [{
+"amount": 10.0,
+"stat": "element_water"
+}],
+"t4": [{
+"amount": 18.0,
+"stat": "element_water"
+}],
+"t5": [{
+"amount": 30.0,
+"stat": "element_water"
+}]
+}

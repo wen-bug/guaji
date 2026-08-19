@@ -71,31 +71,47 @@ func _apply_damage_effect(
 	skill: Dictionary,
 	effect: Dictionary,
 	effect_resolver: CombatEffectResolver,
-	_rng: RandomNumberGenerator,
+	rng: RandomNumberGenerator,
 	hit_targets: Array,
 	result: Dictionary
 ) -> void:
-	var raw_damage := SkillValueResolverScript.effect_amount(effect, str(skill.get("element", "")), caster)
+	var damage_affinity := _damage_affinity(skill, effect, caster)
+	var scaling_element := "" if damage_affinity == DataTables.COMBAT_AFFINITY_NORMAL else damage_affinity
+	if str(skill.get("type", "")) != "normal_attack":
+		scaling_element = str(effect.get("element", ""))
+		if scaling_element.is_empty():
+			scaling_element = str(skill.get("element", ""))
+	var raw_damage := SkillValueResolverScript.effect_amount(effect, scaling_element, caster)
+	var attacker_modifiers := caster.equipment_combat_modifiers()
+	raw_damage = maxi(1, roundi(float(raw_damage) * (1.0 + float(attacker_modifiers.get("direct_damage_percent", 0.0)))))
+	var is_critical := rng != null and rng.randf() < float(attacker_modifiers.get("critical_chance", 0.0))
+	if is_critical:
+		raw_damage = maxi(1, roundi(float(raw_damage) * float(attacker_modifiers.get("critical_multiplier", 1.5))))
 	for candidate in targets:
 		if not (candidate is CombatActorStatus):
 			continue
 		var target := candidate as CombatActorStatus
 		if not target.is_alive():
 			continue
-		var element_id := str(effect.get("element", skill.get("element", "")))
-		if element_id.is_empty():
-			element_id = caster.dominant_element()
 		var context := effect_resolver.create_hit_result(caster.actor_id, target.actor_id, "skill", str(skill.get("id", ""))) if effect_resolver != null else {}
 		context["events"] = []
 		context["blocked_by_shield"] = 0
-		var final_damage := _final_damage(raw_damage, element_id, int(effect.get("defense_ignore", 0)), bool(effect.get("uses_legacy_element_bonus", false)), caster, target)
+		var affinity_relation := DataTables.combat_affinity_relation(damage_affinity, target.combat_affinity())
+		var defense_ignore := int(effect.get("defense_ignore", 0)) + int(attacker_modifiers.get("defense_ignore", 0))
+		var final_damage := _final_damage(raw_damage, affinity_relation, defense_ignore, target)
+		var target_reduction := float(target.equipment_combat_modifiers().get("direct_damage_reduction", 0.0))
+		final_damage = maxi(1, roundi(float(final_damage) * (1.0 - target_reduction)))
 		if bool(effect.get("shieldable", true)) and final_damage > 0:
 			final_damage = target.apply_shields(final_damage, context)
-		var damage_result := target.apply_damage(final_damage, _damage_type(element_id), {
+		var damage_result := target.apply_damage(final_damage, _damage_type(damage_affinity), {
 			"skill_id": str(skill.get("id", "")),
 			"effect_id": str(effect.get("effect_id", "")),
 			"caster_id": caster.actor_id,
 			"raw_damage": raw_damage,
+			"damage_affinity": damage_affinity,
+			"target_affinity": target.combat_affinity(),
+			"affinity_relation": affinity_relation,
+			"critical": is_critical,
 		})
 		var followup_events: Array = damage_result.get("followup_events", [])
 		damage_result.erase("followup_events")
@@ -105,18 +121,21 @@ func _apply_damage_effect(
 		var dealt := int(damage_result.get("amount", 0))
 		if dealt > 0:
 			hit_targets.append(target)
-		var leech_ratio := clampf(float(effect.get("leech_ratio", 0.0)), 0.0, 1.0)
+		var leech_ratio := clampf(float(effect.get("leech_ratio", 0.0)) + float(attacker_modifiers.get("leech_percent", 0.0)), 0.0, 1.0)
 		if dealt > 0 and leech_ratio > 0.0:
 			var heal_result := caster.apply_heal(floori(float(dealt) * leech_ratio))
 			_append_event(result, heal_result)
 			result["heal"] = int(result.get("heal", 0)) + int(heal_result.get("amount", 0))
 		result["damage"] = int(result.get("damage", 0)) + dealt
 		result["blocked_by_shield"] = int(result.get("blocked_by_shield", 0)) + int(context.get("blocked_by_shield", 0))
-		_record_target(result, target.actor_id, {"damage": dealt, "blocked_by_shield": int(context.get("blocked_by_shield", 0))})
+		_record_target(result, target.actor_id, {"damage": dealt, "blocked_by_shield": int(context.get("blocked_by_shield", 0)), "damage_affinity": damage_affinity, "target_affinity": target.combat_affinity(), "affinity_relation": affinity_relation, "critical": is_critical})
+		if is_critical:
+			result["critical"] = true
 
 
 func _apply_heal_effect(caster: CombatActorStatus, targets: Array, skill: Dictionary, effect: Dictionary, result: Dictionary) -> void:
 	var amount := SkillValueResolverScript.effect_amount(effect, str(skill.get("element", "")), caster)
+	amount = maxi(1, roundi(float(amount) * (1.0 + float(caster.equipment_combat_modifiers().get("direct_heal_percent", 0.0)))))
 	for candidate in targets:
 		if not (candidate is CombatActorStatus):
 			continue
@@ -135,6 +154,7 @@ func _apply_status_effect(caster: CombatActorStatus, targets: Array, skill: Dict
 	status["amount"] = SkillValueResolverScript.effect_amount(effect, str(skill.get("element", "")), caster)
 	status["value"] = status["amount"]
 	status["element"] = str(effect.get("element", skill.get("element", "")))
+	status["damage_affinity"] = _damage_affinity(skill, effect, caster)
 	status["source_actor_id"] = caster.actor_id
 	status["source_skill_id"] = str(skill.get("id", ""))
 	status.erase("status_kind")
@@ -186,21 +206,23 @@ func _effect_targets(effect: Dictionary, caster: CombatActorStatus, skill_target
 			return skill_targets.duplicate()
 
 
-func _final_damage(raw_damage: int, element_id: String, defense_ignore: int, legacy_element_bonus: bool, caster: CombatActorStatus, target: CombatActorStatus) -> int:
+func _final_damage(raw_damage: int, affinity_relation: String, defense_ignore: int, target: CombatActorStatus) -> int:
 	var defense: int = maxi(0, target.total_stat("defense") - defense_ignore)
 	var damage: int = maxi(1, raw_damage - defense)
-	if caster.actor_kind == CombatActorStatus.KIND_MEMBER and legacy_element_bonus:
-		damage += int(caster.total_element(element_id) * 0.5)
-	if target.actor_kind == CombatActorStatus.KIND_ENEMY:
-		if element_id == str(target.data.get("weak_element", "")):
-			damage += maxi(1, int(raw_damage * 0.25)) + caster.total_element(element_id)
-	elif not element_id.is_empty():
-		damage = maxi(0, damage - int(target.total_element(element_id) * 0.35))
-	return damage
+	return DataTables.apply_combat_affinity_multiplier(damage, affinity_relation)
 
 
-func _damage_type(element_id: String) -> String:
-	return "physical" if element_id.is_empty() else "element_%s" % element_id
+func _damage_type(damage_affinity: String) -> String:
+	return "physical" if damage_affinity == DataTables.COMBAT_AFFINITY_NORMAL else "element_%s" % damage_affinity
+
+
+func _damage_affinity(skill: Dictionary, effect: Dictionary, caster: CombatActorStatus) -> String:
+	if str(skill.get("type", "")) == "normal_attack":
+		return caster.combat_affinity()
+	var element_id := str(effect.get("element", ""))
+	if element_id.is_empty():
+		element_id = str(skill.get("element", ""))
+	return DataTables.normalize_combat_affinity(element_id)
 
 
 func _append_event(result: Dictionary, event: Dictionary) -> void:

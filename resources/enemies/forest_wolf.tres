@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://csptgxrtukh88"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_mj5f4"]
+
+[resource]
+script = ExtResource("1_mj5f4")
+id = "forest_wolf"
+display_name = "林狼"
+visual_id = "forest_wolf"
+scene_path = "res://scripts/game/enemies/forest_wolf/enemy.tscn"
+max_hp = 32
+attack = 6
+defense = 1
+element = "wood"
+element_power = 3
+skills = Array[String](["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"])
+exp = 10
+use_class_drop_pool = true
+equipment_drop_chance = 0.05

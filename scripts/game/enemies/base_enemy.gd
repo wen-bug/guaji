@@ -78,7 +78,7 @@ func present_combat_event(event: Dictionary) -> float:
 	return combat_visual.present_combat_event(event) if combat_visual != null else 0.0
 
 
-func select_action(game_state, target_status = null) -> Dictionary:
+func select_action(_game_state, target_status = null) -> Dictionary:
 	if enemy_data.is_empty():
 		return {}
 	var cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
@@ -96,14 +96,10 @@ func select_action(game_state, target_status = null) -> Dictionary:
 		cooldowns[str(chosen.get("id", ""))] = maxi(0, int(chosen.get("cooldown", 0)))
 		enemy_data["skill_cooldowns"] = cooldowns
 		return chosen
-	var element_id := ""
-	if game_state != null and game_state.rng.randf() < float(enemy_data.get("element_attack_ratio", 0.0)):
-		element_id = str(enemy_data.get("element", ""))
 	return {
 		"kind": "basic_attack",
 		"source": "basic",
 		"base_damage": int(enemy_data.get("attack", 1)),
-		"element": element_id,
 		"attack_mode": DataTables.ATTACK_MODE_MELEE,
 	}
 

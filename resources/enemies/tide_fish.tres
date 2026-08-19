@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://8qog6gtjie0j"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_okrfd"]
+
+[resource]
+script = ExtResource("1_okrfd")
+id = "tide_fish"
+display_name = "潮鳍鱼妖"
+visual_id = "paddle_fish"
+max_hp = 54
+attack = 13
+defense = 5
+element = "water"
+element_power = 9
+skills = Array[String](["water_cold_talisman"])
+exp = 20
+use_class_drop_pool = true

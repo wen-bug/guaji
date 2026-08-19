@@ -2,9 +2,27 @@
 
 ## 状态与边界
 
-地图驱动遭遇框架已经实现，包括地图独立 Profile、加权方案、类别池、固定编队、异种序列和地图专属兜底。本文后续列出的普通、精英与 Boss 具体敌人数据、技能、形象和掉落仍是规划；当前已实现敌人仍只有训练木桩与林狼，事实来源为 `docs/item-table.md`。
+地图驱动遭遇框架已经实现，包括地图独立 Profile、加权方案、类别池、固定编队、异种序列和地图专属兜底。当前已接入六种普通敌人、两种精英和一种 Boss；完整事实来源为[内容数据表](item-table.md)。本文列出的扩展池和未接入 Boss 仍属于规划。
 
-普通、精英和 Boss 都是敌人类别，不是职业。五行只决定机制倾向和弱点，不新增角色职业、敌人职业、技能学习限制或装备限制。Boss 的详细数据与奖励见 `docs/boss-encounters.md`。
+普通、精英和 Boss 都是敌人类别，不是职业。核心敌人拥有唯一 `combat_affinity`；技能使用的 `element` 和 `element_power` 是独立数值，不新增职业、学习限制或装备限制。Boss 的详细数据与奖励见[Boss 遭遇](boss-encounters.md)。
+
+## 当前敌人池
+
+| enemy_id | 名称 | 类别 | 形象 |
+| --- | --- | --- | --- |
+| `forest_wolf` | 林狼 | normal | wolf |
+| `venom_spider` | 毒纹蛛 | normal | spider |
+| `blight_shaman` | 腐木巫祝 | elite | shaman |
+| `ember_gnome` | 灰烬地精 | normal | gnome |
+| `stone_lizard` | 岩甲蜥 | normal | lizard |
+| `stone_overlord` | 镇岳兽王 | elite | minotaur |
+| `iron_lancer` | 玄锋枪卒 | normal | lancer |
+| `tide_fish` | 潮鳍鱼妖 | normal | paddle_fish |
+| `abyssal_turtle` | 沉渊玄龟 | boss | turtle |
+
+这些敌人启用类别掉落池并关闭旧阶级材料池。六种普通敌人、两种精英和沉渊玄龟分别使用各自类别规则；训练木桩保持无掉落。普通、精英、Boss 的独立装备率为 5%、12%、25%。
+
+普通和精英实例生成时从普通、木、火、土、金、水中等概率抽取唯一标签，并从生命、攻击、防御和五项五行数值中抽取一主两副成长属性。普通敌人每级属性点倍率为 `0.8`，精英为 `1.2`。训练木桩固定普通且倍率为 0；核心 Boss 的标签、主副属性和倍率由模板手工配置。
 
 ## 已实现：地图驱动生成
 
@@ -24,7 +42,7 @@ for each position:
 - 固定编队不再应用队伍人数和数量规则，允许混合任意类别。
 - 随机池内等概率、有放回抽取；未声明 `encounter_class` 的敌人按 `normal` 处理。
 - 无效 ID 与类别不匹配项会被过滤并报警。所有 Variant 都不可用时使用当前地图的 `fallback_enemy_id`，不使用全局默认敌人。
-- 当前默认 Profile 每名队员生成 2 只、限制 1–8，只包含 `forest_wolf`；训练木桩不进入正式随机池。
+- 当前正式地图每名队员生成 2 只、限制 1-8，并按各地图 Profile 使用已配置的普通、精英或 Boss 池；训练木桩不进入正式随机池。
 
 ## 规划：默认普通、精英与 Boss 池
 
@@ -58,8 +76,8 @@ for each position:
 
 同等级林狼完成阶级和阶内等级成长后的最终属性记为 `W`。本文属性倍率均在 `W.max_hp`、`W.attack`、`W.defense` 上相乘后向下取整；生命和攻击最低为 1，防御最低为 0。
 
-- 五行克制固定为金克木、木克土、土克水、水克火、火克金，因此金弱火、木弱金、土弱木、水弱土、火弱水。
-- 普通敌人元素普通攻击概率沿用当前 t1-t5 阶级值；精英在同阶概率上增加 15 个百分点，最高 100%；Boss 固定为 100%。
+- 五行克制固定为金克木、木克土、土克水、水克火、火克金；普通属性不参与克制。
+- 普通攻击使用敌人的唯一标签，技能和 DOT 使用自身 `element`，不再随机附加模板元素。
 - 所有敌人技能法力消耗为 0。普通敌人三个技能依次在 t2、t3、t4 解锁；精英四个技能依次在 t1、t2、t3、t4 解锁；t5 不新增技能。
 - 短冷却单体攻击优先级 50，群攻和减益优先级 70，无条件自身强化优先级 80，生命条件、终结技和保命技能优先级 90。相同优先级按模板技能列表顺序选择。
 - 技能完整 ID 使用 `<enemy_id>_<技能后缀>`。持续数值写作“每回合数值 x 持续回合”，持续回合归属沿用现有目标回合/自身回合规则。
@@ -115,7 +133,7 @@ for each position:
 - `CombatController` 从单一 `enemy_id` 重复生成改为接收异种敌人 ID 序列，并逐只加载各自场景。
 - `encounter_class`、精英属性/奖励倍率、技能解锁偏移和形象池约束的运行时数据与 Mod Schema。
 - 10 个普通、5 个精英的敌人定义、技能定义、场景、固定形象绑定、掉落和自动化测试。
-- Boss 全等级池、逐位置抽取和按阶技能解锁；详细边界见 `docs/boss-encounters.md`。
+- Boss 全等级池、逐位置抽取和按阶技能解锁；详细边界见[Boss 遭遇](boss-encounters.md)。
 
 不规划召唤、眩晕、冻结、跳过回合、强制嘲讽、锁血或复杂阶段脚本。所有技能只使用现有直伤、DOT、HOT、护盾、吸血、属性增减和破防能力。
 
@@ -125,21 +143,4 @@ for each position:
 - 每位置类别权重总和为 100%，全池全等级开放，抽取有放回，允许异种混编与多个 Boss。
 - 普通敌人均有三个按阶技能，精英均有四个按阶技能；所有技能均有稳定 ID、倍率或效果、冷却、优先级和触发条件。
 - 形象池保持普通/精英分离，现有 14 个候选形象不在缺少用户配置时擅自分池。
-- 本文、`docs/boss-encounters.md` 与 `docs/battle-expedition.md` 不再沿用旧版整场替换、Boss 等级分池或固定单体规则。
-
-
-## 当前实现：首批五行敌人
-
-| enemy_id | 名称 | 类别 | 形象 |
-|---|---|---|---|
-| `forest_wolf` | 林狼 | normal | wolf |
-| `venom_spider` | 毒纹蛛 | normal | spider |
-| `blight_shaman` | 腐木巫祝 | elite | shaman |
-| `ember_gnome` | 灰烬地精 | normal | gnome |
-| `stone_lizard` | 岩甲蜥 | normal | lizard |
-| `stone_overlord` | 镇岳兽王 | elite | minotaur |
-| `iron_lancer` | 玄锋枪卒 | normal | lancer |
-| `tide_fish` | 潮鳍鱼妖 | normal | paddle_fish |
-| `abyssal_turtle` | 沉渊玄龟 | boss | turtle |
-
-现有战斗敌人启用 `use_class_drop_pool` 并关闭旧阶级材料池：六个普通敌人共享草药 55%、矿石 30%、灵石 10% 和十种属性作物各 2% 的独立判定池；两个精英共享五种五行灵石各 10%、丰收符和洗练符各 5% 的独立判定池；沉渊玄龟每次在调息丹与破境丹中等权必出一个。三个材料池互不重叠，全部从 t1 开放，同一击杀不重复发放同一 `item_id`。普通、精英、Boss 的独立装备率仍为 5%/12%/25%。`training_dummy` 保持无掉落；敌人技能仍只使用 `single/aoe`，不保存距离字段。
+- 本文、[Boss 遭遇](boss-encounters.md)与[历练与战斗](battle-expedition.md)不再沿用旧版整场替换、Boss 等级分池或固定单体规则。

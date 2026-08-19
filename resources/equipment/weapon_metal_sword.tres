@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://cainfkextio2h"]
+
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_6fj52"]
+
+[resource]
+script = ExtResource("1_6fj52")
+item_id = "weapon_metal_sword"
+base_name = "玄金剑"
+display_name = "玄金剑"
+slot_label = "weapon"
+icon_name = "weapon"
+icon_path = "res://assets/equipment/weapon.png"
+description = "玄金剑装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 2.0,
+"stat": "attack"
+}, {
+"amount": 1.0,
+"stat": "element_metal"
+}],
+"t2": [{
+"amount": 5.0,
+"stat": "attack"
+}, {
+"amount": 2.0,
+"stat": "element_metal"
+}],
+"t3": [{
+"amount": 10.0,
+"stat": "attack"
+}, {
+"amount": 4.0,
+"stat": "element_metal"
+}],
+"t4": [{
+"amount": 18.0,
+"stat": "attack"
+}, {
+"amount": 7.0,
+"stat": "element_metal"
+}],
+"t5": [{
+"amount": 30.0,
+"stat": "attack"
+}, {
+"amount": 12.0,
+"stat": "element_metal"
+}]
+}

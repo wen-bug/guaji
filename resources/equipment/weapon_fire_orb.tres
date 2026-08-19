@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://ci5ad2pxl54le"]
+
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_s02mr"]
+
+[resource]
+script = ExtResource("1_s02mr")
+item_id = "weapon_fire_orb"
+base_name = "赤焰法环"
+display_name = "赤焰法环"
+slot_label = "weapon"
+icon_name = "accessory"
+icon_path = "res://assets/equipment/accessory.png"
+description = "赤焰法环装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 2.0,
+"stat": "attack"
+}, {
+"amount": 1.0,
+"stat": "element_fire"
+}],
+"t2": [{
+"amount": 5.0,
+"stat": "attack"
+}, {
+"amount": 2.0,
+"stat": "element_fire"
+}],
+"t3": [{
+"amount": 10.0,
+"stat": "attack"
+}, {
+"amount": 4.0,
+"stat": "element_fire"
+}],
+"t4": [{
+"amount": 18.0,
+"stat": "attack"
+}, {
+"amount": 7.0,
+"stat": "element_fire"
+}],
+"t5": [{
+"amount": 30.0,
+"stat": "attack"
+}, {
+"amount": 12.0,
+"stat": "element_fire"
+}]
+}

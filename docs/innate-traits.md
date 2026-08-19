@@ -142,14 +142,14 @@
 
 ```gdscript
 "innate_traits": [
-	{
-		"id": "sword_bone",
-		"name": "剑骨",
-		"slot": "main",
-		"rarity": "rare",
-		"level": 1,
-		"awakened": false
-	}
+    {
+        "id": "sword_bone",
+        "name": "剑骨",
+        "slot": "main",
+        "rarity": "rare",
+        "level": 1,
+        "awakened": false
+    }
 ]
 ```
 
@@ -157,16 +157,16 @@
 
 ```gdscript
 const INNATE_TRAIT_DEFS = {
-	"sword_bone": {
-		"name": "剑骨",
-		"description": "天生剑骨，攻伐凌厉。",
-		"slot": "main",
-		"rarity": "rare",
-		"effects": [
-			{"kind": "growth_weight", "stat": "attack", "amount": 2},
-			{"kind": "normal_attack_percent", "value": 0.08}
-		]
-	}
+    "sword_bone": {
+        "name": "剑骨",
+        "description": "天生剑骨，攻伐凌厉。",
+        "slot": "main",
+        "rarity": "rare",
+        "effects": [
+            {"kind": "growth_weight", "stat": "attack", "amount": 2},
+            {"kind": "normal_attack_percent", "value": 0.08}
+        ]
+    }
 }
 ```
 
@@ -213,4 +213,4 @@ const INNATE_TRAIT_DEFS = {
 - 技能仍然负责主动战斗能力。
 - 命格只提供长期倾向和少量规则修正。
 
-新增命格时优先补充 `DataTables.INNATE_TRAIT_DEFS`、本文件命格池和对应测试。若命格影响战斗 AI 行为，需要同步更新 `docs/battle-expedition.md` 的自动战斗规则。
+新增命格时优先补充 `DataTables.INNATE_TRAIT_DEFS`、本文件命格池和对应测试。若命格影响战斗 AI 行为，需要同步更新[历练与战斗](battle-expedition.md)的自动战斗规则。

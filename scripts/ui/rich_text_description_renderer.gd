@@ -56,8 +56,9 @@ static func build_item_segments(item: Dictionary, game_state = null, member_id: 
 		_append_text(segments, description, ROLE_PRIMARY)
 
 	if str(item.get("type", "")) == DataTables.ITEM_TYPE_EQUIPMENT:
-		_append_attribute_group(segments, "随机属性", item.get("base_attributes", []), false)
-		_append_attribute_group(segments, "强化", item.get("enhanced_attributes", []), false)
+		_append_attribute_group(segments, "基础属性", item.get("base_attributes", []), false)
+		_append_attribute_group(segments, "强化分配", item.get("enhanced_attributes", []), false)
+		_append_equipment_affixes(segments, item.get("affixes", []))
 		var effects = item.get("description_effects", DataTables.equipment_template_description_effects(str(item.get("item_id", ""))))
 		if effects is Array:
 			for effect in effects:
@@ -85,6 +86,18 @@ static func build_item_segments(item: Dictionary, game_state = null, member_id: 
 			_append_text(segments, "持续：", ROLE_SECONDARY)
 			_append_text(segments, "%d 秒" % int(payload.get("duration", 0)), ROLE_MULTIPLIER)
 	return segments
+
+
+static func _append_equipment_affixes(segments: Array, affixes) -> void:
+	if not (affixes is Array) or affixes.is_empty():
+		return
+	_append_line_start(segments)
+	_append_text(segments, "随机词条：", ROLE_SECONDARY)
+	for index in range(mini(3, affixes.size())):
+		if index > 0:
+			_append_text(segments, " / ", ROLE_SECONDARY)
+		if affixes[index] is Dictionary:
+			_append_text(segments, DataTables.equipment_affix_text(affixes[index]), ROLE_POSITIVE)
 
 
 static func plain_text(segments: Array) -> String:

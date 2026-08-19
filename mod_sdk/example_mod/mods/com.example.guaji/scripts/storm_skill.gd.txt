@@ -1,14 +1,1 @@
 extends SkillSceneBase
-
-
-func apply_marker(_marker: String) -> void:
-	for target in targets:
-		if target == null:
-			continue
-		var context := attack_context(
-			target,
-			skill_damage_amount(),
-			str(skill_data.get("element", ""))
-		)
-		resolve_static_trigger("before_hit", context, attack_effects(), "attacker")
-		apply_effect_events(context)

@@ -91,7 +91,5 @@ static func scaled_amount_from_attribute(base_amount: int, attribute_multiplier:
 	return maxi(0, floori(float(base_amount) + float(maxi(0, attribute_value)) * attribute_multiplier))
 
 
-static func _resolved_element(element_id: String, caster) -> String:
-	if not element_id.is_empty() or caster == null:
-		return element_id
-	return str(caster.dominant_element())
+static func _resolved_element(element_id: String, _caster) -> String:
+	return element_id

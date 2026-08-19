@@ -644,9 +644,11 @@ func _register_core_content() -> void:
 	_register_core_kind("basic_attack", DataTables.BASIC_ATTACK_DEFS)
 	_register_core_kind("recipe", DataTables.ALCHEMY_RECIPE_DEFS)
 	_register_core_kind("trait", DataTables.INNATE_TRAIT_DEFS)
-	for enemy_id in DataTables.ENEMY_TEMPLATES.keys():
-		var enemy_definition: Dictionary = DataTables.ENEMY_TEMPLATES[enemy_id].duplicate(true)
-		enemy_definition["scene_path"] = str(DataTables.ENEMY_SCENE_PATHS.get(enemy_id, ""))
+	var core_enemy_definitions := DataTables.all_core_enemy_definitions()
+	for enemy_id in core_enemy_definitions.keys():
+		var enemy_definition: Dictionary = core_enemy_definitions[enemy_id].duplicate(true)
+		if str(enemy_definition.get("scene_path", "")).is_empty():
+			enemy_definition["scene_path"] = str(DataTables.ENEMY_SCENE_PATHS.get(enemy_id, ""))
 		content._define("enemy", str(enemy_id), enemy_definition, "core")
 	_register_core_kind("enemy_rank", DataTables.ENEMY_RANK_DEFS)
 	content._define("drop_table", "enemy_drop_categories", {"categories": DataTables.ENEMY_DROP_CATEGORY_ITEMS.duplicate(true)}, "core")

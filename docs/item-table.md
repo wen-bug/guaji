@@ -26,7 +26,7 @@
 - `use_scope`：使用范围，当前为 `home`、`combat`、`none`。
 - `gain_target`：成长或强化倾向标签。
 - `icon_name` / `icon_path`：可选图标覆盖；默认由 `item_id` 推导。
-- `description_effects`：装备结构化富文本公式；格式与维护边界见 `docs/items.md`。
+- `description_effects`：装备结构化富文本公式；格式与维护边界见[物品系统](items.md)。
 
 ## 已实现：物品编号与素材命名
 
@@ -98,7 +98,7 @@
 
 五本初阶技能书由正式新档各赠送 1 本；版本 9 迁移会为旧存档补齐尚未持有且尚未学会的技能书。技能书不进入敌人掉落；历练 6 级后，队伍仍有学习需求的六种已实现技能书可低概率进入坊市稀有池。技能书成功学习后消耗 1 本；重复学习失败时不消耗，人物已学技能不可替换或遗忘。
 
-二十个五行技能属于独立规划，完整特色、数值和 AI 条件见 `docs/skills.md`，不能作为当前 `SKILL_DEFS` 的已实现内容。
+二十个五行技能属于独立规划，完整特色、数值和 AI 条件见[五行技能](skills.md)，不能作为当前 `SKILL_DEFS` 的已实现内容。
 
 ## 已实现：炼丹配方
 
@@ -110,68 +110,11 @@
 
 ## 已实现：装备模板
 
-| template_id | 槽位 | 名称 | 基础属性 | level_scale |
-| --- | --- | --- | --- | ---: |
-| `weapon` | `weapon` | 武器 | `attack +8` | 2.2 |
-| `helmet` | `helmet` | 头盔 | `defense +5`, `max_hp +12` | 1.6 |
-| `armor` | `armor` | 护甲 | `defense +7`, `max_hp +18` | 2.0 |
-| `leggings` | `leggings` | 胫甲 | `defense +4`, `max_hp +10` | 1.5 |
-| `gloves` | `gloves` | 护手 | `attack +4`, `defense +2` | 1.4 |
-| `accessory` | `accessory` | 饰品 | `root_bone +2` | 1.0 |
-
-对应装备资源：
-
-- `resources/equipment/weapon.tres`
-- `resources/equipment/helmet.tres`
-- `resources/equipment/armor.tres`
-- `resources/equipment/leggings.tres`
-- `resources/equipment/gloves.tres`
-- `resources/equipment/accessory.tres`
-
-装备 `.tres` 字段包括 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_texture`、`icon_name`、`icon_path`、`requirement_stat`、`description` 和 `description_effects`。模板不再保存固定基础属性；`RichTextLabel` 节点仍由 `hud.tscn` 提供；资源内不写入 `一阶`、`二阶` 等阶位文本，阶位只在运行时装备实例名称中动态生成。
-
-装备生成公式：
-
-- 名称：`<阶位名>·<EQUIPMENT_DEFS.name>`。
-- 属性点预算：一至五阶为 `20/50/100/180/300`。
-- 随机属性：随机生成 1 至 5 条不重复属性，每条有 50% 概率来自普通池或五行池，按 `floor(预算 / 条数)` 平均分配；余数舍弃。
-- 旧随机数值词条不再生成，`affixes` 保留为空以兼容旧存档结构。
-- 洗练会重洗随机属性并保留强化等级；强化点按新属性重新随机分配，不再生成百分比洗练词条。
-- 穿戴需求：`level >= max(1, equipment_level * rarity_tier)`
-
-## 已实现：装备阶位与随机属性
-
-| rarity | 名称 | 权重 | 属性点预算 |
-| --- | --- | ---: | ---: |
-| `t1` | 一阶 | 55 | 20 |
-| `t2` | 二阶 | 28 | 50 |
-| `t3` | 三阶 | 12 | 100 |
-| `t4` | 四阶 | 4 | 180 |
-| `t5` | 五阶 | 1 | 300 |
-
-随机属性池：
-
-- `attack`
-- `defense`
-- `max_hp`
-- `max_mp`
-- `root_bone`
-- `element_wood`
-- `element_fire`
-- `element_earth`
-- `element_metal`
-- `element_water`
-
-强化灵石规则：
-
-- 普通属性 `attack`、`defense`、`max_hp`、`max_mp`、`root_bone` 消耗通用 `spirit_stone`。
-- 五行属性 `element_wood`、`element_fire`、`element_earth`、`element_metal`、`element_water` 消耗对应五行灵石。
-- 当前静态物品 ID 不按阶级拆分；强化随机命中已有基础属性并直接 `+1`，上限按装备阶位为 `5/10/20/30/40`，每五级提高一次灵石消耗。
-- 后续阶级通过动态显示或额外数据扩展，不使用 `*_t1` 这类静态物品 ID；同类灵石默认共用同一素材图。
+当前装备使用十四个稳定模板和 `.tres` 内的 `tier_base_attributes`，不使用随机基础属性或穿戴等级要求。模板、五阶数值、强化、三词条、升阶、分解经济和 Schema 18 迁移的完整事实以[装备成长 V2](equipment-progression-v2.md)为准。
 
 ## 已实现：命格数据索引
 
-完整规则见 `docs/innate-traits.md`。当前 `DataTables.INNATE_TRAIT_DEFS` 中已实现：
+完整规则见[先天命格](innate-traits.md)。当前 `DataTables.INNATE_TRAIT_DEFS` 中已实现：
 
 | id | 名称 | 方向 | 效果摘要 |
 | --- | --- | --- | --- |
@@ -206,7 +149,7 @@
 | 炼器 | `ore x2` | 当前等级 + 1 个矿石 | 即时 |
 | 炼丹 | `herb x2` | 当前等级 + 1 个草药 | 即时 |
 
-炼器固定消耗 `ore x4`，装备等级使用账号历练等级。炼器和炼丹不依赖人物；只有农田生长时间在程序运行时推进，不补算离线时间。
+炼器固定消耗 `ore x4`，装备等级使用账号历练等级。随机炼器和定向打造都不需要图纸或其他解锁条件；定向打造可直接选择任一已注册装备模板。炼器和炼丹不依赖人物；只有农田生长时间在程序运行时推进，不补算离线时间。
 
 ## 已实现：维护规则
 
@@ -217,98 +160,12 @@
 - 新增装备模板同步补充 `EQUIPMENT_DEFS`、`resources/equipment/<template_id>.tres` 和默认图标路径。
 - 新增随机词条同步补充 `EQUIPMENT_ATTRIBUTE_DEFS`。
 - 新增技能同步补充 `SKILL_DEFS`，若要通过背包学习，还要新增对应技能书物品。
-- 新增敌人同步补充 `ENEMY_TEMPLATES`、`ENEMY_SCENE_PATHS` 和敌人场景目录。
+- 新增本体敌人时创建 `resources/enemies/<enemy_id>.tres`，并同步补充兼容用 `ENEMY_TEMPLATES`、场景映射与敌人场景目录。
 
-## 规划物品与装备设定
-
-以下内容是规划设定，当前不代表 `DataTables` 已实现。
-
-装备十阶成长、阶内等级、图纸打造、掉落等级、分解经济和迁移规则统一见 `docs/equipment-progression-v2.md`。在运行时、存档迁移与测试完成前，本文前面的五阶装备表仍是当前事实来源。
-
-五行只定义技能特色，不新增角色职业或学习限制。二十个五行技能的完整数值、目标和 AI 条件见 `docs/skills.md`；五种武器和九种防具、饰品的固定主属性见 `docs/equipment-progression-v2.md`。
-
-### 规划：装备图纸
-
-规划类型 `equipment_blueprint` 可堆叠、可在家园使用。使用后永久解锁 `payload.template_id` 并消耗 1 张；图纸本身没有正式 `item_no`。
-
-| item_id | 名称 | template_id | 来源 | 用途 |
-| --- | --- | --- | --- | --- |
-| `blueprint_weapon_metal_sword` | 玄金剑图纸 | `weapon_metal_sword` | 有效胜利图纸池 | 解锁玄金剑打造 |
-| `blueprint_weapon_wood_staff` | 青木杖图纸 | `weapon_wood_staff` | 有效胜利图纸池 | 解锁青木杖打造 |
-| `blueprint_weapon_earth_gauntlet` | 镇岳拳套图纸 | `weapon_earth_gauntlet` | 有效胜利图纸池 | 解锁镇岳拳套打造 |
-| `blueprint_weapon_water_brush` | 沧水符笔图纸 | `weapon_water_brush` | 有效胜利图纸池 | 解锁沧水符笔打造 |
-| `blueprint_weapon_fire_orb` | 赤焰法环图纸 | `weapon_fire_orb` | 有效胜利图纸池 | 解锁赤焰法环打造 |
-| `blueprint_helmet` | 聚灵冠图纸 | `helmet` | 有效胜利图纸池 | 解锁聚灵冠打造 |
-| `blueprint_armor` | 镇元法衣图纸 | `armor` | 有效胜利图纸池 | 解锁镇元法衣打造 |
-| `blueprint_leggings` | 行脉胫甲图纸 | `leggings` | 有效胜利图纸池 | 解锁行脉胫甲打造 |
-| `blueprint_gloves` | 锻骨护手图纸 | `gloves` | 有效胜利图纸池 | 解锁锻骨护手打造 |
-| `blueprint_accessory_wood` | 青木佩图纸 | `accessory_wood` | 有效胜利图纸池 | 解锁青木佩打造 |
-| `blueprint_accessory_fire` | 赤焰珠图纸 | `accessory_fire` | 有效胜利图纸池 | 解锁赤焰珠打造 |
-| `blueprint_accessory_earth` | 厚土印图纸 | `accessory_earth` | 有效胜利图纸池 | 解锁厚土印打造 |
-| `blueprint_accessory_metal` | 玄金令图纸 | `accessory_metal` | 有效胜利图纸池 | 解锁玄金令打造 |
-| `blueprint_accessory_water` | 沧水环图纸 | `accessory_water` | 有效胜利图纸池 | 解锁沧水环打造 |
-
-图纸每场有效胜利以 10% 概率判定，连续 10 场未获得新图纸时优先保底未解锁图纸。全部解锁后才能获得重复图纸，重复图纸分解为 `ascension_stone x1`。
-
-### 规划：成长材料
-
-| item_id | 名称 | 类型 | 堆叠 | 可使用 | 来源 | 用途 |
-| --- | --- | --- | --- | --- | --- | --- |
-| `ascension_stone` | 升阶石 | `material` | 是 | 否 | 装备分解、重复图纸分解 | 装备升阶 |
-| `manual_fragment` | 秘法残页 | `material` | 是 | 否 | 每 5 场有效胜利固定获得 1 页 | 定向兑换五行技能书 |
-
-`ascension_stone` 的装备分解产量和升阶消耗以 `docs/equipment-progression-v2.md` 为准。秘法残页计数独立于普通掉落、图纸保底和装备掉落；`use_drop=false` 的战斗不推进计数。
-
-### 规划：五行技能书
-
-技能书均使用现有 `skill_book` 类型，可堆叠、可在家园使用；成功学习后消耗 1 本，重复学习不消耗。来源统一为秘法残页加对应五行灵石的定向兑换。
-
-| item_id | 名称 | 五行 | 阶段 | 兑换成本 |
-| --- | --- | --- | ---: | --- |
-| `skill_book_metal_sword_flash` | 流光剑技能书 | 金 | 一 | 残页 3、金灵石 1 |
-| `skill_book_metal_mountain_break` | 断岳式技能书 | 金 | 二 | 残页 6、金灵石 2 |
-| `skill_book_metal_hidden_edge` | 藏锋诀技能书 | 金 | 三 | 残页 10、金灵石 3 |
-| `skill_book_metal_ten_thousand_blades` | 万剑归宗技能书 | 金 | 四 | 残页 15、金灵石 5 |
-| `skill_book_wood_dew_heal` | 青露回春技能书 | 木 | 一 | 残页 3、木灵石 1 |
-| `skill_book_wood_breath_array` | 生息阵技能书 | 木 | 二 | 残页 6、木灵石 2 |
-| `skill_book_wood_corroding_vine` | 蚀骨藤技能书 | 木 | 三 | 残页 10、木灵石 3 |
-| `skill_book_wood_meridian_guard` | 青木护脉技能书 | 木 | 四 | 残页 15、木灵石 5 |
-| `skill_book_earth_mountain_strike` | 震岳击技能书 | 土 | 一 | 残页 3、土灵石 1 |
-| `skill_book_earth_immovable_stance` | 不动势技能书 | 土 | 二 | 残页 6、土灵石 2 |
-| `skill_book_earth_spirit_armor` | 厚土玄甲技能书 | 土 | 三 | 残页 10、土灵石 3 |
-| `skill_book_earth_mountain_wall` | 山河壁技能书 | 土 | 四 | 残页 15、土灵石 5 |
-| `skill_book_water_cold_talisman` | 寒潮符技能书 | 水 | 一 | 残页 3、水灵石 1 |
-| `skill_book_water_mirror_art` | 水镜诀技能书 | 水 | 二 | 残页 6、水灵石 2 |
-| `skill_book_water_binding_array` | 玄水缚技能书 | 水 | 三 | 残页 10、水灵石 3 |
-| `skill_book_water_returning_tide` | 沧海归流技能书 | 水 | 四 | 残页 15、水灵石 5 |
-| `skill_book_fire_heart_flame` | 焚心火技能书 | 火 | 一 | 残页 3、火灵石 1 |
-| `skill_book_fire_blazing_mark` | 烈焰印技能书 | 火 | 二 | 残页 6、火灵石 2 |
-| `skill_book_fire_edge_rite` | 燃锋祭技能书 | 火 | 三 | 残页 10、火灵石 3 |
-| `skill_book_fire_heavenly_flame` | 天火劫技能书 | 火 | 四 | 残页 15、火灵石 5 |
-
-### 规划：丹药与配方
-
-九种丹药均可堆叠、可使用。恢复丹立即结算；持续 Buff 丹药持续 3 个使用者自身回合，共享 `buff_pill` 冷却组且相同状态覆盖、不叠层。
-
-| item_id | 名称 | 效果 | 配方 |
-| --- | --- | --- | --- |
-| `life_pill` | 归元丹 | 恢复 25% 最大生命 | 血参 2、草药 1 |
-| `spirit_pill` | 聚灵丹 | 恢复 25% 最大法力 | 灵泉莲 2、草药 1 |
-| `attack_pill` | 破军丹 | 攻击 +3，持续 3 回合 | 刃纹草 2、草药 1、灵石 1 |
-| `defense_pill` | 玄甲丹 | 防御 +3，持续 3 回合 | 铁根藤 2、草药 1、灵石 1 |
-| `wood_pill` | 青木丹 | 木行 +3，持续 3 回合 | 青木藤 2、草药 1、木灵石 1 |
-| `fire_pill` | 赤焰丹 | 火行 +3，持续 3 回合 | 赤焰花 2、草药 1、火灵石 1 |
-| `earth_pill` | 厚土丹 | 土行 +3，持续 3 回合 | 厚土苔 2、草药 1、土灵石 1 |
-| `metal_pill` | 玄金丹 | 金行 +3，持续 3 回合 | 玄金苇 2、草药 1、金灵石 1 |
-| `water_pill` | 玄水丹 | 水行 +3，持续 3 回合 | 玄水兰 2、草药 1、水灵石 1 |
-
-以上规划物品均不预分配 `item_no`。正式实现时只能从当前最大编号之后追加，并同步 `ITEM_DEFS`、配方、UI、存档迁移和对应资源；在此之前不得移入本文前面的已实现表。
-
-
-## 当前实现：Schema 14 新增物品与配方
+## 已实现：五行材料、图纸与技能书
 
 | item_no | item_id | 名称 | 用途 |
-|---:|---|---|---|
+| ---: | --- | --- | --- |
 | 1034 | `blueprint_weapon` | 武器图纸 | 永久解锁武器定向打造 |
 | 1035 | `blueprint_helmet` | 头盔图纸 | 永久解锁头盔定向打造 |
 | 1036 | `blueprint_armor` | 护甲图纸 | 永久解锁护甲定向打造 |
@@ -329,10 +186,10 @@
 
 炼丹建筑自动解锁：1 级调息丹；2 级破境丹（`pill x1 + herb x8`）；3 级归元丹/聚灵丹；4 级破军丹/玄甲丹；5 级五行丹。新档不再发放调息丹方，旧档丹方会自动学习并移除。调息丹恢复 15% 最大生命和法力。炼器 3 级开放通用灵石 3 个兑换指定五行灵石 1 个。
 
-## 当前实现：Schema 15 一阶永久属性强化丹
+## 已实现：一阶永久属性强化丹
 
 | item_no | item_id | 名称 | 永久效果 | 配方与解锁 |
-|---:|---|---|---|---|
+| ---: | --- | --- | --- | --- |
 | 1051 | `t1_attack_enhance_pill` | 一阶攻击强化丹 | `attack +1` | 炼丹 6；刃纹草 3、草药 8、灵石 2 |
 | 1052 | `t1_defense_enhance_pill` | 一阶防御强化丹 | `defense +1` | 炼丹 6；铁根藤 3、草药 8、灵石 2 |
 | 1053 | `t1_max_hp_enhance_pill` | 一阶气血强化丹 | `max_hp +1` | 炼丹 6；血参 3、草药 8、灵石 2 |
@@ -357,3 +214,71 @@
 商品分类权重为基础材料 40、生产材料 25、丹药 20、图纸 10、稀有 5。已学丹方、已解锁图纸、全队无需学习的技能书、全队一阶强化丹额度已满的条目会被过滤。Mod 物品首期不进入坊市。
 
 每轮委托基础价值为 2/4/6，奖励为 3/6/9 坊市令，三项之间不重复 item_id。回收按 `MARKET_RECYCLE_DEFS` 的完整批次结算，不保留小数；图纸、技能书和永久强化丹等贵重物品必须二次确认。购买、回收、委托和刷新均先完整校验再提交。
+
+## 规划：装备 V2 与五行内容扩展
+
+以下内容是规划设定，当前不代表 `DataTables` 已实现。
+
+当前五阶装备模板、固定基础数值、强化、三词条、升阶、分解经济和 Schema 18 迁移规则统一见[装备成长 V2](equipment-progression-v2.md)。
+
+五行只定义技能特色，不新增角色职业或学习限制。四十个五行技能的完整数值、目标和 AI 条件见[五行技能](skills.md)；五种武器和九种防具、饰品的固定主属性见[装备成长 V2](equipment-progression-v2.md)。
+
+### 历史：装备图纸
+
+装备图纸已退出当前掉落、保底、坊市与使用入口。下表仅保留历史 ID 说明；Schema 17 升级时每张补偿矿石 x4。
+
+| item_id | 名称 | template_id | 来源 | 用途 |
+| --- | --- | --- | --- | --- |
+| `blueprint_weapon_metal_sword` | 玄金剑图纸 | `weapon_metal_sword` | 有效胜利图纸池 | 解锁玄金剑打造 |
+| `blueprint_weapon_wood_staff` | 青木杖图纸 | `weapon_wood_staff` | 有效胜利图纸池 | 解锁青木杖打造 |
+| `blueprint_weapon_earth_gauntlet` | 镇岳拳套图纸 | `weapon_earth_gauntlet` | 有效胜利图纸池 | 解锁镇岳拳套打造 |
+| `blueprint_weapon_water_brush` | 沧水符笔图纸 | `weapon_water_brush` | 有效胜利图纸池 | 解锁沧水符笔打造 |
+| `blueprint_weapon_fire_orb` | 赤焰法环图纸 | `weapon_fire_orb` | 有效胜利图纸池 | 解锁赤焰法环打造 |
+| `blueprint_helmet` | 聚灵冠图纸 | `helmet` | 有效胜利图纸池 | 解锁聚灵冠打造 |
+| `blueprint_armor` | 镇元法衣图纸 | `armor` | 有效胜利图纸池 | 解锁镇元法衣打造 |
+| `blueprint_leggings` | 行脉胫甲图纸 | `leggings` | 有效胜利图纸池 | 解锁行脉胫甲打造 |
+| `blueprint_gloves` | 锻骨护手图纸 | `gloves` | 有效胜利图纸池 | 解锁锻骨护手打造 |
+| `blueprint_accessory_wood` | 青木佩图纸 | `accessory_wood` | 有效胜利图纸池 | 解锁青木佩打造 |
+| `blueprint_accessory_fire` | 赤焰珠图纸 | `accessory_fire` | 有效胜利图纸池 | 解锁赤焰珠打造 |
+| `blueprint_accessory_earth` | 厚土印图纸 | `accessory_earth` | 有效胜利图纸池 | 解锁厚土印打造 |
+| `blueprint_accessory_metal` | 玄金令图纸 | `accessory_metal` | 有效胜利图纸池 | 解锁玄金令打造 |
+| `blueprint_accessory_water` | 沧水环图纸 | `accessory_water` | 有效胜利图纸池 | 解锁沧水环打造 |
+
+当前胜利不再判定装备图纸，也没有图纸解锁要求。
+
+### 当前：成长材料
+
+| item_id | 名称 | 类型 | 堆叠 | 可使用 | 来源 | 用途 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `enhancement_stone` | 强化石 | `material` | 是 | 否 | 装备分解 | 装备强化 |
+| `ascension_stone` | 升阶石 | `material` | 是 | 否 | Boss 必掉 | 装备升阶 |
+
+两种成长材料的产量和消耗以[装备成长 V2](equipment-progression-v2.md)为准。
+
+### 规划：五行技能书
+
+技能书均使用现有 `skill_book` 类型，可堆叠、可在家园使用；成功学习后消耗 1 本，重复学习不消耗。来源统一为秘法残页加对应五行灵石的定向兑换。
+
+| item_id | 名称 | 五行 | 阶段 | 兑换成本 |
+| --- | --- | --- | ---: | --- |
+| `skill_book_metal_sword_flash` | 流光剑技能书 | 金 | 一 | 残页 3、金灵石 1 |
+| `skill_book_metal_mountain_break` | 断岳式技能书 | 金 | 二 | 残页 6、金灵石 2 |
+| `skill_book_metal_hidden_edge` | 藏锋诀技能书 | 金 | 三 | 残页 10、金灵石 3 |
+| `skill_book_metal_ten_thousand_blades` | 万剑归宗技能书 | 金 | 四 | 残页 15、金灵石 5 |
+| `skill_book_wood_dew_heal` | 青露回春技能书 | 木 | 一 | 残页 3、木灵石 1 |
+| `skill_book_wood_breath_array` | 生息阵技能书 | 木 | 二 | 残页 6、木灵石 2 |
+| `skill_book_wood_corroding_vine` | 蚀骨藤技能书 | 木 | 三 | 残页 10、木灵石 3 |
+| `skill_book_wood_meridian_guard` | 青木护脉技能书 | 木 | 四 | 残页 15、木灵石 5 |
+| `skill_book_earth_mountain_strike` | 震岳击技能书 | 土 | 一 | 残页 3、土灵石 1 |
+| `skill_book_earth_immovable_stance` | 不动势技能书 | 土 | 二 | 残页 6、土灵石 2 |
+| `skill_book_earth_spirit_armor` | 厚土玄甲技能书 | 土 | 三 | 残页 10、土灵石 3 |
+| `skill_book_earth_mountain_wall` | 山河壁技能书 | 土 | 四 | 残页 15、土灵石 5 |
+| `skill_book_water_mirror_art` | 水镜诀技能书 | 水 | 二 | 残页 6、水灵石 2 |
+| `skill_book_water_binding_array` | 玄水缚技能书 | 水 | 三 | 残页 10、水灵石 3 |
+| `skill_book_water_returning_tide` | 沧海归流技能书 | 水 | 四 | 残页 15、水灵石 5 |
+| `skill_book_fire_heart_flame` | 焚心火技能书 | 火 | 一 | 残页 3、火灵石 1 |
+| `skill_book_fire_blazing_mark` | 烈焰印技能书 | 火 | 二 | 残页 6、火灵石 2 |
+| `skill_book_fire_edge_rite` | 燃锋祭技能书 | 火 | 三 | 残页 10、火灵石 3 |
+| `skill_book_fire_heavenly_flame` | 天火劫技能书 | 火 | 四 | 残页 15、火灵石 5 |
+
+寒潮符及对应技能书已经实现，不在规划表重复列出。尚不存在于当前数据表的规划 ID 未分配稳定 `item_no`；正式实现时只能从当前最大编号之后追加，并同步 `ITEM_DEFS`、UI、存档迁移和对应资源。

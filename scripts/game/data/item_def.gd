@@ -1,3 +1,4 @@
+@tool
 ## 道具静态资源。Inspector 中直接显示中文分类，悬停字段可查看中文用途说明。
 class_name ItemDef
 extends Resource

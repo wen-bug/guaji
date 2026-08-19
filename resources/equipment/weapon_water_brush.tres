@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://dibfujr74h28p"]
+
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_2uk5e"]
+
+[resource]
+script = ExtResource("1_2uk5e")
+item_id = "weapon_water_brush"
+base_name = "沧水符笔"
+display_name = "沧水符笔"
+slot_label = "weapon"
+icon_name = "weapon"
+icon_path = "res://assets/equipment/weapon.png"
+description = "沧水符笔装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 2.0,
+"stat": "attack"
+}, {
+"amount": 1.0,
+"stat": "element_water"
+}],
+"t2": [{
+"amount": 5.0,
+"stat": "attack"
+}, {
+"amount": 2.0,
+"stat": "element_water"
+}],
+"t3": [{
+"amount": 10.0,
+"stat": "attack"
+}, {
+"amount": 4.0,
+"stat": "element_water"
+}],
+"t4": [{
+"amount": 18.0,
+"stat": "attack"
+}, {
+"amount": 7.0,
+"stat": "element_water"
+}],
+"t5": [{
+"amount": 30.0,
+"stat": "attack"
+}, {
+"amount": 12.0,
+"stat": "element_water"
+}]
+}

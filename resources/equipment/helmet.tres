@@ -1,15 +1,36 @@
-[gd_resource type="Resource" script_class="EquipmentTemplate" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://clmsou814rg3h"]
 
-[ext_resource type="Script" path="res://scripts/game/data/equipment_template.gd" id="1"]
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_buwga"]
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("1_buwga")
 item_id = "helmet"
 slot = "helmet"
-base_name = "头盔"
-display_name = "头盔"
-slot_label = "头盔"
+base_name = "聚灵冠"
+display_name = "聚灵冠"
+slot_label = "helmet"
 icon_name = "helmet"
 icon_path = "res://assets/equipment/helmet.png"
-requirement_stat = "level"
-description = "头盔装备模板。"
+description = "聚灵冠装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 4.0,
+"stat": "max_mp"
+}],
+"t2": [{
+"amount": 10.0,
+"stat": "max_mp"
+}],
+"t3": [{
+"amount": 20.0,
+"stat": "max_mp"
+}],
+"t4": [{
+"amount": 36.0,
+"stat": "max_mp"
+}],
+"t5": [{
+"amount": 60.0,
+"stat": "max_mp"
+}]
+}

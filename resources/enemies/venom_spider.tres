@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://bxqprulpkqnq8"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_ex624"]
+
+[resource]
+script = ExtResource("1_ex624")
+id = "venom_spider"
+display_name = "毒纹蛛"
+visual_id = "spider"
+max_hp = 26
+attack = 7
+defense = 1
+element = "wood"
+element_power = 4
+skills = Array[String](["poison"])
+exp = 11
+use_class_drop_pool = true

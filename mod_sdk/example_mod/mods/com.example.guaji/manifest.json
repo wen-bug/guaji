@@ -1,16 +1,16 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "com.example.guaji",
   "name": "Guaji Example Mod",
   "version": "1.0.0",
-  "description": "Mod API 1 complete example",
+  "description": "Mod API 2 complete example",
   "authors": [
     "Example Author"
   ],
-  "mod_api_version": 1,
+  "mod_api_version": 2,
   "game_version": {
-    "min": "0.1.0",
-    "max_exclusive": "0.2.0"
+    "min": "0.2.0",
+    "max_exclusive": "0.3.0"
   },
   "dependencies": [],
   "conflicts": [],

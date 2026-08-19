@@ -6,10 +6,31 @@
 script = ExtResource("1")
 item_id = "armor"
 slot = "armor"
-base_name = "护甲"
-display_name = "护甲"
-slot_label = "护甲"
+base_name = "镇元法衣"
+display_name = "镇元法衣"
+slot_label = "armor"
 icon_name = "armor"
 icon_path = "res://assets/equipment/armor.png"
-requirement_stat = "level"
-description = "护甲装备模板。"
+description = "镇元法衣装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 2.0,
+"stat": "defense"
+}],
+"t2": [{
+"amount": 5.0,
+"stat": "defense"
+}],
+"t3": [{
+"amount": 10.0,
+"stat": "defense"
+}],
+"t4": [{
+"amount": 18.0,
+"stat": "defense"
+}],
+"t5": [{
+"amount": 30.0,
+"stat": "defense"
+}]
+}

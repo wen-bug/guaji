@@ -1,88 +1,75 @@
-# 内容格式参考
+# Mod 内容格式参考
 
-内容文件统一包含 `schema_version`、`kind` 和 `entries`。完整信封见 `schemas/v1/content.schema.json`，每类 data 见同目录的 `<kind>.schema.json`。
+内容文件统一使用 Schema 2 信封。完整定义见 [content.schema.json](schemas/v2/content.schema.json) 和同目录的各类 Schema。
 
-- `add`：填写 `local_id` 和 `data`，得到完整 ID `<mod_id>:<local_id>`。
-- `patch`：填写现有 `target_id` 和 `patch`，并在 Manifest 授权。
-- Patch 使用 RFC 7396：对象递归合并，数组整体替换，null 删除字段；合并结果重新执行完整校验。
+```json
+{
+  "schema_version": 2,
+  "kind": "dialogue",
+  "entries": []
+}
+```
 
-支持的 kind：
+- `add`：提供 `local_id` 和 `data`，注册为 `<mod_id>:<local_id>`。
+- `patch`：提供现有 `target_id` 和 RFC 7396 `patch`，并在 Manifest 的 `overrides` 中授权。
+- Patch 对象递归合并、数组整体替换、`null` 删除字段；合并后重新执行完整校验。
 
-| kind | 最小必填 |
+## 内容类型
+
+| kind | 新增时最小内容 |
 | --- | --- |
-| item | name、type |
-| equipment | name、slot |
-| skill / basic_attack | name、scene_path |
-| recipe | result_item_id、materials |
-| trait | name、effects |
-| enemy | name、visual_id、scene_path |
-| enemy_rank | name |
-| drop_table | 无 |
-| appearance | kind、scene_path |
-| dialogue | text |
+| `item` | `name`、`type` |
+| `equipment` | `name`、`slot` |
+| `skill` | `scene_path`；定义从场景绑定的 `SkillDef` 读取 |
+| `basic_attack` | `name`、`effects` |
+| `recipe` | `result_item_id`、`materials` |
+| `trait` | `name`、`effects` |
+| `enemy` | `name`、`visual_id`、`scene_path` |
+| `enemy_rank` | `name` |
+| `drop_table` | 无必填字段 |
+| `appearance` | `kind`、`scene_path` |
+| `dialogue` | `text` |
 
-## 字段与默认值
+技能、敌人、配方等引用使用完整内容 ID。本体 ID 为兼容存档保持短 ID；Mod 新内容必须使用自动命名空间。Mod 只能引用自身或硬依赖提供的逻辑 ID，不能引用其他 Mod 的私有资源路径。
 
-| kind | 主要字段 | 默认值与限制 |
-| --- | --- | --- |
-| item | name、type、description、stackable、usable、payload、icon_path | stackable=false、usable=false；技能书 payload.skill_id 必须存在 |
-| equipment | name、slot、tier、base_attributes、effects | slot 必填；数值字段不能为负数 |
-| skill | name、scene_path、type、target_scope、mp_cost、cooldown、effects | target_scope=single_enemy、mp_cost=0、cooldown=0 |
-| basic_attack | 与 skill 相同，另有 attack_mode、range | mp_cost=0、cooldown=0 |
-| recipe | result_item_id、result_count、materials | result_count=1；材料和产物必须存在 |
-| trait | name、description、effects | effects=[] |
-| enemy | name、visual_id、scene_path、skills、drops | skills=[]；形象和技能必须存在 |
-| enemy_rank | name、stat_multiplier、reward_multiplier | 两个倍率默认 1.0 |
-| drop_table | entries 或 categories | 空表允许；物品 ID 必须存在 |
-| appearance | kind、scene_path、fallback_id、contract_version | kind=party/enemy，contract_version=1 |
-| dialogue | text、scenes、states、weight、cooldown_seconds、custom_conditions | 数组=[]、weight=1、cooldown_seconds=0 |
+## 关键约束
 
-同次击杀中，显式 `drops`、类别池和旧阶级池若命中相同 `item_id`，只按最先成功的来源发放一次，后续来源不会重抽。该规则不改变现有 Mod 字段格式。
+- `target_scope`：`self`、`single_ally`、`all_allies`、`single_enemy`、`all_enemies`。
+- `target_mode`：`single` 或 `aoe`；技能不按距离判断可用性。
+- 敌人类别：`normal`、`elite`、`boss`。
+- 形象类别：`party`、`enemy`；`contract_version` 当前固定为 `1`。
+- 配方 `unlock_building_level` 为 `1-10`。
+- 资源路径、场景、配方材料、敌人技能、自定义处理器和 fallback 环会在提交前校验。
 
-可使用物品可声明 `payload.permanent_building_quality = {"building_id": "forge", "amount": 1}`。`building_id` 仅接受 `farm`、`forge`、`alchemy`，`amount` 必须为正整数；成功使用后消耗一个物品并永久累加账号建筑品质。当前只有 `forge` 品质参与产出计算。
-
-可使用物品还可声明永久角色属性强化：
+可使用物品可以声明永久属性强化：
 
 ```json
 {
   "permanent_attribute_enhance": {
     "tier_id": "t1",
-    "effects": [{"stat": "attack"}]
+    "effects": [
+      {"stat": "attack", "amount": 1}
+    ]
   }
 }
 ```
 
-`tier_id` 当前只接受 `t1`，每名角色共享上限 100 次。`effects` 必须为非空数组；`stat` 仅接受五项普通属性和五行属性，不能重复；`amount` 必须为正整数，省略时默认为 1。一颗多属性道具只计一次使用次数。失败校验不会消耗物品。
+`tier_id` 当前只接受 `t1`。`effects` 不能为空，属性只能使用攻击、防御、生命、法力、根骨和五行属性，同一物品中不能重复；`amount` 必须为正整数，省略时为 `1`。
 
-`target_scope` 枚举为 `self`、`single_ally`、`all_allies`、`single_enemy`、`all_enemies`。appearance 的 `kind` 仅为 `party` 或 `enemy`。字段未写时由业务层使用上述默认值；兼容字段只会新增且必须带默认值。
-
-## Patch
+## Patch 示例
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "kind": "skill",
   "entries": [
     {
       "operation": "patch",
       "target_id": "heal",
-      "patch": {
-        "mp_cost": 4
-      }
+      "patch": {"mp_cost": 4}
     }
   ]
 }
 ```
 
-技能、敌人、配方等引用使用完整内容 ID。Mod 可以引用硬依赖提供的内容 ID，但不能引用其私有资源路径。资源路径、配方材料、敌人技能、自定义 effect/condition 和场景存在性会在注册提交前统一检查，因此同一 Mod 内允许前向引用。形象 fallback 环会拒绝。
-
-本体 ID 为兼容旧存档保持短 ID，例如 `heal`。Mod 新内容必须使用自动命名空间，不能伪造本体短 ID。
-
-
-## Schema 15 内容字段
-
-技能内容必须提供 `target_scope` 与 `target_mode`；`target_mode` 仅允许 `single` 或 `aoe`。`release_distance` 为废弃兼容字段，导入后忽略。
-
-敌人内容可提供 `encounter_class`、`enemy_class`、`reference_stat_multipliers`、`experience_multiplier`、`drop_chance_bonus`、`equipment_drop_chance`、`skill_unlock_rank` 与 `use_rank_drop_pool`。配方可提供 `unlock_building_level`。
-
-显式掉落与阶级池独立结算；需要完全独立奖励表的敌人应设置 `use_rank_drop_pool = false`。
+技能 `id` 是稳定标识，不能 patch。替换 `scene_path` 时，新场景必须继续提供相同技能 ID 并满足 API 2 技能场景契约。

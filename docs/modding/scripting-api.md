@@ -1,12 +1,12 @@
-# GDScript API 1
+# GDScript API 2
 
 ## 稳定边界
 
-唯一稳定入口是 Autoload `ModAPI`、`scripts/modding/api/` 下的公开类、`SkillSceneBase` 和 `CombatVisual`。直接访问 Main、HUD、DataTables 内部字典或战斗控制器节点不受兼容承诺保护。
+稳定入口是 Autoload `ModAPI`、`scripts/modding/api/` 下的公开类、`SkillSceneBase` 和 `CombatVisual`。Main、HUD、DataTables 内部字典、战斗控制器节点和 `scripts/modding/internal/` 不属于兼容承诺。
 
-入口脚本继承 `ModPlugin`。生命周期依次为 `register(context)`、存档导入与可选 `migrate_save`、`on_game_ready(api)`。注册和事件回调在主线程同步执行，禁止 `await`。
+入口脚本继承 `ModPlugin`。生命周期依次为 `register(context)`、存档导入和可选 `migrate_save()`、`on_game_ready(api)`。注册和事件回调在主线程同步执行，不得 `await`。
 
-## 注册 API
+## 注册
 
 - `context.define(kind, local_id, data)`
 - `context.patch(kind, target_id, merge_patch)`
@@ -16,25 +16,22 @@
 - `context.register_dialogue_condition(local_id, callable)`
 - `context.fail(code, message)`
 
-注册项先暂存，校验通过后原子提交。注册表冻结后使用 `ModAPI.content.definition/has/ids/source_of/all` 查询，结果均为深拷贝。
+注册项先暂存，全部校验通过后原子提交。注册表冻结后使用 `ModAPI.content.definition()`、`has()`、`ids()`、`source_of()` 和 `all()` 查询；结果均为深拷贝。
 
-Godot 的 `Object.get` 和 `Object.set` 是保留的原生方法，GDScript 不能用不同参数签名覆盖它们。因此 API 1 使用 `definition`、`get_value` 和 `set_value`，分别对应通用规范中的 `get`、`storage.get` 和 `storage.set`。
+API 2 公开 `ModAPI.skill_scene(skill_id)` 和 `skill_scene_definition(skill_id)`，用于查询已通过契约校验的技能场景及标准化定义。
 
-## 运行服务
+## 存储、随机与事件
 
-每个 `ModPlugin` 实例的 `storage` 和 `rng` 已绑定到当前 Mod ID。不要传入或拼接 Mod ID，也不要直接调用 `ModAPI.storage` 的内部导入导出方法。
+每个 `ModPlugin` 的 `storage` 和 `rng` 自动绑定当前 Mod ID：
 
-- `storage.get_value(key, fallback)`
-- `storage.set_value(key, value)`
-- `storage.erase_value(key)`
-- `storage.all()`
-- `rng.stream(purpose)`
-- `ModAPI.events.subscribe(event_id, callback)`
+- `storage.get_value(key, fallback)`、`set_value()`、`erase_value()`、`all()`。
+- `rng.stream(purpose)` 返回独立、可随存档恢复的随机流。
+- `ModAPI.events.subscribe(event_id, callback)` 和 `unsubscribe()` 管理事件监听。
 
-存储查询返回深拷贝。RNG 流的状态随存档保存；需要可复现结果时不要使用全局随机函数。
+开放事件为 `game_ready`、`save_loaded`、`before_save`、`member_created`、`combat_started`、`combat_finished`。载荷只包含可复制、可序列化的值，不暴露场景节点。
 
-开放事件：`game_ready`、`save_loaded`、`before_save`、`member_created`、`combat_started`、`combat_finished`。事件载荷为深拷贝，监听器返回值不会修改核心结果。
+`combat_started.enemy_ids` 是完整有序敌人序列，兼容字段 `enemy_id` 为首只敌人；`combat_finished` 同时提供结果、当前结算敌人和完整序列。
 
-事件载荷只包含可复制、可序列化的值，不暴露场景节点：`game_ready` 提供游戏/API 版本，`before_save` 提供存档 Schema 和队伍成员 ID，`member_created` 提供成员快照，战斗事件提供敌人、队伍和结果摘要。
+## 兼容规则
 
-`combat_started` 的 `enemy_ids` 是地图生成的完整有序敌人序列，兼容字段 `enemy_id` 仍为首只敌人；同时提供 `enemy_count` 和 `party_member_ids`。`combat_finished` 提供 `result`、当前结算敌人的 `enemy_id` 与本场完整 `enemy_ids`。
+API 2 内只增加可选字段或带默认值的方法。删除接口、改变参数语义或改变持久化格式时必须提升 `MOD_API_VERSION`，并在 [API 变更记录](api-changelog.md) 中说明迁移方式。

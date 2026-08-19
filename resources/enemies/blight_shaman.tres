@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://daybpo3o4hpfc"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_4vbaj"]
+
+[resource]
+script = ExtResource("1_4vbaj")
+id = "blight_shaman"
+display_name = "腐木巫祝"
+visual_id = "shaman"
+encounter_class = "elite"
+enemy_class = "elite"
+max_hp = 35
+attack = 8
+defense = 2
+reference_stat_multipliers = {
+"attack": 1.35,
+"defense": 1.3,
+"max_hp": 1.6
+}
+element = "wood"
+element_power = 6
+skills = Array[String](["poison", "heal"])
+skill_unlock_rank = "t1"
+experience_multiplier = 1.8
+drop_chance_bonus = 0.15
+exp = 18
+use_class_drop_pool = true

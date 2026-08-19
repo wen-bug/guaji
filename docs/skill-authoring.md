@@ -201,8 +201,7 @@ effects[1] = status(dot, status_visual_scene = poison.tscn)
 - `loop` 循环，其他状态事件动画非循环。
 - 运行技能场景契约检查和 Godot 测试。
 
-
-## Schema 14 保存检查
+## 保存兼容检查
 
 - 技能资源同时定义 `target_scope` 和 `target_mode`。
 - `target_mode` 只能是 `single` 或 `aoe`，不再区分 self/ally/enemy；阵营语义由 `target_scope` 表达。

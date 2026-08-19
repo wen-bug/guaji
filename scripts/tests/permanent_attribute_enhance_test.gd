@@ -174,7 +174,7 @@ func _check_shared_limit_and_persistence() -> void:
 	_expect_equal("failed item count absent", state.permanent_attribute_enhance_item_uses_for(member_id, "t1_defense_enhance_pill"), 0)
 
 	var saved := state.to_save_data()
-	_expect_equal("save schema sixteen", int(saved.get("schema_version", 0)), 16)
+	_expect_equal("save schema seventeen", int(saved.get("schema_version", 0)), 17)
 	var loaded := GameState.new()
 	loaded.load_save_data(saved)
 	_expect_equal("tier count persists", loaded.permanent_attribute_enhance_tier_uses_for(member_id, "t1"), 100)

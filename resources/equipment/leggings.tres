@@ -1,15 +1,36 @@
-[gd_resource type="Resource" script_class="EquipmentTemplate" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://6mh08p8wrx7c"]
 
-[ext_resource type="Script" path="res://scripts/game/data/equipment_template.gd" id="1"]
+[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_scqr6"]
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("1_scqr6")
 item_id = "leggings"
 slot = "leggings"
-base_name = "胫甲"
-display_name = "胫甲"
-slot_label = "胫甲"
+base_name = "行脉胫甲"
+display_name = "行脉胫甲"
+slot_label = "leggings"
 icon_name = "leggings"
 icon_path = "res://assets/equipment/leggings.png"
-requirement_stat = "level"
-description = "胫甲装备模板。"
+description = "行脉胫甲装备模板。"
+tier_base_attributes = {
+"t1": [{
+"amount": 8.0,
+"stat": "max_hp"
+}],
+"t2": [{
+"amount": 20.0,
+"stat": "max_hp"
+}],
+"t3": [{
+"amount": 40.0,
+"stat": "max_hp"
+}],
+"t4": [{
+"amount": 72.0,
+"stat": "max_hp"
+}],
+"t5": [{
+"amount": 120.0,
+"stat": "max_hp"
+}]
+}

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://dk08acy3nw1g6"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_82vnt"]
+
+[resource]
+script = ExtResource("1_82vnt")
+id = "abyssal_turtle"
+display_name = "沉渊玄龟"
+visual_id = "turtle"
+encounter_class = "boss"
+enemy_class = "boss"
+max_hp = 90
+attack = 16
+defense = 8
+reference_stat_multipliers = {
+"attack": 1.8,
+"defense": 1.8,
+"max_hp": 3.0
+}
+element = "water"
+element_power = 14
+combat_affinity = "water"
+attribute_point_multiplier = 1.5
+growth_primary_stat = "max_hp"
+growth_secondary_stats = Array[String](["defense", "element_water"])
+skills = Array[String](["spirit_shield", "water_cold_talisman"])
+skill_unlock_rank = "t1"
+experience_multiplier = 5.0
+exp = 50
+use_class_drop_pool = true
+equipment_drop_chance = 0.25

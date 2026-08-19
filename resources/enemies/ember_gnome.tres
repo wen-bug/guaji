@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://dcow275avh7ki"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_l7h8s"]
+
+[resource]
+script = ExtResource("1_l7h8s")
+id = "ember_gnome"
+display_name = "灰烬地精"
+visual_id = "gnome"
+max_hp = 34
+attack = 9
+defense = 2
+element = "fire"
+element_power = 5
+skills = Array[String](["attack_up"])
+exp = 13
+use_class_drop_pool = true

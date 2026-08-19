@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnemyDef" format=3 uid="uid://bnr0y4wwqp82f"]
+
+[ext_resource type="Script" uid="uid://hdck8hhhgb8s" path="res://scripts/game/data/enemy_def.gd" id="1_xkm7l"]
+
+[resource]
+script = ExtResource("1_xkm7l")
+id = "training_dummy"
+display_name = "木桩"
+visual_id = "training_dummy"
+scene_path = "res://scripts/game/enemies/training_dummy/enemy.tscn"
+max_hp = 40
+attack = 3
+element = "wood"
+combat_affinity = "normal"
+attribute_point_multiplier = 0.0
+growth_primary_stat = "max_hp"
+growth_secondary_stats = Array[String](["attack", "defense"])
+move_speed = 48.0
+player_move_speed = 96.0
+attack_range = 72.0
+spawn_delay = 0.4
+turn_wait = 1.8
+exp = 6
+use_drop = false
+equipment_drop_chance = 0.0
+drop_profile = {
+"base_chance": 0.0,
+"items": []
+}
+is_training_dummy = true

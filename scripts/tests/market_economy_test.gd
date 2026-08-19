@@ -208,7 +208,7 @@ func _check_save_and_migration() -> void:
 	state.market_state["paid_refresh_count"] = 2
 	state.market_state["offers"][0]["sold"] = true
 	var saved := state.to_save_data()
-	_expect_equal("save schema sixteen", int(saved.get("schema_version", 0)), 16)
+	_expect_equal("save schema eighteen", int(saved.get("schema_version", 0)), 18)
 	var expected_market: Dictionary = saved.get("market_state", {}).duplicate(true)
 	var loaded := GameState.new()
 	loaded.load_save_data(saved)
@@ -217,7 +217,7 @@ func _check_save_and_migration() -> void:
 	legacy.load_save_data({"schema_version": 15, "inventory": [], "companions": [], "party_order": [], "recruit_candidates": []})
 	_expect_equal("schema fifteen gains six offers", legacy.market_offers().size(), 6)
 	_expect_equal("schema fifteen gains commissions", legacy.market_commissions().size(), 3)
-	_expect_equal("schema fifteen saves as sixteen", int(legacy.to_save_data().get("schema_version", 0)), 16)
+	_expect_equal("schema fifteen saves as eighteen", int(legacy.to_save_data().get("schema_version", 0)), 18)
 
 
 func _check_economy_guards() -> void:
@@ -230,7 +230,8 @@ func _check_economy_guards() -> void:
 	for equipment in crafted.duplicate():
 		_expect_equal("forged item records source", str(equipment.get("obtain_source", "")), "crafted")
 		_expect_true("crafted item salvages", state.salvage_equipment(str(equipment.get("instance_id", ""))))
-	_expect_equal("crafted salvage returns one ore each", state.inventory_item_count("ore"), 2)
+	_expect_equal("crafted salvage does not return ore", state.inventory_item_count("ore"), 0)
+	_expect_equal("crafted salvage returns enhancement stones", state.inventory_item_count(DataTables.ITEM_ID_ENHANCEMENT_STONE), 2)
 
 	state = _fresh_state()
 	state.building_levels["alchemy"] = 7

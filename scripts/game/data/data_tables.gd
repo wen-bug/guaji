@@ -18,6 +18,7 @@ const EQUIPMENT_ICON_ROOT := "res://assets/equipment"
 const ITEM_RESOURCE_ROOT := "res://resources/items"
 const EQUIPMENT_RESOURCE_ROOT := "res://resources/equipment"
 const SKILL_RESOURCE_ROOT := "res://resources/skills"
+const ENEMY_RESOURCE_ROOT := "res://resources/enemies"
 
 const ITEM_ID_HERB := "herb"
 const ITEM_ID_BLADE_GRASS := "blade_grass"
@@ -60,6 +61,8 @@ const ITEM_ID_T1_EARTH_ENHANCE_PILL := "t1_earth_enhance_pill"
 const ITEM_ID_T1_METAL_ENHANCE_PILL := "t1_metal_enhance_pill"
 const ITEM_ID_T1_WATER_ENHANCE_PILL := "t1_water_enhance_pill"
 const ITEM_ID_MARKET_TOKEN := "market_token"
+const ITEM_ID_ENHANCEMENT_STONE := "enhancement_stone"
+const ITEM_ID_ASCENSION_STONE := "ascension_stone"
 
 const MARKET_REFRESH_SECONDS := 600
 const MARKET_OFFER_COUNT := 6
@@ -119,6 +122,26 @@ const ELEMENT_NAMES := {
 	"water": "水",
 }
 const ELEMENT_ATTRIBUTE_PREFIX := "element_"
+const COMBAT_AFFINITY_NORMAL := "normal"
+const COMBAT_AFFINITY_IDS := [COMBAT_AFFINITY_NORMAL, "wood", "fire", "earth", "metal", "water"]
+const COMBAT_AFFINITY_NAMES := {
+	COMBAT_AFFINITY_NORMAL: "普通",
+	"wood": "木",
+	"fire": "火",
+	"earth": "土",
+	"metal": "金",
+	"water": "水",
+}
+const COMBAT_AFFINITY_OVERCOMES := {
+	"metal": "wood",
+	"wood": "earth",
+	"earth": "water",
+	"water": "fire",
+	"fire": "metal",
+}
+const AFFINITY_RELATION_OVERCOME := "overcome"
+const AFFINITY_RELATION_RESTRAINED := "restrained"
+const AFFINITY_RELATION_NEUTRAL := "neutral"
 
 const OBTAIN_SOURCE_NAMES := {
 	"drop": "掉落",
@@ -209,18 +232,26 @@ const EQUIPMENT_RARITY_WEIGHTS := {
 	"t5": 1,
 }
 const EQUIPMENT_ENHANCE_LIMITS := {
-	"t1": 5,
-	"t2": 10,
-	"t3": 20,
-	"t4": 30,
-	"t5": 40,
+	"t1": 10,
+	"t2": 20,
+	"t3": 30,
+	"t4": 40,
+	"t5": 50,
 }
-const EQUIPMENT_ENHANCE_BASE_COSTS := {
-	"t1": 1,
-	"t2": 2,
-	"t3": 3,
-	"t4": 5,
-	"t5": 8,
+const EQUIPMENT_AFFIX_COUNTS := {"t1": 1, "t2": 2, "t3": 3, "t4": 3, "t5": 3}
+const EQUIPMENT_AFFIX_DEFS := {
+	"direct_damage_percent": {"name": "直接伤害", "value": 0.05, "format": "percent"},
+	"critical_chance": {"name": "暴击率", "value": 0.03, "format": "percent"},
+	"leech_percent": {"name": "吸血", "value": 0.02, "format": "percent"},
+	"defense_ignore": {"name": "破防", "value": 3, "format": "flat"},
+	"direct_damage_reduction": {"name": "直接减伤", "value": 0.02, "format": "percent"},
+	"direct_heal_percent": {"name": "直接治疗", "value": 0.05, "format": "percent"},
+}
+const EQUIPMENT_COMBAT_MODIFIER_CAPS := {
+	"critical_chance": 0.30,
+	"leech_percent": 0.20,
+	"direct_damage_reduction": 0.30,
+	"direct_heal_percent": 0.50,
 }
 const EQUIPMENT_ATTRIBUTE_POINT_BUDGETS := {
 	"t1": 20,
@@ -236,17 +267,23 @@ const ENEMY_RANK_ORDER := ["t1", "t2", "t3", "t4", "t5"]
 const ENEMY_CLASS_NORMAL := "normal"
 const ENEMY_CLASS_ELITE := "elite"
 const ENEMY_CLASS_BOSS := "boss"
+const ENEMY_GROWTH_ATTRIBUTE_TARGETS := ["max_hp", "attack", "defense", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+const ENEMY_CLASS_ATTRIBUTE_POINT_MULTIPLIERS := {
+	ENEMY_CLASS_NORMAL: 0.8,
+	ENEMY_CLASS_ELITE: 1.2,
+	ENEMY_CLASS_BOSS: 0.0,
+}
 const ENEMY_CLASS_EQUIPMENT_CHANCES := {
 	ENEMY_CLASS_NORMAL: 0.05,
 	ENEMY_CLASS_ELITE: 0.12,
 	ENEMY_CLASS_BOSS: 0.25,
 }
 const ENEMY_RANK_DEFS := {
-	"t1": {"name": "一阶", "min_level": 1, "max_level": 20, "skill_count": 0, "stat_multipliers": {"max_hp": 1.0, "attack": 1.0, "defense": 1.0}, "level_growth": {"max_hp": 4.0, "attack": 1.0, "defense": 0.33}, "element_attack_ratio": 0.15, "base_drop_chance": 0.55, "drop_categories": ["basic_material"], "drop_rarity_weights": {"t1": 90, "t2": 10, "t3": 0, "t4": 0, "t5": 0}},
-	"t2": {"name": "二阶", "min_level": 21, "max_level": 40, "skill_count": 1, "stat_multipliers": {"max_hp": 1.35, "attack": 1.30, "defense": 1.25}, "level_growth": {"max_hp": 5.0, "attack": 1.2, "defense": 0.40}, "element_attack_ratio": 0.25, "base_drop_chance": 0.60, "drop_categories": ["basic_material", "attribute_crop"], "drop_rarity_weights": {"t1": 70, "t2": 25, "t3": 5, "t4": 0, "t5": 0}},
-	"t3": {"name": "三阶", "min_level": 41, "max_level": 60, "skill_count": 2, "stat_multipliers": {"max_hp": 1.80, "attack": 1.65, "defense": 1.55}, "level_growth": {"max_hp": 6.0, "attack": 1.4, "defense": 0.50}, "element_attack_ratio": 0.35, "base_drop_chance": 0.65, "drop_categories": ["basic_material", "attribute_crop", "element_stone"], "drop_rarity_weights": {"t1": 55, "t2": 30, "t3": 12, "t4": 3, "t5": 0}},
-	"t4": {"name": "四阶", "min_level": 61, "max_level": 80, "skill_count": 3, "stat_multipliers": {"max_hp": 2.35, "attack": 2.10, "defense": 1.95}, "level_growth": {"max_hp": 7.0, "attack": 1.7, "defense": 0.65}, "element_attack_ratio": 0.50, "base_drop_chance": 0.70, "drop_categories": ["basic_material", "attribute_crop", "element_stone", "production_material"], "drop_rarity_weights": {"t1": 40, "t2": 35, "t3": 18, "t4": 6, "t5": 1}},
-	"t5": {"name": "五阶", "min_level": 81, "max_level": 0, "skill_count": 4, "stat_multipliers": {"max_hp": 3.00, "attack": 2.65, "defense": 2.45}, "level_growth": {"max_hp": 9.0, "attack": 2.0, "defense": 0.80}, "element_attack_ratio": 0.70, "base_drop_chance": 0.75, "drop_categories": ["basic_material", "attribute_crop", "element_stone", "production_material", "rare_material"], "drop_rarity_weights": {"t1": 25, "t2": 35, "t3": 25, "t4": 12, "t5": 3}},
+	"t1": {"name": "一阶", "min_level": 1, "max_level": 20, "skill_count": 0, "stat_multipliers": {"max_hp": 1.0, "attack": 1.0, "defense": 1.0}, "level_growth": {"max_hp": 4.0, "attack": 1.0, "defense": 0.33}, "base_drop_chance": 0.55, "drop_categories": ["basic_material"], "drop_rarity_weights": {"t1": 90, "t2": 10, "t3": 0, "t4": 0, "t5": 0}},
+	"t2": {"name": "二阶", "min_level": 21, "max_level": 40, "skill_count": 1, "stat_multipliers": {"max_hp": 1.35, "attack": 1.30, "defense": 1.25}, "level_growth": {"max_hp": 5.0, "attack": 1.2, "defense": 0.40}, "base_drop_chance": 0.60, "drop_categories": ["basic_material", "attribute_crop"], "drop_rarity_weights": {"t1": 70, "t2": 25, "t3": 5, "t4": 0, "t5": 0}},
+	"t3": {"name": "三阶", "min_level": 41, "max_level": 60, "skill_count": 2, "stat_multipliers": {"max_hp": 1.80, "attack": 1.65, "defense": 1.55}, "level_growth": {"max_hp": 6.0, "attack": 1.4, "defense": 0.50}, "base_drop_chance": 0.65, "drop_categories": ["basic_material", "attribute_crop", "element_stone"], "drop_rarity_weights": {"t1": 55, "t2": 30, "t3": 12, "t4": 3, "t5": 0}},
+	"t4": {"name": "四阶", "min_level": 61, "max_level": 80, "skill_count": 3, "stat_multipliers": {"max_hp": 2.35, "attack": 2.10, "defense": 1.95}, "level_growth": {"max_hp": 7.0, "attack": 1.7, "defense": 0.65}, "base_drop_chance": 0.70, "drop_categories": ["basic_material", "attribute_crop", "element_stone", "production_material"], "drop_rarity_weights": {"t1": 40, "t2": 35, "t3": 18, "t4": 6, "t5": 1}},
+	"t5": {"name": "五阶", "min_level": 81, "max_level": 0, "skill_count": 4, "stat_multipliers": {"max_hp": 3.00, "attack": 2.65, "defense": 2.45}, "level_growth": {"max_hp": 9.0, "attack": 2.0, "defense": 0.80}, "base_drop_chance": 0.75, "drop_categories": ["basic_material", "attribute_crop", "element_stone", "production_material", "rare_material"], "drop_rarity_weights": {"t1": 25, "t2": 35, "t3": 25, "t4": 12, "t5": 3}},
 }
 
 const ENEMY_DROP_CATEGORY_ITEMS := {
@@ -331,12 +368,6 @@ const MARKET_RECYCLE_DEFS := {
 	"water_pill": {"amount": 5, "tokens": 1},
 	"breakthrough_pill": {"amount": 3, "tokens": 1},
 	"recipe_pill": {"amount": 1, "tokens": 2, "valuable": true},
-	"blueprint_weapon": {"amount": 1, "tokens": 2, "valuable": true},
-	"blueprint_helmet": {"amount": 1, "tokens": 2, "valuable": true},
-	"blueprint_armor": {"amount": 1, "tokens": 2, "valuable": true},
-	"blueprint_leggings": {"amount": 1, "tokens": 2, "valuable": true},
-	"blueprint_gloves": {"amount": 1, "tokens": 2, "valuable": true},
-	"blueprint_accessory": {"amount": 1, "tokens": 2, "valuable": true},
 	"skill_book_thunder": {"amount": 1, "tokens": 2, "valuable": true},
 	"skill_book_poison": {"amount": 1, "tokens": 2, "valuable": true},
 	"skill_book_heal": {"amount": 1, "tokens": 2, "valuable": true},
@@ -396,12 +427,6 @@ const MARKET_GOODS_POOLS := {
 	]},
 	"knowledge": {"weight": 10, "entries": [
 		{"item_id": "recipe_pill", "amount": 1, "price": 16},
-		{"item_id": "blueprint_weapon", "amount": 1, "price": 16, "min_expedition_level": 6},
-		{"item_id": "blueprint_helmet", "amount": 1, "price": 16, "min_expedition_level": 6},
-		{"item_id": "blueprint_armor", "amount": 1, "price": 16, "min_expedition_level": 6},
-		{"item_id": "blueprint_leggings", "amount": 1, "price": 16, "min_expedition_level": 6},
-		{"item_id": "blueprint_gloves", "amount": 1, "price": 16, "min_expedition_level": 6},
-		{"item_id": "blueprint_accessory", "amount": 1, "price": 16, "min_expedition_level": 6},
 	]},
 	"rare": {"weight": 5, "entries": [
 		{"item_id": "skill_book_thunder", "amount": 1, "price": 32, "min_expedition_level": 6},
@@ -488,7 +513,9 @@ const ITEM_DEFS := {
 	"t1_earth_enhance_pill": {"item_no": 1058, "name": "一阶土行强化丹", "description": "永久强化所选角色的土行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_earth"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
 	"t1_metal_enhance_pill": {"item_no": 1059, "name": "一阶金行强化丹", "description": "永久强化所选角色的金行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_metal"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
 	"t1_water_enhance_pill": {"item_no": 1060, "name": "一阶水行强化丹", "description": "永久强化所选角色的水行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_water"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
-	"market_token": {"item_no": 1061, "name": "坊市令", "description": "通过坊市委托与回收获得，用于购买和刷新坊市商品。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"market_currency": true}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"market_token": {"item_no": 1061, "name": "坊市令", "description": "通过坊市回收与委托获得，用于购买和刷新坊市商品。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"market_currency": true}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"enhancement_stone": {"item_no": 1062, "name": "强化石", "description": "用于为装备固定基础属性分配强化点。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
+	"ascension_stone": {"item_no": 1063, "name": "升阶石", "description": "用于提升装备阶位。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
 }
 
 const SKILL_EXCHANGE_DEFS := {
@@ -514,8 +541,8 @@ const SKILL_DEFS := {
 }
 
 const BASIC_ATTACK_DEFS := {
-	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 0.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
-	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 120.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true, "uses_legacy_element_bonus": true}]},
+	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 0.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true}]},
+	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 120.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true}]},
 }
 
 const ALCHEMY_RECIPE_DEFS := {
@@ -543,12 +570,20 @@ const ALCHEMY_RECIPE_DEFS := {
 }
 
 const EQUIPMENT_DEFS := {
-	"weapon": {"slot": "weapon", "name": "武器"},
-	"helmet": {"slot": "helmet", "name": "头盔"},
-	"armor": {"slot": "armor", "name": "护甲"},
-	"leggings": {"slot": "leggings", "name": "胫甲"},
-	"gloves": {"slot": "gloves", "name": "护手"},
-	"accessory": {"slot": "accessory", "name": "饰品"},
+	"weapon_metal_sword": {"slot": "weapon", "name": "玄金剑"},
+	"weapon_wood_staff": {"slot": "weapon", "name": "青木杖"},
+	"weapon_earth_gauntlet": {"slot": "weapon", "name": "镇岳拳套"},
+	"weapon_water_brush": {"slot": "weapon", "name": "沧水符笔"},
+	"weapon_fire_orb": {"slot": "weapon", "name": "赤焰法环"},
+	"helmet": {"slot": "helmet", "name": "聚灵冠"},
+	"armor": {"slot": "armor", "name": "镇元法衣"},
+	"leggings": {"slot": "leggings", "name": "行脉胫甲"},
+	"gloves": {"slot": "gloves", "name": "锻骨护手"},
+	"accessory_wood": {"slot": "accessory", "name": "青木佩"},
+	"accessory_fire": {"slot": "accessory", "name": "赤焰珠"},
+	"accessory_earth": {"slot": "accessory", "name": "厚土印"},
+	"accessory_metal": {"slot": "accessory", "name": "玄金令"},
+	"accessory_water": {"slot": "accessory", "name": "沧水环"},
 }
 
 const EQUIPMENT_ATTRIBUTE_DEFS := [
@@ -603,16 +638,16 @@ const INNATE_TRAIT_DEFS := {
 }
 
 const ENEMY_TEMPLATES := {
-	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "weak_element": "fire", "element_attack_ratio": 0.0, "skills": [], "drop_profile": {"base_chance": 0.0, "items": []}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
-	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "element_power": 3, "weak_element": "fire", "element_attack_ratio": 0.05, "skills": ["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
-	"venom_spider": {"id": "venom_spider", "visual_id": "spider", "name": "毒纹蛛", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 26, "attack": 7, "defense": 1, "element": "wood", "element_power": 4, "weak_element": "fire", "skills": ["poison"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 11, "use_drop": true},
-	"blight_shaman": {"id": "blight_shaman", "visual_id": "shaman", "name": "腐木巫祝", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 35, "attack": 8, "defense": 2, "element": "wood", "element_power": 6, "weak_element": "fire", "skills": ["poison", "heal"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 18, "use_drop": true},
-	"ember_gnome": {"id": "ember_gnome", "visual_id": "gnome", "name": "灰烬地精", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 34, "attack": 9, "defense": 2, "element": "fire", "element_power": 5, "weak_element": "water", "skills": ["attack_up"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 13, "use_drop": true},
-	"stone_lizard": {"id": "stone_lizard", "visual_id": "lizard", "name": "岩甲蜥", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 44, "attack": 8, "defense": 4, "element": "earth", "element_power": 6, "weak_element": "wood", "skills": ["spirit_shield"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 15, "use_drop": true},
-	"stone_overlord": {"id": "stone_overlord", "visual_id": "minotaur", "name": "镇岳兽王", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 52, "attack": 11, "defense": 5, "element": "earth", "element_power": 8, "weak_element": "wood", "skills": ["wolf_pounce", "wolf_howl"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 24, "use_drop": true},
-	"iron_lancer": {"id": "iron_lancer", "visual_id": "lancer", "name": "玄锋枪卒", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 48, "attack": 12, "defense": 4, "element": "metal", "element_power": 8, "weak_element": "fire", "skills": ["thunder"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 18, "use_drop": true},
-	"tide_fish": {"id": "tide_fish", "visual_id": "paddle_fish", "name": "潮鳍鱼妖", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 54, "attack": 13, "defense": 5, "element": "water", "element_power": 9, "weak_element": "earth", "skills": ["water_cold_talisman"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 20, "use_drop": true},
-	"abyssal_turtle": {"id": "abyssal_turtle", "visual_id": "turtle", "name": "沉渊玄龟", "encounter_class": "boss", "enemy_class": ENEMY_CLASS_BOSS, "reference_stat_multipliers": {"max_hp": 3.0, "attack": 1.8, "defense": 1.8}, "experience_multiplier": 5.0, "max_hp": 90, "attack": 16, "defense": 8, "element": "water", "element_power": 14, "weak_element": "earth", "skills": ["spirit_shield", "water_cold_talisman"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "equipment_drop_chance": 0.25, "exp": 50, "use_drop": true},
+	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "combat_affinity": "normal", "attribute_point_multiplier": 0.0, "growth_primary_stat": "max_hp", "growth_secondary_stats": ["attack", "defense"], "skills": [], "drop_profile": {"base_chance": 0.0, "items": []}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
+	"forest_wolf": {"id": "forest_wolf", "visual_id": "forest_wolf", "name": "林狼", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 32, "attack": 6, "defense": 1, "move_speed": 120.0, "player_move_speed": 120.0, "attack_range": 88.0, "player_attack_range": 96.0, "spawn_delay": 0.6, "turn_wait": 1.4, "element": "wood", "element_power": 3, "skills": ["wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "equipment_drop_chance": 0.05, "exp": 10, "use_drop": true, "is_training_dummy": false},
+	"venom_spider": {"id": "venom_spider", "visual_id": "spider", "name": "毒纹蛛", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 26, "attack": 7, "defense": 1, "element": "wood", "element_power": 4, "skills": ["poison"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 11, "use_drop": true},
+	"blight_shaman": {"id": "blight_shaman", "visual_id": "shaman", "name": "腐木巫祝", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 35, "attack": 8, "defense": 2, "element": "wood", "element_power": 6, "skills": ["poison", "heal"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 18, "use_drop": true},
+	"ember_gnome": {"id": "ember_gnome", "visual_id": "gnome", "name": "灰烬地精", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 34, "attack": 9, "defense": 2, "element": "fire", "element_power": 5, "skills": ["attack_up"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 13, "use_drop": true},
+	"stone_lizard": {"id": "stone_lizard", "visual_id": "lizard", "name": "岩甲蜥", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 44, "attack": 8, "defense": 4, "element": "earth", "element_power": 6, "skills": ["spirit_shield"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 15, "use_drop": true},
+	"stone_overlord": {"id": "stone_overlord", "visual_id": "minotaur", "name": "镇岳兽王", "encounter_class": "elite", "enemy_class": ENEMY_CLASS_ELITE, "reference_stat_multipliers": {"max_hp": 1.6, "attack": 1.35, "defense": 1.3}, "experience_multiplier": 1.8, "drop_chance_bonus": 0.15, "max_hp": 52, "attack": 11, "defense": 5, "element": "earth", "element_power": 8, "skills": ["wolf_pounce", "wolf_howl"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 24, "use_drop": true},
+	"iron_lancer": {"id": "iron_lancer", "visual_id": "lancer", "name": "玄锋枪卒", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 48, "attack": 12, "defense": 4, "element": "metal", "element_power": 8, "skills": ["thunder"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 18, "use_drop": true},
+	"tide_fish": {"id": "tide_fish", "visual_id": "paddle_fish", "name": "潮鳍鱼妖", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "max_hp": 54, "attack": 13, "defense": 5, "element": "water", "element_power": 9, "skills": ["water_cold_talisman"], "skill_unlock_rank": "t2", "use_class_drop_pool": true, "use_rank_drop_pool": false, "exp": 20, "use_drop": true},
+	"abyssal_turtle": {"id": "abyssal_turtle", "visual_id": "turtle", "name": "沉渊玄龟", "encounter_class": "boss", "enemy_class": ENEMY_CLASS_BOSS, "reference_stat_multipliers": {"max_hp": 3.0, "attack": 1.8, "defense": 1.8}, "experience_multiplier": 5.0, "max_hp": 90, "attack": 16, "defense": 8, "element": "water", "element_power": 14, "combat_affinity": "water", "attribute_point_multiplier": 1.5, "growth_primary_stat": "max_hp", "growth_secondary_stats": ["defense", "element_water"], "skills": ["spirit_shield", "water_cold_talisman"], "skill_unlock_rank": "t1", "use_class_drop_pool": true, "use_rank_drop_pool": false, "equipment_drop_chance": 0.25, "exp": 50, "use_drop": true},
 }
 
 const ENEMY_SCENE_PATHS := {
@@ -748,6 +783,12 @@ static func skill_resource_path(skill_id: String) -> String:
 	return "%s/%s.tres" % [SKILL_RESOURCE_ROOT, skill_id]
 
 
+static func enemy_resource_path(enemy_id: String) -> String:
+	if enemy_id.is_empty():
+		return ""
+	return "%s/%s.tres" % [ENEMY_RESOURCE_ROOT, enemy_id]
+
+
 static func item_resource(item_id: String) -> Resource:
 	return _load_resource(item_resource_path(item_id))
 
@@ -758,6 +799,10 @@ static func equipment_resource(template_id: String) -> Resource:
 
 static func skill_resource(skill_id: String) -> Resource:
 	return _load_resource(skill_resource_path(skill_id))
+
+
+static func enemy_resource(enemy_id: String) -> Resource:
+	return _load_resource(enemy_resource_path(enemy_id))
 
 
 static func item_icon_texture(item_id: String) -> Texture2D:
@@ -933,6 +978,23 @@ static func all_core_skill_definitions() -> Dictionary:
 	return result
 
 
+static func core_enemy_definition(enemy_id: String) -> Dictionary:
+	var definition: Dictionary = ENEMY_TEMPLATES.get(enemy_id, {}).duplicate(true)
+	var resource: Resource = enemy_resource(enemy_id)
+	if resource != null and resource.has_method("to_dictionary"):
+		var authored = resource.call("to_dictionary")
+		if authored is Dictionary and not authored.is_empty():
+			definition.merge(authored, true)
+	return definition
+
+
+static func all_core_enemy_definitions() -> Dictionary:
+	var result: Dictionary = {}
+	for enemy_id in ENEMY_TEMPLATES.keys():
+		result[str(enemy_id)] = core_enemy_definition(str(enemy_id))
+	return result
+
+
 static func create_basic_attack(attack_mode: String, base_damage: int = 0) -> Dictionary:
 	var resolved_mode: String = attack_mode if ATTACK_MODES.has(attack_mode) else ATTACK_MODE_MELEE
 	var attack: Dictionary = normalize_skill_definition(content_definition("basic_attack", resolved_mode, BASIC_ATTACK_DEFS[resolved_mode]))
@@ -943,6 +1005,43 @@ static func create_basic_attack(attack_mode: String, base_damage: int = 0) -> Di
 	attack["effects"] = effects
 	attack["damage_marker"] = "impact"
 	return attack
+
+
+static func normalize_combat_affinity(value: String) -> String:
+	return value if COMBAT_AFFINITY_IDS.has(value) else COMBAT_AFFINITY_NORMAL
+
+
+static func combat_affinity_name(value: String) -> String:
+	var affinity := normalize_combat_affinity(value)
+	return str(COMBAT_AFFINITY_NAMES.get(affinity, affinity))
+
+
+static func combat_affinity_relation(attacker_affinity: String, target_affinity: String) -> String:
+	var attacker := normalize_combat_affinity(attacker_affinity)
+	var target := normalize_combat_affinity(target_affinity)
+	if attacker == COMBAT_AFFINITY_NORMAL or target == COMBAT_AFFINITY_NORMAL:
+		return AFFINITY_RELATION_NEUTRAL
+	if str(COMBAT_AFFINITY_OVERCOMES.get(attacker, "")) == target:
+		return AFFINITY_RELATION_OVERCOME
+	if str(COMBAT_AFFINITY_OVERCOMES.get(target, "")) == attacker:
+		return AFFINITY_RELATION_RESTRAINED
+	return AFFINITY_RELATION_NEUTRAL
+
+
+static func combat_affinity_multiplier(relation: String) -> float:
+	match relation:
+		AFFINITY_RELATION_OVERCOME:
+			return 1.25
+		AFFINITY_RELATION_RESTRAINED:
+			return 0.75
+		_:
+			return 1.0
+
+
+static func apply_combat_affinity_multiplier(amount: int, relation: String) -> int:
+	if amount <= 0:
+		return 0
+	return maxi(1, roundi(float(amount) * combat_affinity_multiplier(relation)))
 
 
 static func normalize_skill_definition(definition: Dictionary) -> Dictionary:
@@ -1034,9 +1133,10 @@ static func _skill_effect_tags(skill: Dictionary) -> Array[String]:
 	return tags
 
 
-static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: String = DEFAULT_ENEMY_ID) -> Dictionary:
+static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: String = DEFAULT_ENEMY_ID) -> Dictionary:
 	var resolved_enemy_id: String = resolve_enemy_id(enemy_id)
-	var template: Dictionary = content_definition("enemy", resolved_enemy_id, ENEMY_TEMPLATES.get(resolved_enemy_id, ENEMY_TEMPLATES[DEFAULT_ENEMY_ID]))
+	var is_core_enemy := ENEMY_TEMPLATES.has(resolved_enemy_id)
+	var template: Dictionary = content_definition("enemy", resolved_enemy_id, core_enemy_definition(resolved_enemy_id))
 	var enemy_level: int = maxi(1, level + int(template.get("level_offset", 0)))
 	var rank_id := enemy_rank_for_level(enemy_level)
 	var rank: Dictionary = content_definition("enemy_rank", rank_id, ENEMY_RANK_DEFS[rank_id])
@@ -1049,12 +1149,47 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 	var defense: int = maxi(0, roundi(float(_enemy_scaled_stat(int(template.get("defense", 0)), enemy_level, multipliers, growth, "defense")) * float(reference_multipliers.get("defense", 1.0))))
 	var element_id := str(template.get("element", ""))
 	var element_power := maxi(0, int(template.get("element_power", 0)) + int(float(rank_level) / 5.0))
+	var elements: Dictionary = {element_id: element_power} if not element_id.is_empty() else {}
 	var skills: Array = template.get("skills", []).duplicate(true) if template.get("skills", []) is Array else []
 	var skill_limit := int(rank.get("skill_count", 0))
 	while skills.size() > skill_limit:
 		skills.pop_back()
 	var drop_profile: Dictionary = rank_drop_profile(rank_id, template.get("drop_profile", {}))
 	var enemy_class: String = str(template.get("enemy_class", ENEMY_CLASS_NORMAL))
+	var combat_affinity := COMBAT_AFFINITY_NORMAL
+	var growth_primary_stat := ""
+	var growth_secondary_stats: Array[String] = []
+	var attribute_point_multiplier := 0.0
+	var attribute_point_budget := 0
+	if is_core_enemy:
+		combat_affinity = normalize_combat_affinity(str(template.get("combat_affinity", ""))) if template.has("combat_affinity") else _random_combat_affinity(rng)
+		attribute_point_multiplier = maxf(0.0, float(template.get("attribute_point_multiplier", ENEMY_CLASS_ATTRIBUTE_POINT_MULTIPLIERS.get(enemy_class, 0.0))))
+		growth_primary_stat = str(template.get("growth_primary_stat", ""))
+		for value in template.get("growth_secondary_stats", []):
+			var stat_id := str(value)
+			if ENEMY_GROWTH_ATTRIBUTE_TARGETS.has(stat_id) and stat_id != growth_primary_stat and not growth_secondary_stats.has(stat_id):
+				growth_secondary_stats.append(stat_id)
+		var available_growth_stats: Array[String] = []
+		for value in ENEMY_GROWTH_ATTRIBUTE_TARGETS:
+			var stat_id := str(value)
+			if stat_id != growth_primary_stat and not growth_secondary_stats.has(stat_id):
+				available_growth_stats.append(stat_id)
+		if not ENEMY_GROWTH_ATTRIBUTE_TARGETS.has(growth_primary_stat):
+			growth_primary_stat = _take_random_string(available_growth_stats, rng)
+		while growth_secondary_stats.size() < 2 and not available_growth_stats.is_empty():
+			growth_secondary_stats.append(_take_random_string(available_growth_stats, rng))
+		attribute_point_budget = floori(float(maxi(0, enemy_level - 1) * 5) * attribute_point_multiplier)
+		for _point_index in range(attribute_point_budget):
+			var target_stat := _weighted_growth_target(growth_primary_stat, growth_secondary_stats, ENEMY_GROWTH_ATTRIBUTE_TARGETS, rng)
+			if target_stat == "max_hp":
+				max_hp += 4
+			elif target_stat == "attack":
+				attack += 1
+			elif target_stat == "defense":
+				defense += 1
+			elif target_stat.begins_with(ELEMENT_ATTRIBUTE_PREFIX):
+				var growth_element := element_id_from_attribute(target_stat)
+				elements[growth_element] = int(elements.get(growth_element, 0)) + 1
 	var drop_chance_bonus: float = float(template.get("drop_chance_bonus", 0.15 if enemy_class == ENEMY_CLASS_ELITE else 0.0))
 	if drop_chance_bonus > 0.0:
 		drop_profile["base_chance"] = clampf(float(drop_profile.get("base_chance", 0.0)) + drop_chance_bonus, 0.0, 1.0)
@@ -1062,7 +1197,6 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 	var class_drop_profile: Dictionary = enemy_class_drop_profile(enemy_class) if use_class_drop_pool else {}
 	var use_rank_drop_pool: bool = bool(template.get("use_rank_drop_pool", not bool(template.get("is_training_dummy", false))))
 	var equipment_drop_chance: float = clampf(float(template.get("equipment_drop_chance", ENEMY_CLASS_EQUIPMENT_CHANCES.get(enemy_class, 0.05))), 0.0, 1.0)
-	var element_ratio := 0.0 if bool(template.get("is_training_dummy", false)) else float(rank.get("element_attack_ratio", 0.0)) + float(template.get("element_attack_ratio", 0.0))
 	return {
 		"id": str(template.get("id", resolved_enemy_id)),
 		"visual_id": str(template.get("visual_id", "enemy_default")),
@@ -1088,9 +1222,12 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 		"spawn_delay": float(template.get("spawn_delay", 0.6)),
 		"turn_wait": float(template.get("turn_wait", 1.4)),
 		"element": element_id,
-		"elements": {element_id: element_power} if not element_id.is_empty() else {},
-		"weak_element": str(template.get("weak_element", "fire")),
-		"element_attack_ratio": clampf(element_ratio, 0.0, 1.0),
+		"elements": elements,
+		"combat_affinity": combat_affinity,
+		"growth_primary_stat": growth_primary_stat,
+		"growth_secondary_stats": growth_secondary_stats,
+		"attribute_point_multiplier": attribute_point_multiplier,
+		"attribute_point_budget": attribute_point_budget,
 		"skills": skills,
 		"skill_cooldowns": {},
 		"drop_profile": drop_profile,
@@ -1105,7 +1242,36 @@ static func create_enemy(level: int, _rng: RandomNumberGenerator, enemy_id: Stri
 		"exp": roundi(float(int(template.get("exp", 5)) + enemy_level * 2) * float(template.get("experience_multiplier", 1.0))),
 		"use_drop": bool(template.get("use_drop", true)),
 		"is_training_dummy": bool(template.get("is_training_dummy", false)),
-}
+	}
+
+
+static func _random_combat_affinity(rng: RandomNumberGenerator) -> String:
+	if rng == null:
+		return COMBAT_AFFINITY_NORMAL
+	return str(COMBAT_AFFINITY_IDS[rng.randi_range(0, COMBAT_AFFINITY_IDS.size() - 1)])
+
+
+static func _take_random_string(values: Array[String], rng: RandomNumberGenerator) -> String:
+	if values.is_empty():
+		return ""
+	var index := rng.randi_range(0, values.size() - 1) if rng != null else 0
+	var value := str(values[index])
+	values.remove_at(index)
+	return value
+
+
+static func _weighted_growth_target(primary_stat: String, secondary_stats: Array[String], pool: Array, rng: RandomNumberGenerator) -> String:
+	var roll := rng.randf() if rng != null else 0.0
+	if roll < 0.5:
+		return primary_stat
+	if roll < 0.65 and secondary_stats.size() >= 1:
+		return secondary_stats[0]
+	if roll < 0.8 and secondary_stats.size() >= 2:
+		return secondary_stats[1]
+	if pool.is_empty():
+		return primary_stat
+	var index := rng.randi_range(0, pool.size() - 1) if rng != null else 0
+	return str(pool[index])
 
 
 static func enemy_rank_for_level(level: int) -> String:
@@ -1217,7 +1383,7 @@ static func resolve_enemy_id(enemy_id: String) -> String:
 
 static func enemy_scene_path(enemy_id: String) -> String:
 	var resolved_enemy_id: String = resolve_enemy_id(enemy_id)
-	var definition := content_definition("enemy", resolved_enemy_id, ENEMY_TEMPLATES.get(resolved_enemy_id, {}))
+	var definition := content_definition("enemy", resolved_enemy_id, core_enemy_definition(resolved_enemy_id))
 	var registered_path := str(definition.get("scene_path", ""))
 	if not registered_path.is_empty():
 		return registered_path
@@ -1232,6 +1398,10 @@ static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus
 
 
 static func create_equipment_from_template(template_id: String, _level: int, rng: RandomNumberGenerator, _craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
+	if template_id == "weapon":
+		template_id = "weapon_metal_sword"
+	elif template_id == "accessory":
+		template_id = "accessory_wood"
 	var template: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if template.is_empty():
 		return {}
@@ -1242,7 +1412,7 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 	var slot := str(template.get("slot", template_id))
 	var equipment_name: String = str(template.get("name", slot_name(slot)))
 	var equipment_level := 1
-	var base_attributes := generate_equipment_base_attributes(rarity, rng)
+	var base_attributes := equipment_tier_base_attributes(template_id, rarity)
 	return {
 		"instance_id": "%s_%d_%d" % [template_id, Time.get_ticks_usec(), rng.randi()],
 		"item_id": template_id,
@@ -1261,9 +1431,10 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 		"rarity": rarity,
 		"equipment_level": equipment_level,
 		"base_attributes": base_attributes,
-		"attribute_generation_version": 1,
+		"attribute_generation_version": 2,
 		"description_effects": equipment_template_description_effects(template_id),
 		"enhanced_attributes": [],
+		"enhancement_allocations": {},
 		"refine_affixes": [],
 		"enhance_count": 0,
 		"refine_count": 0,
@@ -1273,9 +1444,97 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 		"defense_bonus": 0,
 		"enhance_attack_bonus": 0,
 		"enhance_defense_bonus": 0,
-		"equip_requirement": {"stat": "level", "min": equipment_equip_level_requirement(rarity)},
-		"affixes": [],
+		"equip_requirement": {},
+		"affixes": generate_equipment_affixes(rarity, rng),
 	}
+
+
+static func equipment_tier_base_attributes(template_id: String, rarity: String) -> Array:
+	var tier_attributes = null
+	var resource: Resource = equipment_resource(template_id)
+	if resource != null:
+		var resource_tiers = resource.get("tier_base_attributes")
+		if resource_tiers is Dictionary:
+			tier_attributes = resource_tiers.get(rarity)
+	if not (tier_attributes is Array):
+		var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
+		var definition_tiers = definition.get("tier_base_attributes", {})
+		if definition_tiers is Dictionary:
+			tier_attributes = definition_tiers.get(rarity)
+	if tier_attributes is Array and not tier_attributes.is_empty():
+		return tier_attributes.duplicate(true)
+	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
+	return _default_equipment_tier_base_attributes(str(definition.get("slot", template_id)), rarity)
+
+
+static func _default_equipment_tier_base_attributes(slot: String, rarity: String) -> Array:
+	var tier_index := maxi(0, EQUIPMENT_RARITY_ORDER.find(rarity))
+	var default_amounts := [2, 5, 10, 18, 30]
+	var hp_amounts := [8, 20, 40, 72, 120]
+	var mp_amounts := [4, 10, 20, 36, 60]
+	var amount := int(default_amounts[tier_index])
+	match slot:
+		"weapon":
+			return [{"stat": "attack", "amount": amount}]
+		"helmet":
+			return [{"stat": "max_mp", "amount": int(mp_amounts[tier_index])}]
+		"armor":
+			return [{"stat": "defense", "amount": amount}]
+		"leggings":
+			return [{"stat": "max_hp", "amount": int(hp_amounts[tier_index])}]
+		"gloves":
+			return [{"stat": "root_bone", "amount": amount}]
+		"accessory":
+			return [{"stat": "element_wood", "amount": amount}]
+	return [{"stat": "attack", "amount": amount}]
+
+
+static func equipment_affix_count(rarity: String) -> int:
+	return int(EQUIPMENT_AFFIX_COUNTS.get(rarity, EQUIPMENT_AFFIX_COUNTS["t1"]))
+
+
+static func generate_equipment_affixes(rarity: String, rng: RandomNumberGenerator) -> Array:
+	var affix_ids: Array = EQUIPMENT_AFFIX_DEFS.keys()
+	var affixes: Array = []
+	for _index in range(equipment_affix_count(rarity)):
+		var affix_id := str(affix_ids[rng.randi_range(0, affix_ids.size() - 1)])
+		affixes.append({"id": affix_id, "value": equipment_affix(affix_id).get("value", 0)})
+	return affixes
+
+
+static func generate_stable_equipment_affixes(rarity: String, instance_id: String) -> Array:
+	var stable_rng := RandomNumberGenerator.new()
+	stable_rng.seed = hash("equipment_affixes:%s:%s" % [rarity, instance_id])
+	return generate_equipment_affixes(rarity, stable_rng)
+
+
+static func equipment_affix(affix_id: String) -> Dictionary:
+	return EQUIPMENT_AFFIX_DEFS.get(affix_id, {}).duplicate(true)
+
+
+static func equipment_affix_name(affix_id: String) -> String:
+	return str(EQUIPMENT_AFFIX_DEFS.get(affix_id, {}).get("name", affix_id))
+
+
+static func equipment_affix_text(affix: Dictionary) -> String:
+	var affix_id := str(affix.get("id", affix.get("type", "")))
+	var definition := equipment_affix(affix_id)
+	var value = affix.get("value", definition.get("value", 0))
+	if str(definition.get("format", "flat")) == "percent":
+		return "%s +%d%%" % [equipment_affix_name(affix_id), roundi(float(value) * 100.0)]
+	return "%s +%d" % [equipment_affix_name(affix_id), int(value)]
+
+
+static func equipment_combat_modifier_cap(affix_id: String) -> float:
+	return float(EQUIPMENT_COMBAT_MODIFIER_CAPS.get(affix_id, INF))
+
+
+static func equipment_attribute_unit_amount(stat_id: String) -> int:
+	if stat_id == "max_hp":
+		return 4
+	if stat_id == "max_mp":
+		return 2
+	return 1
 
 
 static func equipment_attribute_point_budget(rarity: String) -> int:
@@ -1579,9 +1838,19 @@ static func equipment_enhance_limit(rarity: String) -> int:
 
 
 static func equipment_enhance_cost(rarity: String, next_enhance_level: int) -> int:
-	var level := clampi(next_enhance_level, 1, equipment_enhance_limit(rarity))
-	var base_cost := int(EQUIPMENT_ENHANCE_BASE_COSTS.get(rarity, EQUIPMENT_ENHANCE_BASE_COSTS["t1"]))
-	return base_cost + floori(float(level - 1) / 5.0)
+	if next_enhance_level < 1 or next_enhance_level > equipment_enhance_limit(rarity):
+		return 0
+	return 1
+
+
+static func equipment_ascension_cost(rarity: String) -> Dictionary:
+	var tier := EQUIPMENT_RARITY_ORDER.find(rarity) + 1
+	if tier <= 0 or tier >= EQUIPMENT_RARITY_ORDER.size():
+		return {}
+	return {
+		ITEM_ID_ORE: tier * 8,
+		ITEM_ID_ASCENSION_STONE: tier * 2,
+	}
 
 
 static func alchemy_recipe_def(recipe_id: String) -> Dictionary:
