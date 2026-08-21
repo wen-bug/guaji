@@ -14,37 +14,37 @@ description = "镇岳拳套装备模板。"
 tier_base_attributes = {
 "t1": [{
 "amount": 2.0,
-"stat": "attack"
+"stat": "element_earth"
 }, {
 "amount": 1.0,
-"stat": "element_earth"
+"stat": "defense"
 }],
 "t2": [{
 "amount": 5.0,
-"stat": "attack"
+"stat": "element_earth"
 }, {
 "amount": 2.0,
-"stat": "element_earth"
+"stat": "defense"
 }],
 "t3": [{
 "amount": 10.0,
-"stat": "attack"
+"stat": "element_earth"
 }, {
 "amount": 4.0,
-"stat": "element_earth"
+"stat": "defense"
 }],
 "t4": [{
 "amount": 18.0,
-"stat": "attack"
+"stat": "element_earth"
 }, {
 "amount": 7.0,
-"stat": "element_earth"
+"stat": "defense"
 }],
 "t5": [{
 "amount": 30.0,
-"stat": "attack"
+"stat": "element_earth"
 }, {
 "amount": 12.0,
-"stat": "element_earth"
+"stat": "defense"
 }]
 }

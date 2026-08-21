@@ -151,14 +151,14 @@ func _check_stage_2_progression() -> void:
 	_expect_true("schema 18 removes equip requirement", migrated_equipment.get("equip_requirement", {}).is_empty())
 	_expect_equal("schema 14 preserves enhancement", int(migrated_equipment.get("enhance_count", 0)), 3)
 	_expect_equal("schema 14 preserves refinement", migrated_equipment.get("refine_affixes", []).size(), 1)
-	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 18)
+	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 20)
 
 
 func _check_stage_3_equipment_loop() -> void:
 	var state := _fresh_state()
 	var reward: Dictionary = state.register_full_encounter_victory(true)
 	_expect_equal("victory no longer awards blueprint", str(reward.get("blueprint_item_id", "")), "")
-	var template_id := "weapon_metal_sword"
+	var template_id := "weapon"
 	_expect_true("all templates can be targeted", state.unlocked_blueprint_templates().has(template_id))
 
 	state.add_inventory_item("ore", 4, false)

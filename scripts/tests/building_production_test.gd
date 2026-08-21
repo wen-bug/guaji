@@ -57,9 +57,16 @@ func _check_character_free_production() -> void:
 	for item in state.inventory_items_for_type(DataTables.ITEM_TYPE_EQUIPMENT):
 		forged_level = int(item.get("equipment_level", 0))
 	_expect_equal("forge tier requirement is decoupled from expedition", forged_level, 1)
-	_expect_true("target forge needs no blueprint unlock", state.unlocked_blueprint_templates().is_empty())
+	_expect_equal("target forge exposes six slots", state.unlocked_blueprint_templates().size(), 6)
+	_expect_true("target forge needs no blueprint unlock", state.unlocked_blueprint_templates().has("weapon"))
 	_expect_true("target forge accepts registered template", state.craft_equipment_from_template("weapon"))
 	_expect_equal("target forge spends fixed ore", state.inventory_item_count("ore"), 0)
+	var targeted_items := state.inventory_items_for_type(DataTables.ITEM_TYPE_EQUIPMENT)
+	var targeted: Dictionary = targeted_items[targeted_items.size() - 1]
+	_expect_equal("target forge stores generic slot id", str(targeted.get("item_id", "")), "weapon")
+	_expect_true("target forge rolls weapon variant", not str(targeted.get("equipment_variant_id", "")).is_empty())
+	var targeted_rarity_index := DataTables.EQUIPMENT_RARITY_ORDER.find(str(targeted.get("rarity", "t1")))
+	_expect_equal("target forge rolls attributes for rarity", targeted.get("rolled_attribute_stats", []).size(), targeted_rarity_index + 1)
 
 	var pills_before := state.inventory_item_count("pill")
 	var herbs_before := state.inventory_item_count("herb")

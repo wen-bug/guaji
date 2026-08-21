@@ -14,23 +14,41 @@ icon_path = "res://assets/equipment/helmet.png"
 description = "聚灵冠装备模板。"
 tier_base_attributes = {
 "t1": [{
-"amount": 4.0,
+"amount": 2.0,
 "stat": "max_mp"
+}, {
+"amount": 1.0,
+"stat": "defense"
 }],
 "t2": [{
-"amount": 10.0,
+"amount": 6.0,
 "stat": "max_mp"
+}, {
+"amount": 2.0,
+"stat": "defense"
 }],
 "t3": [{
-"amount": 20.0,
+"amount": 12.0,
 "stat": "max_mp"
+}, {
+"amount": 4.0,
+"stat": "defense"
 }],
 "t4": [{
-"amount": 36.0,
+"amount": 24.0,
 "stat": "max_mp"
+}, {
+"amount": 6.0,
+"stat": "defense"
 }],
 "t5": [{
-"amount": 60.0,
+"amount": 40.0,
 "stat": "max_mp"
+}, {
+"amount": 10.0,
+"stat": "defense"
 }]
 }
+random_attribute_pool = ["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+tier_random_attribute_counts = {"t1": 1, "t2": 2, "t3": 3, "t4": 4, "t5": 5}
+tier_random_attribute_budgets = {"t1": 1, "t2": 2, "t3": 4, "t4": 6, "t5": 10}

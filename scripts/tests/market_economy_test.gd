@@ -208,7 +208,7 @@ func _check_save_and_migration() -> void:
 	state.market_state["paid_refresh_count"] = 2
 	state.market_state["offers"][0]["sold"] = true
 	var saved := state.to_save_data()
-	_expect_equal("save schema eighteen", int(saved.get("schema_version", 0)), 18)
+	_expect_equal("save schema twenty", int(saved.get("schema_version", 0)), 20)
 	var expected_market: Dictionary = saved.get("market_state", {}).duplicate(true)
 	var loaded := GameState.new()
 	loaded.load_save_data(saved)
@@ -217,7 +217,7 @@ func _check_save_and_migration() -> void:
 	legacy.load_save_data({"schema_version": 15, "inventory": [], "companions": [], "party_order": [], "recruit_candidates": []})
 	_expect_equal("schema fifteen gains six offers", legacy.market_offers().size(), 6)
 	_expect_equal("schema fifteen gains commissions", legacy.market_commissions().size(), 3)
-	_expect_equal("schema fifteen saves as eighteen", int(legacy.to_save_data().get("schema_version", 0)), 18)
+	_expect_equal("schema fifteen saves as twenty", int(legacy.to_save_data().get("schema_version", 0)), 20)
 
 
 func _check_economy_guards() -> void:
@@ -227,11 +227,14 @@ func _check_economy_guards() -> void:
 	_expect_true("forge succeeds", state.craft_equipment())
 	var crafted: Array = state.inventory_items_for_type(DataTables.ITEM_TYPE_EQUIPMENT)
 	_expect_equal("level-six forge creates two items", crafted.size(), 2)
+	var expected_salvage_stones := 0
 	for equipment in crafted.duplicate():
 		_expect_equal("forged item records source", str(equipment.get("obtain_source", "")), "crafted")
+		expected_salvage_stones += maxi(1, DataTables.EQUIPMENT_RARITY_ORDER.find(str(equipment.get("rarity", "t1"))) + 1)
+		expected_salvage_stones += floori(float(int(equipment.get("enhance_count", 0))) / 2.0)
 		_expect_true("crafted item salvages", state.salvage_equipment(str(equipment.get("instance_id", ""))))
 	_expect_equal("crafted salvage does not return ore", state.inventory_item_count("ore"), 0)
-	_expect_equal("crafted salvage returns enhancement stones", state.inventory_item_count(DataTables.ITEM_ID_ENHANCEMENT_STONE), 2)
+	_expect_equal("crafted salvage returns enhancement stones", state.inventory_item_count(DataTables.ITEM_ID_ENHANCEMENT_STONE), expected_salvage_stones)
 
 	state = _fresh_state()
 	state.building_levels["alchemy"] = 7

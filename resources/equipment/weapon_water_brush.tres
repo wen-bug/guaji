@@ -14,37 +14,37 @@ description = "沧水符笔装备模板。"
 tier_base_attributes = {
 "t1": [{
 "amount": 2.0,
-"stat": "attack"
-}, {
-"amount": 1.0,
 "stat": "element_water"
+}, {
+"amount": 2.0,
+"stat": "max_mp"
 }],
 "t2": [{
 "amount": 5.0,
-"stat": "attack"
-}, {
-"amount": 2.0,
 "stat": "element_water"
+}, {
+"amount": 4.0,
+"stat": "max_mp"
 }],
 "t3": [{
 "amount": 10.0,
-"stat": "attack"
-}, {
-"amount": 4.0,
 "stat": "element_water"
+}, {
+"amount": 8.0,
+"stat": "max_mp"
 }],
 "t4": [{
 "amount": 18.0,
-"stat": "attack"
-}, {
-"amount": 7.0,
 "stat": "element_water"
+}, {
+"amount": 14.0,
+"stat": "max_mp"
 }],
 "t5": [{
 "amount": 30.0,
-"stat": "attack"
-}, {
-"amount": 12.0,
 "stat": "element_water"
+}, {
+"amount": 24.0,
+"stat": "max_mp"
 }]
 }

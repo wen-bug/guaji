@@ -17,7 +17,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 18
+const SAVE_SCHEMA_VERSION = 20
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -26,6 +26,18 @@ const PRODUCTION_BUILDING_IDS = [BUILDING_FARM, BUILDING_FORGE, BUILDING_ALCHEMY
 const REMOVED_PRODUCTION_TRAIT_IDS = ["craft_hand", "craft_touch", "pill_heart", "pill_sense", "field_sense"]
 const RECRUIT_NAME_PARTS = ["青岚", "赤霄", "玄石", "白羽", "沧流", "云舟", "明河", "素问", "照夜", "归尘"]
 const RANDOM_POINT_TARGETS = ["attack", "defense", "root_bone", "max_hp", "max_mp", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+const SCHEMA_19_CORE_WEAPON_IDS := [
+	"weapon_metal_sword",
+	"weapon_wood_staff",
+	"weapon_earth_gauntlet",
+	"weapon_water_brush",
+	"weapon_fire_orb",
+]
+const SCHEMA_19_WEAPON_ENHANCEMENT_TARGETS := {
+	"weapon_wood_staff": "max_hp",
+	"weapon_earth_gauntlet": "defense",
+	"weapon_water_brush": "max_mp",
+}
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var account_progression: Dictionary = {
@@ -198,6 +210,10 @@ func load_save_data(data: Dictionary) -> void:
 		inventory = _duplicate_array(data.get("inventory", []))
 	if loaded_schema_version < 18:
 		_migrate_schema_18_equipment_inventory()
+	if loaded_schema_version < 19:
+		_migrate_schema_19_equipment_enhancements()
+	if loaded_schema_version < 20:
+		_migrate_schema_20_equipment_templates()
 	if data.has("market_state") and data.get("market_state") is Dictionary:
 		market_state = data.get("market_state", {}).duplicate(true)
 	if data.has("known_alchemy_recipes"):
@@ -800,10 +816,9 @@ func _sanitize_loaded_stack_item(item: Dictionary) -> void:
 
 func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	var item_id: String = str(item.get("item_id", ""))
-	if item_id == "weapon":
-		item_id = "weapon_metal_sword"
-	elif item_id == "accessory":
-		item_id = "accessory_wood"
+	if DataTables.LEGACY_EQUIPMENT_VARIANT_ALIASES.has(item_id):
+		_migrate_schema_20_equipment_item(item)
+		item_id = str(item.get("item_id", item_id))
 	item["item_id"] = item_id
 	item["stackable"] = false
 	item["usable"] = bool(item.get("usable", true))
@@ -812,11 +827,24 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	item["rarity"] = str(item.get("rarity", "t1"))
 	item["equipment_level"] = maxi(1, int(item.get("equipment_level", 1)))
 	item["equip_requirement"] = {}
+	var variants := DataTables.equipment_attribute_variants(item_id)
+	var variant_id := str(item.get("equipment_variant_id", ""))
+	if not variants.is_empty() and not variants.has(variant_id):
+		var variant_ids: Array = variants.keys()
+		variant_ids.sort()
+		variant_id = str(variant_ids[0])
+	item["equipment_variant_id"] = variant_id
+	var variant := DataTables.equipment_variant_definition(item_id, variant_id)
+	var base_name := str(item.get("equipment_base_name", variant.get("name", definition.get("name", item_id))))
+	item["equipment_base_name"] = base_name
 	item["icon_name"] = str(item.get("icon_name", DataTables.equipment_icon_name(item_id)))
 	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id)))
 	item["resource_path"] = DataTables.equipment_resource_path(item_id)
-	item["base_attributes"] = DataTables.equipment_tier_base_attributes(item_id, str(item["rarity"]))
-	item["attribute_generation_version"] = 2
+	var rolled_attribute_stats: Array = item.get("rolled_attribute_stats", []).duplicate() if item.get("rolled_attribute_stats", []) is Array else []
+	item["rolled_attribute_stats"] = rolled_attribute_stats
+	if not _valid_equipment_base_attributes(item.get("base_attributes", [])):
+		item["base_attributes"] = DataTables.build_equipment_base_attributes(item_id, str(item["rarity"]), variant_id, rolled_attribute_stats)
+	item["attribute_generation_version"] = 3
 	item["description_effects"] = _duplicate_array(item.get("description_effects", DataTables.equipment_template_description_effects(item_id)))
 	var allocations: Dictionary = item.get("enhancement_allocations", {}) if item.get("enhancement_allocations", {}) is Dictionary else {}
 	if allocations.is_empty() and int(item.get("enhance_count", 0)) > 0 and not item["base_attributes"].is_empty():
@@ -841,8 +869,22 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 		item.erase("equipped_slot")
 	_update_equipment_compat_bonuses(item)
 	var rarity_name := DataTables.equipment_rarity_name(str(item["rarity"]))
-	item["name"] = "%s·%s" % [rarity_name, str(definition.get("name", item.get("name", item_id)))]
+	item["name"] = "%s·%s" % [rarity_name, base_name]
 	item["description"] = "%s等级装备" % rarity_name
+
+
+func _valid_equipment_base_attributes(value) -> bool:
+	if not (value is Array) or value.is_empty():
+		return false
+	var seen: Dictionary = {}
+	for raw_attribute in value:
+		if not (raw_attribute is Dictionary):
+			return false
+		var stat_id := str(raw_attribute.get("stat", ""))
+		if stat_id.is_empty() or seen.has(stat_id) or int(raw_attribute.get("amount", 0)) < 0:
+			return false
+		seen[stat_id] = true
+	return true
 
 
 func _migrate_schema_18_equipment_inventory() -> void:
@@ -868,6 +910,57 @@ func _migrate_schema_18_equipment_inventory() -> void:
 		reward_progress["blueprint_pity"] = 0
 		reward_progress["unlocked_blueprints"] = []
 		log_added.emit("旧装备图纸已移除，补偿矿石 x%d" % blueprint_compensation)
+
+
+func _migrate_schema_19_equipment_enhancements() -> void:
+	for raw_item in inventory:
+		if not (raw_item is Dictionary):
+			continue
+		var item: Dictionary = raw_item
+		var item_id := str(item.get("item_id", ""))
+		if not SCHEMA_19_CORE_WEAPON_IDS.has(item_id):
+			continue
+		var allocations: Dictionary = item.get("enhancement_allocations", {}).duplicate(true) if item.get("enhancement_allocations", {}) is Dictionary else {}
+		if allocations.is_empty() and int(item.get("enhance_count", 0)) > 0:
+			allocations["attack"] = maxi(0, int(item.get("enhance_count", 0)))
+		var attack_points := maxi(0, int(allocations.get("attack", 0)))
+		if SCHEMA_19_WEAPON_ENHANCEMENT_TARGETS.has(item_id):
+			var target_stat := str(SCHEMA_19_WEAPON_ENHANCEMENT_TARGETS[item_id])
+			if attack_points > 0:
+				allocations[target_stat] = maxi(0, int(allocations.get(target_stat, 0))) + attack_points
+			allocations.erase("attack")
+		item["enhancement_allocations"] = allocations
+
+
+func _migrate_schema_20_equipment_templates() -> void:
+	for raw_item in inventory:
+		if raw_item is Dictionary:
+			_migrate_schema_20_equipment_item(raw_item)
+
+
+func _migrate_schema_20_equipment_item(item: Dictionary) -> void:
+	if str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+		return
+	var old_id := str(item.get("item_id", ""))
+	if not DataTables.LEGACY_EQUIPMENT_VARIANT_ALIASES.has(old_id):
+		if DataTables.EQUIPMENT_DEFS.has(old_id) and not item.has("rolled_attribute_stats"):
+			item["rolled_attribute_stats"] = []
+		return
+	var alias: Dictionary = DataTables.LEGACY_EQUIPMENT_VARIANT_ALIASES[old_id]
+	var template_id := str(alias.get("template_id", old_id))
+	var variant_id := str(alias.get("variant_id", ""))
+	var rarity := str(item.get("rarity", "t1"))
+	if not _valid_equipment_base_attributes(item.get("base_attributes", [])):
+		item["base_attributes"] = DataTables.equipment_tier_base_attributes(template_id, rarity, variant_id)
+	var variant := DataTables.equipment_variant_definition(template_id, variant_id)
+	item["item_id"] = template_id
+	item["equipment_variant_id"] = variant_id
+	item["equipment_base_name"] = str(variant.get("name", item.get("equipment_base_name", old_id)))
+	item["icon_name"] = str(variant.get("icon_name", item.get("icon_name", DataTables.equipment_icon_name(template_id))))
+	item["icon_path"] = str(variant.get("icon_path", item.get("icon_path", DataTables.equipment_icon_path(template_id))))
+	item["resource_path"] = DataTables.equipment_resource_path(template_id)
+	item["rolled_attribute_stats"] = []
+	item["attribute_generation_version"] = 3
 
 
 func _migrate_equipment_attribute_model() -> void:
@@ -2497,16 +2590,24 @@ func ascend_equipment(instance_id: String) -> bool:
 		_remove_inventory_count(str(item_id), int(cost[item_id]))
 	var next_rarity := DataTables.upgrade_equipment_rarity(rarity, 1)
 	item["rarity"] = next_rarity
-	item["base_attributes"] = DataTables.equipment_tier_base_attributes(str(item.get("item_id", "")), next_rarity)
+	var template_id := str(item.get("item_id", ""))
+	var variant_id := str(item.get("equipment_variant_id", ""))
+	var fixed_attributes := DataTables.equipment_tier_base_attributes(template_id, next_rarity, variant_id)
+	var rolled_stats: Array = item.get("rolled_attribute_stats", []).duplicate() if item.get("rolled_attribute_stats", []) is Array else []
+	if DataTables.equipment_random_attribute_count(template_id, next_rarity) > 0:
+		rolled_stats = DataTables.roll_equipment_attribute_stats(template_id, next_rarity, fixed_attributes, rolled_stats, rng)
+		item["rolled_attribute_stats"] = rolled_stats
+		item["base_attributes"] = DataTables.build_equipment_base_attributes(template_id, next_rarity, variant_id, rolled_stats)
+	else:
+		item["base_attributes"] = fixed_attributes
 	var affixes: Array = item.get("affixes", [])
 	var target_count := DataTables.equipment_affix_count(next_rarity)
 	while affixes.size() < target_count:
 		affixes.append(DataTables.generate_equipment_affixes("t1", rng)[0])
 	item["affixes"] = affixes
 	item["equip_requirement"] = {}
-	var definition: Dictionary = DataTables.content_definition("equipment", str(item.get("item_id", "")), DataTables.EQUIPMENT_DEFS.get(str(item.get("item_id", "")), {}))
 	var rarity_name := DataTables.equipment_rarity_name(next_rarity)
-	item["name"] = "%s·%s" % [rarity_name, str(definition.get("name", item.get("name", "装备")))]
+	item["name"] = "%s·%s" % [rarity_name, str(item.get("equipment_base_name", "装备"))]
 	item["description"] = "%s等级装备" % rarity_name
 	_sync_enhanced_attributes(item)
 	_update_equipment_compat_bonuses(item)
@@ -2777,7 +2878,7 @@ func unlocked_blueprint_templates() -> Array:
 	return DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
 
 
-func use_equipment_blueprint(item: Dictionary) -> bool:
+func use_equipment_blueprint(_item: Dictionary) -> bool:
 	log_added.emit("装备图纸已退出当前系统")
 	return false
 

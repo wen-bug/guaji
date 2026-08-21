@@ -18,7 +18,7 @@
 
 - 六个普通敌人共享独立判定池：草药 55%、矿石 30%、灵石 10%、十种属性作物各 2%；两个精英共享五种五行灵石各 10%、丰收符和洗练符各 5%。
 - Boss 每次在调息丹和破境丹中等权必出一个。三类材料池互不重叠，同次击杀同一物品只发放一次；普通、精英、Boss 装备率分别为 5%、12%、25%。
-- 十四个装备模板从一开始即可定向打造，不需要图纸解锁；装备图纸已退出掉落、坊市和当前使用入口。
+- 六个槽位基础模板从一开始即可定向打造，不需要图纸解锁；武器和饰品的五行原型及额外基础属性在实例创建时随机生成。装备图纸已退出掉落、坊市和当前使用入口。
 - 随机炼器和定向打造均消耗矿石 4。装备分解获得 `阶位数字 + floor(强化点 / 2)` 个强化石；已装备物品禁止分解。
 - 功法残页每 5 次有效完整胜利获得 1 张。功法兑换统一消耗残页 3 和对应五行灵石 1。
 - 永久建筑品质继续存档并保留 Mod 接口，但从普通 HUD 隐藏。
@@ -50,7 +50,9 @@
 - `equipped_by`：当前穿戴者成员 ID，空字符串表示未穿戴。
 - `equipped_slot`：实际穿戴槽位。饰品会落到 `accessory_1` 或 `accessory_2`。
 - `rarity` / `equipment_level`：阶位与装备等级。
-- `base_attributes`：从模板当前阶位 `tier_base_attributes` 读取的固定基础属性。
+- `base_attributes`：实例最终基础属性，依次包含原型双属性和随机属性。
+- `equipment_variant_id` / `equipment_base_name`：武器或饰品的五行原型及实例基础名称。
+- `rolled_attribute_stats`：额外随机属性 ID 的稳定抽取顺序。
 - `affixes`：最多三个随机战斗词条。
 - `enhancement_allocations` / `enhanced_attributes`：手动分配的强化点及兼容属性视图。
 - `refine_affixes`：已废弃的旧洗练百分比词条字段；新装备始终为空。
@@ -173,7 +175,7 @@ description_effects = [{
 
 - 已实现：每个 `EQUIPMENT_DEFS` 模板在 `resources/equipment/<template_id>.tres` 有对应 `EquipmentTemplate` 资源。
 - 已实现：装备 `.tres` 保留 `icon_texture: Texture2D` 空字段，方便在 Inspector 手动拖入图片。
-- 已实现：装备 `.tres` 只保留 `item_id`、`slot`、`base_name`、`display_name`、`slot_label`、`icon_name`、`icon_path`、`requirement_stat`、`description` 和 `description_effects`；不再定义固定基础属性。
+- 已实现：装备 `.tres` 保存基础信息、五阶固定属性，以及可选原型、随机池、各阶随机条数和预算；实例抽取结果、强化分配和战斗词条只保存在背包装备实例中。
 - 已实现：装备默认图标路径为 `res://assets/equipment/<template_id>.png`；背包装备图标优先读取装备 `.tres` 的 `icon_texture`，再回退到实例 `icon_path` 和占位色块。
 
 实际穿戴槽位：
@@ -193,11 +195,11 @@ description_effects = [{
 - 两个饰品槽都满时，默认替换 `accessory_1`。
 - 给其他成员穿戴已装备物品时，会自动从旧成员身上卸下。
 
-属性统计规则、十四个模板和五阶数值统一见[装备成长 V2](equipment-progression-v2.md)。固定基础属性与强化属性通过同一属性读取入口叠加；核心装备没有穿戴门槛。
+属性统计规则、六槽位模板、五行原型和五阶数值统一见[装备成长 V2](equipment-progression-v2.md)。实例基础属性与强化属性通过同一属性读取入口叠加；核心装备没有穿戴门槛。
 
 ## 装备强化与洗练
 
-已实现规则统一见[装备成长 V2](equipment-progression-v2.md)：手动选择固定属性强化，阶位上限为 `10/20/30/40/50`；单槽洗练最多三个词条；升阶保留强化、词条和洗练次数。
+已实现规则统一见[装备成长 V2](equipment-progression-v2.md)：手动选择实例已有基础属性强化，阶位上限为 `10/20/30/40/50`；单槽洗练最多三个词条；升阶保留已有随机属性并补抽新属性，同时保留强化、词条和洗练次数。
 
 ## 作物与种田
 

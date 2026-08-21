@@ -262,6 +262,7 @@ const EQUIPMENT_ATTRIBUTE_POINT_BUDGETS := {
 }
 const EQUIPMENT_NORMAL_ATTRIBUTE_STATS := ["attack", "defense", "max_hp", "max_mp", "root_bone"]
 const EQUIPMENT_ELEMENT_ATTRIBUTE_STATS := ["element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+const EQUIPMENT_ALL_ATTRIBUTE_STATS := EQUIPMENT_NORMAL_ATTRIBUTE_STATS + EQUIPMENT_ELEMENT_ATTRIBUTE_STATS
 
 const ENEMY_RANK_ORDER := ["t1", "t2", "t3", "t4", "t5"]
 const ENEMY_CLASS_NORMAL := "normal"
@@ -570,20 +571,24 @@ const ALCHEMY_RECIPE_DEFS := {
 }
 
 const EQUIPMENT_DEFS := {
-	"weapon_metal_sword": {"slot": "weapon", "name": "玄金剑"},
-	"weapon_wood_staff": {"slot": "weapon", "name": "青木杖"},
-	"weapon_earth_gauntlet": {"slot": "weapon", "name": "镇岳拳套"},
-	"weapon_water_brush": {"slot": "weapon", "name": "沧水符笔"},
-	"weapon_fire_orb": {"slot": "weapon", "name": "赤焰法环"},
+	"weapon": {"slot": "weapon", "name": "武器"},
 	"helmet": {"slot": "helmet", "name": "聚灵冠"},
 	"armor": {"slot": "armor", "name": "镇元法衣"},
 	"leggings": {"slot": "leggings", "name": "行脉胫甲"},
 	"gloves": {"slot": "gloves", "name": "锻骨护手"},
-	"accessory_wood": {"slot": "accessory", "name": "青木佩"},
-	"accessory_fire": {"slot": "accessory", "name": "赤焰珠"},
-	"accessory_earth": {"slot": "accessory", "name": "厚土印"},
-	"accessory_metal": {"slot": "accessory", "name": "玄金令"},
-	"accessory_water": {"slot": "accessory", "name": "沧水环"},
+	"accessory": {"slot": "accessory", "name": "饰品"},
+}
+const LEGACY_EQUIPMENT_VARIANT_ALIASES := {
+	"weapon_metal_sword": {"template_id": "weapon", "variant_id": "weapon_metal_sword"},
+	"weapon_wood_staff": {"template_id": "weapon", "variant_id": "weapon_wood_staff"},
+	"weapon_earth_gauntlet": {"template_id": "weapon", "variant_id": "weapon_earth_gauntlet"},
+	"weapon_water_brush": {"template_id": "weapon", "variant_id": "weapon_water_brush"},
+	"weapon_fire_orb": {"template_id": "weapon", "variant_id": "weapon_fire_orb"},
+	"accessory_wood": {"template_id": "accessory", "variant_id": "accessory_wood"},
+	"accessory_fire": {"template_id": "accessory", "variant_id": "accessory_fire"},
+	"accessory_earth": {"template_id": "accessory", "variant_id": "accessory_earth"},
+	"accessory_metal": {"template_id": "accessory", "variant_id": "accessory_metal"},
+	"accessory_water": {"template_id": "accessory", "variant_id": "accessory_water"},
 }
 
 const EQUIPMENT_ATTRIBUTE_DEFS := [
@@ -881,7 +886,9 @@ static func inventory_icon_texture(item: Dictionary) -> Texture2D:
 	if texture != null:
 		return texture
 	var default_icon_path: String = equipment_icon_path(item_id) if item_type == ITEM_TYPE_EQUIPMENT else item_icon_path(item_id)
-	var icon_path: String = _resource_string(resource, "icon_path", "")
+	var icon_path := str(item.get("icon_path", "")) if item_type == ITEM_TYPE_EQUIPMENT else _resource_string(resource, "icon_path", "")
+	if icon_path.is_empty():
+		icon_path = _resource_string(resource, "icon_path", "")
 	if icon_path.is_empty():
 		icon_path = str(item.get("icon_path", default_icon_path))
 	return _texture_from_path(icon_path)
@@ -1392,31 +1399,44 @@ static func enemy_scene_path(enemy_id: String) -> String:
 
 static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus: int = 0, obtain_source: String = "non_drop", rarity_weights: Dictionary = {}) -> Dictionary:
 	var template_ids := content_ids("equipment", EQUIPMENT_DEFS)
+	if template_ids.is_empty():
+		return {}
 	var template_id: String = str(template_ids[rng.randi_range(0, template_ids.size() - 1)])
 	var rarity := random_equipment_rarity(rng) if rarity_weights.is_empty() else random_rarity_from_weights(rng, rarity_weights)
 	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", rarity, obtain_source)
 
 
 static func create_equipment_from_template(template_id: String, _level: int, rng: RandomNumberGenerator, _craft_bonus: int = 0, _name_prefix: String = "", rarity: String = "t1", obtain_source: String = "non_drop") -> Dictionary:
-	if template_id == "weapon":
-		template_id = "weapon_metal_sword"
-	elif template_id == "accessory":
-		template_id = "accessory_wood"
+	var forced_variant_id := ""
+	if LEGACY_EQUIPMENT_VARIANT_ALIASES.has(template_id):
+		var alias: Dictionary = LEGACY_EQUIPMENT_VARIANT_ALIASES[template_id]
+		forced_variant_id = str(alias.get("variant_id", ""))
+		template_id = str(alias.get("template_id", template_id))
 	var template: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if template.is_empty():
 		return {}
-	var rarity_index := maxi(0, EQUIPMENT_RARITY_ORDER.find(rarity))
-	if rarity_index < 0:
-		rarity_index = 0
 	var rarity_name: String = str(EQUIPMENT_RARITY_NAMES.get(rarity, "一阶"))
 	var slot := str(template.get("slot", template_id))
-	var equipment_name: String = str(template.get("name", slot_name(slot)))
+	var variant_id := forced_variant_id
+	var variants := equipment_attribute_variants(template_id)
+	if variant_id.is_empty() and not variants.is_empty():
+		var variant_ids: Array = variants.keys()
+		variant_ids.sort()
+		variant_id = str(variant_ids[rng.randi_range(0, variant_ids.size() - 1)])
+	var variant: Dictionary = variants.get(variant_id, {}) if not variant_id.is_empty() else {}
+	var equipment_name: String = str(variant.get("name", template.get("name", slot_name(slot))))
 	var equipment_level := 1
-	var base_attributes := equipment_tier_base_attributes(template_id, rarity)
+	var fixed_attributes := equipment_tier_base_attributes(template_id, rarity, variant_id)
+	var rolled_attribute_stats := roll_equipment_attribute_stats(template_id, rarity, fixed_attributes, [], rng)
+	var base_attributes := build_equipment_base_attributes(template_id, rarity, variant_id, rolled_attribute_stats)
+	var icon_name := str(variant.get("icon_name", equipment_icon_name(template_id)))
+	var icon_path := str(variant.get("icon_path", equipment_icon_path(template_id)))
 	return {
 		"instance_id": "%s_%d_%d" % [template_id, Time.get_ticks_usec(), rng.randi()],
 		"item_id": template_id,
 		"name": "%s·%s" % [rarity_name, equipment_name],
+		"equipment_base_name": equipment_name,
+		"equipment_variant_id": variant_id,
 		"description": "%s等级装备" % rarity_name,
 		"type": ITEM_TYPE_EQUIPMENT,
 		"count": 1,
@@ -1424,14 +1444,15 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 		"usable": true,
 		"payload": {},
 		"obtain_source": obtain_source,
-		"icon_name": equipment_icon_name(template_id),
-		"icon_path": equipment_icon_path(template_id),
+		"icon_name": icon_name,
+		"icon_path": icon_path,
 		"resource_path": equipment_resource_path(template_id),
 		"slot": slot,
 		"rarity": rarity,
 		"equipment_level": equipment_level,
 		"base_attributes": base_attributes,
-		"attribute_generation_version": 2,
+		"rolled_attribute_stats": rolled_attribute_stats,
+		"attribute_generation_version": 3,
 		"description_effects": equipment_template_description_effects(template_id),
 		"enhanced_attributes": [],
 		"enhancement_allocations": {},
@@ -1449,7 +1470,18 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 	}
 
 
-static func equipment_tier_base_attributes(template_id: String, rarity: String) -> Array:
+static func equipment_tier_base_attributes(template_id: String, rarity: String, variant_id: String = "") -> Array:
+	if LEGACY_EQUIPMENT_VARIANT_ALIASES.has(template_id):
+		var alias: Dictionary = LEGACY_EQUIPMENT_VARIANT_ALIASES[template_id]
+		variant_id = str(alias.get("variant_id", variant_id))
+		template_id = str(alias.get("template_id", template_id))
+	if not variant_id.is_empty():
+		var variant: Dictionary = equipment_attribute_variants(template_id).get(variant_id, {})
+		var variant_tiers = variant.get("tier_base_attributes", {})
+		if variant_tiers is Dictionary:
+			var variant_attributes = variant_tiers.get(rarity)
+			if variant_attributes is Array and not variant_attributes.is_empty():
+				return variant_attributes.duplicate(true)
 	var tier_attributes = null
 	var resource: Resource = equipment_resource(template_id)
 	if resource != null:
@@ -1457,14 +1489,104 @@ static func equipment_tier_base_attributes(template_id: String, rarity: String) 
 		if resource_tiers is Dictionary:
 			tier_attributes = resource_tiers.get(rarity)
 	if not (tier_attributes is Array):
-		var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
-		var definition_tiers = definition.get("tier_base_attributes", {})
+		var resource_definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
+		var definition_tiers = resource_definition.get("tier_base_attributes", {})
 		if definition_tiers is Dictionary:
 			tier_attributes = definition_tiers.get(rarity)
 	if tier_attributes is Array and not tier_attributes.is_empty():
 		return tier_attributes.duplicate(true)
 	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	return _default_equipment_tier_base_attributes(str(definition.get("slot", template_id)), rarity)
+
+
+static func equipment_attribute_variants(template_id: String) -> Dictionary:
+	var resource: Resource = equipment_resource(template_id)
+	if resource != null:
+		var resource_variants = resource.get("attribute_variants")
+		if resource_variants is Dictionary and not resource_variants.is_empty():
+			return resource_variants.duplicate(true)
+	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
+	var variants = definition.get("attribute_variants", {})
+	return variants.duplicate(true) if variants is Dictionary else {}
+
+
+static func equipment_variant_definition(template_id: String, variant_id: String) -> Dictionary:
+	var variant = equipment_attribute_variants(template_id).get(variant_id, {})
+	return variant.duplicate(true) if variant is Dictionary else {}
+
+
+static func equipment_random_attribute_pool(template_id: String) -> Array[String]:
+	var values = null
+	var resource: Resource = equipment_resource(template_id)
+	if resource != null:
+		values = resource.get("random_attribute_pool")
+	if not (values is Array) or values.is_empty():
+		values = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {})).get("random_attribute_pool", [])
+	var result: Array[String] = []
+	if values is Array:
+		for value in values:
+			var stat_id := str(value)
+			if EQUIPMENT_ALL_ATTRIBUTE_STATS.has(stat_id) and not result.has(stat_id):
+				result.append(stat_id)
+	return result
+
+
+static func equipment_random_attribute_count(template_id: String, rarity: String) -> int:
+	return _equipment_tier_random_value(template_id, "tier_random_attribute_counts", rarity)
+
+
+static func equipment_random_attribute_budget(template_id: String, rarity: String) -> int:
+	return _equipment_tier_random_value(template_id, "tier_random_attribute_budgets", rarity)
+
+
+static func _equipment_tier_random_value(template_id: String, property_name: String, rarity: String) -> int:
+	var tiers = null
+	var resource: Resource = equipment_resource(template_id)
+	if resource != null:
+		tiers = resource.get(property_name)
+	if not (tiers is Dictionary) or tiers.is_empty():
+		tiers = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {})).get(property_name, {})
+	return maxi(0, int(tiers.get(rarity, 0))) if tiers is Dictionary else 0
+
+
+static func roll_equipment_attribute_stats(template_id: String, rarity: String, fixed_attributes: Array, existing_stats: Array, rng: RandomNumberGenerator) -> Array[String]:
+	var result: Array[String] = []
+	var excluded: Array[String] = []
+	for attribute in fixed_attributes:
+		if attribute is Dictionary:
+			excluded.append(str(attribute.get("stat", "")))
+	for value in existing_stats:
+		var stat_id := str(value)
+		if not stat_id.is_empty() and not excluded.has(stat_id) and not result.has(stat_id):
+			result.append(stat_id)
+	var target_count := equipment_random_attribute_count(template_id, rarity)
+	if target_count <= 0:
+		return []
+	if result.size() > target_count:
+		result.resize(target_count)
+	var available := equipment_random_attribute_pool(template_id)
+	for stat_id in excluded + result:
+		available.erase(stat_id)
+	while result.size() < target_count and not available.is_empty():
+		var index := rng.randi_range(0, available.size() - 1)
+		result.append(str(available[index]))
+		available.remove_at(index)
+	return result
+
+
+static func build_equipment_base_attributes(template_id: String, rarity: String, variant_id: String, rolled_attribute_stats: Array) -> Array:
+	var attributes := equipment_tier_base_attributes(template_id, rarity, variant_id)
+	var count := rolled_attribute_stats.size()
+	if count <= 0:
+		return attributes
+	var budget := equipment_random_attribute_budget(template_id, rarity)
+	var points_per_attribute := floori(float(budget) / float(count))
+	var remainder := budget % count
+	for index in range(count):
+		var stat_id := str(rolled_attribute_stats[index])
+		var points := points_per_attribute + (1 if index < remainder else 0)
+		attributes.append({"stat": stat_id, "amount": points * equipment_attribute_unit_amount(stat_id)})
+	return attributes
 
 
 static func _default_equipment_tier_base_attributes(slot: String, rarity: String) -> Array:

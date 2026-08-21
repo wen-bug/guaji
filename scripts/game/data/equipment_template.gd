@@ -35,6 +35,16 @@ extends Resource
 @export_group("阶位数值｜固定基础属性")
 ## 各阶固定基础属性。键为 t1..t5，值为 [{"stat": String, "amount": int}]。
 @export var tier_base_attributes: Dictionary = {}
+## 同一槽位下可随机选择的基础原型。每个原型可配置名称、图标和 tier_base_attributes。
+@export var attribute_variants: Dictionary = {}
+
+@export_group("实例随机属性｜属性池、条数与预算")
+## 实例创建和升阶时用于追加属性的候选属性 ID。
+@export var random_attribute_pool: Array[String] = []
+## 各阶追加的随机属性条数。键为 t1..t5。
+@export var tier_random_attribute_counts: Dictionary = {}
+## 各阶随机属性共享的点数预算。气血和法力在生成时应用单位换算。
+@export var tier_random_attribute_budgets: Dictionary = {}
 
 
 func setup(data: Dictionary) -> EquipmentTemplate:
@@ -49,4 +59,8 @@ func setup(data: Dictionary) -> EquipmentTemplate:
 	description = data.get("description", "")
 	description_effects = data.get("description_effects", []).duplicate(true)
 	tier_base_attributes = data.get("tier_base_attributes", {}).duplicate(true)
+	attribute_variants = data.get("attribute_variants", {}).duplicate(true)
+	random_attribute_pool.assign(data.get("random_attribute_pool", []))
+	tier_random_attribute_counts = data.get("tier_random_attribute_counts", {}).duplicate(true)
+	tier_random_attribute_budgets = data.get("tier_random_attribute_budgets", {}).duplicate(true)
 	return self

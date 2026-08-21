@@ -14,23 +14,38 @@ icon_path = "res://assets/equipment/accessory.png"
 description = "青木佩装备模板。"
 tier_base_attributes = {
 "t1": [{
-"amount": 2.0,
+"amount": 1.0,
 "stat": "element_wood"
+}, {
+"amount": 4.0,
+"stat": "max_hp"
 }],
 "t2": [{
-"amount": 5.0,
+"amount": 3.0,
 "stat": "element_wood"
+}, {
+"amount": 8.0,
+"stat": "max_hp"
 }],
 "t3": [{
-"amount": 10.0,
+"amount": 6.0,
 "stat": "element_wood"
+}, {
+"amount": 16.0,
+"stat": "max_hp"
 }],
 "t4": [{
-"amount": 18.0,
+"amount": 12.0,
 "stat": "element_wood"
+}, {
+"amount": 24.0,
+"stat": "max_hp"
 }],
 "t5": [{
-"amount": 30.0,
+"amount": 20.0,
 "stat": "element_wood"
+}, {
+"amount": 40.0,
+"stat": "max_hp"
 }]
 }

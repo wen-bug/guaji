@@ -14,23 +14,38 @@ icon_path = "res://assets/equipment/accessory.png"
 description = "赤焰珠装备模板。"
 tier_base_attributes = {
 "t1": [{
-"amount": 2.0,
+"amount": 1.0,
 "stat": "element_fire"
+}, {
+"amount": 1.0,
+"stat": "attack"
 }],
 "t2": [{
-"amount": 5.0,
+"amount": 3.0,
 "stat": "element_fire"
+}, {
+"amount": 2.0,
+"stat": "attack"
 }],
 "t3": [{
-"amount": 10.0,
+"amount": 6.0,
 "stat": "element_fire"
+}, {
+"amount": 4.0,
+"stat": "attack"
 }],
 "t4": [{
-"amount": 18.0,
+"amount": 12.0,
 "stat": "element_fire"
+}, {
+"amount": 6.0,
+"stat": "attack"
 }],
 "t5": [{
-"amount": 30.0,
+"amount": 20.0,
 "stat": "element_fire"
+}, {
+"amount": 10.0,
+"stat": "attack"
 }]
 }

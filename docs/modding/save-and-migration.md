@@ -1,12 +1,20 @@
 # Mod 存档与迁移
 
-Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 18 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
+Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 20 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
 
 当已加载版本与存档 profile 不同，入口实例调用 `migrate_save(data, from_version, to_version)`。必须返回新的 Dictionary；返回其他类型会将该 Mod 标记为失败，并保留导入前数据。
 
 缺失定义的背包实例、装备、技能、命格和配方会移入 `orphaned_mod_data`，不参与玩法。装备保留 owner 与 slot。相同内容 ID 恢复后，在普通存档清洗前还原原角色、槽位和列表。未知形象只回退显示，不删除 `visual_id`。
 
 覆盖类 Mod 不改变内容 ID，因此不会触发休眠；作者负责让新定义兼容旧实例字段。
+
+## Schema 20
+
+Schema 20 将核心装备收敛为六个槽位模板；旧五行武器和饰品 ID 映射到 `weapon` / `accessory` 并保存对应原型。旧实例基础属性原样固化，缺失时确定性还原，不添加随机属性、不消耗 RNG，并保留强化、词条、洗练和穿戴关系。`EquipmentTemplate` 新增的原型和随机属性字段均为可选，未提供时 Mod 装备继续使用固定阶位属性。
+
+## Schema 19
+
+Schema 19 是六槽位收敛前的过渡版本：十四个旧核心模板改为两项固定基础属性，并按主属性、特色副属性排序。青木杖、镇岳拳套和沧水符笔原有的攻击强化点分别迁移为气血、防御和法力；缺失强化分配表的旧核心武器先按旧攻击属性还原投入。迁移保留强化总数、词条、洗练、穿戴关系和 RNG 状态，不返还强化石。Mod 装备格式、缺省槽位回退和 API 2 保持不变。
 
 ## Schema 18
 

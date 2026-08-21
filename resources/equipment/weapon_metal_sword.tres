@@ -14,37 +14,37 @@ description = "玄金剑装备模板。"
 tier_base_attributes = {
 "t1": [{
 "amount": 2.0,
-"stat": "attack"
+"stat": "element_metal"
 }, {
 "amount": 1.0,
-"stat": "element_metal"
+"stat": "attack"
 }],
 "t2": [{
 "amount": 5.0,
-"stat": "attack"
+"stat": "element_metal"
 }, {
 "amount": 2.0,
-"stat": "element_metal"
+"stat": "attack"
 }],
 "t3": [{
 "amount": 10.0,
-"stat": "attack"
+"stat": "element_metal"
 }, {
 "amount": 4.0,
-"stat": "element_metal"
+"stat": "attack"
 }],
 "t4": [{
 "amount": 18.0,
-"stat": "attack"
+"stat": "element_metal"
 }, {
 "amount": 7.0,
-"stat": "element_metal"
+"stat": "attack"
 }],
 "t5": [{
 "amount": 30.0,
-"stat": "attack"
+"stat": "element_metal"
 }, {
 "amount": 12.0,
-"stat": "element_metal"
+"stat": "attack"
 }]
 }

@@ -21,7 +21,7 @@
 
 ## 游戏状态与数据
 
-`scripts/game/core/game_state.gd` 是账号和角色持久状态的聚合入口。它维护存档 Schema 18，向 UI 提供稳定门面，并把背包、队伍、生产、坊市和战斗结算委派给相应服务。
+`scripts/game/core/game_state.gd` 是账号和角色持久状态的聚合入口。它维护存档 Schema 20，向 UI 提供稳定门面，并把背包、队伍、生产、坊市和战斗结算委派给相应服务。
 
 `scripts/game/data/data_tables.gd` 是本体静态内容的事实来源，维护物品、技能、配方、装备、命格、敌人、掉落和经济常量。`ItemDef`、`EquipmentTemplate`、`SkillDef` 和 `SkillEffectDef` 等资源类负责把 Inspector 资源转换为运行时字典。
 
