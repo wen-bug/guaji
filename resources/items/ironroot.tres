@@ -1,6 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_ffo55"]
+
+[sub_resource type="Resource" id="Resource_ffo55"]
+script = ExtResource("1_ffo55")
+effect_id = "seed"
+kind = "farm_seed"
+target = "none"
+amount = 1
+auxiliary_value = 900.0
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +20,5 @@ display_name = "铁根藤"
 icon_name = "ironroot"
 icon_path = "res://assets/items/ironroot.png"
 description = "根须坚韧的防御属性作物。"
-stackable = true
-usable = false
-use_scope = "none"
 gain_target = "defense"
-payload = {"growth_seconds": 180.0, "seed_yield": 1}
+effects = Array[Resource]([SubResource("Resource_ffo55")])

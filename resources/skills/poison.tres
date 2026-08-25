@@ -1,9 +1,9 @@
-[gd_resource type="Resource" format=3 uid="uid://d4ch5sefm32dc"]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://burqfcgalg3kn"]
 
 [ext_resource type="Texture2D" uid="uid://cy5pmk84amjuw" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_poison_001/spell_poison_001_small_green/frame0005.png" id="2_icon"]
 [ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/poison.tscn" id="4_status"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
 
 [sub_resource type="Resource" id="Resource_damage"]
 script = ExtResource("skill_effect_def_script")
@@ -28,12 +28,7 @@ display_name = "蚀骨毒雾"
 icon_texture = ExtResource("2_icon")
 icon_name = "poison"
 icon_path = "res://assets/skills/poison.png"
-type = "damage"
 target_scope = "all_enemies"
-target_mode = "aoe"
-is_aoe = true
-effect_tags = Array[String](["damage", "debuff", "dot"])
-has_debuff = true
 element = "wood"
 mp_cost = 8
 priority = 55

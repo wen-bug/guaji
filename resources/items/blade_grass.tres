@@ -1,6 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_2sfae"]
+
+[sub_resource type="Resource" id="Resource_2sfae"]
+script = ExtResource("1_2sfae")
+effect_id = "seed"
+kind = "farm_seed"
+target = "none"
+amount = 1
+auxiliary_value = 900.0
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +20,5 @@ display_name = "刃纹草"
 icon_name = "blade_grass"
 icon_path = "res://assets/items/blade_grass.png"
 description = "蕴含锋锐气息的攻击属性作物。"
-stackable = true
-usable = false
-use_scope = "none"
 gain_target = "attack"
-payload = {"growth_seconds": 180.0, "seed_yield": 1}
+effects = Array[Resource]([SubResource("Resource_2sfae")])

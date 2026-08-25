@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_axb4e"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_1hkjl"]
+
+[sub_resource type="Resource" id="Resource_axb4e"]
+script = ExtResource("1_axb4e")
+effect_id = "unlock_equipment_template"
+kind = "unlock_content"
+target = "none"
+reference_kind = "equipment_template"
+reference_id = "leggings"
+
+[resource]
+script = ExtResource("2_1hkjl")
+id = "blueprint_leggings"
+item_no = 1037
+type = "blueprint"
+display_name = "胫甲图纸"
+icon_name = "blueprint_leggings"
+icon_path = "res://assets/items/blueprint_leggings.png"
+description = "使用后永久解锁胫甲定向打造；重复图纸转化为矿石 x4。"
+usable = true
+use_context = "home"
+effects = Array[Resource]([SubResource("Resource_axb4e")])

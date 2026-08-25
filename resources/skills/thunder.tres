@@ -1,8 +1,8 @@
-[gd_resource type="Resource" format=3 uid="uid://qs4pkjl66w87"]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://bty725348hs6b"]
 
 [ext_resource type="Texture2D" uid="uid://cc6cesoya78ql" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Lightning/lightning_strike_001/lightning_strike_001_small_violet/frame0003.png" id="2_icon"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
 
 [sub_resource type="Resource" id="Resource_damage"]
 script = ExtResource("skill_effect_def_script")
@@ -16,8 +16,6 @@ display_name = "雷击术"
 icon_texture = ExtResource("2_icon")
 icon_name = "thunder"
 icon_path = "res://assets/skills/thunder.png"
-type = "damage"
-effect_tags = Array[String](["damage"])
 element = "metal"
 mp_cost = 12
 priority = 60

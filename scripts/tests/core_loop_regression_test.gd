@@ -151,7 +151,7 @@ func _check_stage_2_progression() -> void:
 	_expect_true("schema 18 removes equip requirement", migrated_equipment.get("equip_requirement", {}).is_empty())
 	_expect_equal("schema 14 preserves enhancement", int(migrated_equipment.get("enhance_count", 0)), 3)
 	_expect_equal("schema 14 preserves refinement", migrated_equipment.get("refine_affixes", []).size(), 1)
-	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 20)
+	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 22)
 
 
 func _check_stage_3_equipment_loop() -> void:

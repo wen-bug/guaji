@@ -1,7 +1,23 @@
-[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://d3itcc4nf8qck"]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
-[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://n7rpyp3cxlkf" path="res://assets/items/ls.png" id="1_r30am"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_nq477"]
+[ext_resource type="Texture2D" path="res://assets/items/ls.png" id="1_r30am"]
+
+[sub_resource type="Resource" id="Resource_nq477"]
+script = ExtResource("1_nq477")
+effect_id = "enhance_material"
+kind = "equipment_enhancement_material"
+target = "none"
+group_id = "stat"
+amount = 1
+
+[sub_resource type="Resource" id="Resource_286xo"]
+script = ExtResource("1_nq477")
+effect_id = "currency"
+kind = "currency"
+target = "none"
+group_id = "recruit"
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_c7lud"]
 atlas = ExtResource("1_r30am")
@@ -11,15 +27,9 @@ region = Rect2(170.09998, 151.9, 437.40002, 494.1)
 script = ExtResource("1")
 id = "spirit_stone"
 item_no = 1005
-type = "material"
 display_name = "灵石"
 icon_texture = SubResource("AtlasTexture_c7lud")
 icon_name = "spirit_stone"
 icon_path = "res://assets/items/spirit_stone.png"
 description = "招募修士与强化普通属性所需的通用灵石。"
-use_scope = "none"
-payload = {
-"enhance_amount": 1,
-"recruit_currency": true,
-"stone_group": "stat"
-}
+effects = Array[Resource]([SubResource("Resource_nq477"), SubResource("Resource_286xo")])

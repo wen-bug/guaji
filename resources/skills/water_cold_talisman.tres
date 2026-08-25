@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/debuff.tscn" id="3_status"]
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("2_effect")
+base_amount = 7
+attribute_multiplier = 1.1
+
+[sub_resource type="Resource" id="Resource_cold"]
+script = ExtResource("2_effect")
+effect_id = "cold"
+kind = "status"
+target = "hit_targets"
+base_amount = -1
+requires_hit = true
+status_id = "cold"
+status_kind = "debuff_stat"
+stat = "attack"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status")
+
+[resource]
+script = ExtResource("1_skill")
+id = "water_cold_talisman"
+display_name = "寒潮符"
+icon_name = "water_cold_talisman"
+icon_path = "res://assets/skills/water_cold_talisman.png"
+element = "water"
+mp_cost = 6
+cooldown = 3.0
+priority = 45
+effects = Array[Resource]([SubResource("Resource_damage"), SubResource("Resource_cold")])
+exchange_book_item_id = "skill_book_water_cold_talisman"
+exchange_element_stone_id = "spirit_stone_water"
+exchange_fragment_cost = 3
+exchange_stone_cost = 1
+description = "以寒潮侵袭单个敌人并短暂削弱其攻击。"

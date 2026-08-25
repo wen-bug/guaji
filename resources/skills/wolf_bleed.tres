@@ -1,9 +1,9 @@
-[gd_resource type="Resource" format=3 uid="uid://tnnleocyqsid"]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://dw45qvsert4ky"]
 
 [ext_resource type="Texture2D" uid="uid://c7e0580p3ypwj" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Splatters/directional_splatter_001/directional_splatter_001_small_red/frame0000.png" id="2_icon"]
 [ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/bleed.tscn" id="4_status"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
 
 [sub_resource type="Resource" id="Resource_damage"]
 script = ExtResource("skill_effect_def_script")
@@ -26,9 +26,6 @@ script = ExtResource("skill_def_script")
 id = "wolf_bleed"
 display_name = "裂伤"
 icon_texture = ExtResource("2_icon")
-type = "damage"
-effect_tags = Array[String](["damage", "debuff", "dot"])
-has_debuff = true
 element = "wood"
 cooldown = 3.0
 priority = 55

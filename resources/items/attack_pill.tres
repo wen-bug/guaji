@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_aooet"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_8vmah"]
+
+[sub_resource type="Resource" id="Resource_aooet"]
+script = ExtResource("1_aooet")
+effect_id = "attack_pill_buff"
+kind = "temporary_modifier"
+target = "combat_global"
+stat = "attack"
+value = 3.0
+buff_id = "attack_pill_buff"
+duration_seconds = 60.0
+
+[resource]
+script = ExtResource("2_8vmah")
+id = "attack_pill"
+item_no = 1044
+type = "pill"
+display_name = "破军丹"
+icon_name = "attack_pill"
+icon_path = "res://assets/items/attack_pill.png"
+description = "全队攻击 +3，持续 60 秒。"
+usable = true
+use_context = "both"
+gain_target = "attack"
+combat_cooldown_turns = 3
+shared_cooldown_group = "buff_pill"
+ai_action_type = "damage"
+effects = Array[Resource]([SubResource("Resource_aooet")])

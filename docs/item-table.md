@@ -1,6 +1,6 @@
 # 详细物品表
 
-本文档是 `scripts/game/data/data_tables.gd` 的文档化索引。除“规划物品与装备设定”外，已实现内容必须与当前代码数据表一致。
+本文档是当前静态内容的文档化索引。核心物品、技能和装备分别以 `resources/items/`、`resources/skills/`、`resources/equipment/` 的 Inspector 资源与索引为准；配方和经济内容以当前代码表为准。
 
 ## 已实现：物品分类
 
@@ -22,8 +22,8 @@
 - `type`：物品类型。
 - `stackable`：是否堆叠。
 - `usable`：是否可直接使用。
-- `payload`：物品专属数据。
-- `use_scope`：使用范围，当前为 `home`、`combat`、`none`。
+- `effects`：类型化 `ItemEffectDef` 子资源数组。
+- `use_context`：使用范围，当前为 `home`、`combat`、`both`、`none`。
 - `gain_target`：成长或强化倾向标签。
 - `icon_name` / `icon_path`：可选图标覆盖；默认由 `item_id` 推导。
 - `description_effects`：装备结构化富文本公式；格式与维护边界见[物品系统](items.md)。
@@ -34,15 +34,15 @@
 
 美术图标默认按 `item_id` 命名并放在 `assets/items/` 下，例如 `herb` 对应 `res://assets/items/herb.png`。若没有对应文件，背包 UI 继续显示占位色块。
 
-当前还生成了 `.tres` 图标承载资源：
+当前 `.tres` 是核心内容配置来源：
 
-- 物品：`resources/items/<item_id>.tres`，字段来自 `ITEM_DEFS`，`icon_texture` 可直接引用对应美术资源。
-- 装备：`resources/equipment/<template_id>.tres`，字段来自 `EQUIPMENT_DEFS`，`icon_texture` 可在 Inspector 中配置。
-- 技能：`resources/skills/<skill_id>.tres`，字段来自 `SKILL_DEFS`，`icon_texture` 可直接引用技能特效的代表帧。
+- 物品：`resources/items/index.tres` 索引 58 个 `ItemDef`，效果使用类型化子资源；`ITEM_DEFS` 由解析器生成。
+- 装备：`resources/equipment/index.tres` 索引十四个独立 `.tres`；每件资源通过共享的纯结构脚本暴露 Inspector 字段并保存完整五阶数值，脚本本身不记录具体装备数据。
+- 技能：`resources/skills/index.tres` 索引 10 个主动技能及两个普通攻击；`SKILL_DEFS`、普通攻击和功法兑换表均由解析器生成。
 
-图标读取顺序：`.tres.icon_texture` -> `icon_path` 图片 -> UI 占位色块或文字。`DataTables` 仍是数据事实来源，`.tres` 只作为美术引用和可视化编辑承载。
+普通物品、技能和核心装备的图标读取顺序均为 `.tres.icon_texture` -> `icon_path` 图片 -> UI 占位色块或文字；装备 `.tres` 是基础值、随机层、强化和升阶数值的事实来源。
 
-| item_no | item_id | 名称 | type | usable | gain_target | payload 摘要 |
+| item_no | item_id | 名称 | type | usable | gain_target | 效果摘要 |
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1001 | `herb` | 草药 | `crop` | 否 | `none` | `seed_yield=3`, `growth_seconds=600` |
 | 1004 | `ore` | 矿石 | `material` | 否 | `none` | 通用炼器材料 |
@@ -110,7 +110,7 @@
 
 ## 已实现：装备模板
 
-当前装备使用六个槽位基础模板。每件装备保留双固定原型属性，并按阶位追加 1-5 项实例随机基础属性；核心装备没有穿戴等级要求。模板、五阶数值、强化、三词条、升阶、分解经济和 Schema 20 迁移的完整事实以[装备成长 V2](equipment-progression-v2.md)为准。
+当前装备使用六个槽位基础模板。每件装备保留双固定原型属性，并按阶位追加 1-5 项实例随机基础属性；核心装备没有穿戴等级要求。模板、五阶数值、强化、三词条、升阶、分解经济和当前 Schema 22 存档规则的完整事实以[装备成长 V2](equipment-progression-v2.md)为准。
 
 ## 已实现：命格数据索引
 
@@ -153,13 +153,13 @@
 
 ## 已实现：维护规则
 
-- 新增物品时优先补充 `DataTables.ITEM_ID_*` 常量、`DataTables.ITEM_DEFS` 和稳定 `item_no`。
+- 新增核心物品时创建 `ItemDef`、分配稳定 `item_no` 并登记 `resources/items/index.tres`；仅常用代码主键需要补 `ITEM_ID_*`。
 - 新增编号只追加，不复用历史编号。
-- 新增图标资源时保持 `DataTables` 为事实来源，`.tres` 只承载 `icon_texture` 和可视化编辑字段。
+- 物品、技能和核心装备均以各自独立 `.tres` 为事实来源。
 - 新增丹方同步补充 `ALCHEMY_RECIPE_DEFS`。
-- 新增装备模板同步补充 `EQUIPMENT_DEFS`、`resources/equipment/<template_id>.tres` 和默认图标路径。
+- 新增核心装备时使用统一 `EquipmentConfigResource` 导出格式，在装备 `.tres` 中填写完整配置，并在 `resources/equipment/index.tres` 对应槽位登记路径与权重。
 - 新增随机词条同步补充 `EQUIPMENT_ATTRIBUTE_DEFS`。
-- 新增技能同步补充 `SKILL_DEFS`，若要通过背包学习，还要新增对应技能书物品。
+- 新增技能时创建 `SkillDef`、绑定释放场景并登记 `resources/skills/index.tres`；若要通过背包学习，还要新增对应技能书物品。
 - 新增本体敌人时创建 `resources/enemies/<enemy_id>.tres`，并同步补充兼容用 `ENEMY_TEMPLATES`、场景映射与敌人场景目录。
 
 ## 已实现：五行材料、图纸与技能书
@@ -176,13 +176,13 @@
 | 1041 | `skill_book_water_cold_talisman` | 寒潮符技能书 | 学会水行单体技能寒潮符 |
 | 1042 | `life_pill` | 归元丹 | 恢复 25% 最大生命 |
 | 1043 | `spirit_pill` | 聚灵丹 | 恢复 25% 最大法力 |
-| 1044 | `attack_pill` | 破军丹 | 攻击 +3，3 回合，`buff_pill` 组 |
-| 1045 | `defense_pill` | 玄甲丹 | 防御 +3，3 回合，`buff_pill` 组 |
-| 1046 | `wood_pill` | 青木丹 | 木行 +3，3 回合，`buff_pill` 组 |
-| 1047 | `fire_pill` | 赤焰丹 | 火行 +3，3 回合，`buff_pill` 组 |
-| 1048 | `earth_pill` | 厚土丹 | 土行 +3，3 回合，`buff_pill` 组 |
-| 1049 | `metal_pill` | 玄金丹 | 金行 +3，3 回合，`buff_pill` 组 |
-| 1050 | `water_pill` | 玄水丹 | 水行 +3，3 回合，`buff_pill` 组 |
+| 1044 | `attack_pill` | 破军丹 | 战斗全局攻击 +3，60 秒，`buff_pill` 组 |
+| 1045 | `defense_pill` | 玄甲丹 | 战斗全局防御 +3，60 秒，`buff_pill` 组 |
+| 1046 | `wood_pill` | 青木丹 | 战斗全局木行 +3，60 秒，`buff_pill` 组 |
+| 1047 | `fire_pill` | 赤焰丹 | 战斗全局火行 +3，60 秒，`buff_pill` 组 |
+| 1048 | `earth_pill` | 厚土丹 | 战斗全局土行 +3，60 秒，`buff_pill` 组 |
+| 1049 | `metal_pill` | 玄金丹 | 战斗全局金行 +3，60 秒，`buff_pill` 组 |
+| 1050 | `water_pill` | 玄水丹 | 战斗全局水行 +3，60 秒，`buff_pill` 组 |
 
 炼丹建筑自动解锁：1 级调息丹；2 级破境丹（`pill x1 + herb x8`）；3 级归元丹/聚灵丹；4 级破军丹/玄甲丹；5 级五行丹。新档不再发放调息丹方，旧档丹方会自动学习并移除。调息丹恢复 15% 最大生命和法力。炼器 3 级开放通用灵石 3 个兑换指定五行灵石 1 个。
 
@@ -219,7 +219,7 @@
 
 以下内容是规划设定，当前不代表 `DataTables` 已实现。
 
-当前五阶装备模板、固定双属性、实例随机属性、强化、三词条、升阶、分解经济和 Schema 20 迁移规则统一见[装备成长 V2](equipment-progression-v2.md)。
+当前五阶装备模板、固定双属性、实例随机属性、强化、三词条、升阶、分解经济和 Schema 22 存档规则统一见[装备成长 V2](equipment-progression-v2.md)。
 
 五行只定义技能特色，不新增角色职业或学习限制。四十个五行技能的完整数值、目标和 AI 条件见[五行技能](skills.md)；六个装备槽位的固定双属性、五行原型和随机属性见[装备成长 V2](equipment-progression-v2.md)。
 

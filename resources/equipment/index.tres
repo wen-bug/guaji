@@ -1,0 +1,43 @@
+[gd_resource type="Resource" format=3]
+
+[resource]
+metadata/equipment_index = {
+"format_version": 1,
+"default_equipment_id": "helmet",
+"equipment_paths": {
+"weapon_metal_sword": "res://resources/equipment/weapon_metal_sword.tres",
+"weapon_wood_staff": "res://resources/equipment/weapon_wood_staff.tres",
+"weapon_earth_gauntlet": "res://resources/equipment/weapon_earth_gauntlet.tres",
+"weapon_water_brush": "res://resources/equipment/weapon_water_brush.tres",
+"weapon_fire_orb": "res://resources/equipment/weapon_fire_orb.tres",
+"helmet": "res://resources/equipment/helmet.tres",
+"armor": "res://resources/equipment/armor.tres",
+"leggings": "res://resources/equipment/leggings.tres",
+"gloves": "res://resources/equipment/gloves.tres",
+"accessory_wood": "res://resources/equipment/accessory_wood.tres",
+"accessory_fire": "res://resources/equipment/accessory_fire.tres",
+"accessory_earth": "res://resources/equipment/accessory_earth.tres",
+"accessory_metal": "res://resources/equipment/accessory_metal.tres",
+"accessory_water": "res://resources/equipment/accessory_water.tres"
+},
+"slots": [
+{"id": "weapon", "name": "武器", "weight": 1, "equipment_ids": ["weapon_metal_sword", "weapon_wood_staff", "weapon_earth_gauntlet", "weapon_water_brush", "weapon_fire_orb"]},
+{"id": "helmet", "name": "聚灵冠", "weight": 1, "equipment_ids": ["helmet"]},
+{"id": "armor", "name": "镇元法衣", "weight": 1, "equipment_ids": ["armor"]},
+{"id": "leggings", "name": "行脉胫甲", "weight": 1, "equipment_ids": ["leggings"]},
+{"id": "gloves", "name": "锻骨护手", "weight": 1, "equipment_ids": ["gloves"]},
+{"id": "accessory", "name": "饰品", "weight": 1, "equipment_ids": ["accessory_wood", "accessory_fire", "accessory_earth", "accessory_metal", "accessory_water"]}
+],
+"aliases": {
+"weapon_metal_sword": {"template_id": "weapon", "variant_id": "weapon_metal_sword", "equipment_id": "weapon_metal_sword"},
+"weapon_wood_staff": {"template_id": "weapon", "variant_id": "weapon_wood_staff", "equipment_id": "weapon_wood_staff"},
+"weapon_earth_gauntlet": {"template_id": "weapon", "variant_id": "weapon_earth_gauntlet", "equipment_id": "weapon_earth_gauntlet"},
+"weapon_water_brush": {"template_id": "weapon", "variant_id": "weapon_water_brush", "equipment_id": "weapon_water_brush"},
+"weapon_fire_orb": {"template_id": "weapon", "variant_id": "weapon_fire_orb", "equipment_id": "weapon_fire_orb"},
+"accessory_wood": {"template_id": "accessory", "variant_id": "accessory_wood", "equipment_id": "accessory_wood"},
+"accessory_fire": {"template_id": "accessory", "variant_id": "accessory_fire", "equipment_id": "accessory_fire"},
+"accessory_earth": {"template_id": "accessory", "variant_id": "accessory_earth", "equipment_id": "accessory_earth"},
+"accessory_metal": {"template_id": "accessory", "variant_id": "accessory_metal", "equipment_id": "accessory_metal"},
+"accessory_water": {"template_id": "accessory", "variant_id": "accessory_water", "equipment_id": "accessory_water"}
+}
+}

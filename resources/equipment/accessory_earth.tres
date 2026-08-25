@@ -1,51 +1,280 @@
-[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://c05luwhdy5wuw"]
+[gd_resource type="Resource" script_class="EquipmentConfigResource" format=3 uid="uid://dqnwy7fx2chu0"]
 
-[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_4r33g"]
+[ext_resource type="Script" uid="uid://i0uslauh0dhh" path="res://scripts/game/data/equipment_config_resource.gd" id="1_config"]
 
 [resource]
-script = ExtResource("1_4r33g")
+script = ExtResource("1_config")
 item_id = "accessory_earth"
+template_id = "accessory"
+variant_id = "accessory_earth"
 slot = "accessory"
-base_name = "厚土印"
 display_name = "厚土印"
-slot_label = "accessory"
 icon_name = "accessory"
 icon_path = "res://assets/equipment/accessory.png"
 description = "厚土印装备模板。"
-tier_base_attributes = {
-"t1": [{
-"amount": 1.0,
+attribute_order = Array[String](["element_earth", "defense"])
+random_attribute_pool = Array[String](["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"])
+attribute_units = {
+"attack": 1,
+"defense": 1,
+"element_earth": 1,
+"element_fire": 1,
+"element_metal": 1,
+"element_water": 1,
+"element_wood": 1,
+"max_hp": 4,
+"max_mp": 2,
+"root_bone": 1
+}
+tiers = Array[Dictionary]([{
+"affix_count": 1,
+"ascension_cost": {
+"ascension_stone": 2,
+"ore": 8
+},
+"base_attributes": [{
+"amount": 4,
 "stat": "element_earth"
 }, {
-"amount": 1.0,
+"amount": 2,
 "stat": "defense"
 }],
-"t2": [{
-"amount": 3.0,
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 10,
+"generation_weight": 55,
+"random_budget": 1,
+"random_count": 1,
+"rarity": "t1",
+"rarity_name": "一阶",
+"tier": 1
+}, {
+"affix_count": 2,
+"ascension_cost": {
+"ascension_stone": 4,
+"ore": 16
+},
+"base_attributes": [{
+"amount": 7,
 "stat": "element_earth"
 }, {
-"amount": 2.0,
+"amount": 4,
 "stat": "defense"
 }],
-"t3": [{
-"amount": 6.0,
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 20,
+"generation_weight": 28,
+"random_budget": 2,
+"random_count": 2,
+"rarity": "t2",
+"rarity_name": "二阶",
+"tier": 2
+}, {
+"affix_count": 3,
+"ascension_cost": {
+"ascension_stone": 6,
+"ore": 24
+},
+"base_attributes": [{
+"amount": 11,
 "stat": "element_earth"
 }, {
-"amount": 4.0,
+"amount": 5,
 "stat": "defense"
 }],
-"t4": [{
-"amount": 12.0,
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 30,
+"generation_weight": 12,
+"random_budget": 4,
+"random_count": 3,
+"rarity": "t3",
+"rarity_name": "三阶",
+"tier": 3
+}, {
+"affix_count": 3,
+"ascension_cost": {
+"ascension_stone": 8,
+"ore": 32
+},
+"base_attributes": [{
+"amount": 13,
 "stat": "element_earth"
 }, {
-"amount": 6.0,
+"amount": 7,
 "stat": "defense"
 }],
-"t5": [{
-"amount": 20.0,
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 40,
+"generation_weight": 4,
+"random_budget": 6,
+"random_count": 4,
+"rarity": "t4",
+"rarity_name": "四阶",
+"tier": 4
+}, {
+"affix_count": 3,
+"ascension_cost": {},
+"base_attributes": [{
+"amount": 14,
 "stat": "element_earth"
 }, {
-"amount": 10.0,
+"amount": 8,
 "stat": "defense"
-}]
+}],
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 50,
+"generation_weight": 1,
+"random_budget": 10,
+"random_count": 5,
+"rarity": "t5",
+"rarity_name": "五阶",
+"tier": 5
+}])
+metadata/equipment_data = {
+"attribute_order": ["element_earth", "defense"],
+"attribute_units": {
+"attack": 1,
+"defense": 1,
+"element_earth": 1,
+"element_fire": 1,
+"element_metal": 1,
+"element_water": 1,
+"element_wood": 1,
+"max_hp": 4,
+"max_mp": 2,
+"root_bone": 1
+},
+"description": "厚土印装备模板。",
+"format_version": 1,
+"icon_name": "accessory",
+"icon_path": "res://assets/equipment/accessory.png",
+"id": "accessory_earth",
+"name": "厚土印",
+"random_attribute_pool": ["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"],
+"selection_weight": 1,
+"slot": "accessory",
+"template_id": "accessory",
+"tiers": [{
+"affix_count": 1,
+"ascension_cost": {
+"ascension_stone": 2,
+"ore": 8
+},
+"base_attributes": [{
+"amount": 4,
+"stat": "element_earth"
+}, {
+"amount": 2,
+"stat": "defense"
+}],
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 10,
+"generation_weight": 55,
+"random_budget": 1,
+"random_count": 1,
+"rarity": "t1",
+"rarity_name": "一阶",
+"tier": 1
+}, {
+"affix_count": 2,
+"ascension_cost": {
+"ascension_stone": 4,
+"ore": 16
+},
+"base_attributes": [{
+"amount": 7,
+"stat": "element_earth"
+}, {
+"amount": 4,
+"stat": "defense"
+}],
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 20,
+"generation_weight": 28,
+"random_budget": 2,
+"random_count": 2,
+"rarity": "t2",
+"rarity_name": "二阶",
+"tier": 2
+}, {
+"affix_count": 3,
+"ascension_cost": {
+"ascension_stone": 6,
+"ore": 24
+},
+"base_attributes": [{
+"amount": 11,
+"stat": "element_earth"
+}, {
+"amount": 5,
+"stat": "defense"
+}],
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 30,
+"generation_weight": 12,
+"random_budget": 4,
+"random_count": 3,
+"rarity": "t3",
+"rarity_name": "三阶",
+"tier": 3
+}, {
+"affix_count": 3,
+"ascension_cost": {
+"ascension_stone": 8,
+"ore": 32
+},
+"base_attributes": [{
+"amount": 13,
+"stat": "element_earth"
+}, {
+"amount": 7,
+"stat": "defense"
+}],
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 40,
+"generation_weight": 4,
+"random_budget": 6,
+"random_count": 4,
+"rarity": "t4",
+"rarity_name": "四阶",
+"tier": 4
+}, {
+"affix_count": 3,
+"ascension_cost": {},
+"base_attributes": [{
+"amount": 14,
+"stat": "element_earth"
+}, {
+"amount": 8,
+"stat": "defense"
+}],
+"enhance_cost": {
+"enhancement_stone": 1
+},
+"enhance_limit": 50,
+"generation_weight": 1,
+"random_budget": 10,
+"random_count": 5,
+"rarity": "t5",
+"rarity_name": "五阶",
+"tier": 5
+}],
+"variant_id": "accessory_earth"
 }

@@ -1,5 +1,7 @@
 extends Node
 
+const EquipmentConfigParser = preload("res://scripts/game/data/equipment_config_parser.gd")
+
 var failures: Array[String] = []
 
 
@@ -8,8 +10,10 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	_check_independent_equipment_configs()
 	_check_template_resources()
 	_check_random_attribute_generation()
+	_check_equivalent_point_budgets()
 	_check_generation_and_load_stability()
 	_check_affix_limits()
 	_check_enhance_refine_ascend_and_salvage()
@@ -18,6 +22,7 @@ func _run() -> void:
 	_check_schema_18_migration()
 	_check_schema_19_migration()
 	_check_schema_20_migration()
+	_check_schema_21_migration()
 	if failures.is_empty():
 		print("EQUIPMENT_PROGRESSION_V2_PASS")
 		get_tree().quit(0)
@@ -27,18 +32,72 @@ func _run() -> void:
 	get_tree().quit(1)
 
 
+func _check_independent_equipment_configs() -> void:
+	_expect_equal("equipment config reload", DataTables.reload_equipment_configs(), [])
+	_expect_equal("equipment config validation", EquipmentConfigParser.validation_errors(), [])
+	var equipment_ids := EquipmentConfigParser.equipment_ids()
+	_expect_equal("fourteen independent equipment configs", equipment_ids.size(), 14)
+	var index := EquipmentConfigParser.index_data()
+	_expect_equal("six indexed slots", index.get("slots", []).size(), 6)
+	_expect_equal("ten legacy aliases are indexed", index.get("aliases", {}).size(), 10)
+	for slot in index.get("slots", []):
+		_expect_equal("%s slot selection weight" % str(slot.get("id", "")), int(slot.get("weight", 0)), 1)
+	var expected_weights := {"t1": 55, "t2": 28, "t3": 12, "t4": 4, "t5": 1}
+	var expected_counts := [1, 2, 3, 4, 5]
+	var expected_budgets := [1, 2, 4, 6, 10]
+	var expected_affixes := [1, 2, 3, 3, 3]
+	for equipment_id in equipment_ids:
+		var path := EquipmentConfigParser.resource_path(equipment_id)
+		var resource := load(path)
+		_expect_true("%s uses the Inspector config schema" % equipment_id, resource != null and resource.get_script() != null and resource.has_method("to_equipment_data"))
+		var inspector_fields: Array[String] = []
+		for property in resource.get_property_list():
+			inspector_fields.append(str(property.get("name", "")))
+		_expect_true("%s exposes editable Inspector fields" % equipment_id, inspector_fields.has("item_id") and inspector_fields.has("tiers") and inspector_fields.has("icon_texture"))
+		_expect_equal("%s exposes format version" % equipment_id, int(resource.get("config_format_version")), 1)
+		_expect_equal("%s exposes item id" % equipment_id, str(resource.get("item_id")), equipment_id)
+		_expect_equal("%s exposes five editable tiers" % equipment_id, resource.get("tiers").size(), 5)
+		var definition := EquipmentConfigParser.equipment_definition(equipment_id)
+		_expect_equal("%s owns five tiers" % equipment_id, definition.get("tiers", []).size(), 5)
+		_expect_equal("%s equipment selection weight" % equipment_id, int(definition.get("selection_weight", 0)), 1)
+		_expect_equal("%s hp enhancement unit" % equipment_id, int(definition.get("attribute_units", {}).get("max_hp", 0)), 4)
+		_expect_equal("%s mp enhancement unit" % equipment_id, int(definition.get("attribute_units", {}).get("max_mp", 0)), 2)
+		for tier_index in range(5):
+			var rarity := "t%d" % (tier_index + 1)
+			var tier := EquipmentConfigParser.tier_definition(equipment_id, rarity)
+			_expect_equal("%s %s random count config" % [equipment_id, rarity], int(tier.get("random_count", 0)), expected_counts[tier_index])
+			_expect_equal("%s %s random budget config" % [equipment_id, rarity], int(tier.get("random_budget", 0)), expected_budgets[tier_index])
+			_expect_equal("%s %s generation weight config" % [equipment_id, rarity], int(tier.get("generation_weight", 0)), int(expected_weights[rarity]))
+			_expect_equal("%s %s affix count config" % [equipment_id, rarity], int(tier.get("affix_count", 0)), expected_affixes[tier_index])
+			_expect_equal("%s %s enhance limit config" % [equipment_id, rarity], int(tier.get("enhance_limit", 0)), (tier_index + 1) * 10)
+			_expect_equal("%s %s enhance cost config" % [equipment_id, rarity], int(tier.get("enhance_cost", {}).get("enhancement_stone", 0)), 1)
+			var ascension_cost: Dictionary = tier.get("ascension_cost", {})
+			if tier_index < 4:
+				_expect_equal("%s %s ore ascension config" % [equipment_id, rarity], int(ascension_cost.get("ore", 0)), (tier_index + 1) * 8)
+				_expect_equal("%s %s stone ascension config" % [equipment_id, rarity], int(ascension_cost.get("ascension_stone", 0)), (tier_index + 1) * 2)
+			else:
+				_expect_true("%s t5 has no ascension config" % equipment_id, ascension_cost.is_empty())
+	var mutable_copy := EquipmentConfigParser.equipment_definition("helmet")
+	mutable_copy["name"] = "changed"
+	_expect_equal("parser returns deep copies", str(EquipmentConfigParser.equipment_definition("helmet").get("name", "")), "聚灵冠")
+	var invalid := EquipmentConfigParser.equipment_definition("helmet")
+	invalid["tiers"] = []
+	_expect_true("parser rejects incomplete tier data", not EquipmentConfigParser.validate_equipment_data(invalid).is_empty())
+	_expect_equal("rarity weights come from equipment config", DataTables.EQUIPMENT_RARITY_WEIGHTS, expected_weights)
+
+
 func _check_template_resources() -> void:
 	var expected_variants := {
-		"weapon_metal_sword": [["element_metal", [2, 5, 10, 18, 30]], ["attack", [1, 2, 4, 7, 12]]],
-		"weapon_wood_staff": [["element_wood", [2, 5, 10, 18, 30]], ["max_hp", [4, 8, 16, 28, 48]]],
-		"weapon_earth_gauntlet": [["element_earth", [2, 5, 10, 18, 30]], ["defense", [1, 2, 4, 7, 12]]],
-		"weapon_water_brush": [["element_water", [2, 5, 10, 18, 30]], ["max_mp", [2, 4, 8, 14, 24]]],
-		"weapon_fire_orb": [["element_fire", [2, 5, 10, 18, 30]], ["attack", [1, 2, 4, 7, 12]]],
-		"accessory_wood": [["element_wood", [1, 3, 6, 12, 20]], ["max_hp", [4, 8, 16, 24, 40]]],
-		"accessory_fire": [["element_fire", [1, 3, 6, 12, 20]], ["attack", [1, 2, 4, 6, 10]]],
-		"accessory_earth": [["element_earth", [1, 3, 6, 12, 20]], ["defense", [1, 2, 4, 6, 10]]],
-		"accessory_metal": [["element_metal", [1, 3, 6, 12, 20]], ["attack", [1, 2, 4, 6, 10]]],
-		"accessory_water": [["element_water", [1, 3, 6, 12, 20]], ["max_mp", [2, 4, 8, 12, 20]]],
+		"weapon_metal_sword": [["element_metal", [8, 15, 21, 28, 34]], ["attack", [3, 7, 11, 14, 16]]],
+		"weapon_wood_staff": [["element_wood", [8, 15, 21, 28, 34]], ["max_hp", [12, 28, 44, 56, 64]]],
+		"weapon_earth_gauntlet": [["element_earth", [8, 15, 21, 28, 34]], ["defense", [3, 7, 11, 14, 16]]],
+		"weapon_water_brush": [["element_water", [8, 15, 21, 28, 34]], ["max_mp", [6, 14, 22, 28, 32]]],
+		"weapon_fire_orb": [["element_fire", [8, 15, 21, 28, 34]], ["attack", [3, 7, 11, 14, 16]]],
+		"accessory_wood": [["element_wood", [4, 7, 11, 13, 14]], ["max_hp", [8, 16, 20, 28, 32]]],
+		"accessory_fire": [["element_fire", [4, 7, 11, 13, 14]], ["attack", [2, 4, 5, 7, 8]]],
+		"accessory_earth": [["element_earth", [4, 7, 11, 13, 14]], ["defense", [2, 4, 5, 7, 8]]],
+		"accessory_metal": [["element_metal", [4, 7, 11, 13, 14]], ["attack", [2, 4, 5, 7, 8]]],
+		"accessory_water": [["element_water", [4, 7, 11, 13, 14]], ["max_mp", [4, 8, 10, 14, 16]]],
 	}
 	var core_ids: Array = DataTables.EQUIPMENT_DEFS.keys()
 	core_ids.sort()
@@ -47,10 +106,10 @@ func _check_template_resources() -> void:
 		var resource := DataTables.equipment_resource(str(template_id))
 		_expect_true("%s resource exists" % template_id, resource != null)
 	var expected_fixed := {
-		"helmet": [["max_mp", [2, 6, 12, 24, 40]], ["defense", [1, 2, 4, 6, 10]]],
-		"armor": [["defense", [1, 3, 6, 12, 20]], ["max_hp", [4, 8, 16, 24, 40]]],
-		"leggings": [["max_hp", [4, 12, 24, 48, 80]], ["defense", [1, 2, 4, 6, 10]]],
-		"gloves": [["root_bone", [1, 3, 6, 12, 20]], ["attack", [1, 2, 4, 6, 10]]],
+		"helmet": [["max_mp", [8, 14, 22, 26, 30]], ["defense", [2, 4, 5, 7, 8]]],
+		"armor": [["defense", [5, 10, 13, 17, 20]], ["max_hp", [12, 24, 36, 48, 56]]],
+		"leggings": [["max_hp", [16, 32, 44, 60, 68]], ["defense", [3, 6, 8, 10, 11]]],
+		"gloves": [["root_bone", [3, 7, 9, 12, 14]], ["attack", [2, 4, 6, 8, 9]]],
 	}
 	for template_id in expected_fixed:
 		for rarity_index in range(DataTables.EQUIPMENT_RARITY_ORDER.size()):
@@ -92,8 +151,43 @@ func _check_random_attribute_generation() -> void:
 			var random_points := 0
 			for index in range(2, attributes.size()):
 				var attribute: Dictionary = attributes[index]
-				random_points += floori(float(attribute.get("amount", 0)) / float(DataTables.equipment_attribute_unit_amount(str(attribute.get("stat", "")))))
+				var points := floori(float(attribute.get("amount", 0)) / float(DataTables.equipment_attribute_unit_amount(str(attribute.get("stat", "")))))
+				_expect_true("%s %s random attribute minimum" % [template_id, rarity], points >= 1)
+				random_points += points
 			_expect_equal("%s %s shared random budget" % [template_id, rarity], random_points, DataTables.equipment_random_attribute_budget(str(template_id), rarity))
+
+
+func _check_equivalent_point_budgets() -> void:
+	var expected_by_template := {
+		"weapon": [12, 24, 36, 48, 60],
+		"helmet": [7, 13, 20, 26, 33],
+		"armor": [9, 18, 26, 35, 44],
+		"leggings": [8, 16, 23, 31, 38],
+		"gloves": [6, 13, 19, 26, 33],
+		"accessory": [7, 13, 20, 26, 32],
+	}
+	var expected_full_set := [56, 110, 164, 218, 272]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 83021
+	for rarity_index in range(DataTables.EQUIPMENT_RARITY_ORDER.size()):
+		var rarity := str(DataTables.EQUIPMENT_RARITY_ORDER[rarity_index])
+		var full_set_points := 0
+		for template_id in expected_by_template:
+			var item := DataTables.create_equipment_from_template(str(template_id), 1, rng, 0, "", rarity, "test")
+			var points := _equivalent_points(item.get("base_attributes", []))
+			_expect_equal("%s %s equivalent budget" % [template_id, rarity], points, int(expected_by_template[template_id][rarity_index]))
+			full_set_points += points * (2 if template_id == "accessory" else 1)
+		_expect_equal("%s seven-piece budget" % rarity, full_set_points, int(expected_full_set[rarity_index]))
+		var full_enhancement_points := DataTables.equipment_enhance_limit(rarity) * 7
+		_expect_equal("%s full enhancement budget" % rarity, full_enhancement_points, (rarity_index + 1) * 70)
+
+
+func _equivalent_points(attributes: Array) -> int:
+	var result := 0
+	for attribute in attributes:
+		if attribute is Dictionary:
+			result += floori(float(attribute.get("amount", 0)) / float(DataTables.equipment_attribute_unit_amount(str(attribute.get("stat", "")))))
+	return result
 
 
 func _check_generation_and_load_stability() -> void:
@@ -106,6 +200,8 @@ func _check_generation_and_load_stability() -> void:
 	_expect_equal("same rng repeats variant", first.get("equipment_variant_id", ""), second.get("equipment_variant_id", ""))
 	_expect_equal("same rng repeats random stats", first.get("rolled_attribute_stats", []), second.get("rolled_attribute_stats", []))
 	_expect_equal("same rng repeats base values", first.get("base_attributes", []), second.get("base_attributes", []))
+	_expect_equal("new equipment generation version", int(first.get("attribute_generation_version", 0)), 4)
+	_expect_equal("instance stores concrete config path", str(first.get("resource_path", "")), EquipmentConfigParser.resource_path(str(first.get("equipment_variant_id", ""))))
 	var state := GameState.new()
 	state.inventory = [first]
 	state.rng.seed = 991
@@ -139,7 +235,7 @@ func _check_enhance_refine_ascend_and_salvage() -> void:
 	state.add_inventory_item(DataTables.ITEM_ID_REFINE_TALISMAN, 1, false)
 	_expect_true("enhance selected element", state.enhance_equipment(str(item.get("instance_id", "")), "element_metal"))
 	_expect_equal("enhancement point saved", int(item.get("enhancement_allocations", {}).get("element_metal", 0)), 1)
-	_expect_equal("enhancement unit applied", state._item_equipment_attribute_value(item, "element_metal"), 3)
+	_expect_equal("enhancement unit applied", state._item_equipment_attribute_value(item, "element_metal"), 9)
 	var old_affixes: Array = item.get("affixes", []).duplicate(true)
 	_expect_true("single slot refine", state.refine_equipment_affix(str(item.get("instance_id", "")), 0))
 	_expect_true("refined slot changes type", str(item.get("affixes", [])[0].get("id", "")) != str(old_affixes[0].get("id", "")))
@@ -147,8 +243,8 @@ func _check_enhance_refine_ascend_and_salvage() -> void:
 	_expect_equal("ascend changes rarity", str(item.get("rarity", "")), "t2")
 	_expect_equal("ascend adds second affix", item.get("affixes", []).size(), 2)
 	_expect_equal("ascend keeps enhancement", int(item.get("enhancement_allocations", {}).get("element_metal", 0)), 1)
-	_expect_equal("ascend updates element base", int(item.get("base_attributes", [])[0].get("amount", 0)), 5)
-	_expect_equal("ascend updates attack base", int(item.get("base_attributes", [])[1].get("amount", 0)), 2)
+	_expect_equal("ascend updates element base", int(item.get("base_attributes", [])[0].get("amount", 0)), 15)
+	_expect_equal("ascend updates attack base", int(item.get("base_attributes", [])[1].get("amount", 0)), 7)
 	_expect_equal("ascend adds one random stat", item.get("rolled_attribute_stats", []).size(), 2)
 	_expect_equal("ascend has four base attributes", item.get("base_attributes", []).size(), 4)
 
@@ -170,11 +266,11 @@ func _check_enhancement_units_and_description() -> void:
 	state.add_inventory_item(DataTables.ITEM_ID_ENHANCEMENT_STONE, 2, false)
 	_expect_true("wood secondary hp can be enhanced", state.enhance_equipment(str(wood.get("instance_id", "")), "max_hp"))
 	_expect_true("water secondary mp can be enhanced", state.enhance_equipment(str(water.get("instance_id", "")), "max_mp"))
-	_expect_equal("hp enhancement uses four-point unit", state._item_equipment_attribute_value(wood, "max_hp"), 8)
-	_expect_equal("mp enhancement uses two-point unit", state._item_equipment_attribute_value(water, "max_mp"), 4)
+	_expect_equal("hp enhancement uses four-point unit", state._item_equipment_attribute_value(wood, "max_hp"), 16)
+	_expect_equal("mp enhancement uses two-point unit", state._item_equipment_attribute_value(water, "max_mp"), 8)
 	var description := RichTextDescriptionRenderer.plain_text(RichTextDescriptionRenderer.build_item_segments(wood))
-	_expect_true("description shows wood base", description.contains("木属性 +2"))
-	_expect_true("description shows hp base", description.contains("气血 +4"))
+	_expect_true("description shows wood base", description.contains("木属性 +8"))
+	_expect_true("description shows hp base", description.contains("气血 +12"))
 
 
 func _check_random_attribute_enhancement() -> void:
@@ -213,7 +309,7 @@ func _check_schema_18_migration() -> void:
 	_expect_equal("stable t3 affixes generated", item.get("affixes", []).size(), 3)
 	_expect_equal("blueprints compensated", state.inventory_item_count(DataTables.ITEM_ID_ORE), 8)
 	_expect_equal("blueprint pity removed", int(state.reward_progress.get("blueprint_pity", -1)), 0)
-	_expect_equal("schema upgraded", int(state.to_save_data().get("schema_version", 0)), 20)
+	_expect_equal("schema upgraded", int(state.to_save_data().get("schema_version", 0)), 22)
 
 
 func _check_schema_19_migration() -> void:
@@ -239,7 +335,7 @@ func _check_schema_19_migration() -> void:
 	_expect_equal("water attack maps to mp", int(water.get("enhancement_allocations", {}).get("max_mp", 0)), 2)
 	_expect_equal("water element allocation retained", int(water.get("enhancement_allocations", {}).get("element_water", 0)), 1)
 	_expect_true("water hidden attack removed", not water.get("enhancement_allocations", {}).has("attack"))
-	_expect_equal("schema nineteen saved as current", int(state.to_save_data().get("schema_version", 0)), 20)
+	_expect_equal("schema nineteen saved as current", int(state.to_save_data().get("schema_version", 0)), 22)
 
 
 func _check_schema_20_migration() -> void:
@@ -250,7 +346,7 @@ func _check_schema_20_migration() -> void:
 	direct._migrate_schema_20_equipment_templates()
 	_expect_equal("schema twenty migration keeps rng", direct.to_save_data().get("rng", {}), rng_before)
 	var state := GameState.new()
-	var preserved := [{"stat": "element_wood", "amount": 99}, {"stat": "max_hp", "amount": 44}]
+	var preserved: Array = [{"stat": "element_wood", "amount": 99}, {"stat": "max_hp", "amount": 44}]
 	state.load_save_data({
 		"schema_version": 19,
 		"inventory": [
@@ -266,13 +362,62 @@ func _check_schema_20_migration() -> void:
 	_expect_equal("schema twenty maps weapon id", str(wood.get("item_id", "")), "weapon")
 	_expect_equal("schema twenty keeps weapon variant", str(wood.get("equipment_variant_id", "")), "weapon_wood_staff")
 	_expect_equal("schema twenty keeps weapon variant icon", str(wood.get("icon_path", "")), "res://assets/equipment/weapon.png")
-	_expect_equal("schema twenty preserves existing base", wood.get("base_attributes", []), preserved)
+	_expect_equal("schema twenty item receives current fixed base", wood.get("base_attributes", []), DataTables.equipment_tier_base_attributes("weapon", "t2", "weapon_wood_staff"))
 	_expect_equal("schema twenty does not add rolls", wood.get("rolled_attribute_stats", []), [])
 	_expect_equal("schema twenty keeps enhancement", int(wood.get("enhancement_allocations", {}).get("max_hp", 0)), 2)
 	_expect_equal("schema twenty maps accessory id", str(water.get("item_id", "")), "accessory")
 	_expect_equal("schema twenty keeps accessory icon", str(water.get("icon_path", "")), "res://assets/equipment/accessory.png")
 	_expect_equal("schema twenty restores missing base", water.get("base_attributes", []), DataTables.equipment_tier_base_attributes("accessory", "t3", "accessory_water"))
-	_expect_equal("schema twenty saved", int(state.to_save_data().get("schema_version", 0)), 20)
+	_expect_equal("schema twenty saved", int(state.to_save_data().get("schema_version", 0)), 22)
+
+
+func _check_schema_21_migration() -> void:
+	var direct := GameState.new()
+	direct.rng.seed = 2121
+	var core_item := {
+		"instance_id": "schema-21-core",
+		"item_id": "weapon",
+		"type": DataTables.ITEM_TYPE_EQUIPMENT,
+		"rarity": "t4",
+		"equipment_variant_id": "weapon_metal_sword",
+		"rolled_attribute_stats": ["max_hp", "max_mp", "max_hp", "attack"],
+		"base_attributes": [{"stat": "attack", "amount": 999}],
+		"enhancement_allocations": {"element_metal": 3},
+		"affixes": [{"id": "critical_chance", "value": 0.03}],
+		"equipped": true,
+		"equipped_by": "member",
+	}
+	var mod_item := {"instance_id": "schema-21-mod", "item_id": "mod_equipment", "type": DataTables.ITEM_TYPE_EQUIPMENT, "rarity": "t4", "base_attributes": [{"stat": "attack", "amount": 77}]}
+	direct.inventory = [core_item, mod_item]
+	var rng_before: Dictionary = direct.to_save_data().get("rng", {})
+	direct._migrate_schema_21_equipment_values()
+	_expect_equal("schema twenty-one migration keeps rng", direct.to_save_data().get("rng", {}), rng_before)
+	_expect_equal("schema twenty-one preserves stable valid rolls", core_item.get("rolled_attribute_stats", []), ["max_hp", "max_mp"])
+	_expect_equal("schema twenty-one rebuilds core values", core_item.get("base_attributes", []), DataTables.build_equipment_base_attributes("weapon", "t4", "weapon_metal_sword", ["max_hp", "max_mp"]))
+	_expect_equal("schema twenty-one writes generation version", int(core_item.get("attribute_generation_version", 0)), 4)
+	_expect_equal("schema twenty-one keeps enhancement", core_item.get("enhancement_allocations", {}), {"element_metal": 3})
+	_expect_true("schema twenty-one keeps equipped state", bool(core_item.get("equipped", false)) and str(core_item.get("equipped_by", "")) == "member")
+	_expect_equal("schema twenty-one leaves mod values unchanged", mod_item.get("base_attributes", []), [{"stat": "attack", "amount": 77}])
+
+	var state := GameState.new()
+	state.load_save_data({
+		"schema_version": 20,
+		"inventory": [{"instance_id": "legacy-alias", "item_id": "accessory_water", "type": DataTables.ITEM_TYPE_EQUIPMENT, "rarity": "t5", "base_attributes": [{"stat": "element_water", "amount": 20}, {"stat": "max_mp", "amount": 20}], "enhancement_allocations": {"max_mp": 2}, "affixes": [], "equipped": true, "equipped_by": "member", "equipped_slot": "accessory_1"}],
+		"companions": [{"id": "member", "name": "重算测试", "stats": {"hp": 20, "max_hp": 80, "mp": 999, "max_mp": 40}, "elements": {}, "equipped": {"accessory_1": "legacy-alias"}, "skills": []}],
+		"party_order": ["member"],
+		"recruit_candidates": [],
+	})
+	var migrated := state.inventory_item_by_instance("legacy-alias")
+	_expect_equal("schema twenty-one maps residual alias", str(migrated.get("item_id", "")), "accessory")
+	_expect_equal("schema twenty-one keeps alias variant", str(migrated.get("equipment_variant_id", "")), "accessory_water")
+	_expect_equal("schema twenty-one empty rolls stay empty", migrated.get("rolled_attribute_stats", []), [])
+	_expect_equal("schema twenty-one alias gets current fixed base", migrated.get("base_attributes", []), DataTables.equipment_tier_base_attributes("accessory", "t5", "accessory_water"))
+	_expect_equal("schema twenty-one alias keeps enhancement", int(migrated.get("enhancement_allocations", {}).get("max_mp", 0)), 2)
+	_expect_true("schema twenty-one alias stays equipped", bool(migrated.get("equipped", false)) and str(migrated.get("equipped_by", "")) == "member")
+	var member := state.member_by_id("member")
+	_expect_equal("schema twenty-one does not refill hp", int(member.get("stats", {}).get("hp", 0)), 20)
+	_expect_equal("schema twenty-one clamps mp to rebuilt maximum", int(member.get("stats", {}).get("mp", 0)), 60)
+	_expect_equal("schema twenty-one saves current schema", int(state.to_save_data().get("schema_version", 0)), 22)
 
 
 func _expect_true(label: String, value: bool) -> void:

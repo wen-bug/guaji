@@ -167,7 +167,7 @@ func _check_member_growth_and_migration() -> void:
 	_expect_equal("legacy primary migrated", str(migrated.get("growth_primary_stat", "")), "attack")
 	_expect_equal("legacy secondary migrated", migrated.get("growth_secondary_stats", []), ["defense", "element_fire"])
 	_expect_equal("migration preserves attack", int(migrated.get("stats", {}).get("attack", 0)), 8)
-	_expect_equal("schema twenty saved", int(legacy.to_save_data().get("schema_version", 0)), 20)
+	_expect_equal("schema twenty-two saved", int(legacy.to_save_data().get("schema_version", 0)), 22)
 	var repeated := legacy.party_service.stable_combat_affinity_for_id("legacy-affinity-member")
 	_expect_equal("affinity migration deterministic", first_affinity, repeated)
 

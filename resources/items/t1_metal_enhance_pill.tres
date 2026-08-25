@@ -1,6 +1,14 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_3scso"]
+
+[sub_resource type="Resource" id="Resource_3scso"]
+script = ExtResource("1_3scso")
+effect_id = "permanent_element_metal"
+kind = "permanent_attribute"
+stat = "element_metal"
+tier_id = "t1"
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +19,7 @@ display_name = "一阶金行强化丹"
 icon_name = "t1_metal_enhance_pill"
 icon_path = "res://assets/items/t1_metal_enhance_pill.png"
 description = "永久强化所选角色的金行属性。"
-stackable = true
 usable = true
-use_scope = "home"
+use_context = "home"
 gain_target = "metal"
-payload = {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_metal"}]}}
+effects = Array[Resource]([SubResource("Resource_3scso")])

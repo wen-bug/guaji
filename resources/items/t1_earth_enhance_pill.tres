@@ -1,6 +1,14 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_kld1f"]
+
+[sub_resource type="Resource" id="Resource_kld1f"]
+script = ExtResource("1_kld1f")
+effect_id = "permanent_element_earth"
+kind = "permanent_attribute"
+stat = "element_earth"
+tier_id = "t1"
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +19,7 @@ display_name = "一阶土行强化丹"
 icon_name = "t1_earth_enhance_pill"
 icon_path = "res://assets/items/t1_earth_enhance_pill.png"
 description = "永久强化所选角色的土行属性。"
-stackable = true
 usable = true
-use_scope = "home"
+use_context = "home"
 gain_target = "earth"
-payload = {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_earth"}]}}
+effects = Array[Resource]([SubResource("Resource_kld1f")])

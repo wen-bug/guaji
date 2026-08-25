@@ -1,7 +1,17 @@
-[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://cpjr4onnuokrm"]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
-[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://25tuhj4hrw3s" path="res://assets/items/spirit_stone.png" id="1_hc5it"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_gd210"]
+[ext_resource type="Texture2D" path="res://assets/items/spirit_stone.png" id="1_hc5it"]
+
+[sub_resource type="Resource" id="Resource_gd210"]
+script = ExtResource("1_gd210")
+effect_id = "enhance_material"
+kind = "equipment_enhancement_material"
+target = "none"
+stat = "element_metal"
+group_id = "element"
+amount = 1
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_bkyjp"]
 atlas = ExtResource("1_hc5it")
@@ -11,16 +21,10 @@ region = Rect2(630.27515, 96.02539, 161.84961, 207.49948)
 script = ExtResource("1")
 id = "spirit_stone_metal"
 item_no = 1012
-type = "material"
 display_name = "金灵石"
 icon_texture = SubResource("AtlasTexture_bkyjp")
 icon_name = "spirit_stone_metal"
 icon_path = "res://assets/items/spirit_stone_metal.png"
 description = "可用于强化金行属性。"
-use_scope = "none"
 gain_target = "metal"
-payload = {
-"enhance_amount": 1,
-"stat": "element_metal",
-"stone_group": "element"
-}
+effects = Array[Resource]([SubResource("Resource_gd210")])

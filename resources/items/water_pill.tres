@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_nxbkf"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_og6d0"]
+
+[sub_resource type="Resource" id="Resource_nxbkf"]
+script = ExtResource("1_nxbkf")
+effect_id = "water_pill_buff"
+kind = "temporary_modifier"
+target = "combat_global"
+stat = "element_water"
+value = 3.0
+buff_id = "water_pill_buff"
+duration_seconds = 60.0
+
+[resource]
+script = ExtResource("2_og6d0")
+id = "water_pill"
+item_no = 1050
+type = "pill"
+display_name = "玄水丹"
+icon_name = "water_pill"
+icon_path = "res://assets/items/water_pill.png"
+description = "全队水行 +3，持续 60 秒。"
+usable = true
+use_context = "both"
+gain_target = "water"
+combat_cooldown_turns = 3
+shared_cooldown_group = "buff_pill"
+ai_action_type = "buff"
+effects = Array[Resource]([SubResource("Resource_nxbkf")])

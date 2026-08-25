@@ -1,8 +1,8 @@
-[gd_resource type="Resource" format=3 uid="uid://cy26em1x83syc"]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://c07ws02gt8ynb"]
 
 [ext_resource type="Texture2D" uid="uid://282ug81tyt7r" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Impacts/directional_impact_001/directional_impact_001_small_blue/frame0000.png" id="2_icon"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
 
 [sub_resource type="Resource" id="Resource_damage"]
 script = ExtResource("skill_effect_def_script")
@@ -14,8 +14,6 @@ script = ExtResource("skill_def_script")
 id = "wolf_bite"
 display_name = "撕咬"
 icon_texture = ExtResource("2_icon")
-type = "damage"
-effect_tags = Array[String](["damage"])
 element = "wood"
 cooldown = 2.0
 priority = 40

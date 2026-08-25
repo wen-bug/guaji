@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("2_effect")
+effect_id = "impact"
+kind = "damage"
+target = "skill_targets"
+shieldable = true
+
+[resource]
+script = ExtResource("1_skill")
+id = "basic_attack"
+display_name = "普通攻击"
+type = "normal_attack"
+target_scope = "single_enemy"
+effects = Array[Resource]([SubResource("Resource_damage")])
+basic_attack_mode = "melee"
+basic_attack_range = 0.0
+description = "近战角色的普通攻击。"

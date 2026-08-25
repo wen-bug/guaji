@@ -1,12 +1,20 @@
 # Mod 存档与迁移
 
-Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 20 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
+Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 22 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
 
 当已加载版本与存档 profile 不同，入口实例调用 `migrate_save(data, from_version, to_version)`。必须返回新的 Dictionary；返回其他类型会将该 Mod 标记为失败，并保留导入前数据。
 
 缺失定义的背包实例、装备、技能、命格和配方会移入 `orphaned_mod_data`，不参与玩法。装备保留 owner 与 slot。相同内容 ID 恢复后，在普通存档清洗前还原原角色、槽位和列表。未知形象只回退显示，不删除 `visual_id`。
 
 覆盖类 Mod 不改变内容 ID，因此不会触发休眠；作者负责让新定义兼容旧实例字段。
+
+## Schema 22
+
+Schema 22 将人物临时 Buff 和农田加速统一迁入 `active_item_buffs`，统一使用现实秒 `remaining_seconds`；永久效果为 `-1`。旧剩余时间原样保留，不结算离线时间。新增固定四项 `auto_use_item_ids`，旧档初始化为空，升级后不会自动消耗未配置道具。核心堆叠物品的静态字段从 `.tres` 刷新，数量、实例 ID、来源和永久使用次数不变；Schema 21 装备和 RNG 不变。
+
+## Schema 21
+
+Schema 21 将六个核心装备模板切换到按角色和敌人阶位定标的新基础值。已有核心实例按保存的阶位、五行原型和随机属性顺序确定性重算，空随机属性列表不补抽，强化、词条、洗练和穿戴关系保持不变。迁移不消耗 RNG，非核心 Mod 装备不参与重算。
 
 ## Schema 20
 

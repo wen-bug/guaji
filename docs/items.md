@@ -2,7 +2,7 @@
 
 ## 概览
 
-本文档描述物品、背包、装备、炼丹、种田和商店的系统规则。具体已实现物品、配方、技能、装备模板、敌人掉落以[内容数据表](item-table.md)和 `scripts/game/data/data_tables.gd` 为准。
+本文档描述物品、背包、装备、炼丹、种田和商店的系统规则。核心物品以 `resources/items/index.tres` 及其 58 个 `ItemDef` 为准，核心技能以 `resources/skills/index.tres` 为准；配方和经济表继续独立保存在 `DataTables`。
 
 状态标记：
 
@@ -11,7 +11,7 @@
 
 物品系统采用双层模型：
 
-- 已实现：静态定义集中在 `DataTables.ITEM_DEFS`、`EQUIPMENT_DEFS`、`SKILL_DEFS`、`ALCHEMY_RECIPE_DEFS` 等表。
+- 已实现：物品、材料和技能静态定义由 Inspector 可编辑 `.tres` 与严格解析器提供，兼容字典由解析器生成。
 - 已实现：背包运行时实例使用轻量 `Dictionary`，保存数量、实例 ID、装备随机属性、强化、洗练和临时状态。
 
 ## 当前资源循环与回收
@@ -40,7 +40,8 @@
 - `count`：数量。装备固定为 1。
 - `stackable`：是否堆叠。
 - `usable`：是否允许使用。
-- `payload`：分类专属数据。
+- `effects`：类型化 `ItemEffectDef` 数组；核心物品不保存旧 `payload`。
+- `use_context`：`none/home/combat/both`。
 - `obtain_source`：来源标记，当前用 `drop`、`non_drop`、`debug` 区分。
 - `gain_target`：成长或强化倾向，用于 UI 标签。
 
@@ -129,7 +130,7 @@ description_effects = [{
 - `description_effects` 只负责展示，不会改变战斗结算。
 - 会造成真实战斗效果的装备必须同时拥有已实现的 `effects` 或对应属性字段，二者参数必须来自同一数据定义，不能只写彩色描述。
 - 存档保存结构化字段，绝不保存 BBCode、最终句子或公式结果；角色属性变化后重新渲染。
-- 装备实例优先使用自身 `description_effects`，旧存档缺失时从 `EquipmentTemplate` / `EQUIPMENT_DEFS` 回填。
+- 装备实例优先使用自身 `description_effects`；旧存档缺失时，核心装备从独立 `.tres` 配置回填，Mod 装备继续从 `EquipmentTemplate` / 注册定义回填。
 - `description_effects` 是可选的新增字段，加载旧档时由背包实例规范化补齐空数组，不单独提升存档 schema；若以后改变字段含义或删除字段，则必须增加 schema 迁移。
 - 未支持的 `kind` 默认不显示；新增类型时必须扩展渲染器、本文字段表和回归测试。
 - 渲染器使用 `push_color()`，不解析物品名称或描述中的 BBCode，避免特殊字符破坏格式。
@@ -162,10 +163,9 @@ description_effects = [{
 - 堆叠物品丢弃时每次减少 1 个，数量归零后从背包移除。
 - 装备丢弃时直接移除实例；若正在装备，先卸下再移除。
 
-规划规则：
+持续效果统一写入 `active_item_buffs`，目标为人物、家园全局或战斗全局。限时效果按程序运行现实秒递减，永久效果使用 `remaining_seconds = -1`；全局战斗 Buff 跨遭遇保留。修正顺序为 `(基础值 + flat 总和) × (1 + percent 总和)`。
 
-- 持续丹药写入 `active_buffs` 并随时间扣减。
-- 战斗类物品可按 `use_scope` 区分家园、战斗和不可使用入口。
+全队共享四个自动道具槽。AI 按槽位顺序在治疗、防御、增益、法力和输出分类中先找有效道具，没有可用道具才选择技能；库存不足、冷却、无收益或相同 Buff 已生效时跳过。
 
 ## 装备模板与槽位
 
@@ -173,7 +173,7 @@ description_effects = [{
 
 装备模板资源：
 
-- 已实现：每个 `EQUIPMENT_DEFS` 模板在 `resources/equipment/<template_id>.tres` 有对应 `EquipmentTemplate` 资源。
+- 已实现：`resources/equipment/index.tres` 索引十四件核心装备资源；每件资源通过共享 `EquipmentConfigResource` 导出 Inspector 可编辑字段，并自行配置完整五阶基础值、随机层、强化、词条、升阶及生成权重。共享脚本不保存具体装备数值。
 - 已实现：装备 `.tres` 保留 `icon_texture: Texture2D` 空字段，方便在 Inspector 手动拖入图片。
 - 已实现：装备 `.tres` 保存基础信息、五阶固定属性，以及可选原型、随机池、各阶随机条数和预算；实例抽取结果、强化分配和战斗词条只保存在背包装备实例中。
 - 已实现：装备默认图标路径为 `res://assets/equipment/<template_id>.png`；背包装备图标优先读取装备 `.tres` 的 `icon_texture`，再回退到实例 `icon_path` 和占位色块。
@@ -205,7 +205,7 @@ description_effects = [{
 
 已实现规则：
 
-- 当前所有带 `seed_yield` payload 的 `crop` 都可作为农田种子，包括 `herb` 和 10 种属性作物。
+- 当前所有带 `farm_seed` 类型化效果的 `crop` 都可作为农田种子，包括 `herb` 和 10 种属性作物。
 - 种田消耗 1 个作物种子。
 - 产量为 `seed_yield + farm_level - 1`；农田等级每级额外提供 2% 的概率多收获 1 份。
 - 农田等级缩短生长时间，倍率为 `max(0.55, 1.0 - 0.05 * (farm_level - 1))`；基础草药为 600 秒，属性作物为 900-1800 秒。
@@ -219,7 +219,7 @@ description_effects = [{
 
 已实现规则：
 
-- 图纸物品类型为 `alchemy_recipe`，payload 中保存 `recipe_id`。
+- 图纸物品类型为 `alchemy_recipe`，使用 `unlock_content` 类型化效果引用 `alchemy_recipe` ID。
 - 使用图纸后学习丹方，炼丹面板只显示 `known_alchemy_recipes` 中已学丹方。
 - `ALCHEMY_RECIPE_DEFS` 定义丹方产物和材料。
 - 当前已实现丹方为调息丹：`pill = herb x2`。
@@ -229,8 +229,8 @@ description_effects = [{
 
 规划规则：
 
-- 归元丹、聚灵丹、壮气丹、属性丹、五行丹和对应属性作物仍是规划内容。
-- 材料减免、固定额外产物、概率额外产物和持续 Buff 叠加规则需要实现后再转为已实现。
+- 归元丹、聚灵丹、七种全队战斗丹和十种永久属性丹已经是物品内容；除调息丹外，其余丹药的炼丹配方仍待配置。
+- 材料减免、固定额外产物和概率额外产物需要实现后再转为已实现。
 
 ## 正式开局与资源闭环
 
@@ -249,7 +249,7 @@ description_effects = [{
 
 ## 永久属性强化丹
 
-一阶永久属性强化丹使用 `payload.permanent_attribute_enhance` 描述效果，包含 `tier_id` 和非空 `effects` 数组。每项效果使用 `stat` 指定属性，`amount` 必须为正整数且省略时默认为 1。当前允许攻击、防御、气血、法力、根骨和五行十项属性；同一颗丹不能重复声明同一属性。
+一阶永久属性强化丹使用 `permanent_attribute` 类型化效果描述属性和 `tier_id`。每项效果使用 `stat` 指定属性，`amount` 省略时默认为 1。当前允许攻击、防御、气血、法力、根骨和五行十项属性；同一颗丹不能重复声明同一属性。
 
 十种一阶丹分别强化一项属性。普通属性丹在炼丹 6 级解锁，五行丹在 7 级解锁；每颗消耗对应作物 3、草药 8、对应普通或五行灵石 2。每名角色的一阶丹合计最多使用 100 颗，并按阶级及 item_id 分别保存用量。多属性丹仍按服用一颗计一次。
 
@@ -257,7 +257,7 @@ description_effects = [{
 
 ## 永久建筑品质
 
-账号按 `farm`、`forge`、`alchemy` 保存永久 `output_quality`。可使用物品通过 payload `{"permanent_building_quality": {"building_id": "forge", "amount": 1}}` 提升指定建筑；目标必须是生产建筑且数量必须为正，成功后消耗 1 个物品。当前只有炼器接入实际效果：每点永久品质增加 5% 的单次升阶概率，总概率最高 95%；农田和炼丹仅保留存档与查询接口。
+账号按 `farm`、`forge`、`alchemy` 保存永久 `output_quality`。可使用物品通过 `building_quality` 类型化效果的 `reference_id` 与 `amount` 提升指定建筑；目标必须是生产建筑且数量必须为正，成功后消耗 1 个物品。旧 Mod 的 `permanent_building_quality` payload 由 API 2 兼容适配器转换。当前只有炼器接入实际效果：每点永久品质增加 5% 的单次升阶概率，总概率最高 95%；农田和炼丹仅保留存档与查询接口。
 
 ## 规划：装备 V2 与五行技能扩展
 
@@ -312,8 +312,8 @@ description_effects = [{
 `DataTables` 提供统一入口，避免 UI、任务和背包逻辑手写重复字段：
 
 - `ITEM_ID_*`：物品代码主键常量，例如 `DataTables.ITEM_ID_HERB`。
-- `ITEM_DEFS`：通用静态物品定义。
-- `SKILL_DEFS`：技能定义。
+- `ITEM_DEFS`：由 `resources/items/index.tres` 和物品解析器生成的兼容定义。
+- `SKILL_DEFS`：由 `resources/skills/index.tres` 和技能解析器生成的兼容定义。
 - `ALCHEMY_RECIPE_DEFS`：炼丹配方定义。
 - `EQUIPMENT_DEFS`：装备模板定义。
 - `EQUIPMENT_ATTRIBUTE_DEFS`：装备随机词条池。
@@ -336,6 +336,6 @@ description_effects = [{
 
 ## 扩展约定
 
-- 新增物品优先补 `DataTables.ITEM_ID_*`、`DataTables.ITEM_DEFS` 和稳定 `item_no`，再同步[内容数据表](item-table.md)。
+- 新增核心物品时创建 `ItemDef`、分配稳定 `item_no` 并登记 `resources/items/index.tres`；仅常用代码主键需要补 `DataTables.ITEM_ID_*`，再同步[内容数据表](item-table.md)。
 - 新增物品规则或交互流程同步更新本文档。
 - 新增规划设定时必须标注“规划”，实现后再移动到“已实现”段落。

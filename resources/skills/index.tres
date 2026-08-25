@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ContentIndexResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/content_index_resource.gd" id="1_index"]
+
+[resource]
+script = ExtResource("1_index")
+format_version = 1
+entries = {
+"attack_up": {"category": "active", "resource_path": "res://resources/skills/attack_up.tres", "scene_path": "res://scripts/game/skills/buff/attack_up_skill.tscn"},
+"basic_attack": {"category": "basic_attack", "resource_path": "res://resources/skills/basic_attack.tres", "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
+"fireball": {"category": "basic_attack", "resource_path": "res://resources/skills/fireball.tres", "scene_path": "res://scripts/game/skills/damage/basic_attack.tscn"},
+"heal": {"category": "active", "resource_path": "res://resources/skills/heal.tres", "scene_path": "res://scripts/game/skills/heal/heal_skill.tscn"},
+"poison": {"category": "active", "resource_path": "res://resources/skills/poison.tres", "scene_path": "res://scripts/game/skills/damage/poison_skill.tscn"},
+"spirit_shield": {"category": "active", "resource_path": "res://resources/skills/spirit_shield.tres", "scene_path": "res://scripts/game/skills/buff/spirit_shield_skill.tscn"},
+"thunder": {"category": "active", "resource_path": "res://resources/skills/thunder.tres", "scene_path": "res://scripts/game/skills/damage/thunder_skill.tscn"},
+"water_cold_talisman": {"category": "active", "resource_path": "res://resources/skills/water_cold_talisman.tres", "scene_path": "res://scripts/game/skills/damage/water_cold_talisman_skill.tscn"},
+"wolf_bite": {"category": "active", "resource_path": "res://resources/skills/wolf_bite.tres", "scene_path": "res://scripts/game/skills/damage/wolf_bite_skill.tscn"},
+"wolf_bleed": {"category": "active", "resource_path": "res://resources/skills/wolf_bleed.tres", "scene_path": "res://scripts/game/skills/damage/wolf_bleed_skill.tscn"},
+"wolf_howl": {"category": "active", "resource_path": "res://resources/skills/wolf_howl.tres", "scene_path": "res://scripts/game/skills/damage/wolf_howl_skill.tscn"},
+"wolf_pounce": {"category": "active", "resource_path": "res://resources/skills/wolf_pounce.tres", "scene_path": "res://scripts/game/skills/damage/wolf_pounce_skill.tscn"}
+}
+groups = {
+"active": ["heal", "thunder", "poison", "attack_up", "spirit_shield", "water_cold_talisman", "wolf_bite", "wolf_bleed", "wolf_howl", "wolf_pounce"],
+"basic_attack": ["basic_attack", "fireball"]
+}

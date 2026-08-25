@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_uheah"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_bpwwr"]
+
+[sub_resource type="Resource" id="Resource_uheah"]
+script = ExtResource("1_uheah")
+effect_id = "defense_pill_buff"
+kind = "temporary_modifier"
+target = "combat_global"
+stat = "defense"
+value = 3.0
+buff_id = "defense_pill_buff"
+duration_seconds = 60.0
+
+[resource]
+script = ExtResource("2_bpwwr")
+id = "defense_pill"
+item_no = 1045
+type = "pill"
+display_name = "玄甲丹"
+icon_name = "defense_pill"
+icon_path = "res://assets/items/defense_pill.png"
+description = "全队防御 +3，持续 60 秒。"
+usable = true
+use_context = "both"
+gain_target = "defense"
+combat_cooldown_turns = 3
+shared_cooldown_group = "buff_pill"
+ai_action_type = "defense"
+effects = Array[Resource]([SubResource("Resource_uheah")])

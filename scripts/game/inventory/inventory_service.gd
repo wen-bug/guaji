@@ -101,7 +101,7 @@ func is_inventory_item_usable(instance_id: String) -> bool:
 	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty():
 		return false
-	return DataTables.item_use_scope(str(item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME
+	return DataTables.item_use_scope(str(item.get("item_id", ""))) in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]
 
 
 func is_inventory_item_direct_usable(instance_id: String) -> bool:
@@ -116,6 +116,8 @@ func use_inventory_item_for_member(instance_id: String, member_id: String) -> bo
 	var item: Dictionary = inventory_item_by_instance(instance_id)
 	if item.is_empty():
 		return false
+	if str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT and item.get("effects", []) is Array and not item.get("effects", []).is_empty():
+		return game_state._use_typed_item_for_member(item, member_id)
 
 	if item.get("payload", {}).has("permanent_building_quality") or DataTables.is_farm_speed_item(str(item.get("item_id", ""))):
 		return game_state._use_home_item(item)

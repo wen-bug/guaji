@@ -1,9 +1,9 @@
-[gd_resource type="Resource" format=3 uid="uid://cm3h5fnc134pm"]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://ck6tw3yoqii2x"]
 
 [ext_resource type="Texture2D" uid="uid://svsmhrs3y0xn" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_attack_up_001/spell_attack_up_001_small_red/frame0006.png" id="2_icon"]
 [ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/attack_up.tscn" id="4_status"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
 
 [sub_resource type="Resource" id="Resource_attack_up"]
 script = ExtResource("skill_effect_def_script")
@@ -27,8 +27,6 @@ icon_name = "attack_up"
 icon_path = "res://assets/skills/attack_up.png"
 type = "buff"
 target_scope = "self"
-effect_tags = Array[String](["buff"])
-has_buff = true
 element = "fire"
 mp_cost = 5
 priority = 70

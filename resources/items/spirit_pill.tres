@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_wxwk4"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_vw060"]
+
+[sub_resource type="Resource" id="Resource_wxwk4"]
+script = ExtResource("1_wxwk4")
+effect_id = "restore_mp"
+stat = "mp"
+ratio = 0.25
+
+[resource]
+script = ExtResource("2_vw060")
+id = "spirit_pill"
+item_no = 1043
+type = "pill"
+display_name = "聚灵丹"
+icon_name = "spirit_pill"
+icon_path = "res://assets/items/spirit_pill.png"
+description = "恢复 25% 最大法力。"
+usable = true
+use_context = "both"
+combat_cooldown_turns = 2
+ai_action_type = "resource"
+effects = Array[Resource]([SubResource("Resource_wxwk4")])

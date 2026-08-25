@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_p8g6l"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_26ywk"]
+
+[sub_resource type="Resource" id="Resource_p8g6l"]
+script = ExtResource("1_p8g6l")
+effect_id = "fire_pill_buff"
+kind = "temporary_modifier"
+target = "combat_global"
+stat = "element_fire"
+value = 3.0
+buff_id = "fire_pill_buff"
+duration_seconds = 60.0
+
+[resource]
+script = ExtResource("2_26ywk")
+id = "fire_pill"
+item_no = 1047
+type = "pill"
+display_name = "赤焰丹"
+icon_name = "fire_pill"
+icon_path = "res://assets/items/fire_pill.png"
+description = "全队火行 +3，持续 60 秒。"
+usable = true
+use_context = "both"
+gain_target = "fire"
+combat_cooldown_turns = 3
+shared_cooldown_group = "buff_pill"
+ai_action_type = "buff"
+effects = Array[Resource]([SubResource("Resource_p8g6l")])

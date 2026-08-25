@@ -1,7 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_b0i3k"]
 [ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_attack_up_001/spell_attack_up_001_small_red/frame0006.png" id="2_icon"]
+
+[sub_resource type="Resource" id="Resource_b0i3k"]
+script = ExtResource("1_b0i3k")
+effect_id = "unlock_skill"
+kind = "unlock_content"
+reference_kind = "skill"
+reference_id = "attack_up"
 
 [resource]
 script = ExtResource("1")
@@ -13,8 +21,7 @@ icon_texture = ExtResource("2_icon")
 icon_name = "skill_book_attack_up"
 icon_path = "res://assets/items/skill_book_attack_up.png"
 description = "使用后令选中角色永久学会燃锋诀。"
-stackable = true
 usable = true
-use_scope = "home"
+use_context = "home"
 gain_target = "fire"
-payload = {"skill_id": "attack_up", "obtain_source": "non_drop"}
+effects = Array[Resource]([SubResource("Resource_b0i3k")])

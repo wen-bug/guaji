@@ -18,16 +18,12 @@ extends Resource
 @export_enum("normal_attack", "damage", "heal", "buff", "defense", "resource") var type := "damage"
 ## 目标范围，例如 self、single_enemy、all_enemies 或 all_allies。
 @export_enum("self", "single_ally", "all_allies", "single_enemy", "all_enemies") var target_scope := "single_enemy"
-## HUD 和兼容逻辑使用的目标模式，例如 single 或 aoe。
-@export_enum("single", "aoe") var target_mode := "single"
-## 是否为范围技能；应与 target_scope 和 target_mode 保持一致。
-@export var is_aoe := false
-## 用于检索和展示的效果标签，例如 damage、dot、shield。
-@export var effect_tags: Array[String] = []
-## 技能是否包含增益状态，用于 UI 和 AI 分类。
-@export var has_buff := false
-## 技能是否包含减益状态，用于 UI 和 AI 分类。
-@export var has_debuff := false
+## 下列字段由解析器从 target_scope 和 effects 推导，不在核心资源中重复配置。
+var target_mode := "single"
+var is_aoe := false
+var effect_tags: Array[String] = []
+var has_buff := false
+var has_debuff := false
 ## 技能默认五行；效果自身 element 非空时会覆盖它。
 @export var element := ""
 
@@ -48,6 +44,16 @@ extends Resource
 @export_group("机制")
 ## 按数组顺序结算的 SkillEffectDef 资源列表。
 @export var effects: Array[Resource] = []
+
+@export_group("普通攻击与功法兑换")
+## 非普通攻击留空；普通攻击填写 melee 或 ranged。
+@export var basic_attack_mode := ""
+@export var basic_attack_range := 0.0
+## 可兑换功法填写技能书和五行灵石；不可兑换技能留空。
+@export var exchange_book_item_id := ""
+@export var exchange_element_stone_id := ""
+@export var exchange_fragment_cost := 0
+@export var exchange_stone_cost := 0
 
 @export_group("说明")
 ## 技能详情中显示的说明文本。
@@ -98,5 +104,14 @@ func to_dictionary() -> Dictionary:
 		"enemy_only": enemy_only,
 		"weight": weight,
 		"effects": effect_values,
+		"basic_attack_mode": basic_attack_mode,
+		"attack_mode": basic_attack_mode,
+		"basic_attack_range": basic_attack_range,
+		"exchange": {
+			"book_item_id": exchange_book_item_id,
+			"element_stone_id": exchange_element_stone_id,
+			"fragment_cost": exchange_fragment_cost,
+			"stone_cost": exchange_stone_cost,
+		} if not exchange_book_item_id.is_empty() else {},
 		"description": description,
 	}

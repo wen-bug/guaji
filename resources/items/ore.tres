@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
 
@@ -6,13 +6,7 @@
 script = ExtResource("1")
 id = "ore"
 item_no = 1004
-type = "material"
 display_name = "矿石"
 icon_name = "ore"
 icon_path = "res://assets/items/ore.png"
 description = "通用炼器材料。"
-stackable = true
-usable = false
-use_scope = "none"
-gain_target = "none"
-payload = {}

@@ -1,8 +1,13 @@
 class_name DataTables
 extends Node
 
+const EquipmentConfigParserScript = preload("res://scripts/game/data/equipment_config_parser.gd")
+const ItemConfigParserScript = preload("res://scripts/game/data/item_config_parser.gd")
+const SkillConfigParserScript = preload("res://scripts/game/data/skill_config_parser.gd")
+
 const ITEM_USE_SCOPE_HOME := "home"
 const ITEM_USE_SCOPE_COMBAT := "combat"
+const ITEM_USE_SCOPE_BOTH := "both"
 const ITEM_USE_SCOPE_NONE := "none"
 
 const ITEM_TYPE_SKILL_BOOK := "skill_book"
@@ -224,21 +229,7 @@ const EQUIPMENT_SALVAGE_ORE := {
 	"t4": 7,
 	"t5": 12,
 }
-const EQUIPMENT_RARITY_WEIGHTS := {
-	"t1": 55,
-	"t2": 28,
-	"t3": 12,
-	"t4": 4,
-	"t5": 1,
-}
-const EQUIPMENT_ENHANCE_LIMITS := {
-	"t1": 10,
-	"t2": 20,
-	"t3": 30,
-	"t4": 40,
-	"t5": 50,
-}
-const EQUIPMENT_AFFIX_COUNTS := {"t1": 1, "t2": 2, "t3": 3, "t4": 3, "t5": 3}
+static var EQUIPMENT_RARITY_WEIGHTS: Dictionary = EquipmentConfigParserScript.default_rarity_weights()
 const EQUIPMENT_AFFIX_DEFS := {
 	"direct_damage_percent": {"name": "直接伤害", "value": 0.05, "format": "percent"},
 	"critical_chance": {"name": "暴击率", "value": 0.03, "format": "percent"},
@@ -260,6 +251,7 @@ const EQUIPMENT_ATTRIBUTE_POINT_BUDGETS := {
 	"t4": 180,
 	"t5": 300,
 }
+const EQUIPMENT_ATTRIBUTE_GENERATION_VERSION := 4
 const EQUIPMENT_NORMAL_ATTRIBUTE_STATS := ["attack", "defense", "max_hp", "max_mp", "root_bone"]
 const EQUIPMENT_ELEMENT_ATTRIBUTE_STATS := ["element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
 const EQUIPMENT_ALL_ATTRIBUTE_STATS := EQUIPMENT_NORMAL_ATTRIBUTE_STATS + EQUIPMENT_ELEMENT_ATTRIBUTE_STATS
@@ -458,93 +450,22 @@ const MARKET_COMMISSION_ITEM_IDS := [
 	"earth_pill", "metal_pill", "water_pill", "breakthrough_pill",
 ]
 
-const ITEM_DEFS := {
-	"herb": {"item_no": 1001, "name": "草药", "description": "通用炼丹材料，也可作为种子。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 3, "growth_seconds": 600.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"ore": {"item_no": 1004, "name": "矿石", "description": "通用炼器材料。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"spirit_stone": {"item_no": 1005, "name": "灵石", "description": "招募修士与强化普通属性所需的通用灵石。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"recruit_currency": true, "enhance_amount": 1, "stone_group": "stat"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"farm_speed_talisman": {"item_no": 1006, "name": "丰收符", "description": "提升农田生长速度一段时间。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": true, "payload": {"farm_speed": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"spirit_stone_fire": {"item_no": 1009, "name": "火灵石", "description": "可用于强化火行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_fire", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
-	"spirit_stone_earth": {"item_no": 1010, "name": "土灵石", "description": "可用于强化土行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_earth", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
-	"spirit_stone_wood": {"item_no": 1011, "name": "木灵石", "description": "可用于强化木行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_wood", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
-	"spirit_stone_metal": {"item_no": 1012, "name": "金灵石", "description": "可用于强化金行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_metal", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
-	"spirit_stone_water": {"item_no": 1013, "name": "水灵石", "description": "可用于强化水行属性。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"stat": "element_water", "enhance_amount": 1, "stone_group": "element"}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
-	"refine_talisman": {"item_no": 1014, "name": "洗练符", "description": "用于装备洗练。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"recipe_pill": {"item_no": 1015, "name": "调息丹方", "description": "学习后可炼制调息丹。", "type": ITEM_TYPE_ALCHEMY_RECIPE, "stackable": true, "usable": true, "payload": {"recipe_id": "pill"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"pill": {"item_no": 1016, "name": "调息丹", "description": "恢复 15% 最大生命和法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp_ratio": 0.15, "mp_ratio": 0.15}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"breakthrough_pill": {"item_no": 1017, "name": "破境丹", "description": "达到等级上限时可突破。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"breakthrough": true}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blade_grass": {"item_no": 1019, "name": "刃纹草", "description": "蕴含锋锐气息的攻击属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "attack"},
-	"ironroot": {"item_no": 1020, "name": "铁根藤", "description": "根须坚韧的防御属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "defense"},
-	"blood_ginseng": {"item_no": 1021, "name": "血参", "description": "补益气血的生命属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_hp"},
-	"spirit_lotus": {"item_no": 1022, "name": "灵泉莲", "description": "滋养法力的灵力属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "max_mp"},
-	"bone_bamboo": {"item_no": 1023, "name": "玉骨竹", "description": "淬炼根骨的根骨属性作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1800.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "root_bone"},
-	"woodvine": {"item_no": 1024, "name": "青木藤", "description": "蕴含木行生机的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 900.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "wood"},
-	"flame_flower": {"item_no": 1025, "name": "赤焰花", "description": "蕴含火行炎力的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1050.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "fire"},
-	"earth_moss": {"item_no": 1026, "name": "厚土苔", "description": "蕴含土行厚重的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1050.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "earth"},
-	"metal_reed": {"item_no": 1027, "name": "玄金苇", "description": "蕴含金行肃杀的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1500.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "metal"},
-	"water_orchid": {"item_no": 1028, "name": "玄水兰", "description": "蕴含水行润泽的五行作物。", "type": ITEM_TYPE_CROP, "stackable": true, "usable": false, "payload": {"seed_yield": 1, "growth_seconds": 1200.0}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "water"},
-	"skill_book_thunder": {"item_no": 1029, "name": "雷击术技能书", "description": "使用后令选中角色永久学会雷击术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "thunder", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
-	"skill_book_poison": {"item_no": 1030, "name": "蚀骨毒雾技能书", "description": "使用后令选中角色永久学会蚀骨毒雾。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "poison", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
-	"skill_book_heal": {"item_no": 1031, "name": "回春术技能书", "description": "使用后令选中角色永久学会回春术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "heal", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
-	"skill_book_attack_up": {"item_no": 1032, "name": "燃锋诀技能书", "description": "使用后令选中角色永久学会燃锋诀。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "attack_up", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
-	"skill_book_spirit_shield": {"item_no": 1033, "name": "玄甲术技能书", "description": "使用后令选中角色永久学会玄甲术。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "spirit_shield", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
-	"blueprint_weapon": {"item_no": 1034, "name": "武器图纸", "description": "使用后永久解锁武器定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "weapon"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blueprint_helmet": {"item_no": 1035, "name": "头盔图纸", "description": "使用后永久解锁头盔定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "helmet"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blueprint_armor": {"item_no": 1036, "name": "护甲图纸", "description": "使用后永久解锁护甲定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "armor"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blueprint_leggings": {"item_no": 1037, "name": "胫甲图纸", "description": "使用后永久解锁胫甲定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "leggings"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blueprint_gloves": {"item_no": 1038, "name": "护手图纸", "description": "使用后永久解锁护手定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "gloves"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"blueprint_accessory": {"item_no": 1039, "name": "饰品图纸", "description": "使用后永久解锁饰品定向打造；重复图纸转化为矿石 x4。", "type": ITEM_TYPE_BLUEPRINT, "stackable": true, "usable": true, "payload": {"equipment_template_id": "accessory"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"manual_fragment": {"item_no": 1040, "name": "功法残页", "description": "用于在招募建筑兑换功法。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"skill_book_water_cold_talisman": {"item_no": 1041, "name": "寒潮符技能书", "description": "使用后令选中角色永久学会寒潮符。", "type": ITEM_TYPE_SKILL_BOOK, "stackable": true, "usable": true, "payload": {"skill_id": "water_cold_talisman", "obtain_source": "non_drop"}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
-	"life_pill": {"item_no": 1042, "name": "归元丹", "description": "恢复 25% 最大生命。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"hp_ratio": 0.25}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"spirit_pill": {"item_no": 1043, "name": "聚灵丹", "description": "恢复 25% 最大法力。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"mp_ratio": 0.25}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "none"},
-	"attack_pill": {"item_no": 1044, "name": "破军丹", "description": "攻击 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "attack", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "attack"},
-	"defense_pill": {"item_no": 1045, "name": "玄甲丹", "description": "防御 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "defense", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "defense"},
-	"wood_pill": {"item_no": 1046, "name": "青木丹", "description": "木行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_wood", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
-	"fire_pill": {"item_no": 1047, "name": "赤焰丹", "description": "火行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_fire", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
-	"earth_pill": {"item_no": 1048, "name": "厚土丹", "description": "土行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_earth", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
-	"metal_pill": {"item_no": 1049, "name": "玄金丹", "description": "金行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_metal", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
-	"water_pill": {"item_no": 1050, "name": "玄水丹", "description": "水行 +3，持续 3 回合。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"effect_mode": "duration", "stat": "element_water", "amount": 3, "duration": 3, "cooldown_group": "buff_pill", "cooldown": 3}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
-	"t1_attack_enhance_pill": {"item_no": 1051, "name": "一阶攻击强化丹", "description": "永久强化所选角色的攻击属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "attack"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "attack"},
-	"t1_defense_enhance_pill": {"item_no": 1052, "name": "一阶防御强化丹", "description": "永久强化所选角色的防御属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "defense"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "defense"},
-	"t1_max_hp_enhance_pill": {"item_no": 1053, "name": "一阶气血强化丹", "description": "永久强化所选角色的气血上限。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "max_hp"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "max_hp"},
-	"t1_max_mp_enhance_pill": {"item_no": 1054, "name": "一阶法力强化丹", "description": "永久强化所选角色的法力上限。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "max_mp"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "max_mp"},
-	"t1_root_bone_enhance_pill": {"item_no": 1055, "name": "一阶根骨强化丹", "description": "永久强化所选角色的根骨属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "root_bone"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "root_bone"},
-	"t1_wood_enhance_pill": {"item_no": 1056, "name": "一阶木行强化丹", "description": "永久强化所选角色的木行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_wood"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "wood"},
-	"t1_fire_enhance_pill": {"item_no": 1057, "name": "一阶火行强化丹", "description": "永久强化所选角色的火行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_fire"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "fire"},
-	"t1_earth_enhance_pill": {"item_no": 1058, "name": "一阶土行强化丹", "description": "永久强化所选角色的土行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_earth"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "earth"},
-	"t1_metal_enhance_pill": {"item_no": 1059, "name": "一阶金行强化丹", "description": "永久强化所选角色的金行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_metal"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "metal"},
-	"t1_water_enhance_pill": {"item_no": 1060, "name": "一阶水行强化丹", "description": "永久强化所选角色的水行属性。", "type": ITEM_TYPE_PILL, "stackable": true, "usable": true, "payload": {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_water"}]}}, "use_scope": ITEM_USE_SCOPE_HOME, "gain_target": "water"},
-	"market_token": {"item_no": 1061, "name": "坊市令", "description": "通过坊市回收与委托获得，用于购买和刷新坊市商品。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {"market_currency": true}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"enhancement_stone": {"item_no": 1062, "name": "强化石", "description": "用于为装备固定基础属性分配强化点。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-	"ascension_stone": {"item_no": 1063, "name": "升阶石", "description": "用于提升装备阶位。", "type": ITEM_TYPE_MATERIAL, "stackable": true, "usable": false, "payload": {}, "use_scope": ITEM_USE_SCOPE_NONE, "gain_target": "none"},
-}
+static var ITEM_DEFS: Dictionary = ItemConfigParserScript.definitions()
+static var SKILL_DEFS: Dictionary = SkillConfigParserScript.definitions()
+static var BASIC_ATTACK_DEFS: Dictionary = SkillConfigParserScript.basic_attack_definitions()
+static var SKILL_EXCHANGE_DEFS: Dictionary = SkillConfigParserScript.exchange_definitions()
 
-const SKILL_EXCHANGE_DEFS := {
-	"thunder": {"book_item_id": "skill_book_thunder", "element_stone_id": "spirit_stone_metal", "fragment_cost": 3, "stone_cost": 1},
-	"poison": {"book_item_id": "skill_book_poison", "element_stone_id": "spirit_stone_wood", "fragment_cost": 3, "stone_cost": 1},
-	"heal": {"book_item_id": "skill_book_heal", "element_stone_id": "spirit_stone_wood", "fragment_cost": 3, "stone_cost": 1},
-	"attack_up": {"book_item_id": "skill_book_attack_up", "element_stone_id": "spirit_stone_fire", "fragment_cost": 3, "stone_cost": 1},
-	"spirit_shield": {"book_item_id": "skill_book_spirit_shield", "element_stone_id": "spirit_stone_earth", "fragment_cost": 3, "stone_cost": 1},
-	"water_cold_talisman": {"book_item_id": "skill_book_water_cold_talisman", "element_stone_id": "spirit_stone_water", "fragment_cost": 3, "stone_cost": 1},
-}
 
-const SKILL_DEFS := {
-	"heal": {"id": "heal", "name": "回春术", "type": "heal", "target_scope": SKILL_TARGET_SELF, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "mp_cost": 6, "cooldown": 5, "priority": 90, "trigger": ["hp_below_35"], "effects": [{"effect_id": "heal", "kind": "heal", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 1.0}]},
-	"thunder": {"id": "thunder", "name": "雷击术", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "metal", "mp_cost": 12, "cooldown": 5, "priority": 60, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 13, "attribute_multiplier": 1.75, "shieldable": true}]},
-	"poison": {"id": "poison", "name": "蚀骨毒雾", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "target_mode": SKILL_TARGET_MODE_AOE, "element": "wood", "mp_cost": 8, "cooldown": 4, "priority": 55, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 0.9, "shieldable": true}, {"effect_id": "poison", "kind": "status", "target": "hit_targets", "status_id": "poison", "status_kind": "dot", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/poison.png", "status_scene_path": "res://scripts/game/skills/status/visuals/poison.tscn"}]},
-	"attack_up": {"id": "attack_up", "name": "燃锋诀", "type": "buff", "target_scope": SKILL_TARGET_SELF, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "fire", "mp_cost": 5, "cooldown": 6, "priority": 70, "trigger": ["always"], "effects": [{"effect_id": "attack_up", "kind": "status", "target": "caster", "status_id": "attack_up", "status_kind": "buff_stat", "stat": "attack", "base_amount": 2, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/attack_up.png", "status_scene_path": "res://scripts/game/skills/status/visuals/attack_up.tscn"}]},
-	"spirit_shield": {"id": "spirit_shield", "name": "玄甲术", "type": "defense", "target_scope": SKILL_TARGET_SELF, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "earth", "mp_cost": 7, "cooldown": 6, "priority": 80, "trigger": ["hp_below_60"], "effects": [{"effect_id": "spirit_shield", "kind": "status", "target": "caster", "status_id": "spirit_shield", "status_kind": "shield", "base_amount": 10, "attribute_multiplier": 0.5, "duration_turns": 3, "stack_mode": "refresh", "icon_path": "res://assets/skills/spirit_shield.png", "status_scene_path": "res://scripts/game/skills/status/visuals/spirit_shield.tscn"}]},
-	"wolf_bite": {"id": "wolf_bite", "name": "撕咬", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 2, "priority": 40, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 4, "attribute_multiplier": 1.25, "shieldable": true}]},
-	"wolf_bleed": {"id": "wolf_bleed", "name": "裂伤", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 3, "priority": 55, "trigger": ["always"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.0, "shieldable": true}, {"effect_id": "bleed", "kind": "status", "target": "hit_targets", "status_id": "wolf_bleed", "status_kind": "dot", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/bleed.tscn"}]},
-	"wolf_howl": {"id": "wolf_howl", "name": "狼嚎", "type": "damage", "target_scope": SKILL_TARGET_ALL_ENEMIES, "target_mode": SKILL_TARGET_MODE_AOE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 4, "priority": 65, "trigger": ["hp_below_50"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 3, "attribute_multiplier": 1.1, "shieldable": true}, {"effect_id": "howl", "kind": "status", "target": "caster", "requires_hit": true, "status_id": "wolf_howl", "status_kind": "buff_stat", "stat": "attack", "base_amount": 1, "attribute_multiplier": 0.5, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/wolf_howl.tscn"}]},
-	"wolf_pounce": {"id": "wolf_pounce", "name": "扑杀", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "wood", "enemy_only": true, "mp_cost": 0, "cooldown": 5, "priority": 80, "trigger": ["target_hp_below_35"], "weight": 1, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 5, "attribute_multiplier": 1.8, "shieldable": true}]},
-	"water_cold_talisman": {"id": "water_cold_talisman", "name": "寒潮符", "type": "damage", "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "water", "mp_cost": 6, "cooldown": 3, "priority": 45, "trigger": ["always"], "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 7, "attribute_multiplier": 1.10, "shieldable": true}, {"effect_id": "cold", "kind": "status", "target": "hit_targets", "status_id": "cold", "status_kind": "debuff_stat", "stat": "attack", "base_amount": -1, "attribute_multiplier": 0.0, "duration_turns": 2, "stack_mode": "refresh", "status_scene_path": "res://scripts/game/skills/status/visuals/debuff.tscn"}]},
-}
-
-const BASIC_ATTACK_DEFS := {
-	ATTACK_MODE_MELEE: {"id": "basic_attack", "name": "普通攻击", "attack_mode": ATTACK_MODE_MELEE, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 0.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true}]},
-	ATTACK_MODE_RANGED: {"id": RANGED_BASIC_ATTACK_ID, "name": "火球术", "attack_mode": ATTACK_MODE_RANGED, "target_scope": SKILL_TARGET_SINGLE_ENEMY, "target_mode": SKILL_TARGET_MODE_SINGLE, "element": "fire", "mp_cost": 0, "cooldown": 0.0, "basic_attack_range": 120.0, "effects": [{"effect_id": "impact", "kind": "damage", "target": "skill_targets", "base_amount": 0, "shieldable": true}]},
-}
+static func reload_item_skill_configs() -> Array[String]:
+	ItemConfigParserScript.clear_cache()
+	SkillConfigParserScript.clear_cache()
+	ITEM_DEFS = ItemConfigParserScript.definitions()
+	SKILL_DEFS = SkillConfigParserScript.definitions()
+	BASIC_ATTACK_DEFS = SkillConfigParserScript.basic_attack_definitions()
+	SKILL_EXCHANGE_DEFS = SkillConfigParserScript.exchange_definitions()
+	var errors: Array[String] = ItemConfigParserScript.validation_errors()
+	errors.append_array(SkillConfigParserScript.validation_errors())
+	return errors
 
 const ALCHEMY_RECIPE_DEFS := {
 	"pill": {"result_item_id": "pill", "unlock_building_level": 1, "materials": [{"item_id": "herb", "amount": 2}]},
@@ -570,26 +491,27 @@ const ALCHEMY_RECIPE_DEFS := {
 	"t1_water_enhance_pill": {"result_item_id": "t1_water_enhance_pill", "unlock_building_level": 7, "allow_output_multiplier": false, "allow_bonus_output": false, "materials": [{"item_id": "water_orchid", "amount": 3}, {"item_id": "herb", "amount": 8}, {"item_id": "spirit_stone_water", "amount": 2}]},
 }
 
-const EQUIPMENT_DEFS := {
-	"weapon": {"slot": "weapon", "name": "武器"},
-	"helmet": {"slot": "helmet", "name": "聚灵冠"},
-	"armor": {"slot": "armor", "name": "镇元法衣"},
-	"leggings": {"slot": "leggings", "name": "行脉胫甲"},
-	"gloves": {"slot": "gloves", "name": "锻骨护手"},
-	"accessory": {"slot": "accessory", "name": "饰品"},
-}
-const LEGACY_EQUIPMENT_VARIANT_ALIASES := {
-	"weapon_metal_sword": {"template_id": "weapon", "variant_id": "weapon_metal_sword"},
-	"weapon_wood_staff": {"template_id": "weapon", "variant_id": "weapon_wood_staff"},
-	"weapon_earth_gauntlet": {"template_id": "weapon", "variant_id": "weapon_earth_gauntlet"},
-	"weapon_water_brush": {"template_id": "weapon", "variant_id": "weapon_water_brush"},
-	"weapon_fire_orb": {"template_id": "weapon", "variant_id": "weapon_fire_orb"},
-	"accessory_wood": {"template_id": "accessory", "variant_id": "accessory_wood"},
-	"accessory_fire": {"template_id": "accessory", "variant_id": "accessory_fire"},
-	"accessory_earth": {"template_id": "accessory", "variant_id": "accessory_earth"},
-	"accessory_metal": {"template_id": "accessory", "variant_id": "accessory_metal"},
-	"accessory_water": {"template_id": "accessory", "variant_id": "accessory_water"},
-}
+static var EQUIPMENT_DEFS: Dictionary = EquipmentConfigParserScript.template_definitions()
+static var LEGACY_EQUIPMENT_VARIANT_ALIASES: Dictionary = EquipmentConfigParserScript.legacy_aliases()
+
+
+static func reload_equipment_configs() -> Array[String]:
+	EquipmentConfigParserScript.clear_cache()
+	EQUIPMENT_RARITY_WEIGHTS = EquipmentConfigParserScript.default_rarity_weights()
+	EQUIPMENT_DEFS = EquipmentConfigParserScript.template_definitions()
+	LEGACY_EQUIPMENT_VARIANT_ALIASES = EquipmentConfigParserScript.legacy_aliases()
+	return EquipmentConfigParserScript.validation_errors()
+
+
+static func _is_indexed_core_equipment_reference(template_id: String) -> bool:
+	var index := EquipmentConfigParserScript.index_data()
+	var paths = index.get("equipment_paths", {})
+	var aliases = index.get("aliases", {})
+	return (
+		EquipmentConfigParserScript.slot_ids().has(template_id)
+		or (paths is Dictionary and paths.has(template_id))
+		or (aliases is Dictionary and aliases.has(template_id))
+	)
 
 const EQUIPMENT_ATTRIBUTE_DEFS := [
 	{"stat": "attack"},
@@ -755,12 +677,20 @@ static func blueprint_template_id(item_id: String) -> String:
 	return str(definition.get("payload", {}).get("equipment_template_id", ""))
 
 
-static func equipment_icon_name(template_id: String) -> String:
+static func equipment_icon_name(template_id: String, variant_id: String = "") -> String:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	var core_definition := EquipmentConfigParserScript.equipment_definition(equipment_id)
+	if not core_definition.is_empty():
+		return str(core_definition.get("icon_name", equipment_id))
 	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	return str(definition.get("icon_name", template_id))
 
 
-static func equipment_icon_path(template_id: String) -> String:
+static func equipment_icon_path(template_id: String, variant_id: String = "") -> String:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	var core_definition := EquipmentConfigParserScript.equipment_definition(equipment_id)
+	if not core_definition.is_empty():
+		return str(core_definition.get("icon_path", ""))
 	var definition: Dictionary = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {}))
 	if definition.has("icon_path"):
 		return str(definition.get("icon_path", ""))
@@ -773,18 +703,28 @@ static func equipment_icon_path(template_id: String) -> String:
 static func item_resource_path(item_id: String) -> String:
 	if item_id.is_empty():
 		return ""
+	var core_path := ItemConfigParserScript.resource_path(item_id)
+	if not core_path.is_empty():
+		return core_path
 	return "%s/%s.tres" % [ITEM_RESOURCE_ROOT, item_id]
 
 
-static func equipment_resource_path(template_id: String) -> String:
+static func equipment_resource_path(template_id: String, variant_id: String = "") -> String:
 	if template_id.is_empty():
 		return ""
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	var core_path := EquipmentConfigParserScript.resource_path(equipment_id)
+	if not core_path.is_empty():
+		return core_path
 	return "%s/%s.tres" % [EQUIPMENT_RESOURCE_ROOT, template_id]
 
 
 static func skill_resource_path(skill_id: String) -> String:
 	if skill_id.is_empty():
 		return ""
+	var core_path := SkillConfigParserScript.resource_path(skill_id)
+	if not core_path.is_empty():
+		return core_path
 	return "%s/%s.tres" % [SKILL_RESOURCE_ROOT, skill_id]
 
 
@@ -798,8 +738,8 @@ static func item_resource(item_id: String) -> Resource:
 	return _load_resource(item_resource_path(item_id))
 
 
-static func equipment_resource(template_id: String) -> Resource:
-	return _load_resource(equipment_resource_path(template_id))
+static func equipment_resource(template_id: String, variant_id: String = "") -> Resource:
+	return _load_resource(equipment_resource_path(template_id, variant_id))
 
 
 static func skill_resource(skill_id: String) -> Resource:
@@ -814,8 +754,8 @@ static func item_icon_texture(item_id: String) -> Texture2D:
 	return _icon_texture_from_resource(item_resource_path(item_id))
 
 
-static func equipment_icon_texture(template_id: String) -> Texture2D:
-	return _icon_texture_from_resource(equipment_resource_path(template_id))
+static func equipment_icon_texture(template_id: String, variant_id: String = "") -> Texture2D:
+	return _icon_texture_from_resource(equipment_resource_path(template_id, variant_id))
 
 
 static func skill_icon_texture(skill_id: String) -> Texture2D:
@@ -838,7 +778,10 @@ static func item_display_description(item_id: String) -> String:
 	return str(item_definition(item_id).get("description", ""))
 
 
-static func equipment_template_description(template_id: String) -> String:
+static func equipment_template_description(template_id: String, variant_id: String = "") -> String:
+	var core_definition := EquipmentConfigParserScript.equipment_definition(EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id))
+	if not core_definition.is_empty():
+		return str(core_definition.get("description", ""))
 	var resource: Resource = equipment_resource(template_id)
 	var description: String = _resource_string(resource, "description", "")
 	if not description.is_empty():
@@ -846,7 +789,11 @@ static func equipment_template_description(template_id: String) -> String:
 	return str(content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {})).get("description", ""))
 
 
-static func equipment_template_description_effects(template_id: String) -> Array:
+static func equipment_template_description_effects(template_id: String, variant_id: String = "") -> Array:
+	var core_definition := EquipmentConfigParserScript.equipment_definition(EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id))
+	if not core_definition.is_empty():
+		var core_effects = core_definition.get("description_effects", [])
+		return core_effects.duplicate(true) if core_effects is Array else []
 	var resource: Resource = equipment_resource(template_id)
 	if resource != null:
 		var resource_effects = resource.get("description_effects")
@@ -867,7 +814,7 @@ static func inventory_display_description(item: Dictionary) -> String:
 	var item_id: String = str(item.get("item_id", ""))
 	if str(item.get("type", "")) == ITEM_TYPE_EQUIPMENT:
 		var instance_description: String = str(item.get("description", ""))
-		var template_description: String = equipment_template_description(item_id)
+		var template_description: String = equipment_template_description(item_id, str(item.get("equipment_variant_id", "")))
 		if instance_description.is_empty():
 			return template_description
 		if template_description.is_empty() or template_description == instance_description:
@@ -946,6 +893,11 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 		"stackable": bool(definition.get("stackable", true)),
 		"usable": bool(definition.get("usable", false)),
 		"consumable": bool(definition.get("consumable", definition.get("type", "") == ITEM_TYPE_SKILL_BOOK)),
+		"use_context": str(definition.get("use_context", definition.get("use_scope", ITEM_USE_SCOPE_NONE))),
+		"effects": definition.get("effects", []).duplicate(true),
+		"combat_cooldown_turns": int(definition.get("combat_cooldown_turns", 0)),
+		"shared_cooldown_group": str(definition.get("shared_cooldown_group", "")),
+		"ai_action_type": str(definition.get("ai_action_type", "")),
 		"payload": definition.get("payload", {}).duplicate(true),
 		"obtain_source": "non_drop",
 		"gain_target": definition.get("gain_target", "none"),
@@ -1401,8 +1353,15 @@ static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus
 	var template_ids := content_ids("equipment", EQUIPMENT_DEFS)
 	if template_ids.is_empty():
 		return {}
-	var template_id: String = str(template_ids[rng.randi_range(0, template_ids.size() - 1)])
-	var rarity := random_equipment_rarity(rng) if rarity_weights.is_empty() else random_rarity_from_weights(rng, rarity_weights)
+	var has_mod_templates := false
+	for candidate_id in template_ids:
+		if not EQUIPMENT_DEFS.has(str(candidate_id)):
+			has_mod_templates = true
+			break
+	var template_id := "" if has_mod_templates else EquipmentConfigParserScript.roll_template_id(rng)
+	if template_id.is_empty() or not template_ids.has(template_id):
+		template_id = str(template_ids[rng.randi_range(0, template_ids.size() - 1)])
+	var rarity := "" if rarity_weights.is_empty() else random_rarity_from_weights(rng, rarity_weights)
 	return create_equipment_from_template(template_id, level, rng, craft_bonus, "", rarity, obtain_source)
 
 
@@ -1420,17 +1379,28 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 	var variant_id := forced_variant_id
 	var variants := equipment_attribute_variants(template_id)
 	if variant_id.is_empty() and not variants.is_empty():
-		var variant_ids: Array = variants.keys()
-		variant_ids.sort()
-		variant_id = str(variant_ids[rng.randi_range(0, variant_ids.size() - 1)])
+		variant_id = EquipmentConfigParserScript.roll_equipment_id(template_id, rng)
+		if variant_id.is_empty():
+			var variant_ids: Array = variants.keys()
+			variant_ids.sort()
+			variant_id = str(variant_ids[rng.randi_range(0, variant_ids.size() - 1)])
 	var variant: Dictionary = variants.get(variant_id, {}) if not variant_id.is_empty() else {}
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	var core_definition := EquipmentConfigParserScript.equipment_definition(equipment_id)
+	if rarity.is_empty() or not EQUIPMENT_RARITY_ORDER.has(rarity):
+		var rarity_weights := EquipmentConfigParserScript.rarity_weights(equipment_id)
+		rarity = random_rarity_from_weights(rng, rarity_weights if not rarity_weights.is_empty() else EQUIPMENT_RARITY_WEIGHTS)
+	var tier_definition := EquipmentConfigParserScript.tier_definition(equipment_id, rarity)
+	rarity_name = str(tier_definition.get("rarity_name", EQUIPMENT_RARITY_NAMES.get(rarity, "一阶")))
 	var equipment_name: String = str(variant.get("name", template.get("name", slot_name(slot))))
+	if not core_definition.is_empty():
+		equipment_name = str(core_definition.get("name", equipment_name))
 	var equipment_level := 1
 	var fixed_attributes := equipment_tier_base_attributes(template_id, rarity, variant_id)
-	var rolled_attribute_stats := roll_equipment_attribute_stats(template_id, rarity, fixed_attributes, [], rng)
+	var rolled_attribute_stats := roll_equipment_attribute_stats(template_id, rarity, fixed_attributes, [], rng, variant_id)
 	var base_attributes := build_equipment_base_attributes(template_id, rarity, variant_id, rolled_attribute_stats)
-	var icon_name := str(variant.get("icon_name", equipment_icon_name(template_id)))
-	var icon_path := str(variant.get("icon_path", equipment_icon_path(template_id)))
+	var icon_name := str(core_definition.get("icon_name", variant.get("icon_name", equipment_icon_name(template_id, variant_id))))
+	var icon_path := str(core_definition.get("icon_path", variant.get("icon_path", equipment_icon_path(template_id, variant_id))))
 	return {
 		"instance_id": "%s_%d_%d" % [template_id, Time.get_ticks_usec(), rng.randi()],
 		"item_id": template_id,
@@ -1446,14 +1416,14 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 		"obtain_source": obtain_source,
 		"icon_name": icon_name,
 		"icon_path": icon_path,
-		"resource_path": equipment_resource_path(template_id),
+		"resource_path": equipment_resource_path(template_id, variant_id),
 		"slot": slot,
 		"rarity": rarity,
 		"equipment_level": equipment_level,
 		"base_attributes": base_attributes,
 		"rolled_attribute_stats": rolled_attribute_stats,
-		"attribute_generation_version": 3,
-		"description_effects": equipment_template_description_effects(template_id),
+		"attribute_generation_version": EQUIPMENT_ATTRIBUTE_GENERATION_VERSION,
+		"description_effects": equipment_template_description_effects(template_id, variant_id),
 		"enhanced_attributes": [],
 		"enhancement_allocations": {},
 		"refine_affixes": [],
@@ -1466,7 +1436,7 @@ static func create_equipment_from_template(template_id: String, _level: int, rng
 		"enhance_attack_bonus": 0,
 		"enhance_defense_bonus": 0,
 		"equip_requirement": {},
-		"affixes": generate_equipment_affixes(rarity, rng),
+		"affixes": generate_equipment_affixes(rarity, rng, template_id, variant_id),
 	}
 
 
@@ -1475,6 +1445,13 @@ static func equipment_tier_base_attributes(template_id: String, rarity: String, 
 		var alias: Dictionary = LEGACY_EQUIPMENT_VARIANT_ALIASES[template_id]
 		variant_id = str(alias.get("variant_id", variant_id))
 		template_id = str(alias.get("template_id", template_id))
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	var core_tier := EquipmentConfigParserScript.tier_definition(equipment_id, rarity)
+	var core_attributes = core_tier.get("base_attributes", [])
+	if core_attributes is Array and not core_attributes.is_empty():
+		return core_attributes.duplicate(true)
+	if _is_indexed_core_equipment_reference(template_id):
+		return []
 	if not variant_id.is_empty():
 		var variant: Dictionary = equipment_attribute_variants(template_id).get(variant_id, {})
 		var variant_tiers = variant.get("tier_base_attributes", {})
@@ -1500,6 +1477,28 @@ static func equipment_tier_base_attributes(template_id: String, rarity: String, 
 
 
 static func equipment_attribute_variants(template_id: String) -> Dictionary:
+	var core_ids := EquipmentConfigParserScript.equipment_ids_for_template(template_id)
+	var core_variants := {}
+	for equipment_id in core_ids:
+		var core_definition := EquipmentConfigParserScript.equipment_definition(equipment_id)
+		var variant_id := str(core_definition.get("variant_id", ""))
+		if variant_id.is_empty():
+			continue
+		var tiers := {}
+		for raw_tier in core_definition.get("tiers", []):
+			if raw_tier is Dictionary:
+				tiers[str(raw_tier.get("rarity", ""))] = raw_tier.get("base_attributes", []).duplicate(true)
+		core_variants[variant_id] = {
+			"name": str(core_definition.get("name", variant_id)),
+			"icon_name": str(core_definition.get("icon_name", template_id)),
+			"icon_path": str(core_definition.get("icon_path", "")),
+			"tier_base_attributes": tiers,
+			"selection_weight": int(core_definition.get("selection_weight", 1)),
+		}
+	if not core_variants.is_empty():
+		return core_variants
+	if _is_indexed_core_equipment_reference(template_id):
+		return {}
 	var resource: Resource = equipment_resource(template_id)
 	if resource != null:
 		var resource_variants = resource.get("attribute_variants")
@@ -1515,10 +1514,15 @@ static func equipment_variant_definition(template_id: String, variant_id: String
 	return variant.duplicate(true) if variant is Dictionary else {}
 
 
-static func equipment_random_attribute_pool(template_id: String) -> Array[String]:
+static func equipment_random_attribute_pool(template_id: String, variant_id: String = "") -> Array[String]:
 	var values = null
+	var core_definition := EquipmentConfigParserScript.equipment_definition(EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id))
+	if not core_definition.is_empty():
+		values = core_definition.get("random_attribute_pool", [])
+	elif _is_indexed_core_equipment_reference(template_id):
+		return []
 	var resource: Resource = equipment_resource(template_id)
-	if resource != null:
+	if (not (values is Array) or values.is_empty()) and resource != null:
 		values = resource.get("random_attribute_pool")
 	if not (values is Array) or values.is_empty():
 		values = content_definition("equipment", template_id, EQUIPMENT_DEFS.get(template_id, {})).get("random_attribute_pool", [])
@@ -1531,15 +1535,21 @@ static func equipment_random_attribute_pool(template_id: String) -> Array[String
 	return result
 
 
-static func equipment_random_attribute_count(template_id: String, rarity: String) -> int:
-	return _equipment_tier_random_value(template_id, "tier_random_attribute_counts", rarity)
+static func equipment_random_attribute_count(template_id: String, rarity: String, variant_id: String = "") -> int:
+	return _equipment_tier_random_value(template_id, "tier_random_attribute_counts", rarity, variant_id)
 
 
-static func equipment_random_attribute_budget(template_id: String, rarity: String) -> int:
-	return _equipment_tier_random_value(template_id, "tier_random_attribute_budgets", rarity)
+static func equipment_random_attribute_budget(template_id: String, rarity: String, variant_id: String = "") -> int:
+	return _equipment_tier_random_value(template_id, "tier_random_attribute_budgets", rarity, variant_id)
 
 
-static func _equipment_tier_random_value(template_id: String, property_name: String, rarity: String) -> int:
+static func _equipment_tier_random_value(template_id: String, property_name: String, rarity: String, variant_id: String = "") -> int:
+	var core_tier := EquipmentConfigParserScript.tier_definition(EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id), rarity)
+	if not core_tier.is_empty():
+		var core_key := "random_count" if property_name == "tier_random_attribute_counts" else "random_budget"
+		return maxi(0, int(core_tier.get(core_key, 0)))
+	if _is_indexed_core_equipment_reference(template_id):
+		return 0
 	var tiers = null
 	var resource: Resource = equipment_resource(template_id)
 	if resource != null:
@@ -1549,7 +1559,7 @@ static func _equipment_tier_random_value(template_id: String, property_name: Str
 	return maxi(0, int(tiers.get(rarity, 0))) if tiers is Dictionary else 0
 
 
-static func roll_equipment_attribute_stats(template_id: String, rarity: String, fixed_attributes: Array, existing_stats: Array, rng: RandomNumberGenerator) -> Array[String]:
+static func roll_equipment_attribute_stats(template_id: String, rarity: String, fixed_attributes: Array, existing_stats: Array, rng: RandomNumberGenerator, variant_id: String = "") -> Array[String]:
 	var result: Array[String] = []
 	var excluded: Array[String] = []
 	for attribute in fixed_attributes:
@@ -1559,12 +1569,12 @@ static func roll_equipment_attribute_stats(template_id: String, rarity: String, 
 		var stat_id := str(value)
 		if not stat_id.is_empty() and not excluded.has(stat_id) and not result.has(stat_id):
 			result.append(stat_id)
-	var target_count := equipment_random_attribute_count(template_id, rarity)
+	var target_count := equipment_random_attribute_count(template_id, rarity, variant_id)
 	if target_count <= 0:
 		return []
 	if result.size() > target_count:
 		result.resize(target_count)
-	var available := equipment_random_attribute_pool(template_id)
+	var available := equipment_random_attribute_pool(template_id, variant_id)
 	for stat_id in excluded + result:
 		available.erase(stat_id)
 	while result.size() < target_count and not available.is_empty():
@@ -1579,13 +1589,13 @@ static func build_equipment_base_attributes(template_id: String, rarity: String,
 	var count := rolled_attribute_stats.size()
 	if count <= 0:
 		return attributes
-	var budget := equipment_random_attribute_budget(template_id, rarity)
+	var budget := equipment_random_attribute_budget(template_id, rarity, variant_id)
 	var points_per_attribute := floori(float(budget) / float(count))
 	var remainder := budget % count
 	for index in range(count):
 		var stat_id := str(rolled_attribute_stats[index])
 		var points := points_per_attribute + (1 if index < remainder else 0)
-		attributes.append({"stat": stat_id, "amount": points * equipment_attribute_unit_amount(stat_id)})
+		attributes.append({"stat": stat_id, "amount": points * equipment_attribute_unit_amount(stat_id, template_id, variant_id)})
 	return attributes
 
 
@@ -1611,23 +1621,29 @@ static func _default_equipment_tier_base_attributes(slot: String, rarity: String
 	return [{"stat": "attack", "amount": amount}]
 
 
-static func equipment_affix_count(rarity: String) -> int:
-	return int(EQUIPMENT_AFFIX_COUNTS.get(rarity, EQUIPMENT_AFFIX_COUNTS["t1"]))
+static func equipment_affix_count(rarity: String, template_id: String = "", variant_id: String = "") -> int:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	if not template_id.is_empty() and equipment_id.is_empty() and _is_indexed_core_equipment_reference(template_id):
+		return 0
+	if equipment_id.is_empty():
+		equipment_id = str(EquipmentConfigParserScript.index_data().get("default_equipment_id", ""))
+	var tier := EquipmentConfigParserScript.tier_definition(equipment_id, rarity)
+	return maxi(0, int(tier.get("affix_count", 0)))
 
 
-static func generate_equipment_affixes(rarity: String, rng: RandomNumberGenerator) -> Array:
+static func generate_equipment_affixes(rarity: String, rng: RandomNumberGenerator, template_id: String = "", variant_id: String = "") -> Array:
 	var affix_ids: Array = EQUIPMENT_AFFIX_DEFS.keys()
 	var affixes: Array = []
-	for _index in range(equipment_affix_count(rarity)):
+	for _index in range(equipment_affix_count(rarity, template_id, variant_id)):
 		var affix_id := str(affix_ids[rng.randi_range(0, affix_ids.size() - 1)])
 		affixes.append({"id": affix_id, "value": equipment_affix(affix_id).get("value", 0)})
 	return affixes
 
 
-static func generate_stable_equipment_affixes(rarity: String, instance_id: String) -> Array:
+static func generate_stable_equipment_affixes(rarity: String, instance_id: String, template_id: String = "", variant_id: String = "") -> Array:
 	var stable_rng := RandomNumberGenerator.new()
 	stable_rng.seed = hash("equipment_affixes:%s:%s" % [rarity, instance_id])
-	return generate_equipment_affixes(rarity, stable_rng)
+	return generate_equipment_affixes(rarity, stable_rng, template_id, variant_id)
 
 
 static func equipment_affix(affix_id: String) -> Dictionary:
@@ -1651,12 +1667,15 @@ static func equipment_combat_modifier_cap(affix_id: String) -> float:
 	return float(EQUIPMENT_COMBAT_MODIFIER_CAPS.get(affix_id, INF))
 
 
-static func equipment_attribute_unit_amount(stat_id: String) -> int:
-	if stat_id == "max_hp":
-		return 4
-	if stat_id == "max_mp":
-		return 2
-	return 1
+static func equipment_attribute_unit_amount(stat_id: String, template_id: String = "", variant_id: String = "") -> int:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	if not template_id.is_empty() and equipment_id.is_empty() and _is_indexed_core_equipment_reference(template_id):
+		return 0
+	if equipment_id.is_empty():
+		equipment_id = str(EquipmentConfigParserScript.index_data().get("default_equipment_id", ""))
+	var definition := EquipmentConfigParserScript.equipment_definition(equipment_id)
+	var units = definition.get("attribute_units", {})
+	return maxi(1, int(units.get(stat_id, 1))) if units is Dictionary else 1
 
 
 static func equipment_attribute_point_budget(rarity: String) -> int:
@@ -1832,6 +1851,8 @@ static func item_use_scope_label(scope: String) -> String:
 			return "家园"
 		ITEM_USE_SCOPE_COMBAT:
 			return "战斗"
+		ITEM_USE_SCOPE_BOTH:
+			return "家园/战斗"
 		_:
 			return "无"
 
@@ -1884,8 +1905,10 @@ static func equipment_salvage_ore(rarity: String) -> int:
 	return int(EQUIPMENT_SALVAGE_ORE.get(rarity, 1))
 
 
-static func random_equipment_rarity(rng: RandomNumberGenerator) -> String:
-	return random_rarity_from_weights(rng, EQUIPMENT_RARITY_WEIGHTS)
+static func random_equipment_rarity(rng: RandomNumberGenerator, template_id: String = "", variant_id: String = "") -> String:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	var weights := EquipmentConfigParserScript.rarity_weights(equipment_id)
+	return random_rarity_from_weights(rng, weights if not weights.is_empty() else EQUIPMENT_RARITY_WEIGHTS)
 
 
 static func random_rarity_from_weights(rng: RandomNumberGenerator, weights: Dictionary) -> String:
@@ -1955,24 +1978,39 @@ static func spirit_stone_enhance_amount(_item_id: String = "") -> int:
 	return 1
 
 
-static func equipment_enhance_limit(rarity: String) -> int:
-	return int(EQUIPMENT_ENHANCE_LIMITS.get(rarity, EQUIPMENT_ENHANCE_LIMITS["t1"]))
-
-
-static func equipment_enhance_cost(rarity: String, next_enhance_level: int) -> int:
-	if next_enhance_level < 1 or next_enhance_level > equipment_enhance_limit(rarity):
+static func equipment_enhance_limit(rarity: String, template_id: String = "", variant_id: String = "") -> int:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	if not template_id.is_empty() and equipment_id.is_empty() and _is_indexed_core_equipment_reference(template_id):
 		return 0
-	return 1
+	if equipment_id.is_empty():
+		equipment_id = str(EquipmentConfigParserScript.index_data().get("default_equipment_id", ""))
+	return maxi(0, int(EquipmentConfigParserScript.tier_definition(equipment_id, rarity).get("enhance_limit", 0)))
 
 
-static func equipment_ascension_cost(rarity: String) -> Dictionary:
-	var tier := EQUIPMENT_RARITY_ORDER.find(rarity) + 1
-	if tier <= 0 or tier >= EQUIPMENT_RARITY_ORDER.size():
+static func equipment_enhance_cost(rarity: String, next_enhance_level: int, template_id: String = "", variant_id: String = "") -> int:
+	return int(equipment_enhance_costs(rarity, next_enhance_level, template_id, variant_id).get(ITEM_ID_ENHANCEMENT_STONE, 0))
+
+
+static func equipment_enhance_costs(rarity: String, next_enhance_level: int, template_id: String = "", variant_id: String = "") -> Dictionary:
+	if next_enhance_level < 1 or next_enhance_level > equipment_enhance_limit(rarity, template_id, variant_id):
 		return {}
-	return {
-		ITEM_ID_ORE: tier * 8,
-		ITEM_ID_ASCENSION_STONE: tier * 2,
-	}
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	if not template_id.is_empty() and equipment_id.is_empty() and _is_indexed_core_equipment_reference(template_id):
+		return {}
+	if equipment_id.is_empty():
+		equipment_id = str(EquipmentConfigParserScript.index_data().get("default_equipment_id", ""))
+	var cost = EquipmentConfigParserScript.tier_definition(equipment_id, rarity).get("enhance_cost", {})
+	return cost.duplicate(true) if cost is Dictionary else {}
+
+
+static func equipment_ascension_cost(rarity: String, template_id: String = "", variant_id: String = "") -> Dictionary:
+	var equipment_id := EquipmentConfigParserScript.resolve_equipment_id(template_id, variant_id)
+	if not template_id.is_empty() and equipment_id.is_empty() and _is_indexed_core_equipment_reference(template_id):
+		return {}
+	if equipment_id.is_empty():
+		equipment_id = str(EquipmentConfigParserScript.index_data().get("default_equipment_id", ""))
+	var cost = EquipmentConfigParserScript.tier_definition(equipment_id, rarity).get("ascension_cost", {})
+	return cost.duplicate(true) if cost is Dictionary else {}
 
 
 static func alchemy_recipe_def(recipe_id: String) -> Dictionary:

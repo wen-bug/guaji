@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://bncimxw76ytkf"]
 
 [ext_resource type="Script" uid="uid://gvdftb51q2gw" path="res://scripts/ui/hud.gd" id="1_hud"]
-[ext_resource type="Script" path="res://scripts/ui/inventory_detail_view.gd" id="2_inventory_detail"]
-[ext_resource type="Script" path="res://scripts/ui/damage_popup_manager.gd" id="3_damage_popup"]
+[ext_resource type="Script" uid="uid://b2o03po0j8x7j" path="res://scripts/ui/inventory_detail_view.gd" id="2_inventory_detail"]
+[ext_resource type="Script" uid="uid://etup5p2paolr" path="res://scripts/ui/damage_popup_manager.gd" id="3_damage_popup"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
 content_margin_left = 10.0
@@ -214,6 +214,156 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "背包"
+
+[node name="MarketButton" type="Button" parent="Root/MenuPanel/MenuLayout" unique_id=383639180]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "坊市"
+
+[node name="GlobalItemBuffStatus" type="Button" parent="Root/MenuPanel/MenuLayout" unique_id=1789278572]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+tooltip_text = "家园与战斗全局道具效果"
+text = "全局效果 · 0"
+expand_icon = true
+icon_max_width = 18
+
+[node name="GlobalBuffPanel" type="PanelContainer" parent="Root" unique_id=710000001]
+visible = false
+custom_minimum_size = Vector2(430, 320)
+layout_mode = 0
+offset_left = 158.0
+offset_top = 44.0
+offset_right = 588.0
+offset_bottom = 364.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/GlobalBuffPanel" unique_id=710000002]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout" unique_id=710000003]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Title" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/Header" unique_id=710000004]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.1, 0.04, 1)
+theme_override_constants/outline_size = 2
+text = "全局效果"
+
+[node name="CountLabel" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/Header" unique_id=710000005]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.73, 0.62, 1)
+text = "0 项生效"
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Root/GlobalBuffPanel/PanelLayout/Header" unique_id=710000006]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "关闭"
+
+[node name="EmptyState" type="VBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout" unique_id=710000007]
+custom_minimum_size = Vector2(0, 238)
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+
+[node name="Title" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/EmptyState" unique_id=710000008]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.78, 0.65, 1)
+theme_override_font_sizes/font_size = 16
+text = "暂无全局效果"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/EmptyState" unique_id=710000009]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.56, 0.52, 0.45, 1)
+text = "家园与战斗全队效果会显示在这里"
+horizontal_alignment = 1
+
+[node name="BuffScroll" type="ScrollContainer" parent="Root/GlobalBuffPanel/PanelLayout" unique_id=710000010]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="BuffSections" type="VBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll" unique_id=710000011]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="HomeSection" type="VBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections" unique_id=710000012]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Header" type="HBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection" unique_id=710000013]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Accent" type="ColorRect" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection/Header" unique_id=710000014]
+custom_minimum_size = Vector2(4, 18)
+layout_mode = 2
+color = Color(0.3, 0.72, 0.4, 1)
+
+[node name="Title" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection/Header" unique_id=710000015]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.55, 0.9, 0.61, 1)
+text = "家园效果"
+
+[node name="CountLabel" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection/Header" unique_id=710000016]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.64, 0.56, 1)
+text = "0"
+
+[node name="Rows" type="VBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection" unique_id=710000017]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="CombatSection" type="VBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections" unique_id=710000018]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Header" type="HBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection" unique_id=710000019]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Accent" type="ColorRect" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection/Header" unique_id=710000020]
+custom_minimum_size = Vector2(4, 18)
+layout_mode = 2
+color = Color(0.84, 0.31, 0.25, 1)
+
+[node name="Title" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection/Header" unique_id=710000021]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.57, 0.48, 1)
+text = "战斗效果"
+
+[node name="CountLabel" type="Label" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection/Header" unique_id=710000022]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.55, 0.51, 1)
+text = "0"
+
+[node name="Rows" type="VBoxContainer" parent="Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection" unique_id=710000023]
+layout_mode = 2
+theme_override_constants/separation = 5
 
 [node name="MemberInfoPanel" type="PanelContainer" parent="Root" unique_id=38338302]
 visible = false
@@ -446,10 +596,50 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "丹药"
 
+[node name="BlueprintButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=336580752]
+custom_minimum_size = Vector2(92, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "装备图纸"
+
 [node name="InventoryGrid" type="GridContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=1409974471]
 custom_minimum_size = Vector2(420, 300)
 layout_mode = 2
 columns = 5
+
+[node name="AutoItemSection" type="VBoxContainer" parent="Root/InventoryPanel/InventoryLayout" unique_id=2063437776]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Root/InventoryPanel/InventoryLayout/AutoItemSection" unique_id=1799025139]
+layout_mode = 2
+text = "全队自动道具"
+
+[node name="Slots" type="HBoxContainer" parent="Root/InventoryPanel/InventoryLayout/AutoItemSection" unique_id=1228087969]
+layout_mode = 2
+
+[node name="AutoItemSlot1" type="Button" parent="Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots" unique_id=1167221147]
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+clip_text = true
+
+[node name="AutoItemSlot2" type="Button" parent="Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots" unique_id=1511432452]
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+clip_text = true
+
+[node name="AutoItemSlot3" type="Button" parent="Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots" unique_id=350983594]
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+clip_text = true
+
+[node name="AutoItemSlot4" type="Button" parent="Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots" unique_id=1136642013]
+custom_minimum_size = Vector2(112, 36)
+layout_mode = 2
+clip_text = true
 
 [node name="InventoryItemDetailPanel" type="PanelContainer" parent="Root" unique_id=1685661679]
 visible = false
@@ -667,6 +857,15 @@ custom_minimum_size = Vector2(300, 22)
 layout_mode = 2
 autowrap_mode = 2
 
+[node name="FarmUpgradeButton" type="Button" parent="Root/FarmPanel/PanelLayout" unique_id=1946367563]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
 [node name="ProgressLabel" type="Label" parent="Root/FarmPanel/PanelLayout" unique_id=500000001]
 custom_minimum_size = Vector2(300, 20)
 layout_mode = 2
@@ -749,6 +948,16 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "洗练"
 
+[node name="ForgeAscendButton" type="Button" parent="Root/ForgePanel/PanelLayout/ModeRow" unique_id=955589022]
+custom_minimum_size = Vector2(72, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "升阶"
+
 [node name="EquipmentSlotButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=1796571504]
 custom_minimum_size = Vector2(300, 34)
 layout_mode = 2
@@ -758,6 +967,11 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "选择装备"
+
+[node name="ForgeTargetOption" type="OptionButton" parent="Root/ForgePanel/PanelLayout" unique_id=1380096640]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="EquipmentPickerPanel" type="PanelContainer" parent="Root/ForgePanel/PanelLayout" unique_id=1248437895]
 visible = false
@@ -779,6 +993,15 @@ custom_minimum_size = Vector2(300, 22)
 layout_mode = 2
 autowrap_mode = 2
 
+[node name="ForgeUpgradeButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=602674468]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
 [node name="ExecuteButton" type="Button" parent="Root/ForgePanel/PanelLayout" unique_id=1362689311]
 custom_minimum_size = Vector2(300, 30)
 layout_mode = 2
@@ -790,10 +1013,45 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "执行"
 
 [node name="HintLabel" type="Label" parent="Root/ForgePanel/PanelLayout" unique_id=151186608]
-custom_minimum_size = Vector2(300, 42)
+custom_minimum_size = Vector2(300, 23)
 layout_mode = 2
 text = "选择炼器方式"
 autowrap_mode = 2
+
+[node name="BlueprintForgeRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=803056418]
+layout_mode = 2
+
+[node name="BlueprintOption" type="OptionButton" parent="Root/ForgePanel/PanelLayout/BlueprintForgeRow" unique_id=1383169642]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TargetForgeButton" type="Button" parent="Root/ForgePanel/PanelLayout/BlueprintForgeRow" unique_id=603329898]
+custom_minimum_size = Vector2(112, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "定向打造"
+
+[node name="SpiritStoneRow" type="HBoxContainer" parent="Root/ForgePanel/PanelLayout" unique_id=228870439]
+layout_mode = 2
+
+[node name="SpiritStoneOption" type="OptionButton" parent="Root/ForgePanel/PanelLayout/SpiritStoneRow" unique_id=385373684]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SpiritStoneConvertButton" type="Button" parent="Root/ForgePanel/PanelLayout/SpiritStoneRow" unique_id=1701934820]
+custom_minimum_size = Vector2(116, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "灵石 x3 转换"
 
 [node name="AlchemyPanel" type="PanelContainer" parent="Root" unique_id=97301869]
 visible = false
@@ -885,6 +1143,15 @@ layout_mode = 2
 text = "请选择图纸"
 autowrap_mode = 2
 
+[node name="AlchemyUpgradeButton" type="Button" parent="Root/AlchemyPanel/PanelLayout" unique_id=855420712]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
 [node name="RecruitPanel" type="PanelContainer" parent="Root" unique_id=20215362]
 visible = false
 layout_mode = 0
@@ -921,10 +1188,42 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "关闭"
 
+[node name="RecruitModeRow" type="HBoxContainer" parent="Root/RecruitPanel/PanelLayout" unique_id=865552664]
+layout_mode = 2
+
+[node name="RecruitModeButton" type="Button" parent="Root/RecruitPanel/PanelLayout/RecruitModeRow" unique_id=929858094]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "招募"
+
+[node name="ManualModeButton" type="Button" parent="Root/RecruitPanel/PanelLayout/RecruitModeRow" unique_id=1174775212]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "功法兑换"
+
 [node name="ActionDetail" type="Label" parent="Root/RecruitPanel/PanelLayout" unique_id=964218206]
 custom_minimum_size = Vector2(360, 24)
 layout_mode = 2
 autowrap_mode = 2
+
+[node name="RecruitUpgradeButton" type="Button" parent="Root/RecruitPanel/PanelLayout" unique_id=301790218]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 
 [node name="CandidateList" type="ItemList" parent="Root/RecruitPanel/PanelLayout" unique_id=700000002]
 custom_minimum_size = Vector2(360, 72)
@@ -1006,6 +1305,28 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "放生"
+
+[node name="ManualExchangePage" type="VBoxContainer" parent="Root/RecruitPanel/PanelLayout" unique_id=458730529]
+visible = false
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Root/RecruitPanel/PanelLayout/ManualExchangePage" unique_id=1685961657]
+layout_mode = 2
+text = "功法兑换"
+
+[node name="ManualExchangeList" type="ItemList" parent="Root/RecruitPanel/PanelLayout/ManualExchangePage" unique_id=1265610721]
+custom_minimum_size = Vector2(320, 110)
+layout_mode = 2
+
+[node name="ManualExchangeButton" type="Button" parent="Root/RecruitPanel/PanelLayout/ManualExchangePage" unique_id=1205080251]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+disabled = true
+text = "兑换功法"
 
 [node name="ReleaseConfirmationDialog" type="ConfirmationDialog" parent="Root" unique_id=700000013]
 title = "确认放生"
@@ -1375,6 +1696,132 @@ theme_override_constants/outline_size = 2
 text = "加载中..."
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="MarketPanel" type="PanelContainer" parent="Root" unique_id=16795179]
+visible = false
+custom_minimum_size = Vector2(620, 420)
+layout_mode = 0
+offset_left = 170.0
+offset_top = 28.0
+offset_right = 790.0
+offset_bottom = 448.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="PanelLayout" type="VBoxContainer" parent="Root/MarketPanel" unique_id=931159155]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Header" type="HBoxContainer" parent="Root/MarketPanel/PanelLayout" unique_id=1208104583]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Root/MarketPanel/PanelLayout/Header" unique_id=1033396827]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.93, 0.73, 1)
+text = "坊市"
+
+[node name="TokenLabel" type="Label" parent="Root/MarketPanel/PanelLayout/Header" unique_id=537486033]
+layout_mode = 2
+
+[node name="TimerLabel" type="Label" parent="Root/MarketPanel/PanelLayout/Header" unique_id=1168007825]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="Root/MarketPanel/PanelLayout/Header" unique_id=1326546117]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "关闭"
+
+[node name="ActionRow" type="HBoxContainer" parent="Root/MarketPanel/PanelLayout" unique_id=1145879065]
+layout_mode = 2
+
+[node name="CycleLabel" type="Label" parent="Root/MarketPanel/PanelLayout/ActionRow" unique_id=1515973257]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "货架与委托每 10 分钟自然更新"
+
+[node name="RefreshButton" type="Button" parent="Root/MarketPanel/PanelLayout/ActionRow" unique_id=327732288]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+
+[node name="MarketTabs" type="TabContainer" parent="Root/MarketPanel/PanelLayout" unique_id=1257183270]
+custom_minimum_size = Vector2(596, 330)
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="货架" type="ScrollContainer" parent="Root/MarketPanel/PanelLayout/MarketTabs" unique_id=2078275528]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="OfferGrid" type="GridContainer" parent="Root/MarketPanel/PanelLayout/MarketTabs/货架" unique_id=1389291235]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="委托" type="ScrollContainer" parent="Root/MarketPanel/PanelLayout/MarketTabs" unique_id=91624543]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="CommissionList" type="VBoxContainer" parent="Root/MarketPanel/PanelLayout/MarketTabs/委托" unique_id=1694227475]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="回收" type="VBoxContainer" parent="Root/MarketPanel/PanelLayout/MarketTabs" unique_id=1669314782]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+metadata/_tab_index = 2
+
+[node name="RecycleItemOption" type="OptionButton" parent="Root/MarketPanel/PanelLayout/MarketTabs/回收" unique_id=1266341871]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+
+[node name="AmountRow" type="HBoxContainer" parent="Root/MarketPanel/PanelLayout/MarketTabs/回收" unique_id=1236046013]
+layout_mode = 2
+
+[node name="AmountLabel" type="Label" parent="Root/MarketPanel/PanelLayout/MarketTabs/回收/AmountRow" unique_id=609515559]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "回收数量"
+
+[node name="RecycleAmount" type="SpinBox" parent="Root/MarketPanel/PanelLayout/MarketTabs/回收/AmountRow" unique_id=1753925207]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="RecyclePreview" type="Label" parent="Root/MarketPanel/PanelLayout/MarketTabs/回收" unique_id=1586584816]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+
+[node name="RecycleButton" type="Button" parent="Root/MarketPanel/PanelLayout/MarketTabs/回收" unique_id=2016108329]
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "确认回收"
+
+[node name="SalvageConfirmationDialog" type="ConfirmationDialog" parent="Root" unique_id=1855582925]
+title = "确认分解"
+dialog_text = "分解将获得阶位与强化投入对应的强化石，词条和洗练投入不返还。"
+
+[node name="MarketRecycleConfirmation" type="ConfirmationDialog" parent="Root" unique_id=2115391187]
+title = "确认回收贵重物品"
+
+[node name="AutoItemPicker" type="PopupMenu" parent="." unique_id=546929163]
 
 [connection signal="mouse_entered" from="Root/MenuButton" to="." method="_on_menu_button_mouse_entered"]
 [connection signal="mouse_exited" from="Root/MenuButton" to="." method="_on_menu_button_mouse_exited"]

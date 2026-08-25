@@ -1,6 +1,14 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_7qclr"]
+
+[sub_resource type="Resource" id="Resource_7qclr"]
+script = ExtResource("1_7qclr")
+effect_id = "permanent_attack"
+kind = "permanent_attribute"
+stat = "attack"
+tier_id = "t1"
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +19,7 @@ display_name = "一阶攻击强化丹"
 icon_name = "t1_attack_enhance_pill"
 icon_path = "res://assets/items/t1_attack_enhance_pill.png"
 description = "永久强化所选角色的攻击属性。"
-stackable = true
 usable = true
-use_scope = "home"
+use_context = "home"
 gain_target = "attack"
-payload = {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "attack"}]}}
+effects = Array[Resource]([SubResource("Resource_7qclr")])

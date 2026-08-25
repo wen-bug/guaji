@@ -1,6 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://c2hmv360nvrh8"]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
-[ext_resource type="Script" uid="uid://udliocpsb17a" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_2rju0"]
+
+[sub_resource type="Resource" id="Resource_2rju0"]
+script = ExtResource("1_2rju0")
+effect_id = "seed"
+kind = "farm_seed"
+target = "none"
+amount = 1
+auxiliary_value = 1200.0
 
 [resource]
 script = ExtResource("1")
@@ -11,9 +20,5 @@ display_name = "血参"
 icon_name = "blood_ginseng"
 icon_path = "res://assets/items/blood_ginseng.png"
 description = "补益气血的生命属性作物。"
-use_scope = "none"
 gain_target = "max_hp"
-payload = {
-"growth_seconds": 240.0,
-"seed_yield": 1
-}
+effects = Array[Resource]([SubResource("Resource_2rju0")])

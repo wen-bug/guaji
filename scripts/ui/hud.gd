@@ -83,6 +83,10 @@ const SLOT_BORDER_COLOR := Color(0.55, 0.42, 0.24, 0.9)
 const INVENTORY_ICON_BORDER_COLOR := Color(0.9, 0.8, 0.56, 1.0)
 const INVENTORY_ICON_DIM_COLOR := Color(0.32, 0.28, 0.22, 1.0)
 const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
+const HOME_BUFF_COLOR := Color(0.55, 0.9, 0.61, 1.0)
+const COMBAT_BUFF_COLOR := Color(1.0, 0.57, 0.48, 1.0)
+const BUFF_TIME_COLOR := Color(0.75, 0.71, 0.63, 1.0)
+const BUFF_TIME_WARNING_COLOR := Color(1.0, 0.66, 0.2, 1.0)
 
 @onready var menu_panel: PanelContainer = $Root/MenuPanel
 @onready var member_info_panel: PanelContainer = $Root/MemberInfoPanel
@@ -141,6 +145,7 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var release_confirmation_dialog: ConfirmationDialog = $Root/ReleaseConfirmationDialog
 @onready var fight_detail: Label = $Root/FightPanel/PanelLayout/ActionDetail
 @onready var expedition_map_option: OptionButton = $Root/FightPanel/PanelLayout/MapRow/MapOption
+@onready var fight_action_button: Button = $Root/FightPanel/PanelLayout/ExecuteButton
 @onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
 @onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
 @onready var home_camera_controls: Control = $Root/HomeCameraControls
@@ -169,11 +174,67 @@ const INVENTORY_ICON_HIGHLIGHT_COLOR := Color(0.98, 0.9, 0.62, 1.0)
 @onready var alchemy_craft_count_spinbox: SpinBox = $Root/AlchemyPanel/PanelLayout/CraftCountSpinBox
 @onready var alchemy_craft_button: Button = $Root/AlchemyPanel/PanelLayout/CraftButton
 @onready var alchemy_hint_label: Label = $Root/AlchemyPanel/PanelLayout/HintLabel
+@onready var farm_upgrade_button: Button = $Root/FarmPanel/PanelLayout/FarmUpgradeButton
+@onready var forge_upgrade_button: Button = $Root/ForgePanel/PanelLayout/ForgeUpgradeButton
+@onready var alchemy_upgrade_button: Button = $Root/AlchemyPanel/PanelLayout/AlchemyUpgradeButton
+@onready var recruit_upgrade_button: Button = $Root/RecruitPanel/PanelLayout/RecruitUpgradeButton
+@onready var forge_ascend_mode_button: Button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeAscendButton
+@onready var forge_target_option: OptionButton = $Root/ForgePanel/PanelLayout/ForgeTargetOption
+@onready var forge_blueprint_row: HBoxContainer = $Root/ForgePanel/PanelLayout/BlueprintForgeRow
+@onready var forge_blueprint_option: OptionButton = $Root/ForgePanel/PanelLayout/BlueprintForgeRow/BlueprintOption
+@onready var forge_target_button: Button = $Root/ForgePanel/PanelLayout/BlueprintForgeRow/TargetForgeButton
+@onready var salvage_confirmation_dialog: ConfirmationDialog = $Root/SalvageConfirmationDialog
+@onready var recruit_mode_recruit_button: Button = $Root/RecruitPanel/PanelLayout/RecruitModeRow/RecruitModeButton
+@onready var recruit_mode_manual_button: Button = $Root/RecruitPanel/PanelLayout/RecruitModeRow/ManualModeButton
+@onready var recruit_manual_page: VBoxContainer = $Root/RecruitPanel/PanelLayout/ManualExchangePage
+@onready var manual_exchange_list: ItemList = $Root/RecruitPanel/PanelLayout/ManualExchangePage/ManualExchangeList
+@onready var manual_exchange_button: Button = $Root/RecruitPanel/PanelLayout/ManualExchangePage/ManualExchangeButton
+@onready var recruit_main_page_controls: Array[Control] = [
+	$Root/RecruitPanel/PanelLayout/ActionDetail,
+	$Root/RecruitPanel/PanelLayout/RecruitUpgradeButton,
+	$Root/RecruitPanel/PanelLayout/CandidateList,
+	$Root/RecruitPanel/PanelLayout/RecruitButton,
+	$Root/RecruitPanel/PanelLayout/ButtonRow,
+	$Root/RecruitPanel/PanelLayout/PartyLabel,
+	$Root/RecruitPanel/PanelLayout/PartyList,
+	$Root/RecruitPanel/PanelLayout/PartyButtonRow,
+]
+@onready var spirit_stone_row: HBoxContainer = $Root/ForgePanel/PanelLayout/SpiritStoneRow
+@onready var spirit_stone_option: OptionButton = $Root/ForgePanel/PanelLayout/SpiritStoneRow/SpiritStoneOption
+@onready var spirit_stone_convert_button: Button = $Root/ForgePanel/PanelLayout/SpiritStoneRow/SpiritStoneConvertButton
+@onready var market_button: Button = $Root/MenuPanel/MenuLayout/MarketButton
+@onready var market_panel: PanelContainer = $Root/MarketPanel
+@onready var market_token_label: Label = $Root/MarketPanel/PanelLayout/Header/TokenLabel
+@onready var market_timer_label: Label = $Root/MarketPanel/PanelLayout/Header/TimerLabel
+@onready var market_close_button: Button = $Root/MarketPanel/PanelLayout/Header/CloseButton
+@onready var market_refresh_button: Button = $Root/MarketPanel/PanelLayout/ActionRow/RefreshButton
+@onready var market_offer_grid: GridContainer = $Root/MarketPanel/PanelLayout/MarketTabs/货架/OfferGrid
+@onready var market_commission_list: VBoxContainer = $Root/MarketPanel/PanelLayout/MarketTabs/委托/CommissionList
+@onready var market_recycle_option: OptionButton = $Root/MarketPanel/PanelLayout/MarketTabs/回收/RecycleItemOption
+@onready var market_recycle_amount: SpinBox = $Root/MarketPanel/PanelLayout/MarketTabs/回收/AmountRow/RecycleAmount
+@onready var market_recycle_preview_label: Label = $Root/MarketPanel/PanelLayout/MarketTabs/回收/RecyclePreview
+@onready var market_recycle_button: Button = $Root/MarketPanel/PanelLayout/MarketTabs/回收/RecycleButton
+@onready var market_recycle_confirmation: ConfirmationDialog = $Root/MarketRecycleConfirmation
+@onready var auto_item_buttons: Array[Button] = [
+	$Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots/AutoItemSlot1,
+	$Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots/AutoItemSlot2,
+	$Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots/AutoItemSlot3,
+	$Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots/AutoItemSlot4,
+]
+@onready var auto_item_popup: PopupMenu = $AutoItemPicker
+@onready var global_item_buff_button: Button = $Root/MenuPanel/MenuLayout/GlobalItemBuffStatus
+@onready var global_buff_panel: PanelContainer = $Root/GlobalBuffPanel
+@onready var global_buff_count_label: Label = $Root/GlobalBuffPanel/PanelLayout/Header/CountLabel
+@onready var global_buff_close_button: Button = $Root/GlobalBuffPanel/PanelLayout/Header/CloseButton
+@onready var global_buff_empty_state: VBoxContainer = $Root/GlobalBuffPanel/PanelLayout/EmptyState
+@onready var global_buff_scroll: ScrollContainer = $Root/GlobalBuffPanel/PanelLayout/BuffScroll
+@onready var home_buff_section: VBoxContainer = $Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection
+@onready var home_buff_count_label: Label = $Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection/Header/CountLabel
+@onready var home_buff_rows: VBoxContainer = $Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/HomeSection/Rows
+@onready var combat_buff_section: VBoxContainer = $Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection
+@onready var combat_buff_count_label: Label = $Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection/Header/CountLabel
+@onready var combat_buff_rows: VBoxContainer = $Root/GlobalBuffPanel/PanelLayout/BuffScroll/BuffSections/CombatSection/Rows
 
-var farm_upgrade_button: Button = null
-var forge_upgrade_button: Button = null
-var alchemy_upgrade_button: Button = null
-var recruit_upgrade_button: Button = null
 var category_buttons: Array[Button] = []
 var inventory_slot_buttons: Array[Button] = []
 var inventory_slot_instance_ids: Array[String] = []
@@ -190,23 +251,17 @@ var log_lines: Array = []
 var selected_farm_seed_id: String = ""
 var selected_farm_slot_index: int = -1
 var selected_farm_speed_item_id: String = ""
-var farm_controls_connected: bool = false
 var selected_forge_mode: String = FORGE_MODE_CRAFT
 var selected_forge_equipment_instance_id: String = ""
 var selected_forge_stat_id: String = ""
 var selected_forge_affix_index := 0
-var forge_target_option: OptionButton = null
-var forge_controls_connected: bool = false
 var selected_party_member_id: String = ""
 var selected_recruit_candidate_id: String = ""
 var selected_recruit_party_member_id: String = ""
 var pending_release_member_id: String = ""
-var recruit_controls_connected: bool = false
 var selected_alchemy_recipe_id: String = ""
 var selected_expedition_map_id := ""
 var expedition_map_summaries: Array[Dictionary] = []
-var alchemy_controls_connected: bool = false
-var debug_controls_connected: bool = false
 var debug_options_populated: bool = false
 var saved_panel_positions: Dictionary = {}
 var dragging_panel: Control = null
@@ -219,39 +274,19 @@ var menu_button_hover_tween: Tween = null
 var scene_transition_tween: Tween = null
 var mod_manager_button: Button = null
 var mod_manager_panel: Control = null
-var forge_blueprint_row: HBoxContainer = null
-var forge_blueprint_option: OptionButton = null
-var forge_target_button: Button = null
-var salvage_confirmation_dialog: ConfirmationDialog = null
 var pending_salvage_instance_id := ""
-var recruit_mode_recruit_button: Button = null
-var recruit_mode_manual_button: Button = null
-var recruit_manual_page: VBoxContainer = null
-var manual_exchange_list: ItemList = null
-var manual_exchange_button: Button = null
-var spirit_stone_row: HBoxContainer = null
-var spirit_stone_option: OptionButton = null
-var spirit_stone_convert_button: Button = null
-var market_button: Button = null
-var market_panel: PanelContainer = null
-var market_token_label: Label = null
-var market_timer_label: Label = null
-var market_refresh_button: Button = null
-var market_tabs: TabContainer = null
-var market_offer_grid: GridContainer = null
-var market_commission_list: VBoxContainer = null
-var market_recycle_option: OptionButton = null
-var market_recycle_amount: SpinBox = null
-var market_recycle_preview_label: Label = null
-var market_recycle_button: Button = null
-var market_recycle_confirmation: ConfirmationDialog = null
 var pending_market_recycle_item_id := ""
 var pending_market_recycle_amount := 0
 var market_clock_accumulator := 0.0
+var pending_auto_item_slot := -1
+var auto_item_popup_ids: Dictionary = {}
+var global_buff_structure_signature := ""
+var global_buff_row_refs: Dictionary = {}
 
 
 func _ready() -> void:
-
+	_initialize_static_control_data()
+	_build_inventory_slots()
 	$Root/MemberInfoPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): member_info_panel.visible = false)
 	$Root/InventoryPanel/InventoryLayout/Header/CloseButton.pressed.connect(func(): inventory_panel.visible = false)
 	$Root/FarmPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): farm_panel.visible = false)
@@ -259,6 +294,7 @@ func _ready() -> void:
 	$Root/AlchemyPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): alchemy_panel.visible = false)
 	$Root/RecruitPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): recruit_panel.visible = false)
 	$Root/FightPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): fight_panel.visible = false)
+	global_buff_close_button.pressed.connect(func(): global_buff_panel.visible = false)
 
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
 	expedition_map_option.item_selected.connect(_on_expedition_map_option_selected)
@@ -268,17 +304,13 @@ func _ready() -> void:
 	home_camera_right_button.button_down.connect(func(): home_camera_pan_started.emit(1))
 	home_camera_right_button.button_up.connect(func(): home_camera_pan_stopped.emit())
 	debug_button.pressed.connect(_toggle_debug_panel)
-	if inventory_detail_view != null:
-		inventory_detail_view.setup()
-		inventory_detail_view.use_button.pressed.connect(_on_inventory_detail_use_pressed)
-	if damage_popup_layer != null:
-		damage_popup_layer.visible = true
+	inventory_detail_view.setup()
+	inventory_detail_view.use_button.pressed.connect(_on_inventory_detail_use_pressed)
+	damage_popup_layer.visible = true
 	$Root/DebugPanel/PanelLayout/Header/CloseButton.pressed.connect(func(): debug_panel.visible = false)
 	window_drag_button.button_down.connect(_on_window_drag_button_down)
 	window_drag_button.button_up.connect(_on_window_drag_button_up)
-	_ensure_equipment_loop_controls()
-	_ensure_progression_exchange_controls()
-	_ensure_market_controls()
+	_connect_static_feature_controls()
 	_connect_farm_controls()
 	_connect_forge_controls()
 	_connect_alchemy_controls()
@@ -294,7 +326,6 @@ func _ready() -> void:
 		category_buttons.append(button)
 
 	inventory_menu.id_pressed.connect(_on_inventory_menu_id_pressed)
-	_ensure_inventory_slots()
 	_capture_default_panel_positions()
 	$Root/MenuButton.pivot_offset = $Root/MenuButton.size * 0.5
 	window_drag_button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -303,135 +334,39 @@ func _ready() -> void:
 	_setup_mod_manager()
 
 
-func _ensure_market_controls() -> void:
-	var root := get_node_or_null("Root") as Control
-	var menu_layout := get_node_or_null("Root/MenuPanel/MenuLayout") as VBoxContainer
-	if root == null or menu_layout == null:
-		return
-	market_button = menu_layout.get_node_or_null("MarketButton") as Button
-	if market_button == null:
-		market_button = Button.new()
-		market_button.name = "MarketButton"
-		market_button.text = "坊市"
-		market_button.custom_minimum_size = Vector2(120.0, 28.0)
-		_style_market_button(market_button)
-		menu_layout.add_child(market_button)
-		market_button.pressed.connect(_open_market_panel)
-		menu_panel.reset_size()
-	market_panel = root.get_node_or_null("MarketPanel") as PanelContainer
-	if market_panel != null:
-		return
-	market_panel = PanelContainer.new()
-	market_panel.name = "MarketPanel"
-	market_panel.visible = false
-	market_panel.position = Vector2(170.0, 28.0)
-	market_panel.custom_minimum_size = Vector2(620.0, 420.0)
-	market_panel.add_theme_stylebox_override("panel", _create_panel_style(PANEL_FILL_COLOR, PANEL_BORDER_COLOR, 2, 8))
-	root.add_child(market_panel)
+func _initialize_static_control_data() -> void:
+	spirit_stone_option.clear()
+	for element_id in ["wood", "fire", "earth", "metal", "water"]:
+		spirit_stone_option.add_item(DataTables.element_name(element_id))
+		spirit_stone_option.set_item_metadata(spirit_stone_option.item_count - 1, element_id)
+	_set_recruit_exchange_page(false)
 
-	var layout := VBoxContainer.new()
-	layout.name = "PanelLayout"
-	layout.add_theme_constant_override("separation", 7)
-	market_panel.add_child(layout)
 
-	var header := HBoxContainer.new()
-	header.name = "Header"
-	layout.add_child(header)
-	var title := Label.new()
-	title.text = "坊市"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_color_override("font_color", Color(1.0, 0.93, 0.73))
-	header.add_child(title)
-	market_token_label = Label.new()
-	market_token_label.name = "TokenLabel"
-	header.add_child(market_token_label)
-	market_timer_label = Label.new()
-	market_timer_label.name = "TimerLabel"
-	market_timer_label.custom_minimum_size.x = 110.0
-	header.add_child(market_timer_label)
-	var close_button := Button.new()
-	close_button.text = "关闭"
-	_style_market_button(close_button)
-	close_button.pressed.connect(func(): market_panel.visible = false)
-	header.add_child(close_button)
-
-	var action_row := HBoxContainer.new()
-	action_row.name = "ActionRow"
-	layout.add_child(action_row)
-	var cycle_label := Label.new()
-	cycle_label.text = "货架与委托每 10 分钟自然更新"
-	cycle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	action_row.add_child(cycle_label)
-	market_refresh_button = Button.new()
-	market_refresh_button.name = "RefreshButton"
-	_style_market_button(market_refresh_button)
+func _connect_static_feature_controls() -> void:
+	forge_ascend_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_ASCEND))
+	forge_target_option.item_selected.connect(_on_forge_target_selected)
+	forge_target_button.pressed.connect(_on_target_forge_pressed)
+	salvage_confirmation_dialog.confirmed.connect(_on_salvage_confirmed)
+	recruit_mode_recruit_button.pressed.connect(func(): _set_recruit_exchange_page(false))
+	recruit_mode_manual_button.pressed.connect(func(): _set_recruit_exchange_page(true))
+	manual_exchange_list.item_selected.connect(func(_index): manual_exchange_button.disabled = false)
+	manual_exchange_button.pressed.connect(_on_manual_exchange_pressed)
+	spirit_stone_convert_button.pressed.connect(_on_spirit_stone_convert_pressed)
+	market_button.pressed.connect(_open_market_panel)
+	market_close_button.pressed.connect(func(): market_panel.visible = false)
 	market_refresh_button.pressed.connect(_on_market_refresh_pressed)
-	action_row.add_child(market_refresh_button)
-
-	market_tabs = TabContainer.new()
-	market_tabs.name = "MarketTabs"
-	market_tabs.custom_minimum_size = Vector2(596.0, 330.0)
-	market_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	layout.add_child(market_tabs)
-
-	var shelf_page := ScrollContainer.new()
-	shelf_page.name = "货架"
-	market_tabs.add_child(shelf_page)
-	market_offer_grid = GridContainer.new()
-	market_offer_grid.name = "OfferGrid"
-	market_offer_grid.columns = 2
-	market_offer_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	market_offer_grid.add_theme_constant_override("h_separation", 8)
-	market_offer_grid.add_theme_constant_override("v_separation", 8)
-	shelf_page.add_child(market_offer_grid)
-
-	var commission_scroll := ScrollContainer.new()
-	commission_scroll.name = "委托"
-	market_tabs.add_child(commission_scroll)
-	market_commission_list = VBoxContainer.new()
-	market_commission_list.name = "CommissionList"
-	market_commission_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	market_commission_list.add_theme_constant_override("separation", 8)
-	commission_scroll.add_child(market_commission_list)
-
-	var recycle_page := VBoxContainer.new()
-	recycle_page.name = "回收"
-	recycle_page.add_theme_constant_override("separation", 10)
-	market_tabs.add_child(recycle_page)
-	market_recycle_option = OptionButton.new()
-	market_recycle_option.name = "RecycleItemOption"
-	market_recycle_option.custom_minimum_size = Vector2(0.0, 38.0)
-	recycle_page.add_child(market_recycle_option)
-	var amount_row := HBoxContainer.new()
-	recycle_page.add_child(amount_row)
-	var amount_label := Label.new()
-	amount_label.text = "回收数量"
-	amount_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	amount_row.add_child(amount_label)
-	market_recycle_amount = SpinBox.new()
-	market_recycle_amount.name = "RecycleAmount"
-	market_recycle_amount.custom_minimum_size.x = 150.0
-	market_recycle_amount.allow_greater = false
-	market_recycle_amount.allow_lesser = false
-	amount_row.add_child(market_recycle_amount)
-	market_recycle_preview_label = Label.new()
-	market_recycle_preview_label.name = "RecyclePreview"
-	market_recycle_preview_label.custom_minimum_size.y = 50.0
-	recycle_page.add_child(market_recycle_preview_label)
-	market_recycle_button = Button.new()
-	market_recycle_button.name = "RecycleButton"
-	market_recycle_button.text = "确认回收"
-	_style_market_button(market_recycle_button)
-	recycle_page.add_child(market_recycle_button)
-
-	market_recycle_confirmation = ConfirmationDialog.new()
-	market_recycle_confirmation.name = "MarketRecycleConfirmation"
-	market_recycle_confirmation.title = "确认回收贵重物品"
-	root.add_child(market_recycle_confirmation)
 	market_recycle_option.item_selected.connect(_on_market_recycle_item_selected)
 	market_recycle_amount.value_changed.connect(_on_market_recycle_amount_changed)
 	market_recycle_button.pressed.connect(_on_market_recycle_pressed)
 	market_recycle_confirmation.confirmed.connect(_on_market_recycle_confirmed)
+	global_item_buff_button.pressed.connect(_toggle_global_buff_panel)
+	farm_upgrade_button.pressed.connect(_on_building_upgrade_pressed.bind("farm"))
+	forge_upgrade_button.pressed.connect(_on_building_upgrade_pressed.bind("forge"))
+	alchemy_upgrade_button.pressed.connect(_on_building_upgrade_pressed.bind("alchemy"))
+	recruit_upgrade_button.pressed.connect(_on_building_upgrade_pressed.bind("recruit"))
+	for index in range(auto_item_buttons.size()):
+		auto_item_buttons[index].pressed.connect(_open_auto_item_picker.bind(index))
+	auto_item_popup.id_pressed.connect(_on_auto_item_selected)
 
 
 func _style_market_button(button: Button) -> void:
@@ -443,7 +378,6 @@ func _style_market_button(button: Button) -> void:
 
 
 func _open_market_panel() -> void:
-	_ensure_menu_panel_refs()
 	_close_popup_panels()
 	menu_panel.visible = false
 	market_panel.visible = true
@@ -454,7 +388,7 @@ func _open_market_panel() -> void:
 
 
 func _refresh_market_panel() -> void:
-	if current_game_state == null or market_panel == null:
+	if current_game_state == null:
 		return
 	_refresh_market_header()
 	_refresh_market_offers()
@@ -557,7 +491,7 @@ func _refresh_market_recycle_options() -> void:
 
 
 func _selected_market_recycle_item_id() -> String:
-	if market_recycle_option == null or market_recycle_option.item_count <= 0 or market_recycle_option.selected < 0:
+	if market_recycle_option.item_count <= 0 or market_recycle_option.selected < 0:
 		return ""
 	return str(market_recycle_option.get_item_metadata(market_recycle_option.selected))
 
@@ -633,7 +567,7 @@ func _on_market_recycle_confirmed() -> void:
 
 
 func _process(delta: float) -> void:
-	if market_panel == null or not market_panel.visible or current_game_state == null:
+	if not market_panel.visible or current_game_state == null:
 		return
 	market_clock_accumulator += delta
 	if market_clock_accumulator < 1.0:
@@ -648,168 +582,17 @@ func _process(delta: float) -> void:
 		_refresh_market_header()
 
 
-func _ensure_equipment_loop_controls() -> void:
-	if not category_row.has_node("BlueprintButton"):
-		var blueprint_button := Button.new()
-		blueprint_button.name = "BlueprintButton"
-		blueprint_button.custom_minimum_size = Vector2(92.0, 34.0)
-		category_row.add_child(blueprint_button)
-	var forge_layout := get_node_or_null("Root/ForgePanel/PanelLayout") as VBoxContainer
-	if forge_layout != null:
-		var mode_row := forge_layout.get_node_or_null("ModeRow") as HBoxContainer
-		if mode_row != null and mode_row.get_node_or_null("ForgeAscendButton") == null:
-			var ascend_button := Button.new()
-			ascend_button.name = "ForgeAscendButton"
-			ascend_button.text = "升阶"
-			ascend_button.custom_minimum_size = Vector2(72.0, 34.0)
-			mode_row.add_child(ascend_button)
-			ascend_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_ASCEND))
-		forge_target_option = forge_layout.get_node_or_null("ForgeTargetOption") as OptionButton
-		if forge_target_option == null:
-			forge_target_option = OptionButton.new()
-			forge_target_option.name = "ForgeTargetOption"
-			forge_target_option.custom_minimum_size = Vector2(0.0, 34.0)
-			forge_target_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			forge_layout.add_child(forge_target_option)
-			forge_layout.move_child(forge_target_option, forge_equipment_slot_button.get_index() + 1)
-			forge_target_option.item_selected.connect(_on_forge_target_selected)
-		var forge_hint := forge_layout.get_node_or_null("HintLabel") as Label
-		if forge_hint != null:
-			forge_hint.custom_minimum_size.y = 23.0
-		forge_blueprint_row = forge_layout.get_node_or_null("BlueprintForgeRow") as HBoxContainer
-		if forge_blueprint_row == null:
-			forge_blueprint_row = HBoxContainer.new()
-			forge_blueprint_row.name = "BlueprintForgeRow"
-			forge_layout.add_child(forge_blueprint_row)
-		forge_blueprint_option = forge_blueprint_row.get_node_or_null("BlueprintOption") as OptionButton
-		if forge_blueprint_option == null:
-			forge_blueprint_option = OptionButton.new()
-			forge_blueprint_option.name = "BlueprintOption"
-			forge_blueprint_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			forge_blueprint_option.custom_minimum_size = Vector2(0.0, 34.0)
-			forge_blueprint_row.add_child(forge_blueprint_option)
-		forge_target_button = forge_blueprint_row.get_node_or_null("TargetForgeButton") as Button
-		if forge_target_button == null:
-			forge_target_button = Button.new()
-			forge_target_button.name = "TargetForgeButton"
-			forge_target_button.text = "定向打造"
-			forge_target_button.custom_minimum_size = Vector2(112.0, 34.0)
-			forge_blueprint_row.add_child(forge_target_button)
-		forge_target_button.pressed.connect(_on_target_forge_pressed)
-	var root := get_node_or_null("Root")
-	if root != null:
-		salvage_confirmation_dialog = root.get_node_or_null("SalvageConfirmationDialog") as ConfirmationDialog
-		if salvage_confirmation_dialog == null:
-			salvage_confirmation_dialog = ConfirmationDialog.new()
-			salvage_confirmation_dialog.name = "SalvageConfirmationDialog"
-			salvage_confirmation_dialog.title = "确认分解"
-			salvage_confirmation_dialog.dialog_text = "分解将获得阶位与强化投入对应的强化石，词条和洗练投入不返还。"
-			root.add_child(salvage_confirmation_dialog)
-		salvage_confirmation_dialog.confirmed.connect(_on_salvage_confirmed)
-
-func _ensure_progression_exchange_controls() -> void:
-	var recruit_layout := get_node_or_null("Root/RecruitPanel/PanelLayout") as VBoxContainer
-	if recruit_layout != null:
-		var mode_row := recruit_layout.get_node_or_null("RecruitModeRow") as HBoxContainer
-		if mode_row == null:
-			mode_row = HBoxContainer.new()
-			mode_row.name = "RecruitModeRow"
-			recruit_layout.add_child(mode_row)
-			recruit_layout.move_child(mode_row, 1)
-		recruit_mode_recruit_button = mode_row.get_node_or_null("RecruitModeButton") as Button
-		if recruit_mode_recruit_button == null:
-			recruit_mode_recruit_button = Button.new()
-			recruit_mode_recruit_button.name = "RecruitModeButton"
-			recruit_mode_recruit_button.text = "招募"
-			recruit_mode_recruit_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			mode_row.add_child(recruit_mode_recruit_button)
-		recruit_mode_manual_button = mode_row.get_node_or_null("ManualModeButton") as Button
-		if recruit_mode_manual_button == null:
-			recruit_mode_manual_button = Button.new()
-			recruit_mode_manual_button.name = "ManualModeButton"
-			recruit_mode_manual_button.text = "功法兑换"
-			recruit_mode_manual_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			mode_row.add_child(recruit_mode_manual_button)
-		recruit_manual_page = recruit_layout.get_node_or_null("ManualExchangePage") as VBoxContainer
-		if recruit_manual_page == null:
-			recruit_manual_page = VBoxContainer.new()
-			recruit_manual_page.name = "ManualExchangePage"
-			var title := Label.new()
-			title.text = "功法兑换"
-			recruit_manual_page.add_child(title)
-			manual_exchange_list = ItemList.new()
-			manual_exchange_list.name = "ManualExchangeList"
-			manual_exchange_list.custom_minimum_size = Vector2(320.0, 110.0)
-			recruit_manual_page.add_child(manual_exchange_list)
-			manual_exchange_button = Button.new()
-			manual_exchange_button.name = "ManualExchangeButton"
-			manual_exchange_button.text = "兑换功法"
-			recruit_manual_page.add_child(manual_exchange_button)
-			recruit_layout.add_child(recruit_manual_page)
-		else:
-			manual_exchange_list = recruit_manual_page.get_node_or_null("ManualExchangeList") as ItemList
-			manual_exchange_button = recruit_manual_page.get_node_or_null("ManualExchangeButton") as Button
-		if manual_exchange_button != null:
-			manual_exchange_button.pressed.connect(_on_manual_exchange_pressed)
-		if manual_exchange_list != null:
-			manual_exchange_list.item_selected.connect(func(_index): manual_exchange_button.disabled = false)
-		recruit_mode_recruit_button.pressed.connect(func(): _set_recruit_exchange_page(false))
-		recruit_mode_manual_button.pressed.connect(func(): _set_recruit_exchange_page(true))
-		_set_recruit_exchange_page(false)
-	var forge_layout := get_node_or_null("Root/ForgePanel/PanelLayout") as VBoxContainer
-	if forge_layout != null:
-		spirit_stone_row = forge_layout.get_node_or_null("SpiritStoneRow") as HBoxContainer
-		if spirit_stone_row == null:
-			spirit_stone_row = HBoxContainer.new()
-			spirit_stone_row.name = "SpiritStoneRow"
-			forge_layout.add_child(spirit_stone_row)
-		spirit_stone_option = spirit_stone_row.get_node_or_null("SpiritStoneOption") as OptionButton
-		if spirit_stone_option == null:
-			spirit_stone_option = OptionButton.new()
-			spirit_stone_option.name = "SpiritStoneOption"
-			spirit_stone_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			for element_id in ["wood", "fire", "earth", "metal", "water"]:
-				spirit_stone_option.add_item(DataTables.element_name(element_id))
-				spirit_stone_option.set_item_metadata(spirit_stone_option.item_count - 1, element_id)
-			spirit_stone_row.add_child(spirit_stone_option)
-		spirit_stone_convert_button = spirit_stone_row.get_node_or_null("SpiritStoneConvertButton") as Button
-		if spirit_stone_convert_button == null:
-			spirit_stone_convert_button = Button.new()
-			spirit_stone_convert_button.name = "SpiritStoneConvertButton"
-			spirit_stone_convert_button.text = "灵石 x3 转换"
-			spirit_stone_convert_button.custom_minimum_size = Vector2(116.0, 0.0)
-			spirit_stone_row.add_child(spirit_stone_convert_button)
-		spirit_stone_convert_button.pressed.connect(_on_spirit_stone_convert_pressed)
-
-
 func _set_recruit_exchange_page(show_manual: bool) -> void:
-	if recruit_manual_page != null:
-		recruit_manual_page.visible = show_manual
-	if recruit_mode_recruit_button != null:
-		recruit_mode_recruit_button.disabled = not show_manual
-	if recruit_mode_manual_button != null:
-		recruit_mode_manual_button.disabled = show_manual
-	var recruit_layout := get_node_or_null("Root/RecruitPanel/PanelLayout")
-	if recruit_layout == null:
-		return
-	for node_name in [
-		"ActionDetail",
-		"RecruitUpgradeButton",
-		"CandidateList",
-		"RecruitButton",
-		"ButtonRow",
-		"PartyLabel",
-		"PartyList",
-		"PartyButtonRow",
-	]:
-		var control := recruit_layout.get_node_or_null(node_name) as Control
-		if control != null:
-			control.visible = not show_manual
+	recruit_manual_page.visible = show_manual
+	recruit_mode_recruit_button.disabled = not show_manual
+	recruit_mode_manual_button.disabled = show_manual
+	for control in recruit_main_page_controls:
+		control.visible = not show_manual
 
 func _setup_mod_manager() -> void:
-	var root := get_node_or_null("Root") as Control
+	var root: Control = $Root
 	var mod_api := get_node_or_null("/root/ModAPI")
-	if root == null or mod_api == null:
+	if mod_api == null:
 		return
 	mod_manager_button = Button.new()
 	mod_manager_button.name = "ModManagerButton"
@@ -827,27 +610,16 @@ func _setup_mod_manager() -> void:
 
 
 func set_expedition_controls_visible(controls_visible: bool) -> void:
-	_ensure_menu_panel_refs()
-	if expedition_hud != null:
-		expedition_hud.visible = controls_visible
+	expedition_hud.visible = controls_visible
 
 
 func set_home_camera_controls(controls_visible: bool, can_move_left: bool, can_move_right: bool) -> void:
-	if home_camera_controls == null:
-		return
 	home_camera_controls.visible = controls_visible
-	if home_camera_left_button != null:
-		home_camera_left_button.disabled = not can_move_left
-	if home_camera_right_button != null:
-		home_camera_right_button.disabled = not can_move_right
+	home_camera_left_button.disabled = not can_move_left
+	home_camera_right_button.disabled = not can_move_right
 
 
 func play_scene_transition(message: String = "加载中...") -> void:
-	_ensure_menu_panel_refs()
-	if loading_overlay == null or loading_label == null:
-		scene_transition_midpoint.emit()
-		scene_transition_finished.emit()
-		return
 	if scene_transition_tween != null:
 		scene_transition_tween.kill()
 		scene_transition_tween = null
@@ -870,22 +642,14 @@ func play_scene_transition(message: String = "加载中...") -> void:
 
 
 func hide_home_ui() -> void:
-	_ensure_menu_panel_refs()
 	_close_popup_panels()
-	if menu_panel != null:
-		menu_panel.visible = false
-	if inventory_detail_view != null:
-		inventory_detail_view.hide_item()
-	if farm_seed_picker_panel != null:
-		farm_seed_picker_panel.visible = false
-	if farm_speed_item_picker_panel != null:
-		farm_speed_item_picker_panel.visible = false
-	if forge_equipment_picker_panel != null:
-		forge_equipment_picker_panel.visible = false
-	if alchemy_recipe_picker_panel != null:
-		alchemy_recipe_picker_panel.visible = false
-	if inventory_menu != null:
-		inventory_menu.hide()
+	menu_panel.visible = false
+	inventory_detail_view.hide_item()
+	farm_seed_picker_panel.visible = false
+	farm_speed_item_picker_panel.visible = false
+	forge_equipment_picker_panel.visible = false
+	alchemy_recipe_picker_panel.visible = false
+	inventory_menu.hide()
 
 
 func _on_menu_button_mouse_entered() -> void:
@@ -928,7 +692,6 @@ func _input(event: InputEvent) -> void:
 			dragging_panel.position = _clamp_panel_position(dragging_panel, next_position)
 
 func load_hud_save_data(data: Dictionary) -> void:
-	_ensure_menu_panel_refs()
 	saved_panel_positions.clear()
 	var panel_positions: Variant = data.get("panel_positions", {})
 	if panel_positions is Dictionary:
@@ -943,13 +706,11 @@ func load_hud_save_data(data: Dictionary) -> void:
 
 
 func to_hud_save_data() -> Dictionary:
-	_ensure_menu_panel_refs()
 	_capture_current_panel_positions()
 	return {"panel_positions": saved_panel_positions.duplicate(true)}
 
 
 func refresh(game_state) -> void:
-	_ensure_menu_panel_refs()
 	current_game_state = game_state
 	current_progress_state = game_state.progress_states.duplicate(true) if game_state != null else {}
 	if current_game_state != null and current_game_state.member_by_id(selected_party_member_id).is_empty():
@@ -957,6 +718,7 @@ func refresh(game_state) -> void:
 	if current_game_state != null and current_game_state.member_by_id(selected_recruit_party_member_id).is_empty():
 		selected_recruit_party_member_id = selected_party_member_id
 	_refresh_member_info(game_state)
+	_refresh_item_buff_hud()
 
 	if inventory_panel.visible:
 		_refresh_inventory()
@@ -966,7 +728,7 @@ func refresh(game_state) -> void:
 		_refresh_member_info(current_game_state)
 	if recruit_panel.visible:
 		_refresh_recruit_panel()
-	if market_panel != null and market_panel.visible:
+	if market_panel.visible:
 		_refresh_market_panel()
 	_refresh_visible_action_details()
 
@@ -981,13 +743,11 @@ func set_expedition_maps(map_summaries: Array[Dictionary], selected_map_id: Stri
 	expedition_map_summaries = map_summaries.duplicate(true)
 	selected_expedition_map_id = selected_map_id
 	_refresh_expedition_map_options()
-	if fight_panel != null and fight_panel.visible:
+	if fight_panel.visible:
 		_refresh_action_detail(GameDefs.TaskType.FIGHT)
 
 
 func _refresh_expedition_map_options() -> void:
-	if expedition_map_option == null:
-		return
 	expedition_map_option.clear()
 	var selected_index := -1
 	for summary in expedition_map_summaries:
@@ -1009,7 +769,7 @@ func _refresh_expedition_map_options() -> void:
 
 
 func _on_expedition_map_option_selected(index: int) -> void:
-	if expedition_map_option == null or index < 0 or index >= expedition_map_option.item_count:
+	if index < 0 or index >= expedition_map_option.item_count:
 		return
 	if expedition_map_option.is_item_disabled(index):
 		return
@@ -1047,7 +807,7 @@ func _refresh_member_info(game_state) -> void:
 
 
 func _refresh_member_info_member_list(game_state) -> void:
-	if member_info_member_list == null or game_state == null:
+	if game_state == null:
 		return
 	member_info_member_list.clear()
 	var selected_index := 0
@@ -1077,7 +837,7 @@ func _refresh_member_info_member_list(game_state) -> void:
 
 
 func _refresh_member_info_portrait(game_state) -> void:
-	if member_info_portrait_root == null or member_info_portrait_name == null or game_state == null:
+	if game_state == null:
 		return
 	var member: Dictionary = game_state.member_by_id(selected_party_member_id)
 	if member.is_empty():
@@ -1114,8 +874,6 @@ func _refresh_member_info_portrait(game_state) -> void:
 
 
 func _clear_member_info_portrait() -> void:
-	if member_info_portrait_root == null:
-		return
 	for child in member_info_portrait_root.get_children():
 		member_info_portrait_root.remove_child(child)
 		child.queue_free()
@@ -1397,15 +1155,13 @@ func _clear_control_children(container: Control) -> void:
 
 
 func _begin_window_drag(mouse_position: Vector2) -> bool:
-	_ensure_menu_panel_refs()
-	if window_drag_button == null or not window_drag_button.get_global_rect().has_point(mouse_position):
+	if not window_drag_button.get_global_rect().has_point(mouse_position):
 		return false
 	_start_window_drag(mouse_position)
 	return true
 
 
 func _on_window_drag_button_down() -> void:
-	_ensure_menu_panel_refs()
 	_start_window_drag(get_viewport().get_mouse_position())
 
 
@@ -1424,14 +1180,11 @@ func _end_window_drag() -> void:
 
 
 func show_home_action_panel(task_type: int) -> void:
-	_ensure_menu_panel_refs()
 	var panel: Control = _panel_for_task(task_type)
 	if panel == null:
 		return
 	_close_popup_panels()
-	var menu: Control = get_node_or_null("Root/MenuPanel") as Control
-	if menu != null:
-		menu.visible = false
+	menu_panel.visible = false
 	panel.visible = true
 	_refresh_action_detail(task_type)
 	if task_type == GameDefs.TaskType.FARM:
@@ -1448,7 +1201,6 @@ func show_home_action_panel(task_type: int) -> void:
 
 
 func _toggle_menu() -> void:
-	_ensure_menu_panel_refs()
 	var next_visible: bool = not menu_panel.visible
 	_close_popup_panels()
 	_apply_saved_panel_position(menu_panel)
@@ -1456,7 +1208,6 @@ func _toggle_menu() -> void:
 
 
 func _open_member_info_panel() -> void:
-	_ensure_menu_panel_refs()
 	_close_popup_panels()
 	menu_panel.visible = false
 	_apply_saved_panel_position(member_info_panel)
@@ -1464,7 +1215,6 @@ func _open_member_info_panel() -> void:
 
 
 func _open_inventory_panel() -> void:
-	_ensure_menu_panel_refs()
 	_close_popup_panels()
 	menu_panel.visible = false
 	_apply_saved_panel_position(inventory_panel)
@@ -1472,217 +1222,285 @@ func _open_inventory_panel() -> void:
 	_refresh_inventory()
 
 
+func _open_auto_item_picker(slot_index: int) -> void:
+	if current_game_state == null:
+		return
+	pending_auto_item_slot = slot_index
+	auto_item_popup.clear()
+	auto_item_popup_ids.clear()
+	auto_item_popup.add_item("清空槽位", 0)
+	var item_ids: Array = DataTables.ITEM_DEFS.keys()
+	item_ids.sort()
+	var menu_id := 100
+	for raw_item_id in item_ids:
+		var item_id := str(raw_item_id)
+		var definition := DataTables.item_definition(item_id)
+		if str(definition.get("ai_action_type", "")).is_empty() or not ["combat", "both"].has(str(definition.get("use_context", definition.get("use_scope", "none")))):
+			continue
+		var count: int = int(current_game_state.inventory_item_count(item_id))
+		auto_item_popup.add_icon_item(DataTables.item_icon_texture(item_id), "%s  x%d" % [DataTables.item_display_name(item_id), count], menu_id)
+		auto_item_popup_ids[menu_id] = item_id
+		menu_id += 1
+	var mouse := Vector2i(get_viewport().get_mouse_position())
+	auto_item_popup.popup(Rect2i(mouse, Vector2i(260, 0)))
+
+
+func _on_auto_item_selected(menu_id: int) -> void:
+	if current_game_state == null or pending_auto_item_slot < 0:
+		return
+	var item_id := "" if menu_id == 0 else str(auto_item_popup_ids.get(menu_id, ""))
+	current_game_state.set_auto_use_item_slot(pending_auto_item_slot, item_id)
+	pending_auto_item_slot = -1
+	_refresh_item_buff_hud()
+
+
+func _refresh_item_buff_hud() -> void:
+	if current_game_state != null:
+		for index in range(mini(4, auto_item_buttons.size())):
+			var button := auto_item_buttons[index]
+			var item_id := str(current_game_state.auto_use_item_ids[index])
+			if item_id.is_empty():
+				button.text = "%d  空" % (index + 1)
+				button.icon = null
+				button.tooltip_text = "选择自动使用道具"
+				continue
+			var definition := DataTables.item_definition(item_id)
+			button.text = "%d  %s x%d" % [index + 1, DataTables.item_display_name(item_id), current_game_state.inventory_item_count(item_id)]
+			button.icon = DataTables.item_icon_texture(item_id)
+			button.expand_icon = true
+			button.tooltip_text = str(definition.get("description", ""))
+
+	var buffs := _global_item_buffs()
+	var signature := _global_buff_signature(buffs)
+	if signature != global_buff_structure_signature:
+		global_buff_structure_signature = signature
+		_rebuild_global_buff_rows(buffs)
+	_update_global_buff_status(buffs)
+	_update_global_buff_row_times(buffs)
+
+
+func _global_item_buffs() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if current_game_state == null:
+		return result
+	for target in ["home_global", "combat_global"]:
+		for raw_buff in current_game_state.active_item_buffs:
+			if raw_buff is Dictionary and str(raw_buff.get("target", "")) == target:
+				result.append(raw_buff)
+	return result
+
+
+func _global_buff_signature(buffs: Array[Dictionary]) -> String:
+	var structural_values: Array[Dictionary] = []
+	for buff in buffs:
+		structural_values.append({
+			"key": _global_buff_row_key(buff),
+			"target": str(buff.get("target", "")),
+			"stat": str(buff.get("stat", "")),
+			"operation": str(buff.get("operation", "flat")),
+			"value": float(buff.get("value", 0.0)),
+			"stacks": maxi(1, int(buff.get("stacks", 1))),
+		})
+	return JSON.stringify(structural_values)
+
+
+func _global_buff_row_key(buff: Dictionary) -> String:
+	return "%s::%s::%s::%s" % [
+		str(buff.get("target", "")),
+		str(buff.get("buff_id", "")),
+		str(buff.get("source_item_id", "")),
+		str(buff.get("stat", "")),
+	]
+
+
+func _rebuild_global_buff_rows(buffs: Array[Dictionary]) -> void:
+	_clear_global_buff_rows(home_buff_rows)
+	_clear_global_buff_rows(combat_buff_rows)
+	global_buff_row_refs.clear()
+	for buff in buffs:
+		var target := str(buff.get("target", ""))
+		var parent := home_buff_rows if target == "home_global" else combat_buff_rows
+		var row := _create_global_buff_row(buff)
+		parent.add_child(row)
+		global_buff_row_refs[_global_buff_row_key(buff)] = {
+			"row": row,
+			"time_label": row.get_node("RowLayout/RightColumn/MetaRow/TimeLabel"),
+		}
+
+
+func _clear_global_buff_rows(container: VBoxContainer) -> void:
+	for child in container.get_children():
+		container.remove_child(child)
+		child.queue_free()
+
+
+func _create_global_buff_row(buff: Dictionary) -> PanelContainer:
+	var target := str(buff.get("target", ""))
+	var accent := HOME_BUFF_COLOR if target == "home_global" else COMBAT_BUFF_COLOR
+	var row := PanelContainer.new()
+	row.name = "BuffRow"
+	row.custom_minimum_size = Vector2(0, 62)
+	row.set_meta("buff_key", _global_buff_row_key(buff))
+	row.add_theme_stylebox_override("panel", _create_panel_style(
+		Color(0.16, 0.12, 0.08, 0.92), Color(accent.r, accent.g, accent.b, 0.72), 1, 5, 7.0, 5.0, 7.0, 5.0, 0, Color(0, 0, 0, 0)
+	))
+
+	var layout := HBoxContainer.new()
+	layout.name = "RowLayout"
+	layout.add_theme_constant_override("separation", 8)
+	row.add_child(layout)
+
+	var icon := TextureRect.new()
+	icon.name = "SourceIcon"
+	icon.custom_minimum_size = Vector2(38, 38)
+	icon.texture = DataTables.item_icon_texture(str(buff.get("source_item_id", "")))
+	icon.visible = icon.texture != null
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layout.add_child(icon)
+
+	var source_column := VBoxContainer.new()
+	source_column.name = "SourceColumn"
+	source_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	source_column.add_theme_constant_override("separation", 1)
+	layout.add_child(source_column)
+
+	var source_name := DataTables.item_display_name(str(buff.get("source_item_id", "")))
+	var source_label := Label.new()
+	source_label.name = "SourceLabel"
+	source_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	source_label.text = source_name
+	source_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	source_label.tooltip_text = source_name
+	source_column.add_child(source_label)
+
+	var scope_label := Label.new()
+	scope_label.name = "ScopeLabel"
+	scope_label.text = _global_buff_scope_label(target)
+	scope_label.add_theme_color_override("font_color", accent)
+	scope_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	source_column.add_child(scope_label)
+
+	var right_column := VBoxContainer.new()
+	right_column.name = "RightColumn"
+	right_column.custom_minimum_size = Vector2(142, 0)
+	right_column.add_theme_constant_override("separation", 1)
+	layout.add_child(right_column)
+
+	var bonus_label := Label.new()
+	bonus_label.name = "BonusLabel"
+	bonus_label.text = _global_buff_bonus_text(buff)
+	bonus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	bonus_label.add_theme_color_override("font_color", accent)
+	right_column.add_child(bonus_label)
+
+	var meta_row := HBoxContainer.new()
+	meta_row.name = "MetaRow"
+	meta_row.alignment = BoxContainer.ALIGNMENT_END
+	meta_row.add_theme_constant_override("separation", 8)
+	right_column.add_child(meta_row)
+
+	var stacks := maxi(1, int(buff.get("stacks", 1)))
+	var stack_label := Label.new()
+	stack_label.name = "StackLabel"
+	stack_label.text = "%d层" % stacks
+	stack_label.visible = stacks > 1
+	stack_label.add_theme_color_override("font_color", Color(0.76, 0.69, 0.56, 1.0))
+	meta_row.add_child(stack_label)
+
+	var time_label := Label.new()
+	time_label.name = "TimeLabel"
+	meta_row.add_child(time_label)
+	_update_global_buff_time_label(time_label, float(buff.get("remaining_seconds", 0.0)))
+	row.tooltip_text = "%s · %s · %s" % [source_name, _global_buff_scope_label(target), _global_buff_bonus_text(buff)]
+	return row
+
+
+func _update_global_buff_status(buffs: Array[Dictionary]) -> void:
+	var home_count := 0
+	var combat_count := 0
+	var tooltip_lines: Array[String] = []
+	for buff in buffs:
+		if str(buff.get("target", "")) == "home_global":
+			home_count += 1
+		else:
+			combat_count += 1
+		tooltip_lines.append("%s · %s · %s · %s" % [
+			DataTables.item_display_name(str(buff.get("source_item_id", ""))),
+			_global_buff_scope_label(str(buff.get("target", ""))),
+			_global_buff_bonus_text(buff),
+			_global_buff_time_text(float(buff.get("remaining_seconds", 0.0))),
+		])
+	global_item_buff_button.text = "全局效果 · %d" % buffs.size()
+	global_item_buff_button.icon = null if buffs.is_empty() else DataTables.item_icon_texture(str(buffs[0].get("source_item_id", "")))
+	global_item_buff_button.tooltip_text = "当前没有家园或战斗全局效果" if buffs.is_empty() else "\n".join(tooltip_lines)
+	global_buff_count_label.text = "%d 项生效" % buffs.size()
+	home_buff_count_label.text = str(home_count)
+	combat_buff_count_label.text = str(combat_count)
+	home_buff_section.visible = home_count > 0
+	combat_buff_section.visible = combat_count > 0
+	global_buff_empty_state.visible = buffs.is_empty()
+	global_buff_scroll.visible = not buffs.is_empty()
+
+
+func _update_global_buff_row_times(buffs: Array[Dictionary]) -> void:
+	for buff in buffs:
+		var refs: Dictionary = global_buff_row_refs.get(_global_buff_row_key(buff), {})
+		var time_label := refs.get("time_label") as Label
+		if time_label != null:
+			_update_global_buff_time_label(time_label, float(buff.get("remaining_seconds", 0.0)))
+
+
+func _update_global_buff_time_label(label: Label, remaining_seconds: float) -> void:
+	label.text = _global_buff_time_text(remaining_seconds)
+	var color := BUFF_TIME_WARNING_COLOR if remaining_seconds >= 0.0 and remaining_seconds < 10.0 else BUFF_TIME_COLOR
+	label.add_theme_color_override("font_color", color)
+
+
+func _global_buff_time_text(remaining_seconds: float) -> String:
+	if remaining_seconds < 0.0:
+		return "永久"
+	var total_seconds := maxi(0, ceili(remaining_seconds))
+	return "%02d:%02d" % [floori(total_seconds / 60.0), total_seconds % 60]
+
+
+func _global_buff_scope_label(target: String) -> String:
+	return "家园全局" if target == "home_global" else "战斗全队"
+
+
+func _global_buff_bonus_text(buff: Dictionary) -> String:
+	var stat_id := str(buff.get("stat", ""))
+	var stat_name := "农田速度" if stat_id == "farm_speed" else DataTables.attribute_display_name(stat_id)
+	var total_value := float(buff.get("value", 0.0)) * maxi(1, int(buff.get("stacks", 1)))
+	if str(buff.get("operation", "flat")) == "percent":
+		return "%s %s%%" % [stat_name, _signed_buff_number(total_value * 100.0)]
+	return "%s %s" % [stat_name, _signed_buff_number(total_value)]
+
+
+func _signed_buff_number(value: float) -> String:
+	var formatted := str(int(roundi(value))) if is_equal_approx(value, roundf(value)) else "%.1f" % value
+	return "+%s" % formatted if value >= 0.0 else formatted
+
+
+func _toggle_global_buff_panel() -> void:
+	var next_visible := not global_buff_panel.visible
+	_close_popup_panels()
+	menu_panel.visible = false
+	if not next_visible:
+		return
+	_refresh_item_buff_hud()
+	global_buff_panel.visible = true
+	_apply_saved_panel_position(global_buff_panel)
+	call_deferred("_apply_saved_panel_position_if_visible", global_buff_panel)
+
+
 func _toggle_debug_panel() -> void:
-	_ensure_menu_panel_refs()
 	_populate_debug_options()
 	var next_visible: bool = not debug_panel.visible
 	_close_popup_panels()
 	_apply_saved_panel_position(debug_panel)
 	debug_panel.visible = next_visible
-
-
-func _ensure_menu_panel_refs() -> void:
-	if menu_panel == null:
-		menu_panel = $Root/MenuPanel
-	if member_info_panel == null:
-		member_info_panel = $Root/MemberInfoPanel
-	if inventory_panel == null:
-		inventory_panel = $Root/InventoryPanel
-	if farm_panel == null:
-		farm_panel = $Root/FarmPanel
-	if forge_panel == null:
-		forge_panel = $Root/ForgePanel
-	if alchemy_panel == null:
-		alchemy_panel = $Root/AlchemyPanel
-	if recruit_panel == null:
-		recruit_panel = $Root/RecruitPanel
-	if fight_panel == null:
-		fight_panel = $Root/FightPanel
-	if member_info_member_list == null:
-		member_info_member_list = $Root/MemberInfoPanel/PanelLayout/MemberList
-	if member_info_attribute_grid == null:
-		member_info_attribute_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/属性/AttributeGrid
-	if member_info_trait_grid == null:
-		member_info_trait_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/命格/TraitGrid
-	if member_info_equipment_grid == null:
-		member_info_equipment_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/装备/EquipmentGrid
-	if member_info_skill_grid == null:
-		member_info_skill_grid = $Root/MemberInfoPanel/PanelLayout/ContentRow/InfoTabs/技能/SkillGrid
-	if member_info_portrait_root == null:
-		member_info_portrait_root = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitViewportContainer/PortraitViewport/PortraitRoot
-	if member_info_portrait_name == null:
-		member_info_portrait_name = $Root/MemberInfoPanel/PanelLayout/ContentRow/PortraitPanel/PortraitLayout/PortraitName
-	if inventory_grid == null:
-		inventory_grid = $Root/InventoryPanel/InventoryLayout/InventoryGrid
-	if inventory_detail_view == null:
-		inventory_detail_view = $Root/InventoryItemDetailPanel
-	if inventory_menu == null:
-		inventory_menu = $Root/InventoryMenu
-	if category_row == null:
-		category_row = $Root/InventoryPanel/InventoryLayout/CategoryRow
-	if farm_detail == null:
-		farm_detail = $Root/FarmPanel/PanelLayout/ActionDetail
-	if farm_progress_label == null:
-		farm_progress_label = $Root/FarmPanel/PanelLayout/ProgressLabel
-	if farm_seed_slot_button == null:
-		farm_seed_slot_button = $Root/FarmPanel/PanelLayout/SeedSlotButton
-	if farm_seed_picker_panel == null:
-		farm_seed_picker_panel = $Root/FarmPanel/PanelLayout/SeedPickerPanel
-	if farm_seed_list == null:
-		farm_seed_list = $Root/FarmPanel/PanelLayout/SeedPickerPanel/SeedList
-	if farm_slot_list == null:
-		farm_slot_list = $Root/FarmPanel/PanelLayout/FarmSlotList
-	if farm_speed_item_slot_button == null:
-		farm_speed_item_slot_button = $Root/FarmPanel/PanelLayout/SpeedItemSlotButton
-	if farm_speed_item_picker_panel == null:
-		farm_speed_item_picker_panel = $Root/FarmPanel/PanelLayout/SpeedItemPickerPanel
-	if farm_speed_item_list == null:
-		farm_speed_item_list = $Root/FarmPanel/PanelLayout/SpeedItemPickerPanel/SpeedItemList
-	if farm_speed_status_label == null:
-		farm_speed_status_label = $Root/FarmPanel/PanelLayout/SpeedStatusLabel
-	if farm_use_speed_item_button == null:
-		farm_use_speed_item_button = $Root/FarmPanel/PanelLayout/UseSpeedItemButton
-	if farm_plant_button == null:
-		farm_plant_button = $Root/FarmPanel/PanelLayout/ActionRow/PlantButton
-	if farm_claim_button == null:
-		farm_claim_button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimButton
-	if farm_claim_all_button == null:
-		farm_claim_all_button = $Root/FarmPanel/PanelLayout/ActionRow/ClaimAllButton
-	if farm_hint_label == null:
-		farm_hint_label = $Root/FarmPanel/PanelLayout/HintLabel
-	if forge_detail == null:
-		forge_detail = $Root/ForgePanel/PanelLayout/ActionDetail
-	if forge_action_button == null:
-		forge_action_button = $Root/ForgePanel/PanelLayout/ExecuteButton
-	if forge_craft_mode_button == null:
-		forge_craft_mode_button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeCraftButton
-	if forge_enhance_mode_button == null:
-		forge_enhance_mode_button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeEnhanceButton
-	if forge_refine_mode_button == null:
-		forge_refine_mode_button = $Root/ForgePanel/PanelLayout/ModeRow/ForgeRefineButton
-	if forge_equipment_slot_button == null:
-		forge_equipment_slot_button = $Root/ForgePanel/PanelLayout/EquipmentSlotButton
-	if forge_equipment_picker_panel == null:
-		forge_equipment_picker_panel = $Root/ForgePanel/PanelLayout/EquipmentPickerPanel
-	if forge_equipment_list == null:
-		forge_equipment_list = $Root/ForgePanel/PanelLayout/EquipmentPickerPanel/EquipmentList
-	if forge_material_grid == null:
-		forge_material_grid = $Root/ForgePanel/PanelLayout/MaterialGrid
-	if forge_hint_label == null:
-		forge_hint_label = $Root/ForgePanel/PanelLayout/HintLabel
-	if recruit_detail == null:
-		recruit_detail = $Root/RecruitPanel/PanelLayout/ActionDetail
-	if recruit_candidate_list == null:
-		recruit_candidate_list = $Root/RecruitPanel/PanelLayout/CandidateList
-	if recruit_button == null:
-		recruit_button = $Root/RecruitPanel/PanelLayout/RecruitButton
-	if recruit_refresh_button == null:
-		recruit_refresh_button = $Root/RecruitPanel/PanelLayout/ButtonRow/RefreshButton
-	if party_list == null:
-		party_list = $Root/RecruitPanel/PanelLayout/PartyList
-	if party_move_up_button == null:
-		party_move_up_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/MoveUpButton
-	if party_move_down_button == null:
-		party_move_down_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/MoveDownButton
-	if party_toggle_active_button == null:
-		party_toggle_active_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/ToggleActiveButton
-	if party_dismiss_button == null:
-		party_dismiss_button = $Root/RecruitPanel/PanelLayout/PartyButtonRow/DismissButton
-	if release_confirmation_dialog == null:
-		release_confirmation_dialog = $Root/ReleaseConfirmationDialog
-	if fight_detail == null:
-		fight_detail = $Root/FightPanel/PanelLayout/ActionDetail
-	if expedition_map_option == null:
-		expedition_map_option = $Root/FightPanel/PanelLayout/MapRow/MapOption
-	if expedition_hud == null:
-		expedition_hud = $Root/ExpeditionHud
-	if return_home_button == null:
-		return_home_button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
-	if loading_overlay == null:
-		loading_overlay = $Root/LoadingOverlay
-	if loading_label == null:
-		loading_label = $Root/LoadingOverlay/LoadingLabel
-	if window_drag_button == null:
-		window_drag_button = $Root/WindowDragButton
-	if debug_button == null:
-		debug_button = $Root/DebugButton
-	if debug_panel == null:
-		debug_panel = $Root/DebugPanel
-	if debug_item_option == null:
-		debug_item_option = $Root/DebugPanel/PanelLayout/AddItemRow/ItemOption
-	if debug_item_amount_spinbox == null:
-		debug_item_amount_spinbox = $Root/DebugPanel/PanelLayout/AddItemRow/ItemAmountSpinBox
-	if debug_add_item_button == null:
-		debug_add_item_button = $Root/DebugPanel/PanelLayout/AddItemRow/AddItemButton
-	if debug_equipment_option == null:
-		debug_equipment_option = $Root/DebugPanel/PanelLayout/EquipmentRow/EquipmentOption
-	if debug_equipment_level_spinbox == null:
-		debug_equipment_level_spinbox = $Root/DebugPanel/PanelLayout/EquipmentRow/EquipmentLevelSpinBox
-	if debug_equipment_rarity_option == null:
-		debug_equipment_rarity_option = $Root/DebugPanel/PanelLayout/EquipmentRow/EquipmentRarityOption
-	if debug_add_equipment_button == null:
-		debug_add_equipment_button = $Root/DebugPanel/PanelLayout/EquipmentRow/AddEquipmentButton
-	if debug_stat_option == null:
-		debug_stat_option = $Root/DebugPanel/PanelLayout/StatRow/StatOption
-	if debug_stat_value_spinbox == null:
-		debug_stat_value_spinbox = $Root/DebugPanel/PanelLayout/StatRow/StatValueSpinBox
-	if debug_set_stat_button == null:
-		debug_set_stat_button = $Root/DebugPanel/PanelLayout/StatRow/SetStatButton
-	if alchemy_recipe_slot_button == null:
-		alchemy_recipe_slot_button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
-	if alchemy_recipe_picker_panel == null:
-		alchemy_recipe_picker_panel = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel
-	if alchemy_recipe_list == null:
-		alchemy_recipe_list = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList
-	if alchemy_material_grid == null:
-		alchemy_material_grid = $Root/AlchemyPanel/PanelLayout/MaterialGrid
-	if alchemy_max_count_label == null:
-		alchemy_max_count_label = $Root/AlchemyPanel/PanelLayout/MaxCountLabel
-	if alchemy_craft_count_spinbox == null:
-		alchemy_craft_count_spinbox = $Root/AlchemyPanel/PanelLayout/CraftCountSpinBox
-	if alchemy_craft_button == null:
-		alchemy_craft_button = $Root/AlchemyPanel/PanelLayout/CraftButton
-	if alchemy_hint_label == null:
-		alchemy_hint_label = $Root/AlchemyPanel/PanelLayout/HintLabel
-	if farm_upgrade_button == null:
-		farm_upgrade_button = _ensure_building_upgrade_button(farm_panel, "farm")
-	if forge_upgrade_button == null:
-		forge_upgrade_button = _ensure_building_upgrade_button(forge_panel, "forge")
-	if alchemy_upgrade_button == null:
-		alchemy_upgrade_button = _ensure_building_upgrade_button(alchemy_panel, "alchemy")
-	if recruit_upgrade_button == null:
-		recruit_upgrade_button = _ensure_building_upgrade_button(recruit_panel, "recruit")
-	_connect_farm_controls()
-	_connect_forge_controls()
-	_connect_alchemy_controls()
-	_connect_recruit_controls()
-	_connect_debug_controls()
-
-
-func _ensure_building_upgrade_button(panel: PanelContainer, building_id: String) -> Button:
-	if panel == null:
-		return null
-	var layout: VBoxContainer = panel.get_node_or_null("PanelLayout") as VBoxContainer
-	if layout == null:
-		return null
-	var button_name: String = "%sUpgradeButton" % building_id.capitalize()
-	var button: Button = layout.get_node_or_null(button_name) as Button
-	if button == null:
-		button = Button.new()
-		button.name = button_name
-		button.custom_minimum_size = Vector2(120, 28)
-		button.add_theme_stylebox_override("normal", _create_button_style(BUTTON_FILL_COLOR, BUTTON_BORDER_COLOR))
-		button.add_theme_stylebox_override("hover", _create_button_style(BUTTON_HOVER_FILL_COLOR, BUTTON_HOVER_BORDER_COLOR))
-		button.add_theme_stylebox_override("pressed", _create_button_style(BUTTON_PRESSED_FILL_COLOR, BUTTON_PRESSED_BORDER_COLOR))
-		button.add_theme_stylebox_override("disabled", _create_button_style(BUTTON_DISABLED_FILL_COLOR, BUTTON_DISABLED_BORDER_COLOR))
-		layout.add_child(button)
-		var action_detail: Node = layout.get_node_or_null("ActionDetail")
-		if action_detail != null:
-			layout.move_child(button, action_detail.get_index() + 1)
-	if not bool(button.get_meta("upgrade_connected", false)):
-		button.pressed.connect(func(): _on_building_upgrade_pressed(building_id))
-		button.set_meta("upgrade_connected", true)
-	return button
 
 
 func _on_building_upgrade_pressed(building_id: String) -> void:
@@ -1695,7 +1513,7 @@ func _on_building_upgrade_pressed(building_id: String) -> void:
 
 
 func _refresh_building_upgrade_button(button: Button, building_id: String) -> void:
-	if button == null or current_game_state == null:
+	if current_game_state == null:
 		return
 	var level: int = current_game_state.building_level(building_id)
 	var max_level: int = DataTables.building_max_level(building_id)
@@ -1746,10 +1564,6 @@ func _trait_summary(traits: Array) -> String:
 
 
 func _connect_farm_controls() -> void:
-	if farm_controls_connected:
-		return
-	if farm_seed_slot_button == null or farm_seed_list == null or farm_slot_list == null or farm_plant_button == null:
-		return
 	farm_seed_slot_button.pressed.connect(_on_farm_seed_slot_pressed)
 	farm_seed_list.item_selected.connect(_on_farm_seed_selected)
 	farm_slot_list.item_selected.connect(_on_farm_slot_selected)
@@ -1759,40 +1573,25 @@ func _connect_farm_controls() -> void:
 	farm_plant_button.pressed.connect(_on_farm_plant_pressed)
 	farm_claim_button.pressed.connect(_on_farm_claim_pressed)
 	farm_claim_all_button.pressed.connect(_on_farm_claim_all_pressed)
-	farm_controls_connected = true
 
 
 func _connect_forge_controls() -> void:
-	if forge_controls_connected:
-		return
-	if forge_craft_mode_button == null or forge_enhance_mode_button == null or forge_refine_mode_button == null or forge_action_button == null:
-		return
 	forge_craft_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_CRAFT))
 	forge_enhance_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_ENHANCE))
 	forge_refine_mode_button.pressed.connect(func(): _set_forge_mode(FORGE_MODE_REFINE))
 	forge_equipment_slot_button.pressed.connect(_on_forge_equipment_slot_pressed)
 	forge_equipment_list.item_selected.connect(_on_forge_equipment_selected)
 	forge_action_button.pressed.connect(_on_forge_action_pressed)
-	forge_controls_connected = true
 
 
 func _connect_alchemy_controls() -> void:
-	if alchemy_controls_connected:
-		return
-	if alchemy_recipe_slot_button == null or alchemy_recipe_list == null or alchemy_craft_button == null:
-		return
 	alchemy_recipe_slot_button.pressed.connect(_on_alchemy_recipe_slot_pressed)
 	alchemy_recipe_list.item_selected.connect(_on_alchemy_recipe_selected)
 	alchemy_craft_button.pressed.connect(_on_alchemy_craft_pressed)
 	alchemy_craft_count_spinbox.value_changed.connect(func(_value): _refresh_alchemy_material_cost_grid())
-	alchemy_controls_connected = true
 
 
 func _connect_recruit_controls() -> void:
-	if recruit_controls_connected:
-		return
-	if recruit_candidate_list == null or recruit_button == null or party_list == null:
-		return
 	recruit_candidate_list.item_selected.connect(_on_recruit_candidate_selected)
 	recruit_button.pressed.connect(_on_recruit_pressed)
 	recruit_refresh_button.pressed.connect(_on_recruit_refresh_pressed)
@@ -1801,20 +1600,13 @@ func _connect_recruit_controls() -> void:
 	party_move_down_button.pressed.connect(func(): _on_party_move_pressed(1))
 	party_toggle_active_button.pressed.connect(_on_party_toggle_active_pressed)
 	party_dismiss_button.pressed.connect(_on_party_dismiss_pressed)
-	if member_info_member_list != null:
-		member_info_member_list.item_selected.connect(_on_member_info_member_selected)
-	recruit_controls_connected = true
+	member_info_member_list.item_selected.connect(_on_member_info_member_selected)
 
 
 func _connect_debug_controls() -> void:
-	if debug_controls_connected:
-		return
-	if debug_add_item_button == null or debug_add_equipment_button == null or debug_set_stat_button == null:
-		return
 	debug_add_item_button.pressed.connect(_on_debug_add_item_pressed)
 	debug_add_equipment_button.pressed.connect(_on_debug_add_equipment_pressed)
 	debug_set_stat_button.pressed.connect(_on_debug_set_stat_pressed)
-	debug_controls_connected = true
 
 
 func _draggable_panels() -> Array[Control]:
@@ -1828,28 +1620,26 @@ func _draggable_panels() -> Array[Control]:
 		recruit_panel,
 		fight_panel,
 		market_panel,
+		global_buff_panel,
 		debug_panel,
 	]
 
 
 func _capture_default_panel_positions() -> void:
-	_ensure_menu_panel_refs()
 	for panel in _draggable_panels():
-		if panel == null or saved_panel_positions.has(panel.name):
+		if saved_panel_positions.has(panel.name):
 			continue
 		saved_panel_positions[panel.name] = _position_to_dictionary(panel.position)
 
 
 func _capture_current_panel_positions() -> void:
 	for panel in _draggable_panels():
-		if panel == null:
-			continue
 		saved_panel_positions[panel.name] = _position_to_dictionary(panel.position)
 
 
 func _apply_saved_positions_to_visible_panels() -> void:
 	for panel in _draggable_panels():
-		if panel != null and panel.visible:
+		if panel.visible:
 			_apply_saved_panel_position(panel)
 
 
@@ -1864,14 +1654,13 @@ func _apply_saved_panel_position(panel: Control) -> void:
 
 
 func _apply_saved_panel_position_if_visible(panel: Control) -> void:
-	if panel != null and is_instance_valid(panel) and panel.visible:
+	if is_instance_valid(panel) and panel.visible:
 		_apply_saved_panel_position(panel)
 
 
 func _begin_panel_drag(mouse_position: Vector2) -> void:
-	_ensure_menu_panel_refs()
 	for panel in _draggable_panels():
-		if panel == null or not panel.visible:
+		if not panel.visible:
 			continue
 		var handle: Control = _drag_handle_for_panel(panel)
 		if handle == null or not handle.get_global_rect().has_point(mouse_position):
@@ -1910,7 +1699,6 @@ func _interactive_child_contains_point(node: Node, mouse_position: Vector2) -> b
 
 
 func _populate_debug_options() -> void:
-	_ensure_menu_panel_refs()
 	if debug_options_populated:
 		return
 	_populate_debug_item_options()
@@ -1964,7 +1752,6 @@ func _populate_debug_stat_options() -> void:
 
 
 func _on_debug_add_item_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null or debug_item_option.item_count <= 0:
 		return
 	var item_id: String = _selected_option_metadata(debug_item_option)
@@ -1974,7 +1761,6 @@ func _on_debug_add_item_pressed() -> void:
 
 
 func _on_debug_add_equipment_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null or debug_equipment_option.item_count <= 0 or debug_equipment_rarity_option.item_count <= 0:
 		return
 	var template_id: String = _selected_option_metadata(debug_equipment_option)
@@ -1985,7 +1771,6 @@ func _on_debug_add_equipment_pressed() -> void:
 
 
 func _on_debug_set_stat_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null or debug_stat_option.item_count <= 0:
 		return
 	var stat_id: String = _selected_option_metadata(debug_stat_option)
@@ -2044,23 +1829,21 @@ func _viewport_size() -> Vector2:
 
 
 func _close_popup_panels() -> void:
-	for panel_path in ["Root/MemberInfoPanel", "Root/InventoryPanel", "Root/FarmPanel", "Root/ForgePanel", "Root/AlchemyPanel", "Root/RecruitPanel", "Root/FightPanel", "Root/MarketPanel", "Root/DebugPanel"]:
-		var panel: Control = get_node_or_null(panel_path) as Control
-		if panel != null:
-			panel.visible = false
+	for panel in [member_info_panel, inventory_panel, farm_panel, forge_panel, alchemy_panel, recruit_panel, fight_panel, market_panel, global_buff_panel, debug_panel]:
+		panel.visible = false
 
 
 func _panel_for_task(task_type: int) -> PanelContainer:
 	if task_type == GameDefs.TaskType.FARM:
-		return get_node_or_null("Root/FarmPanel") as PanelContainer
+		return farm_panel
 	if task_type == GameDefs.TaskType.FORGE:
-		return get_node_or_null("Root/ForgePanel") as PanelContainer
+		return forge_panel
 	if task_type == GameDefs.TaskType.ALCHEMY:
-		return get_node_or_null("Root/AlchemyPanel") as PanelContainer
+		return alchemy_panel
 	if task_type == GameDefs.TaskType.RECRUIT:
-		return get_node_or_null("Root/RecruitPanel") as PanelContainer
+		return recruit_panel
 	if task_type == GameDefs.TaskType.FIGHT:
-		return get_node_or_null("Root/FightPanel") as PanelContainer
+		return fight_panel
 	return null
 
 
@@ -2088,7 +1871,6 @@ func _refresh_action_detail(task_type: int) -> void:
 	elif task_type == GameDefs.TaskType.RECRUIT:
 		_refresh_recruit_panel()
 	elif task_type == GameDefs.TaskType.FIGHT:
-		var fight_button: Button = get_node_or_null("Root/FightPanel/PanelLayout/ExecuteButton") as Button
 		var has_member: bool = current_game_state.has_party_member()
 		var map_summary := _selected_expedition_map_summary()
 		var has_map := not map_summary.is_empty() and bool(map_summary.get("unlocked", false))
@@ -2101,8 +1883,7 @@ func _refresh_action_detail(task_type: int) -> void:
 			]
 		else:
 			fight_detail.text = "需要先招募角色"
-		if fight_button != null:
-			fight_button.disabled = not has_member or not has_map
+		fight_action_button.disabled = not has_member or not has_map
 
 
 func _progress_label_text(progress_id: String) -> String:
@@ -2175,7 +1956,6 @@ func _progress_detail_text(detail: String) -> String:
 
 
 func _refresh_recruit_panel() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	var stone_count: int = current_game_state.recruit_stone_count()
@@ -2343,7 +2123,7 @@ func _on_recruit_party_member_selected(index: int) -> void:
 
 
 func _on_member_info_member_selected(index: int) -> void:
-	if current_game_state == null or member_info_member_list == null:
+	if current_game_state == null:
 		return
 	if index < 0 or index >= member_info_member_list.item_count:
 		return
@@ -2403,7 +2183,6 @@ func _set_inventory_category(type_id: String) -> void:
 func _refresh_inventory() -> void:
 	if current_game_state == null:
 		return
-	_ensure_inventory_slots()
 
 	for button in category_buttons:
 		var selected: bool = false
@@ -2422,10 +2201,9 @@ func _refresh_inventory() -> void:
 
 
 func _refresh_inventory_detail(item: Dictionary) -> void:
-	if inventory_detail_view != null:
-		var mouse_position: Vector2 = get_viewport().get_mouse_position()
-		var viewport_size: Vector2 = get_viewport().get_visible_rect().size
-		inventory_detail_view.show_item(item, current_game_state, mouse_position, viewport_size, selected_party_member_id)
+	var mouse_position: Vector2 = get_viewport().get_mouse_position()
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	inventory_detail_view.show_item(item, current_game_state, mouse_position, viewport_size, selected_party_member_id)
 
 
 func _on_inventory_detail_use_pressed() -> void:
@@ -2433,17 +2211,14 @@ func _on_inventory_detail_use_pressed() -> void:
 		return
 	var item: Dictionary = current_game_state.inventory_item_by_instance(selected_inventory_instance_id)
 	if item.is_empty():
-		if inventory_detail_view != null:
-			inventory_detail_view.hide_item()
+		inventory_detail_view.hide_item()
 		return
-	if DataTables.item_use_scope(str(item.get("item_id", ""))) != DataTables.ITEM_USE_SCOPE_HOME:
+	if DataTables.item_use_scope(str(item.get("item_id", ""))) not in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]:
 		return
 	if current_game_state.use_inventory_item_for_member(selected_inventory_instance_id, selected_party_member_id):
 		_refresh_after_inventory_action()
 
 func show_damage_popup(amount: int, world_position: Vector2, target_key: String = "", damage_type: String = "physical", is_heal: bool = false) -> void:
-	if damage_popup_layer == null:
-		return
 	if is_heal:
 		damage_popup_layer.push_heal(amount, world_position, target_key)
 	else:
@@ -2464,20 +2239,10 @@ func _refresh_after_inventory_action() -> void:
 		var item: Dictionary = current_game_state.inventory_item_by_instance(selected_inventory_instance_id)
 		_refresh_inventory_detail(item)
 	else:
-		if inventory_detail_view != null:
-			inventory_detail_view.hide_item()
+		inventory_detail_view.hide_item()
 
 
-func _ensure_inventory_slots() -> void:
-	_ensure_menu_panel_refs()
-	if inventory_slot_buttons.size() == INVENTORY_SLOT_COUNT:
-		return
-	inventory_slot_buttons.clear()
-	inventory_slot_instance_ids.clear()
-	inventory_slot_color_rects.clear()
-	inventory_slot_texture_rects.clear()
-	for child in inventory_grid.get_children():
-		child.queue_free()
+func _build_inventory_slots() -> void:
 	for index in range(INVENTORY_SLOT_COUNT):
 		var slot: Button = Button.new()
 		slot.name = "InventorySlot%d" % (index + 1)
@@ -2560,7 +2325,7 @@ func _update_inventory_slot(index: int, item: Dictionary) -> void:
 func _inventory_slot_color(item: Dictionary) -> Color:
 	var target_id: String = str(item.get("gain_target", DataTables.item_gain_target(str(item.get("item_id", "")))))
 	var color: Color = DataTables.item_gain_target_color(target_id)
-	if DataTables.item_use_scope(str(item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME:
+	if DataTables.item_use_scope(str(item.get("item_id", ""))) in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]:
 		return Color(color.r, color.g, color.b, 0.95)
 	return Color(color.r * 0.78, color.g * 0.78, color.b * 0.78, 0.88)
 
@@ -2609,7 +2374,7 @@ func _show_inventory_slot_menu(slot_index: int) -> void:
 	var use_scope: String = DataTables.item_use_scope(str(selected_item.get("item_id", "")))
 	if selected_item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		inventory_menu.add_item("装备给当前成员", MENU_EQUIP)
-	elif use_scope == DataTables.ITEM_USE_SCOPE_HOME:
+	elif use_scope in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]:
 		inventory_menu.add_item("使用", MENU_USE)
 	if selected_item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		inventory_menu.add_item("强化", MENU_ENHANCE)
@@ -2619,7 +2384,7 @@ func _show_inventory_slot_menu(slot_index: int) -> void:
 		inventory_menu.set_item_disabled(inventory_menu.item_count - 1, current_game_state.is_equipment_equipped(selected_inventory_instance_id))
 	else:
 		inventory_menu.add_item("丢弃", MENU_DROP)
-	if use_scope == DataTables.ITEM_USE_SCOPE_HOME and inventory_menu.item_count > 0:
+	if use_scope in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH] and inventory_menu.item_count > 0:
 		inventory_menu.set_item_disabled(0, false)
 	var mouse_position: Vector2 = get_viewport().get_mouse_position()
 	inventory_menu.position = Vector2i(int(mouse_position.x), int(mouse_position.y))
@@ -2631,13 +2396,11 @@ func _on_inventory_slot_mouse_entered(slot_index: int) -> void:
 		return
 	var instance_id: String = inventory_slot_instance_ids[slot_index]
 	if instance_id.is_empty():
-		if inventory_detail_view != null:
-			inventory_detail_view.hide_item()
+		inventory_detail_view.hide_item()
 		return
 	var item: Dictionary = current_game_state.inventory_item_by_instance(instance_id)
 	if item.is_empty():
-		if inventory_detail_view != null:
-			inventory_detail_view.hide_item()
+		inventory_detail_view.hide_item()
 		return
 	hovered_inventory_instance_id = instance_id
 	_refresh_inventory_detail(item)
@@ -2645,8 +2408,7 @@ func _on_inventory_slot_mouse_entered(slot_index: int) -> void:
 
 func _on_inventory_slot_mouse_exited() -> void:
 	hovered_inventory_instance_id = ""
-	if inventory_detail_view != null:
-		inventory_detail_view.hide_item()
+	inventory_detail_view.hide_item()
 
 
 func _on_inventory_menu_id_pressed(id: int) -> void:
@@ -2658,7 +2420,7 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 
 	match id:
 		MENU_USE:
-			if DataTables.item_use_scope(str(selected_item.get("item_id", ""))) == DataTables.ITEM_USE_SCOPE_HOME:
+			if DataTables.item_use_scope(str(selected_item.get("item_id", ""))) in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]:
 				current_game_state.use_inventory_item_for_member(selected_inventory_instance_id, selected_party_member_id)
 		MENU_EQUIP:
 			current_game_state.equip_item_for_member(selected_inventory_instance_id, selected_party_member_id)
@@ -2670,8 +2432,7 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 			_open_forge_for_inventory_equipment(FORGE_MODE_ASCEND)
 		MENU_SALVAGE:
 			pending_salvage_instance_id = selected_inventory_instance_id
-			if salvage_confirmation_dialog != null:
-				salvage_confirmation_dialog.popup_centered()
+			salvage_confirmation_dialog.popup_centered()
 		MENU_DROP:
 			current_game_state.drop_inventory_item(selected_inventory_instance_id)
 
@@ -2685,8 +2446,7 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 	if member_info_panel.visible:
 		_refresh_member_info(current_game_state)
 	if hovered_inventory_instance_id.is_empty():
-		if inventory_detail_view != null:
-			inventory_detail_view.hide_item()
+		inventory_detail_view.hide_item()
 	else:
 		var hovered_item: Dictionary = current_game_state.inventory_item_by_instance(hovered_inventory_instance_id)
 		_refresh_inventory_detail(hovered_item)
@@ -2708,13 +2468,11 @@ func _inventory_item_source_text(item: Dictionary) -> String:
 
 
 func _on_farm_seed_slot_pressed() -> void:
-	_ensure_menu_panel_refs()
 	_refresh_farm_seed_list()
 	farm_seed_picker_panel.visible = true
 
 
 func _on_farm_seed_selected(index: int) -> void:
-	_ensure_menu_panel_refs()
 	if index < 0 or index >= farm_seed_list.item_count:
 		return
 	selected_farm_seed_id = str(farm_seed_list.get_item_metadata(index))
@@ -2728,13 +2486,11 @@ func _on_farm_slot_selected(index: int) -> void:
 
 
 func _on_farm_speed_item_slot_pressed() -> void:
-	_ensure_menu_panel_refs()
 	_refresh_farm_speed_item_list()
 	farm_speed_item_picker_panel.visible = true
 
 
 func _on_farm_speed_item_selected(index: int) -> void:
-	_ensure_menu_panel_refs()
 	if index < 0 or index >= farm_speed_item_list.item_count:
 		return
 	selected_farm_speed_item_id = str(farm_speed_item_list.get_item_metadata(index))
@@ -2743,7 +2499,6 @@ func _on_farm_speed_item_selected(index: int) -> void:
 
 
 func _on_farm_use_speed_item_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null or selected_farm_speed_item_id.is_empty():
 		return
 	if current_game_state.use_farm_speed_item(selected_farm_speed_item_id):
@@ -2753,7 +2508,6 @@ func _on_farm_use_speed_item_pressed() -> void:
 
 
 func _on_farm_plant_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null or selected_farm_slot_index < 0 or selected_farm_seed_id.is_empty():
 		return
 	if current_game_state.plant_farm_slot(selected_farm_slot_index, selected_farm_seed_id):
@@ -2763,7 +2517,6 @@ func _on_farm_plant_pressed() -> void:
 
 
 func _on_farm_claim_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null or selected_farm_slot_index < 0:
 		return
 	if current_game_state.claim_farm_slot(selected_farm_slot_index):
@@ -2773,7 +2526,6 @@ func _on_farm_claim_pressed() -> void:
 
 
 func _on_farm_claim_all_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	if current_game_state.claim_all_farm_slots() > 0:
@@ -2783,7 +2535,6 @@ func _on_farm_claim_all_pressed() -> void:
 
 
 func _refresh_farm_panel() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	if selected_farm_slot_index >= current_game_state.farm_slots.size():
@@ -2822,7 +2573,6 @@ func _refresh_farm_buttons() -> void:
 
 
 func _refresh_farm_seed_list() -> void:
-	_ensure_menu_panel_refs()
 	farm_seed_list.clear()
 	if current_game_state == null:
 		return
@@ -2838,7 +2588,6 @@ func _refresh_farm_seed_list() -> void:
 
 
 func _refresh_farm_speed_item_list() -> void:
-	_ensure_menu_panel_refs()
 	farm_speed_item_list.clear()
 	if current_game_state == null:
 		return
@@ -2898,19 +2647,16 @@ func _format_seconds(seconds: float) -> String:
 
 func _set_forge_mode(mode: String) -> void:
 	selected_forge_mode = mode
-	if forge_equipment_picker_panel != null:
-		forge_equipment_picker_panel.visible = false
+	forge_equipment_picker_panel.visible = false
 	_refresh_forge_panel()
 
 
 func _on_forge_equipment_slot_pressed() -> void:
-	_ensure_menu_panel_refs()
 	_refresh_forge_equipment_list()
 	forge_equipment_picker_panel.visible = true
 
 
 func _on_forge_equipment_selected(index: int) -> void:
-	_ensure_menu_panel_refs()
 	if index < 0 or index >= forge_equipment_list.item_count:
 		return
 	selected_forge_equipment_instance_id = str(forge_equipment_list.get_item_metadata(index))
@@ -2919,7 +2665,7 @@ func _on_forge_equipment_selected(index: int) -> void:
 
 
 func _on_forge_target_selected(index: int) -> void:
-	if forge_target_option == null or index < 0 or index >= forge_target_option.item_count:
+	if index < 0 or index >= forge_target_option.item_count:
 		return
 	if selected_forge_mode == FORGE_MODE_ENHANCE:
 		selected_forge_stat_id = str(forge_target_option.get_item_metadata(index))
@@ -2929,7 +2675,6 @@ func _on_forge_target_selected(index: int) -> void:
 
 
 func _on_forge_action_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	if selected_forge_mode == FORGE_MODE_CRAFT:
@@ -2959,7 +2704,6 @@ func _on_forge_action_pressed() -> void:
 
 
 func _refresh_forge_panel() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	if not [FORGE_MODE_CRAFT, FORGE_MODE_ENHANCE, FORGE_MODE_REFINE, FORGE_MODE_ASCEND].has(selected_forge_mode):
@@ -2972,10 +2716,8 @@ func _refresh_forge_panel() -> void:
 	forge_refine_mode_button.disabled = selected_forge_mode == FORGE_MODE_REFINE
 	_clear_forge_material_grid()
 
-	if forge_blueprint_row != null:
-		forge_blueprint_row.visible = false
-	if forge_target_option != null:
-		forge_target_option.visible = [FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode)
+	forge_blueprint_row.visible = selected_forge_mode == FORGE_MODE_CRAFT
+	forge_target_option.visible = [FORGE_MODE_ENHANCE, FORGE_MODE_REFINE].has(selected_forge_mode)
 	if selected_forge_mode == FORGE_MODE_CRAFT:
 		_refresh_forge_craft_panel()
 	else:
@@ -3027,8 +2769,6 @@ func _refresh_forge_equipment_action_panel() -> void:
 
 
 func _refresh_forge_target_options(item: Dictionary) -> void:
-	if forge_target_option == null:
-		return
 	forge_target_option.clear()
 	if item.is_empty():
 		return
@@ -3061,8 +2801,10 @@ func _refresh_forge_target_options(item: Dictionary) -> void:
 func _refresh_forge_enhance_cost(item: Dictionary) -> void:
 	var rarity := str(item.get("rarity", "t1")) if not item.is_empty() else "t1"
 	var current_level := int(item.get("enhance_count", 0)) if not item.is_empty() else 0
-	var limit := DataTables.equipment_enhance_limit(rarity)
-	var cost := DataTables.equipment_enhance_cost(rarity, current_level + 1)
+	var template_id := str(item.get("item_id", ""))
+	var variant_id := str(item.get("equipment_variant_id", ""))
+	var limit := DataTables.equipment_enhance_limit(rarity, template_id, variant_id)
+	var cost := DataTables.equipment_enhance_cost(rarity, current_level + 1, template_id, variant_id)
 	forge_detail.text = "强化消耗：强化石 x%d" % cost
 	if item.is_empty():
 		forge_material_grid.add_child(_create_forge_material_slot("stone", "匹配灵石", 0, cost))
@@ -3112,7 +2854,6 @@ func _refresh_forge_ascension_cost(item: Dictionary) -> void:
 
 
 func _refresh_forge_equipment_list() -> void:
-	_ensure_menu_panel_refs()
 	forge_equipment_list.clear()
 	if current_game_state == null:
 		return
@@ -3126,7 +2867,6 @@ func _refresh_forge_equipment_list() -> void:
 
 
 func _clear_forge_material_grid() -> void:
-	_ensure_menu_panel_refs()
 	for child in forge_material_grid.get_children():
 		child.queue_free()
 
@@ -3167,13 +2907,11 @@ func _matching_enhance_stone_ids(item: Dictionary) -> Array[String]:
 
 
 func _on_alchemy_recipe_slot_pressed() -> void:
-	_ensure_menu_panel_refs()
 	_refresh_alchemy_recipe_list()
 	alchemy_recipe_picker_panel.visible = true
 
 
 func _on_alchemy_recipe_selected(index: int) -> void:
-	_ensure_menu_panel_refs()
 	if index < 0 or index >= alchemy_recipe_list.item_count:
 		return
 	selected_alchemy_recipe_id = str(alchemy_recipe_list.get_item_metadata(index))
@@ -3182,7 +2920,6 @@ func _on_alchemy_recipe_selected(index: int) -> void:
 
 
 func _on_alchemy_craft_pressed() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	if selected_alchemy_recipe_id.is_empty():
@@ -3196,7 +2933,6 @@ func _on_alchemy_craft_pressed() -> void:
 
 
 func _refresh_alchemy_panel() -> void:
-	_ensure_menu_panel_refs()
 	if current_game_state == null:
 		return
 	_refresh_building_upgrade_button(alchemy_upgrade_button, "alchemy")
@@ -3242,7 +2978,7 @@ func _refresh_alchemy_panel() -> void:
 
 
 func _refresh_alchemy_material_cost_grid() -> void:
-	if current_game_state == null or alchemy_material_grid == null:
+	if current_game_state == null:
 		return
 	_clear_alchemy_material_grid()
 	if selected_alchemy_recipe_id.is_empty() or DataTables.alchemy_recipe_def(selected_alchemy_recipe_id).is_empty():
@@ -3253,7 +2989,6 @@ func _refresh_alchemy_material_cost_grid() -> void:
 
 
 func _refresh_alchemy_recipe_list() -> void:
-	_ensure_menu_panel_refs()
 	alchemy_recipe_list.clear()
 	if current_game_state == null:
 		return
@@ -3266,7 +3001,6 @@ func _refresh_alchemy_recipe_list() -> void:
 
 
 func _clear_alchemy_material_grid() -> void:
-	_ensure_menu_panel_refs()
 	for child in alchemy_material_grid.get_children():
 		child.queue_free()
 
@@ -3304,7 +3038,7 @@ func _create_alchemy_material_slot(material: Dictionary, craft_amount: int) -> P
 
 
 func _refresh_forge_blueprint_options() -> void:
-	if forge_blueprint_option == null or forge_target_button == null or current_game_state == null:
+	if current_game_state == null:
 		return
 	var previous_id := ""
 	if forge_blueprint_option.selected >= 0:
@@ -3323,7 +3057,7 @@ func _refresh_forge_blueprint_options() -> void:
 
 
 func _on_target_forge_pressed() -> void:
-	if current_game_state == null or forge_blueprint_option == null or forge_blueprint_option.selected < 0:
+	if current_game_state == null or forge_blueprint_option.selected < 0:
 		return
 	var template_id := str(forge_blueprint_option.get_item_metadata(forge_blueprint_option.selected))
 	if current_game_state.craft_equipment_from_template(template_id):
@@ -3341,7 +3075,7 @@ func _on_salvage_confirmed() -> void:
 
 
 func _refresh_manual_exchange_page() -> void:
-	if manual_exchange_list == null or manual_exchange_button == null or current_game_state == null:
+	if current_game_state == null:
 		return
 	var previous_id := ""
 	if manual_exchange_list.get_selected_items().size() > 0:
@@ -3362,7 +3096,7 @@ func _refresh_manual_exchange_page() -> void:
 
 
 func _on_manual_exchange_pressed() -> void:
-	if current_game_state == null or manual_exchange_list == null:
+	if current_game_state == null:
 		return
 	var selected := manual_exchange_list.get_selected_items()
 	if selected.is_empty():
@@ -3375,18 +3109,17 @@ func _on_manual_exchange_pressed() -> void:
 
 
 func _refresh_spirit_stone_conversion() -> void:
-	if spirit_stone_option == null or spirit_stone_convert_button == null or current_game_state == null:
+	if current_game_state == null:
 		return
 	var unlocked: bool = current_game_state.building_level("forge") >= 3
-	if spirit_stone_row != null:
-		spirit_stone_row.visible = unlocked
+	spirit_stone_row.visible = unlocked
 	spirit_stone_option.visible = unlocked
 	spirit_stone_convert_button.visible = unlocked
 	spirit_stone_convert_button.disabled = not unlocked or current_game_state.inventory_item_count(DataTables.ITEM_ID_SPIRIT_STONE) < 3
 
 
 func _on_spirit_stone_convert_pressed() -> void:
-	if current_game_state == null or spirit_stone_option == null or spirit_stone_option.selected < 0:
+	if current_game_state == null or spirit_stone_option.selected < 0:
 		return
 	var element_id := str(spirit_stone_option.get_item_metadata(spirit_stone_option.selected))
 	if current_game_state.convert_spirit_stones(element_id):

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_03p3h"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_nwxx0"]
+
+[sub_resource type="Resource" id="Resource_03p3h"]
+script = ExtResource("1_03p3h")
+effect_id = "restore_hp"
+stat = "hp"
+ratio = 0.25
+
+[resource]
+script = ExtResource("2_nwxx0")
+id = "life_pill"
+item_no = 1042
+type = "pill"
+display_name = "归元丹"
+icon_name = "life_pill"
+icon_path = "res://assets/items/life_pill.png"
+description = "恢复 25% 最大生命。"
+usable = true
+use_context = "both"
+combat_cooldown_turns = 2
+ai_action_type = "heal"
+effects = Array[Resource]([SubResource("Resource_03p3h")])

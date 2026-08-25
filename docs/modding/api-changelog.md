@@ -9,7 +9,7 @@
 - 新增 `ModAPI.skill_scene()` 和 `skill_scene_definition()` 查询。
 - 敌人内容支持类别、参考倍率、经验和掉率倍率、技能解锁阶位及类别掉落池。
 - 配方支持 `unlock_building_level`，物品支持永久属性强化数据。
-- 存档当前为 Schema 20；装备模板新增可选原型和随机基础属性配置，缺省仍使用固定 `tier_base_attributes`。Mod 隔离存储、RNG 和迁移接口保持不变。
+- 存档当前为 Schema 22；核心物品支持标准 `effects` 数组，旧 `payload` 在 API 2 注册时自动适配。人物、家园全局和战斗全局 Buff 使用统一秒计时容器，自动道具栏引用稳定物品 ID。核心装备兼容接口、隔离存储和 Mod RNG 不变。
 
 API 2 内只允许增加可选字段和带默认值的方法。删除接口或改变既有参数语义必须提升 `MOD_API_VERSION`。
 

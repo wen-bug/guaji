@@ -1,6 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_d7bbk"]
+
+[sub_resource type="Resource" id="Resource_d7bbk"]
+script = ExtResource("1_d7bbk")
+effect_id = "unlock_alchemy_recipe"
+kind = "unlock_content"
+target = "none"
+reference_kind = "alchemy_recipe"
+reference_id = "pill"
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +20,6 @@ display_name = "调息丹方"
 icon_name = "recipe_pill"
 icon_path = "res://assets/items/recipe_pill.png"
 description = "学习后可炼制调息丹。"
-stackable = true
 usable = true
-use_scope = "home"
-gain_target = "none"
-payload = {"recipe_id": "pill"}
+use_context = "home"
+effects = Array[Resource]([SubResource("Resource_d7bbk")])

@@ -10,6 +10,7 @@ const ModRngScript = preload("res://scripts/modding/api/mod_rng.gd")
 const ModSchemaValidatorScript = preload("res://scripts/modding/internal/mod_schema_validator.gd")
 const ModStorageScript = preload("res://scripts/modding/api/mod_storage.gd")
 const SkillSceneRegistryScript = preload("res://scripts/game/skills/base/skill_scene_registry.gd")
+const ItemConfigParserScript = preload("res://scripts/game/data/item_config_parser.gd")
 const MOD_API_VERSION := 2
 const GAME_VERSION := "0.2.0"
 const MOD_CONFIG_PATH := "user://mods.cfg"
@@ -469,6 +470,8 @@ func _commit_context(context) -> String:
 				if not bool(replaced.get("ok", false)):
 					_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
 					return str(replaced.get("error", "技能场景替换失败"))
+		if kind == "item":
+			data = ItemConfigParserScript.normalize_external_definition(content_id, data)
 		var definition_errors: Array[String] = _validator.validate_definition(kind, content_id, data)
 		if not definition_errors.is_empty():
 			_restore_transaction(content_snapshot, skill_scene_snapshot, actor_snapshot, effect_snapshot, ai_snapshot, dialogue_snapshot)
@@ -521,6 +524,9 @@ func _validate_references(kind: String, content_id: String, data: Dictionary, ow
 			return "%s:%s 引用的资源不存在: %s" % [kind, content_id, path]
 	if kind == "item":
 		var skill_id := str(data.get("payload", {}).get("skill_id", "")) if data.get("payload", {}) is Dictionary else ""
+		for raw_effect in data.get("effects", []):
+			if raw_effect is Dictionary and str(raw_effect.get("kind", "")) == "unlock_content" and str(raw_effect.get("reference_kind", "")) == "skill":
+				skill_id = str(raw_effect.get("reference_id", skill_id))
 		if not skill_id.is_empty():
 			var error := _content_reference_error("skill", skill_id, owner_mod_id, "技能书")
 			if not error.is_empty():

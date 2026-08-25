@@ -1,50 +1,26 @@
-[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://ci5ad2pxl54le"]
+[gd_resource type="Resource" script_class="EquipmentConfigResource" load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1_s02mr"]
+[ext_resource type="Script" path="res://scripts/game/data/equipment_config_resource.gd" id="1_config"]
 
 [resource]
-script = ExtResource("1_s02mr")
+script = ExtResource("1_config")
+config_format_version = 1
 item_id = "weapon_fire_orb"
-base_name = "赤焰法环"
+template_id = "weapon"
+variant_id = "weapon_fire_orb"
+slot = "weapon"
+selection_weight = 1
 display_name = "赤焰法环"
-slot_label = "weapon"
 icon_name = "accessory"
 icon_path = "res://assets/equipment/accessory.png"
 description = "赤焰法环装备模板。"
-tier_base_attributes = {
-"t1": [{
-"amount": 2.0,
-"stat": "element_fire"
-}, {
-"amount": 1.0,
-"stat": "attack"
-}],
-"t2": [{
-"amount": 5.0,
-"stat": "element_fire"
-}, {
-"amount": 2.0,
-"stat": "attack"
-}],
-"t3": [{
-"amount": 10.0,
-"stat": "element_fire"
-}, {
-"amount": 4.0,
-"stat": "attack"
-}],
-"t4": [{
-"amount": 18.0,
-"stat": "element_fire"
-}, {
-"amount": 7.0,
-"stat": "attack"
-}],
-"t5": [{
-"amount": 30.0,
-"stat": "element_fire"
-}, {
-"amount": 12.0,
-"stat": "attack"
-}]
-}
+attribute_order = ["element_fire", "attack"]
+random_attribute_pool = ["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
+attribute_units = {"attack": 1, "defense": 1, "max_hp": 4, "max_mp": 2, "root_bone": 1, "element_wood": 1, "element_fire": 1, "element_earth": 1, "element_metal": 1, "element_water": 1}
+tiers = [
+{"tier": 1, "rarity": "t1", "rarity_name": "一阶", "base_attributes": [{"stat": "element_fire", "amount": 8}, {"stat": "attack", "amount": 3}], "random_count": 1, "random_budget": 1, "generation_weight": 55, "affix_count": 1, "enhance_limit": 10, "enhance_cost": {"enhancement_stone": 1}, "ascension_cost": {"ore": 8, "ascension_stone": 2}},
+{"tier": 2, "rarity": "t2", "rarity_name": "二阶", "base_attributes": [{"stat": "element_fire", "amount": 15}, {"stat": "attack", "amount": 7}], "random_count": 2, "random_budget": 2, "generation_weight": 28, "affix_count": 2, "enhance_limit": 20, "enhance_cost": {"enhancement_stone": 1}, "ascension_cost": {"ore": 16, "ascension_stone": 4}},
+{"tier": 3, "rarity": "t3", "rarity_name": "三阶", "base_attributes": [{"stat": "element_fire", "amount": 21}, {"stat": "attack", "amount": 11}], "random_count": 3, "random_budget": 4, "generation_weight": 12, "affix_count": 3, "enhance_limit": 30, "enhance_cost": {"enhancement_stone": 1}, "ascension_cost": {"ore": 24, "ascension_stone": 6}},
+{"tier": 4, "rarity": "t4", "rarity_name": "四阶", "base_attributes": [{"stat": "element_fire", "amount": 28}, {"stat": "attack", "amount": 14}], "random_count": 4, "random_budget": 6, "generation_weight": 4, "affix_count": 3, "enhance_limit": 40, "enhance_cost": {"enhancement_stone": 1}, "ascension_cost": {"ore": 32, "ascension_stone": 8}},
+{"tier": 5, "rarity": "t5", "rarity_name": "五阶", "base_attributes": [{"stat": "element_fire", "amount": 34}, {"stat": "attack", "amount": 16}], "random_count": 5, "random_budget": 10, "generation_weight": 1, "affix_count": 3, "enhance_limit": 50, "enhance_cost": {"enhancement_stone": 1}, "ascension_cost": {}}
+]

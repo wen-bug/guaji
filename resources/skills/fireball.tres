@@ -1,6 +1,14 @@
-[gd_resource type="Resource" script_class="SkillDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="SkillDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_damage"]
+script = ExtResource("2")
+effect_id = "impact"
+kind = "damage"
+target = "skill_targets"
+shieldable = true
 
 [resource]
 script = ExtResource("1")
@@ -10,9 +18,10 @@ icon_name = "fireball"
 icon_path = "res://assets/skills/fireball.png"
 type = "normal_attack"
 target_scope = "single_enemy"
-target_mode = "single"
-effect_tags = Array[String](["damage"])
 element = "fire"
 mp_cost = 0
 cooldown = 0.0
+effects = Array[Resource]([SubResource("Resource_damage")])
+basic_attack_mode = "ranged"
+basic_attack_range = 120.0
 description = "远程角色使用的火属性普通攻击。"

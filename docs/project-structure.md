@@ -21,9 +21,9 @@
 
 ## 游戏状态与数据
 
-`scripts/game/core/game_state.gd` 是账号和角色持久状态的聚合入口。它维护存档 Schema 20，向 UI 提供稳定门面，并把背包、队伍、生产、坊市和战斗结算委派给相应服务。
+`scripts/game/core/game_state.gd` 是账号和角色持久状态的聚合入口。它维护存档 Schema 22，向 UI 提供稳定门面，并把背包、队伍、生产、坊市和战斗结算委派给相应服务。
 
-`scripts/game/data/data_tables.gd` 是本体静态内容的事实来源，维护物品、技能、配方、装备、命格、敌人、掉落和经济常量。`ItemDef`、`EquipmentTemplate`、`SkillDef` 和 `SkillEffectDef` 等资源类负责把 Inspector 资源转换为运行时字典。
+`resources/items/` 与 `resources/skills/` 分别是 58 个核心物品和 12 个核心技能配置的唯一事实来源；两个 Inspector 可编辑 `index.tres` 由 `ItemConfigParser`、`SkillConfigParser` 严格加载、校验和缓存。`DataTables` 只保留稳定 ID、枚举、经济表及解析器生成的兼容字典。核心装备仍以十四个 Inspector 可编辑 `.tres` 为数值事实来源。
 
 主要服务边界：
 
@@ -66,7 +66,7 @@ Mod API 当前版本为 2：
 | 路径 | 内容 |
 | --- | --- |
 | `resources/items/` | `ItemDef` 资源 |
-| `resources/equipment/` | 装备模板资源 |
+| `resources/equipment/` | 核心装备索引与十四件独立数值配置 |
 | `resources/skills/` | `SkillDef` 资源 |
 | `resources/maps/` | 地图和遭遇 Profile |
 | `assets/` | 图片、字体和其他导入资产 |
@@ -81,7 +81,7 @@ Mod API 当前版本为 2：
 
 ## 维护规则
 
-- 静态内容先修改 `DataTables` 和对应资源，再同步[内容数据表](item-table.md)。
+- 核心物品、材料和技能直接修改对应 `.tres` 与 Inspector 索引；配方、坊市和掉落经济表仍修改 `DataTables`。核心装备修改独立 `.tres` 与索引。
 - 物品交互、装备、生产或坊市规则同步更新[物品系统](items.md)。
 - 战斗、遭遇、效果或返回流程同步更新[历练与战斗](battle-expedition.md)。
 - 技能和命格分别同步更新[五行技能](skills.md)与[先天命格](innate-traits.md)。

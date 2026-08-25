@@ -1,9 +1,9 @@
-[gd_resource type="Resource" format=3 uid="uid://bfpfky4k1v3xc"]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://uke3f5rs1ed8"]
 
 [ext_resource type="Texture2D" uid="uid://c4qvgevu2es0q" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Impacts/symmetrical_impact_002/symmetrical_impact_002_small_blue/frame0000.png" id="2_icon"]
 [ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/wolf_howl.tscn" id="4_status"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="skill_def_script"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="skill_effect_def_script"]
 
 [sub_resource type="Resource" id="Resource_damage"]
 script = ExtResource("skill_effect_def_script")
@@ -29,12 +29,7 @@ script = ExtResource("skill_def_script")
 id = "wolf_howl"
 display_name = "狼嚎"
 icon_texture = ExtResource("2_icon")
-type = "damage"
 target_scope = "all_enemies"
-target_mode = "aoe"
-is_aoe = true
-effect_tags = Array[String](["damage", "buff"])
-has_buff = true
 element = "wood"
 cooldown = 4.0
 priority = 65

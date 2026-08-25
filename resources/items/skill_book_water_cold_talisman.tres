@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_rt1ao"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_3c42c"]
+
+[sub_resource type="Resource" id="Resource_rt1ao"]
+script = ExtResource("1_rt1ao")
+effect_id = "unlock_skill"
+kind = "unlock_content"
+reference_kind = "skill"
+reference_id = "water_cold_talisman"
+
+[resource]
+script = ExtResource("2_3c42c")
+id = "skill_book_water_cold_talisman"
+item_no = 1041
+type = "skill_book"
+display_name = "寒潮符技能书"
+icon_name = "skill_book_water_cold_talisman"
+icon_path = "res://assets/items/skill_book_water_cold_talisman.png"
+description = "使用后令选中角色永久学会寒潮符。"
+usable = true
+use_context = "home"
+gain_target = "water"
+effects = Array[Resource]([SubResource("Resource_rt1ao")])

@@ -1,7 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_akr1u"]
 [ext_resource type="Texture2D" path="res://assets/Super Pixel Effects Gigapack (Free Version)/PNG/Fantasy Spells/spell_defense_up_001/spell_defense_up_001_small_blue/frame0006.png" id="2_icon"]
+
+[sub_resource type="Resource" id="Resource_akr1u"]
+script = ExtResource("1_akr1u")
+effect_id = "unlock_skill"
+kind = "unlock_content"
+reference_kind = "skill"
+reference_id = "spirit_shield"
 
 [resource]
 script = ExtResource("1")
@@ -13,8 +21,7 @@ icon_texture = ExtResource("2_icon")
 icon_name = "skill_book_spirit_shield"
 icon_path = "res://assets/items/skill_book_spirit_shield.png"
 description = "使用后令选中角色永久学会玄甲术。"
-stackable = true
 usable = true
-use_scope = "home"
+use_context = "home"
 gain_target = "earth"
-payload = {"skill_id": "spirit_shield", "obtain_source": "non_drop"}
+effects = Array[Resource]([SubResource("Resource_akr1u")])

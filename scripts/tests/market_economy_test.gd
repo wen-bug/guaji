@@ -208,7 +208,7 @@ func _check_save_and_migration() -> void:
 	state.market_state["paid_refresh_count"] = 2
 	state.market_state["offers"][0]["sold"] = true
 	var saved := state.to_save_data()
-	_expect_equal("save schema twenty", int(saved.get("schema_version", 0)), 20)
+	_expect_equal("save schema twenty-two", int(saved.get("schema_version", 0)), 22)
 	var expected_market: Dictionary = saved.get("market_state", {}).duplicate(true)
 	var loaded := GameState.new()
 	loaded.load_save_data(saved)
@@ -217,7 +217,7 @@ func _check_save_and_migration() -> void:
 	legacy.load_save_data({"schema_version": 15, "inventory": [], "companions": [], "party_order": [], "recruit_candidates": []})
 	_expect_equal("schema fifteen gains six offers", legacy.market_offers().size(), 6)
 	_expect_equal("schema fifteen gains commissions", legacy.market_commissions().size(), 3)
-	_expect_equal("schema fifteen saves as twenty", int(legacy.to_save_data().get("schema_version", 0)), 20)
+	_expect_equal("schema fifteen saves as twenty-two", int(legacy.to_save_data().get("schema_version", 0)), 22)
 
 
 func _check_economy_guards() -> void:

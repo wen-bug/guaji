@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_tq7mf"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_c7k7b"]
+
+[sub_resource type="Resource" id="Resource_tq7mf"]
+script = ExtResource("1_tq7mf")
+effect_id = "earth_pill_buff"
+kind = "temporary_modifier"
+target = "combat_global"
+stat = "element_earth"
+value = 3.0
+buff_id = "earth_pill_buff"
+duration_seconds = 60.0
+
+[resource]
+script = ExtResource("2_c7k7b")
+id = "earth_pill"
+item_no = 1048
+type = "pill"
+display_name = "厚土丹"
+icon_name = "earth_pill"
+icon_path = "res://assets/items/earth_pill.png"
+description = "全队土行 +3，持续 60 秒。"
+usable = true
+use_context = "both"
+gain_target = "earth"
+combat_cooldown_turns = 3
+shared_cooldown_group = "buff_pill"
+ai_action_type = "buff"
+effects = Array[Resource]([SubResource("Resource_tq7mf")])

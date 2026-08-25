@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_sg3ky"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_0ewbb"]
+
+[sub_resource type="Resource" id="Resource_sg3ky"]
+script = ExtResource("1_sg3ky")
+effect_id = "unlock_equipment_template"
+kind = "unlock_content"
+target = "none"
+reference_kind = "equipment_template"
+reference_id = "weapon"
+
+[resource]
+script = ExtResource("2_0ewbb")
+id = "blueprint_weapon"
+item_no = 1034
+type = "blueprint"
+display_name = "武器图纸"
+icon_name = "blueprint_weapon"
+icon_path = "res://assets/items/blueprint_weapon.png"
+description = "使用后永久解锁武器定向打造；重复图纸转化为矿石 x4。"
+usable = true
+use_context = "home"
+effects = Array[Resource]([SubResource("Resource_sg3ky")])

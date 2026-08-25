@@ -17,7 +17,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 20
+const SAVE_SCHEMA_VERSION = 22
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -62,9 +62,9 @@ var party_order: Array = []
 var reserve_order: Array = []
 var recruit_candidates: Array = []
 var party_service: PartyService
-var active_buffs: Array = []
+var active_item_buffs: Array = []
+var auto_use_item_ids: Array[String] = ["", "", "", ""]
 var farm_slots: Array = []
-var farm_speed_buffs: Array = []
 var progress_states: Dictionary = {
 	"alchemy": {"status": "not_started", "title": "Alchemy", "detail": "未开始", "completed": false, "claimable": false},
 	"forge": {"status": "not_started", "title": "Forge", "detail": "未开始", "completed": false, "claimable": false},
@@ -168,9 +168,9 @@ func to_save_data() -> Dictionary:
 		"party_order": party_order.duplicate(),
 		"reserve_order": reserve_order.duplicate(),
 		"recruit_candidates": recruit_candidates.duplicate(true),
-		"active_buffs": active_buffs.duplicate(true),
+		"active_item_buffs": active_item_buffs.duplicate(true),
+		"auto_use_item_ids": auto_use_item_ids.duplicate(),
 		"farm_slots": farm_slots.duplicate(true),
-		"farm_speed_buffs": farm_speed_buffs.duplicate(true),
 		"progress_states": progress_states.duplicate(true),
 		"building_levels": building_levels.duplicate(true),
 		"reward_progress": reward_progress.duplicate(true),
@@ -214,6 +214,8 @@ func load_save_data(data: Dictionary) -> void:
 		_migrate_schema_19_equipment_enhancements()
 	if loaded_schema_version < 20:
 		_migrate_schema_20_equipment_templates()
+	if loaded_schema_version < 21:
+		_migrate_schema_21_equipment_values()
 	if data.has("market_state") and data.get("market_state") is Dictionary:
 		market_state = data.get("market_state", {}).duplicate(true)
 	if data.has("known_alchemy_recipes"):
@@ -233,12 +235,14 @@ func load_save_data(data: Dictionary) -> void:
 			reserve_order.append(str(member_id))
 	if data.has("recruit_candidates"):
 		recruit_candidates.assign(_duplicate_array(data.get("recruit_candidates", [])))
-	if data.has("active_buffs"):
-		active_buffs = _duplicate_array(data.get("active_buffs", []))
+	if data.has("active_item_buffs"):
+		active_item_buffs = _duplicate_array(data.get("active_item_buffs", []))
+	if data.has("auto_use_item_ids"):
+		set_auto_use_item_ids(data.get("auto_use_item_ids", []), false)
 	if data.has("farm_slots"):
 		farm_slots.assign(_duplicate_array(data.get("farm_slots", [])))
-	if data.has("farm_speed_buffs"):
-		farm_speed_buffs.assign(_duplicate_array(data.get("farm_speed_buffs", [])))
+	if loaded_schema_version < 22:
+		_migrate_schema_22_item_buffs(data)
 	if data.has("building_levels"):
 		_load_dictionary_values(building_levels, data.get("building_levels", {}))
 	if data.has("reward_progress"):
@@ -275,8 +279,7 @@ func load_save_data(data: Dictionary) -> void:
 	if loaded_schema_version < 9:
 		_grant_missing_starter_skill_books()
 	_seed_test_inventory_if_enabled()
-	_sanitize_active_buffs()
-	_sanitize_farm_speed_buffs()
+	_sanitize_active_item_buffs()
 	_ensure_party_state()
 	if loaded_schema_version < 17:
 		_migrate_schema_17_affinity_growth()
@@ -294,6 +297,9 @@ func load_save_data(data: Dictionary) -> void:
 	_clamp_runtime_stats()
 	_refresh_farm_progress_state()
 	market_service.ensure_state()
+	# Current and Schema 21 saves must not advance gameplay RNG during deterministic load cleanup.
+	if loaded_schema_version >= 21:
+		_load_rng_state(data.get("rng", {}))
 	changed.emit()
 
 
@@ -801,17 +807,23 @@ func _sanitize_loaded_stack_item(item: Dictionary) -> void:
 	var definition: Dictionary = DataTables.item_definition(item_id)
 	if definition.is_empty():
 		return
-	item["name"] = str(item.get("name", definition.get("name", item_id)))
-	item["description"] = str(item.get("description", definition.get("description", "")))
-	item["type"] = str(item.get("type", definition.get("type", "")))
-	item["stackable"] = bool(item.get("stackable", definition.get("stackable", true)))
-	item["usable"] = bool(item.get("usable", definition.get("usable", false)))
-	item["gain_target"] = str(item.get("gain_target", definition.get("gain_target", "none")))
+	item["name"] = str(definition.get("name", item_id))
+	item["description"] = str(definition.get("description", ""))
+	item["type"] = str(definition.get("type", ""))
+	item["stackable"] = bool(definition.get("stackable", true))
+	item["usable"] = bool(definition.get("usable", false))
+	item["use_context"] = str(definition.get("use_context", definition.get("use_scope", "none")))
+	item["gain_target"] = str(definition.get("gain_target", "none"))
+	item["effects"] = definition.get("effects", []).duplicate(true)
+	item["combat_cooldown_turns"] = int(definition.get("combat_cooldown_turns", 0))
+	item["shared_cooldown_group"] = str(definition.get("shared_cooldown_group", ""))
+	item["ai_action_type"] = str(definition.get("ai_action_type", ""))
+	item["payload"] = definition.get("payload", {}).duplicate(true)
 	item["obtain_source"] = str(item.get("obtain_source", "non_drop"))
-	item["item_no"] = int(item.get("item_no", DataTables.item_no(item_id)))
-	item["icon_name"] = str(item.get("icon_name", DataTables.item_icon_name(item_id)))
-	item["icon_path"] = str(item.get("icon_path", DataTables.item_icon_path(item_id)))
-	item["resource_path"] = str(item.get("resource_path", DataTables.item_resource_path(item_id)))
+	item["item_no"] = DataTables.item_no(item_id)
+	item["icon_name"] = DataTables.item_icon_name(item_id)
+	item["icon_path"] = DataTables.item_icon_path(item_id)
+	item["resource_path"] = DataTables.item_resource_path(item_id)
 
 
 func _sanitize_loaded_equipment(item: Dictionary) -> void:
@@ -837,15 +849,15 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	var variant := DataTables.equipment_variant_definition(item_id, variant_id)
 	var base_name := str(item.get("equipment_base_name", variant.get("name", definition.get("name", item_id))))
 	item["equipment_base_name"] = base_name
-	item["icon_name"] = str(item.get("icon_name", DataTables.equipment_icon_name(item_id)))
-	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id)))
-	item["resource_path"] = DataTables.equipment_resource_path(item_id)
+	item["icon_name"] = str(item.get("icon_name", DataTables.equipment_icon_name(item_id, variant_id)))
+	item["icon_path"] = str(item.get("icon_path", DataTables.equipment_icon_path(item_id, variant_id)))
+	item["resource_path"] = DataTables.equipment_resource_path(item_id, variant_id)
 	var rolled_attribute_stats: Array = item.get("rolled_attribute_stats", []).duplicate() if item.get("rolled_attribute_stats", []) is Array else []
 	item["rolled_attribute_stats"] = rolled_attribute_stats
 	if not _valid_equipment_base_attributes(item.get("base_attributes", [])):
 		item["base_attributes"] = DataTables.build_equipment_base_attributes(item_id, str(item["rarity"]), variant_id, rolled_attribute_stats)
-	item["attribute_generation_version"] = 3
-	item["description_effects"] = _duplicate_array(item.get("description_effects", DataTables.equipment_template_description_effects(item_id)))
+	item["attribute_generation_version"] = DataTables.EQUIPMENT_ATTRIBUTE_GENERATION_VERSION
+	item["description_effects"] = _duplicate_array(item.get("description_effects", DataTables.equipment_template_description_effects(item_id, variant_id)))
 	var allocations: Dictionary = item.get("enhancement_allocations", {}) if item.get("enhancement_allocations", {}) is Dictionary else {}
 	if allocations.is_empty() and int(item.get("enhance_count", 0)) > 0 and not item["base_attributes"].is_empty():
 		allocations[str(item["base_attributes"][0].get("stat", "attack"))] = int(item.get("enhance_count", 0))
@@ -853,9 +865,9 @@ func _sanitize_loaded_equipment(item: Dictionary) -> void:
 	_sync_enhanced_attributes(item)
 	item["refine_affixes"] = _duplicate_array(item.get("refine_affixes", []))
 	var affixes := _duplicate_array(item.get("affixes", []))
-	var affix_limit := DataTables.equipment_affix_count(str(item["rarity"]))
+	var affix_limit := DataTables.equipment_affix_count(str(item["rarity"]), item_id, variant_id)
 	if affixes.is_empty():
-		affixes = DataTables.generate_stable_equipment_affixes(str(item["rarity"]), str(item.get("instance_id", item_id)))
+		affixes = DataTables.generate_stable_equipment_affixes(str(item["rarity"]), str(item.get("instance_id", item_id)), item_id, variant_id)
 	if affixes.size() > affix_limit:
 		affixes.resize(affix_limit)
 	item["affixes"] = affixes
@@ -963,6 +975,52 @@ func _migrate_schema_20_equipment_item(item: Dictionary) -> void:
 	item["attribute_generation_version"] = 3
 
 
+func _migrate_schema_21_equipment_values() -> void:
+	for raw_item in inventory:
+		if raw_item is Dictionary:
+			_migrate_schema_21_equipment_item(raw_item)
+
+
+func _migrate_schema_21_equipment_item(item: Dictionary) -> void:
+	if str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
+		return
+	var existing_rolls: Array = item.get("rolled_attribute_stats", []).duplicate() if item.get("rolled_attribute_stats", []) is Array else []
+	if DataTables.LEGACY_EQUIPMENT_VARIANT_ALIASES.has(str(item.get("item_id", ""))):
+		_migrate_schema_20_equipment_item(item)
+		if not existing_rolls.is_empty():
+			item["rolled_attribute_stats"] = existing_rolls
+	var template_id := str(item.get("item_id", ""))
+	if not DataTables.EQUIPMENT_DEFS.has(template_id):
+		return
+	var rarity := str(item.get("rarity", "t1"))
+	var variants := DataTables.equipment_attribute_variants(template_id)
+	var variant_id := str(item.get("equipment_variant_id", ""))
+	if not variants.is_empty() and not variants.has(variant_id):
+		var variant_ids: Array = variants.keys()
+		variant_ids.sort()
+		variant_id = str(variant_ids[0])
+	item["equipment_variant_id"] = variant_id
+	var fixed_attributes := DataTables.equipment_tier_base_attributes(template_id, rarity, variant_id)
+	var excluded_stats: Dictionary = {}
+	for attribute in fixed_attributes:
+		if attribute is Dictionary:
+			excluded_stats[str(attribute.get("stat", ""))] = true
+	var random_pool := DataTables.equipment_random_attribute_pool(template_id, variant_id)
+	var target_count := DataTables.equipment_random_attribute_count(template_id, rarity, variant_id)
+	var rolled_stats: Array[String] = []
+	var raw_rolls = item.get("rolled_attribute_stats", [])
+	if raw_rolls is Array:
+		for raw_stat in raw_rolls:
+			var stat_id := str(raw_stat)
+			if rolled_stats.size() >= target_count:
+				break
+			if random_pool.has(stat_id) and not excluded_stats.has(stat_id) and not rolled_stats.has(stat_id):
+				rolled_stats.append(stat_id)
+	item["rolled_attribute_stats"] = rolled_stats
+	item["base_attributes"] = DataTables.build_equipment_base_attributes(template_id, rarity, variant_id, rolled_stats)
+	item["attribute_generation_version"] = DataTables.EQUIPMENT_ATTRIBUTE_GENERATION_VERSION
+
+
 func _migrate_equipment_attribute_model() -> void:
 	for index in range(inventory.size()):
 		var item: Dictionary = inventory[index]
@@ -989,37 +1047,86 @@ func _migrate_equipment_refine_model() -> void:
 		inventory[index] = item
 
 
-func _sanitize_active_buffs() -> void:
-	for index in range(active_buffs.size() - 1, -1, -1):
-		if not (active_buffs[index] is Dictionary):
-			active_buffs.remove_at(index)
+func _migrate_schema_22_item_buffs(data: Dictionary) -> void:
+	active_item_buffs.clear()
+	for raw_buff in data.get("active_buffs", []):
+		if not (raw_buff is Dictionary):
 			continue
-		var buff: Dictionary = active_buffs[index]
-		buff["item_id"] = str(buff.get("item_id", ""))
-		buff["name"] = str(buff.get("name", DataTables.resource_name(str(buff.get("item_id", "")))))
-		buff["stat"] = str(buff.get("stat", ""))
-		buff["amount"] = int(buff.get("amount", 0))
-		buff["remaining"] = float(buff.get("remaining", 0.0))
+		var old: Dictionary = raw_buff
+		active_item_buffs.append({
+			"buff_id": "%s_member" % str(old.get("item_id", "legacy")),
+			"source_item_id": str(old.get("item_id", "")),
+			"target": "member",
+			"member_id": str(old.get("member_id", "")),
+			"stat": str(old.get("stat", "")),
+			"operation": "flat",
+			"value": float(old.get("amount", 0.0)),
+			"stacks": 1,
+			"remaining_seconds": float(old.get("remaining_seconds", old.get("remaining", 0.0))),
+		})
+	for raw_buff in data.get("farm_speed_buffs", []):
+		if not (raw_buff is Dictionary):
+			continue
+		var old: Dictionary = raw_buff
+		active_item_buffs.append({
+			"buff_id": "farm_speed",
+			"source_item_id": str(old.get("item_id", "farm_speed_talisman")),
+			"target": "home_global",
+			"member_id": "",
+			"stat": "farm_speed",
+			"operation": "percent",
+			"value": max(0.0, float(old.get("multiplier", 1.0)) - 1.0),
+			"stacks": 1,
+			"remaining_seconds": float(old.get("remaining_seconds", 0.0)),
+		})
+	auto_use_item_ids.assign(["", "", "", ""])
+
+
+func _sanitize_active_item_buffs() -> void:
+	for index in range(active_item_buffs.size() - 1, -1, -1):
+		if not (active_item_buffs[index] is Dictionary):
+			active_item_buffs.remove_at(index)
+			continue
+		var buff: Dictionary = active_item_buffs[index]
+		buff["buff_id"] = str(buff.get("buff_id", ""))
+		buff["source_item_id"] = str(buff.get("source_item_id", buff.get("item_id", "")))
+		buff["target"] = str(buff.get("target", "member"))
 		buff["member_id"] = str(buff.get("member_id", ""))
-		if str(buff.get("item_id", "")).is_empty() or str(buff.get("stat", "")).is_empty() or float(buff.get("remaining", 0.0)) <= 0.0 or member_by_id(str(buff.get("member_id", ""))).is_empty():
-			active_buffs.remove_at(index)
+		buff["stat"] = str(buff.get("stat", ""))
+		buff["operation"] = str(buff.get("operation", "flat"))
+		buff["value"] = float(buff.get("value", buff.get("amount", 0.0)))
+		buff["stacks"] = maxi(1, int(buff.get("stacks", 1)))
+		buff["remaining_seconds"] = float(buff.get("remaining_seconds", buff.get("remaining", 0.0)))
+		var invalid_member := str(buff["target"]) == "member" and member_by_id(str(buff["member_id"])).is_empty()
+		if str(buff["buff_id"]).is_empty() or str(buff["stat"]).is_empty() or (float(buff["remaining_seconds"]) <= 0.0 and float(buff["remaining_seconds"]) != -1.0) or invalid_member:
+			active_item_buffs.remove_at(index)
 			continue
-		active_buffs[index] = buff
+		active_item_buffs[index] = buff
 
 
-func _sanitize_farm_speed_buffs() -> void:
-	for index in range(farm_speed_buffs.size() - 1, -1, -1):
-		if not (farm_speed_buffs[index] is Dictionary):
-			farm_speed_buffs.remove_at(index)
-			continue
-		var buff: Dictionary = farm_speed_buffs[index]
-		buff["item_id"] = str(buff.get("item_id", ""))
-		buff["multiplier"] = max(1.0, float(buff.get("multiplier", 1.0)))
-		buff["remaining_seconds"] = float(buff.get("remaining_seconds", 0.0))
-		if str(buff.get("item_id", "")).is_empty() or float(buff.get("remaining_seconds", 0.0)) <= 0.0:
-			farm_speed_buffs.remove_at(index)
-			continue
-		farm_speed_buffs[index] = buff
+func set_auto_use_item_ids(values, emit_change: bool = true) -> void:
+	var normalized: Array[String] = ["", "", "", ""]
+	var seen := {}
+	if values is Array:
+		for index in range(mini(4, values.size())):
+			var item_id := str(values[index])
+			var definition := DataTables.item_definition(item_id)
+			if item_id.is_empty() or seen.has(item_id) or str(definition.get("ai_action_type", "")).is_empty() or not ["combat", "both"].has(str(definition.get("use_context", definition.get("use_scope", "none")))):
+				continue
+			normalized[index] = item_id
+			seen[item_id] = true
+	auto_use_item_ids.assign(normalized)
+	if emit_change:
+		changed.emit()
+
+
+func set_auto_use_item_slot(slot_index: int, item_id: String) -> bool:
+	if slot_index < 0 or slot_index >= 4:
+		return false
+	var next := auto_use_item_ids.duplicate()
+	next[slot_index] = item_id
+	set_auto_use_item_ids(next)
+	return str(auto_use_item_ids[slot_index]) == item_id
 
 
 func growth_summary_for(member_id: String) -> String:
@@ -1401,12 +1508,15 @@ func _total_defense_for_member(member: Dictionary) -> int:
 
 func _total_stat_for_member(member: Dictionary, stat_id: String) -> int:
 	var member_stats: Dictionary = member.get("stats", {})
-	return int(member_stats.get(stat_id, 0)) + _stat_bonus_for_member(member, stat_id) + _equipment_attribute_bonus_for_member(member, stat_id)
+	var base_value := float(int(member_stats.get(stat_id, 0)) + _stat_bonus_for_member(member, stat_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	return _apply_item_buff_modifiers(base_value, stat_id, "member", str(member.get("id", "")))
 
 
 func _total_element_for_member(member: Dictionary, element_id: String) -> int:
 	var member_elements: Dictionary = member.get("elements", {})
-	return int(member_elements.get(element_id, 0)) + _trait_element_flat_bonus_for_member(member, element_id) + _equipment_attribute_bonus_for_member(member, "element_%s" % element_id)
+	var stat_id := "element_%s" % element_id
+	var base_value := float(int(member_elements.get(element_id, 0)) + _trait_element_flat_bonus_for_member(member, element_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	return _apply_item_buff_modifiers(base_value, stat_id, "member", str(member.get("id", "")))
 
 
 func _element_power_for_member(member: Dictionary) -> int:
@@ -1429,13 +1539,70 @@ func _dominant_element_for_member(member: Dictionary) -> String:
 
 func _stat_bonus_for_member(member: Dictionary, stat_id: String) -> int:
 	var value: int = 0
-	for buff in active_buffs:
-		if str(buff.get("member_id", "")) == str(member.get("id", "")) and buff.get("stat", "") == stat_id:
-			value += int(buff.get("amount", 0))
 	value += _trait_stat_flat_bonus_for_member(member, stat_id)
 	for item in _equipped_items_for_member(member):
 		value += _item_affix_bonus(item, stat_id)
 	return value
+
+
+func _apply_item_buff_modifiers(base_value: float, stat_id: String, target: String, member_id: String = "") -> int:
+	return _apply_item_buff_modifiers_for_targets(base_value, stat_id, [target], member_id)
+
+
+func _apply_item_buff_modifiers_for_targets(base_value: float, stat_id: String, targets: Array, member_id: String = "") -> int:
+	var flat := 0.0
+	var percent := 0.0
+	for raw_buff in active_item_buffs:
+		if not (raw_buff is Dictionary):
+			continue
+		var buff: Dictionary = raw_buff
+		var buff_target := str(buff.get("target", ""))
+		if not targets.has(buff_target) or str(buff.get("stat", "")) != stat_id:
+			continue
+		if buff_target == "member" and str(buff.get("member_id", "")) != member_id:
+			continue
+		var amount := float(buff.get("value", 0.0)) * maxi(1, int(buff.get("stacks", 1)))
+		if str(buff.get("operation", "flat")) == "percent":
+			percent += amount
+		else:
+			flat += amount
+	return maxi(0, roundi((base_value + flat) * (1.0 + percent)))
+
+
+func combat_total_stat_for(member_id: String, stat_id: String) -> int:
+	var member := member_by_id(member_id)
+	if member.is_empty():
+		return 0
+	var member_stats: Dictionary = member.get("stats", {})
+	var base_value := float(int(member_stats.get(stat_id, 0)) + _stat_bonus_for_member(member, stat_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	var value := _apply_item_buff_modifiers_for_targets(base_value, stat_id, ["member", "combat_global"], member_id)
+	if stat_id == "attack":
+		var element_power := 0
+		for element_id in DataTables.ELEMENT_IDS:
+			element_power += combat_total_element_for(member_id, str(element_id))
+		value += int(float(element_power) * 0.15)
+	return value
+
+
+func combat_total_element_for(member_id: String, element_id: String) -> int:
+	var member := member_by_id(member_id)
+	if member.is_empty():
+		return 0
+	var stat_id := "element_%s" % element_id
+	var member_elements: Dictionary = member.get("elements", {})
+	var base_value := float(int(member_elements.get(element_id, 0)) + _trait_element_flat_bonus_for_member(member, element_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	return _apply_item_buff_modifiers_for_targets(base_value, stat_id, ["member", "combat_global"], member_id)
+
+
+func combat_global_modified_value(stat_id: String, base_value: int) -> int:
+	return _apply_item_buff_modifiers(float(base_value), stat_id, "combat_global")
+
+
+func item_buff_active(buff_id: String, target: String, member_id: String = "") -> bool:
+	for raw_buff in active_item_buffs:
+		if raw_buff is Dictionary and str(raw_buff.get("buff_id", "")) == buff_id and str(raw_buff.get("target", "")) == target and (target != "member" or str(raw_buff.get("member_id", "")) == member_id):
+			return true
+	return false
 
 
 func _equipment_attribute_bonus_for_member(member: Dictionary, stat_id: String) -> int:
@@ -2078,24 +2245,111 @@ func _use_pill(item: Dictionary) -> bool:
 	return _use_pill_for_member(item, default_party_member_id())
 
 
+func _use_typed_item_for_member(item: Dictionary, member_id: String) -> bool:
+	var effects: Array = item.get("effects", [])
+	if effects.is_empty():
+		return false
+	var first_effect: Dictionary = effects[0] if effects[0] is Dictionary else {}
+	var first_kind := str(first_effect.get("kind", ""))
+	match first_kind:
+		"permanent_attribute":
+			return _use_permanent_attribute_item_for_member(item, member_id)
+		"breakthrough":
+			return _use_breakthrough_item(item, member_id)
+		"unlock_content":
+			var reference_kind := str(first_effect.get("reference_kind", ""))
+			if reference_kind == "skill": return _use_skill_book(item, member_id)
+			if reference_kind == "alchemy_recipe": return _use_alchemy_recipe(item)
+			if reference_kind == "equipment_template": return use_equipment_blueprint(item)
+		"building_quality":
+			return apply_permanent_building_quality(item)
+	var member := member_by_id(member_id)
+	var hp_amount := 0
+	var mp_amount := 0
+	var has_restore := false
+	var has_modifier := false
+	for raw_effect in effects:
+		if not (raw_effect is Dictionary):
+			continue
+		var effect: Dictionary = raw_effect
+		match str(effect.get("kind", "")):
+			"restore_resource":
+				if member.is_empty(): return false
+				has_restore = true
+				var stat := str(effect.get("stat", ""))
+				var maximum := total_stat_for(member_id, "max_hp" if stat == "hp" else "max_mp")
+				var resolved := int(effect.get("amount", 0)) + ceili(float(maximum) * clampf(float(effect.get("ratio", 0.0)), 0.0, 1.0))
+				if stat == "hp": hp_amount += resolved
+				elif stat == "mp": mp_amount += resolved
+			"temporary_modifier":
+				has_modifier = _apply_item_modifier_effect(str(item.get("item_id", "")), effect, member_id) or has_modifier
+	if has_restore:
+		var restored := heal_member(member_id, hp_amount, mp_amount)
+		if int(restored.get("hp", 0)) <= 0 and int(restored.get("mp", 0)) <= 0 and not has_modifier:
+			log_added.emit("目标当前无法从该道具获益")
+			return false
+	if not has_restore and not has_modifier:
+		return false
+	_remove_inventory_count(str(item.get("item_id", "")), 1)
+	log_added.emit("使用%s" % str(item.get("name", "道具")))
+	changed.emit()
+	return true
+
+
+func _apply_item_modifier_effect(item_id: String, effect: Dictionary, member_id: String) -> bool:
+	var target := str(effect.get("target", "member"))
+	if target == "member" and member_by_id(member_id).is_empty():
+		return false
+	var buff_id := str(effect.get("buff_id", "%s_%s" % [item_id, effect.get("effect_id", "buff")]))
+	var duration := -1.0 if str(effect.get("duration_mode", "timed")) == "permanent" else float(effect.get("duration_seconds", 0.0))
+	if duration == 0.0:
+		return false
+	var existing: Dictionary = {}
+	for raw_buff in active_item_buffs:
+		if raw_buff is Dictionary and str(raw_buff.get("buff_id", "")) == buff_id and str(raw_buff.get("target", "")) == target and (target != "member" or str(raw_buff.get("member_id", "")) == member_id):
+			existing = raw_buff
+			break
+	var next := {
+		"buff_id": buff_id,
+		"source_item_id": item_id,
+		"target": target,
+		"member_id": member_id if target == "member" else "",
+		"stat": str(effect.get("stat", "")),
+		"operation": str(effect.get("operation", "flat")),
+		"value": float(effect.get("value", 0.0)),
+		"stacks": 1,
+		"remaining_seconds": duration,
+	}
+	if existing.is_empty():
+		active_item_buffs.append(next)
+		return true
+	match str(effect.get("stack_mode", "refresh")):
+		"replace": existing.merge(next, true)
+		"refresh":
+			existing.merge(next, true)
+		"extend":
+			if float(existing.get("remaining_seconds", -1.0)) >= 0.0: existing["remaining_seconds"] = float(existing.get("remaining_seconds", 0.0)) + maxf(0.0, duration)
+		"stack":
+			var previous_stacks := maxi(1, int(existing.get("stacks", 1)))
+			existing.merge(next, true)
+			existing["stacks"] = mini(maxi(1, int(effect.get("max_stacks", 1))), previous_stacks + 1)
+	return true
+
+
 func _use_pill_for_member(item: Dictionary, member_id: String) -> bool:
+	if item.get("effects", []) is Array and not item.get("effects", []).is_empty():
+		return _use_typed_item_for_member(item, member_id)
 	var payload: Dictionary = item.get("payload", {})
 	if bool(payload.get("breakthrough", false)):
 		return _use_breakthrough_item(item, member_id)
 	if payload.get("effect_mode", "instant") == "duration":
 		var duration: float = float(payload.get("duration", 0.0))
-		var existing_buff: Dictionary = _active_buff_for_item(str(item["item_id"]), member_id)
-		if existing_buff.is_empty():
-			active_buffs.append({
-				"item_id": item["item_id"],
-				"name": item["name"],
-				"stat": payload.get("stat", ""),
-				"amount": int(payload.get("amount", 0)),
-				"remaining": duration,
-				"member_id": member_id,
-			})
-		else:
-			existing_buff["remaining"] = float(existing_buff.get("remaining", 0.0)) + duration
+		_apply_item_modifier_effect(str(item["item_id"]), {
+			"effect_id": "legacy_buff", "kind": "temporary_modifier", "target": "member",
+			"stat": str(payload.get("stat", "")), "operation": "flat", "value": float(payload.get("amount", 0)),
+			"buff_id": "%s_member" % str(item["item_id"]), "duration_mode": "timed", "duration_seconds": duration,
+			"stack_mode": "extend", "max_stacks": 1,
+		}, member_id)
 		_remove_inventory_count(item["item_id"], 1)
 		log_added.emit("使用%s，增益生效" % item["name"])
 		changed.emit()
@@ -2143,16 +2397,24 @@ func _use_breakthrough_item(item: Dictionary, member_id: String) -> bool:
 
 
 func update_buffs(delta: float) -> void:
-	if active_buffs.is_empty():
+	if active_item_buffs.is_empty():
 		return
 	var index: int = 0
-	while index < active_buffs.size():
-		var buff: Dictionary = active_buffs[index]
-		buff["remaining"] = float(buff.get("remaining", 0.0)) - delta
-		if float(buff["remaining"]) <= 0.0:
-			active_buffs.remove_at(index)
-		else:
+	var expired := false
+	while index < active_item_buffs.size():
+		var buff: Dictionary = active_item_buffs[index]
+		if float(buff.get("remaining_seconds", 0.0)) < 0.0:
 			index += 1
+			continue
+		buff["remaining_seconds"] = float(buff.get("remaining_seconds", 0.0)) - delta
+		if float(buff["remaining_seconds"]) <= 0.0:
+			active_item_buffs.remove_at(index)
+			expired = true
+		else:
+			active_item_buffs[index] = buff
+			index += 1
+	if expired:
+		_clamp_runtime_stats()
 	changed.emit()
 
 
@@ -2213,8 +2475,8 @@ func farm_harvest_amount_for(crop_id: String, roll_extra: bool = false) -> int:
 	return int(max(1, amount))
 
 func _active_buff_for_item(item_id: String, member_id: String = "") -> Dictionary:
-	for buff in active_buffs:
-		if str(buff.get("item_id", "")) == item_id and str(buff.get("member_id", "")) == member_id:
+	for buff in active_item_buffs:
+		if str(buff.get("source_item_id", "")) == item_id and str(buff.get("member_id", "")) == member_id:
 			return buff
 	return {}
 
@@ -2233,7 +2495,6 @@ func update_farm(delta: float) -> void:
 			log_added.emit("%s成熟了" % DataTables.resource_name(str(slot.get("crop_id", ""))))
 		farm_slots[index] = slot
 		changed_farm = true
-	changed_farm = _update_farm_speed_buffs(delta) or changed_farm
 	if changed_farm:
 		_refresh_farm_progress_state()
 		changed.emit()
@@ -2268,33 +2529,27 @@ func claim_all_farm_slots() -> int:
 
 
 func use_farm_speed_item(item_id: String) -> bool:
-	if not DataTables.is_farm_speed_item(item_id):
-		return false
-	if not spend_resource(item_id, 1):
-		log_added.emit("农田加速道具不足")
-		return false
-	farm_speed_buffs.append({
-		"item_id": item_id,
-		"multiplier": DataTables.farm_speed_item_multiplier(item_id),
-		"remaining_seconds": DataTables.farm_speed_item_duration(item_id),
-	})
-	log_added.emit("农田加速 x%.1f" % DataTables.farm_speed_item_multiplier(item_id))
-	changed.emit()
-	return true
+	var item := inventory_service.find_stack_item(item_id)
+	return not item.is_empty() and _use_typed_item_for_member(item, default_party_member_id())
 
 
 func farm_speed_multiplier() -> float:
-	var multiplier: float = 1.0
-	for buff in farm_speed_buffs:
-		if float(buff.get("remaining_seconds", 0.0)) > 0.0:
-			multiplier = max(multiplier, float(buff.get("multiplier", 1.0)))
-	return multiplier
+	var flat := 0.0
+	var percent := 0.0
+	for buff in active_item_buffs:
+		if str(buff.get("target", "")) != "home_global" or str(buff.get("stat", "")) != "farm_speed":
+			continue
+		var amount := float(buff.get("value", 0.0)) * maxi(1, int(buff.get("stacks", 1)))
+		if str(buff.get("operation", "flat")) == "percent": percent += amount
+		else: flat += amount
+	return maxf(0.0, (1.0 + flat) * (1.0 + percent))
 
 
 func farm_speed_remaining_seconds() -> float:
 	var remaining: float = 0.0
-	for buff in farm_speed_buffs:
-		remaining = max(remaining, float(buff.get("remaining_seconds", 0.0)))
+	for buff in active_item_buffs:
+		if str(buff.get("target", "")) == "home_global" and str(buff.get("stat", "")) == "farm_speed":
+			remaining = max(remaining, float(buff.get("remaining_seconds", 0.0)))
 	return remaining
 
 func _trait_stat_flat_bonus_for_member(member: Dictionary, stat_id: String) -> int:
@@ -2401,21 +2656,6 @@ func _empty_farm_slot() -> Dictionary:
 	return {"status": FARM_STATUS_EMPTY, "crop_id": "", "elapsed_seconds": 0.0, "growth_seconds": 0.0, "harvest_amount": 0}
 
 
-func _update_farm_speed_buffs(delta: float) -> bool:
-	var changed_buffs: bool = false
-	var index: int = 0
-	while index < farm_speed_buffs.size():
-		var buff: Dictionary = farm_speed_buffs[index]
-		buff["remaining_seconds"] = float(buff.get("remaining_seconds", 0.0)) - delta
-		if float(buff.get("remaining_seconds", 0.0)) <= 0.0:
-			farm_speed_buffs.remove_at(index)
-		else:
-			farm_speed_buffs[index] = buff
-			index += 1
-		changed_buffs = true
-	return changed_buffs
-
-
 func _refresh_farm_progress_state() -> void:
 	var ready_count: int = ready_farm_slot_count()
 	if ready_count > 0:
@@ -2500,12 +2740,17 @@ func enhance_equipment(instance_id: String, stat_id: String = "") -> bool:
 		return false
 	var current_level := int(item.get("enhance_count", 0))
 	var rarity := str(item.get("rarity", "t1"))
-	var limit := DataTables.equipment_enhance_limit(rarity)
+	var template_id := str(item.get("item_id", ""))
+	var variant_id := str(item.get("equipment_variant_id", ""))
+	var limit := DataTables.equipment_enhance_limit(rarity, template_id, variant_id)
 	if current_level >= limit:
 		log_added.emit("%s已达到强化上限 +%d" % [item.get("name", "装备"), limit])
 		return false
 	var next_level := current_level + 1
-	var cost := DataTables.equipment_enhance_cost(rarity, next_level)
+	var costs := DataTables.equipment_enhance_costs(rarity, next_level, template_id, variant_id)
+	if costs.is_empty():
+		log_added.emit("装备强化配置无效")
+		return false
 	var allowed_stats: Array[String] = []
 	for attribute in item.get("base_attributes", []):
 		var base_stat := str(attribute.get("stat", ""))
@@ -2519,9 +2764,12 @@ func enhance_equipment(instance_id: String, stat_id: String = "") -> bool:
 	if not allowed_stats.has(stat_id):
 		log_added.emit("该装备不能强化%s" % DataTables.attribute_display_name(stat_id))
 		return false
-	if not spend_resource(DataTables.ITEM_ID_ENHANCEMENT_STONE, cost):
-		log_added.emit("强化石不足，强化需要 %d 个" % cost)
-		return false
+	for cost_item_id in costs:
+		if inventory_item_count(str(cost_item_id)) < int(costs[cost_item_id]):
+			log_added.emit("%s不足，强化需要 %d 个" % [DataTables.resource_name(str(cost_item_id)), int(costs[cost_item_id])])
+			return false
+	for cost_item_id in costs:
+		spend_resource(str(cost_item_id), int(costs[cost_item_id]))
 	var allocations: Dictionary = item.get("enhancement_allocations", {})
 	allocations[stat_id] = maxi(0, int(allocations.get(stat_id, 0))) + 1
 	item["enhancement_allocations"] = allocations
@@ -2570,7 +2818,7 @@ func equipment_ascension_cost(instance_id: String) -> Dictionary:
 	var item := inventory_item_by_instance(instance_id)
 	if item.is_empty() or str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
 		return {}
-	return DataTables.equipment_ascension_cost(str(item.get("rarity", "t1")))
+	return DataTables.equipment_ascension_cost(str(item.get("rarity", "t1")), str(item.get("item_id", "")), str(item.get("equipment_variant_id", "")))
 
 
 func ascend_equipment(instance_id: String) -> bool:
@@ -2578,7 +2826,9 @@ func ascend_equipment(instance_id: String) -> bool:
 	if item.is_empty() or str(item.get("type", "")) != DataTables.ITEM_TYPE_EQUIPMENT:
 		return false
 	var rarity := str(item.get("rarity", "t1"))
-	var cost := DataTables.equipment_ascension_cost(rarity)
+	var template_id := str(item.get("item_id", ""))
+	var variant_id := str(item.get("equipment_variant_id", ""))
+	var cost := DataTables.equipment_ascension_cost(rarity, template_id, variant_id)
 	if cost.is_empty():
 		log_added.emit("五阶装备不能继续升阶")
 		return false
@@ -2590,20 +2840,18 @@ func ascend_equipment(instance_id: String) -> bool:
 		_remove_inventory_count(str(item_id), int(cost[item_id]))
 	var next_rarity := DataTables.upgrade_equipment_rarity(rarity, 1)
 	item["rarity"] = next_rarity
-	var template_id := str(item.get("item_id", ""))
-	var variant_id := str(item.get("equipment_variant_id", ""))
 	var fixed_attributes := DataTables.equipment_tier_base_attributes(template_id, next_rarity, variant_id)
 	var rolled_stats: Array = item.get("rolled_attribute_stats", []).duplicate() if item.get("rolled_attribute_stats", []) is Array else []
-	if DataTables.equipment_random_attribute_count(template_id, next_rarity) > 0:
-		rolled_stats = DataTables.roll_equipment_attribute_stats(template_id, next_rarity, fixed_attributes, rolled_stats, rng)
+	if DataTables.equipment_random_attribute_count(template_id, next_rarity, variant_id) > 0:
+		rolled_stats = DataTables.roll_equipment_attribute_stats(template_id, next_rarity, fixed_attributes, rolled_stats, rng, variant_id)
 		item["rolled_attribute_stats"] = rolled_stats
 		item["base_attributes"] = DataTables.build_equipment_base_attributes(template_id, next_rarity, variant_id, rolled_stats)
 	else:
 		item["base_attributes"] = fixed_attributes
 	var affixes: Array = item.get("affixes", [])
-	var target_count := DataTables.equipment_affix_count(next_rarity)
+	var target_count := DataTables.equipment_affix_count(next_rarity, template_id, variant_id)
 	while affixes.size() < target_count:
-		affixes.append(DataTables.generate_equipment_affixes("t1", rng)[0])
+		affixes.append(DataTables.generate_equipment_affixes("t1", rng, template_id, variant_id)[0])
 	item["affixes"] = affixes
 	item["equip_requirement"] = {}
 	var rarity_name := DataTables.equipment_rarity_name(next_rarity)
@@ -2624,9 +2872,6 @@ func _equipped_items() -> Array:
 
 func _stat_bonus(stat_id: String) -> int:
 	var value: int = 0
-	for buff in active_buffs:
-		if buff.get("stat", "") == stat_id:
-			value += int(buff.get("amount", 0))
 	for item in _equipped_items():
 		value += _item_affix_bonus(item, stat_id)
 	return value
@@ -2713,7 +2958,7 @@ func _sync_enhanced_attributes(item: Dictionary) -> void:
 		total += points
 		enhanced_attributes.append({
 			"stat": str(stat_id),
-			"amount": points * DataTables.equipment_attribute_unit_amount(str(stat_id)),
+			"amount": points * DataTables.equipment_attribute_unit_amount(str(stat_id), str(item.get("item_id", "")), str(item.get("equipment_variant_id", ""))),
 			"quality": "allocated",
 			"points": points,
 		})

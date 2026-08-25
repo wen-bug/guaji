@@ -24,17 +24,32 @@ extends Resource
 ## 物品详情中显示的说明文本。
 @export_multiline var description := ""
 
-@export_group("使用规则｜堆叠、使用范围、附加数据")
+@export_group("使用规则｜堆叠、使用范围、冷却")
 ## 是否允许同 ID 物品合并为一个堆叠。
 @export var stackable := true
 ## 是否允许玩家主动使用该物品。
 @export var usable := false
 ## 可使用场景范围；none 表示没有主动使用入口。
-@export_enum("none", "home", "combat") var use_scope := "none"
+@export_enum("none", "home", "combat", "both") var use_context := "none"
 ## 物品获得时关联的五行或成长目标；无目标时填写 none。
 @export_enum("none", "attack", "defense", "max_hp", "max_mp", "root_bone", "wood", "fire", "earth", "metal", "water") var gain_target := "none"
-## 按物品类型解释的附加数据，例如技能书的 skill_id。
-@export var payload: Dictionary = {}
+## 战斗自动使用后的个人冷却回合数。
+@export_range(0, 99, 1) var combat_cooldown_turns := 0
+## 多个道具共享冷却时使用的稳定分组 ID。
+@export var shared_cooldown_group := ""
+## AI 识别的行为分类；空值表示不可放入自动道具栏。
+@export var ai_action_type := ""
+## 按顺序结算的类型化 ItemEffectDef 子资源。
+@export var effects: Array[Resource] = []
+## 仅供旧 Mod API 2 输入使用；核心资源必须保持为空。
+@export_storage var payload: Dictionary = {}
+
+
+var use_scope: String:
+	get:
+		return use_context
+	set(value):
+		use_context = value
 
 
 func setup(def_id: String, data: Dictionary) -> ItemDef:
@@ -47,9 +62,12 @@ func setup(def_id: String, data: Dictionary) -> ItemDef:
 	description = data.get("description", "")
 	stackable = bool(data.get("stackable", true))
 	usable = bool(data.get("usable", false))
-	use_scope = data.get("use_scope", "none")
+	use_context = data.get("use_context", data.get("use_scope", "none"))
 	gain_target = data.get("gain_target", "none")
 	payload = data.get("payload", {}).duplicate(true)
+	combat_cooldown_turns = int(data.get("combat_cooldown_turns", payload.get("cooldown", 0)))
+	shared_cooldown_group = str(data.get("shared_cooldown_group", payload.get("cooldown_group", "")))
+	ai_action_type = str(data.get("ai_action_type", ""))
 	return self
 
 
@@ -63,7 +81,59 @@ func to_item_data() -> Dictionary:
 		"description": description,
 		"stackable": stackable,
 		"usable": usable,
-		"use_scope": use_scope,
+		"use_scope": use_context,
+		"use_context": use_context,
 		"gain_target": gain_target,
-		"payload": payload.duplicate(true),
+		"combat_cooldown_turns": combat_cooldown_turns,
+		"shared_cooldown_group": shared_cooldown_group,
+		"ai_action_type": ai_action_type,
+		"effects": _effect_dictionaries(),
+		"payload": legacy_payload(),
 	}
+
+
+func _effect_dictionaries() -> Array:
+	var result: Array = []
+	for raw_effect in effects:
+		if raw_effect != null and raw_effect.has_method("to_dictionary"):
+			result.append(raw_effect.call("to_dictionary"))
+	return result
+
+
+func legacy_payload() -> Dictionary:
+	if not payload.is_empty():
+		return payload.duplicate(true)
+	var result := {}
+	for raw_effect in _effect_dictionaries():
+		var effect: Dictionary = raw_effect
+		match str(effect.get("kind", "")):
+			"restore_resource":
+				var resource_id := str(effect.get("stat", ""))
+				if float(effect.get("ratio", 0.0)) > 0.0:
+					result["%s_ratio" % resource_id] = float(effect.get("ratio", 0.0))
+				elif int(effect.get("amount", 0)) > 0:
+					result[resource_id] = int(effect.get("amount", 0))
+			"temporary_modifier":
+				result.merge({"effect_mode": "duration", "stat": effect.get("stat", ""), "amount": effect.get("value", 0.0), "duration": effect.get("duration_seconds", 0.0)}, true)
+			"permanent_attribute":
+				var permanent: Dictionary = result.get("permanent_attribute_enhance", {"tier_id": effect.get("tier_id", ""), "effects": []})
+				var permanent_effect := {"stat": effect.get("stat", "")}
+				if int(effect.get("amount", 0)) > 0:
+					permanent_effect["amount"] = int(effect.get("amount", 0))
+				permanent["effects"].append(permanent_effect)
+				result["permanent_attribute_enhance"] = permanent
+			"unlock_content":
+				match str(effect.get("reference_kind", "")):
+					"skill": result["skill_id"] = effect.get("reference_id", "")
+					"alchemy_recipe": result["recipe_id"] = effect.get("reference_id", "")
+					"equipment_template": result["equipment_template_id"] = effect.get("reference_id", "")
+			"breakthrough": result["breakthrough"] = true
+			"building_quality": result["permanent_building_quality"] = {"building_id": effect.get("reference_id", ""), "amount": effect.get("amount", 0)}
+			"farm_seed": result.merge({"seed_yield": effect.get("amount", 0), "growth_seconds": effect.get("auxiliary_value", 0.0)}, true)
+			"equipment_enhancement_material": result.merge({"stat": effect.get("stat", ""), "enhance_amount": effect.get("amount", 0), "stone_group": effect.get("group_id", "")}, true)
+			"currency": result["%s_currency" % str(effect.get("group_id", ""))] = true
+	if combat_cooldown_turns > 0:
+		result["cooldown"] = combat_cooldown_turns
+	if not shared_cooldown_group.is_empty():
+		result["cooldown_group"] = shared_cooldown_group
+	return result

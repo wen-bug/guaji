@@ -94,7 +94,9 @@ func combat_snapshot() -> Dictionary:
 func total_stat(stat_id: String) -> int:
 	var value: int = 0
 	if actor_kind == KIND_MEMBER and game_state != null:
-		if stat_id == "attack":
+		if game_state.has_method("combat_total_stat_for"):
+			value = int(game_state.combat_total_stat_for(member_id, stat_id))
+		elif stat_id == "attack":
 			value = int(game_state.total_attack_for(member_id))
 		elif stat_id == "defense":
 			value = int(game_state.total_defense_for(member_id))
@@ -104,18 +106,21 @@ func total_stat(stat_id: String) -> int:
 		value = int(data.get(stat_id, 0))
 	value += int(temp_stats.get(stat_id, 0))
 	value += _buff_stat_bonus(stat_id)
+	if actor_kind == KIND_MEMBER and game_state != null and not game_state.has_method("combat_total_stat_for") and game_state.has_method("combat_global_modified_value"):
+		value = int(game_state.combat_global_modified_value(stat_id, value))
 	return max(0, value)
 
 
 func total_element(element_id: String) -> int:
 	if actor_kind == KIND_MEMBER and game_state != null:
-		return int(game_state.total_element_for(member_id, element_id))
+		if game_state.has_method("combat_total_element_for"):
+			return int(game_state.combat_total_element_for(member_id, element_id))
+		var value := int(game_state.total_element_for(member_id, element_id))
+		return int(game_state.combat_global_modified_value("element_%s" % element_id, value)) if game_state.has_method("combat_global_modified_value") else value
 	return int(data.get("elements", {}).get(element_id, data.get(element_id, 0)))
 
 
 func dominant_element() -> String:
-	if actor_kind == KIND_MEMBER and game_state != null:
-		return game_state.dominant_element_for(member_id)
 	var best_id: String = ""
 	var best_value: int = -1
 	for element_id in DataTables.ELEMENT_IDS:

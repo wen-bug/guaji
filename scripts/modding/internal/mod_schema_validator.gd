@@ -171,6 +171,37 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 						seen_stats[stat_id] = true
 						if effect.has("amount") and (typeof(effect.get("amount")) != TYPE_INT or int(effect.get("amount", 0)) <= 0):
 							errors.append("item:%s permanent_attribute_enhance.amount 必须为正整数" % content_id)
+		if data.has("effects"):
+			var item_effects = data.get("effects", [])
+			if not (item_effects is Array):
+				errors.append("item:%s effects 必须为数组" % content_id)
+			else:
+				var effect_ids := {}
+				for effect in item_effects:
+					if not (effect is Dictionary):
+						errors.append("item:%s effects 元素必须为对象" % content_id)
+						continue
+					var effect_id := str(effect.get("effect_id", ""))
+					if effect_id.is_empty() or effect_ids.has(effect_id): errors.append("item:%s effect_id 不能为空或重复" % content_id)
+					effect_ids[effect_id] = true
+					var effect_kind := str(effect.get("kind", ""))
+					var effect_target := str(effect.get("target", "none"))
+					if not ["restore_resource", "temporary_modifier", "permanent_attribute", "unlock_content", "breakthrough", "building_quality", "farm_seed", "equipment_enhancement_material", "currency"].has(effect_kind): errors.append("item:%s effect.kind 无效" % content_id)
+					if not ["none", "member", "home_global", "combat_global"].has(effect_target): errors.append("item:%s effect.target 无效" % content_id)
+					if effect_kind == "restore_resource":
+						if effect_target != "member" or not ["hp", "mp"].has(str(effect.get("stat", ""))): errors.append("item:%s 恢复效果必须指向人物的 hp/mp" % content_id)
+						if int(effect.get("amount", 0)) <= 0 and float(effect.get("ratio", 0.0)) <= 0.0: errors.append("item:%s 恢复效果必须有正数 amount 或 ratio" % content_id)
+					if effect_kind == "temporary_modifier":
+						if effect_target == "none": errors.append("item:%s 临时属性效果必须指定目标" % content_id)
+						if not ["flat", "percent"].has(str(effect.get("operation", ""))): errors.append("item:%s effect.operation 无效" % content_id)
+						if str(effect.get("buff_id", "")).is_empty(): errors.append("item:%s 临时属性效果缺少 buff_id" % content_id)
+						var duration_mode := str(effect.get("duration_mode", "timed"))
+						if not ["timed", "permanent"].has(duration_mode): errors.append("item:%s effect.duration_mode 无效" % content_id)
+						if duration_mode == "timed" and float(effect.get("duration_seconds", 0.0)) <= 0.0: errors.append("item:%s 限时效果 duration_seconds 必须为正数" % content_id)
+						if not ["replace", "refresh", "extend", "stack"].has(str(effect.get("stack_mode", "refresh"))): errors.append("item:%s effect.stack_mode 无效" % content_id)
+						if int(effect.get("max_stacks", 1)) <= 0: errors.append("item:%s effect.max_stacks 必须为正数" % content_id)
+					if effect_kind == "permanent_attribute" and effect_target != "member": errors.append("item:%s 永久属性效果必须指向人物" % content_id)
+					if effect_kind == "unlock_content" and (str(effect.get("reference_kind", "")).is_empty() or str(effect.get("reference_id", "")).is_empty()): errors.append("item:%s 内容解锁效果缺少引用" % content_id)
 	if kind in ["skill", "basic_attack"]:
 		var target_scope := str(data.get("target_scope", "single_enemy"))
 		if not ["self", "single_ally", "all_allies", "single_enemy", "all_enemies"].has(target_scope):

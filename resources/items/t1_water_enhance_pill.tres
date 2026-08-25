@@ -1,6 +1,14 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_ff6bm"]
+
+[sub_resource type="Resource" id="Resource_ff6bm"]
+script = ExtResource("1_ff6bm")
+effect_id = "permanent_element_water"
+kind = "permanent_attribute"
+stat = "element_water"
+tier_id = "t1"
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +19,7 @@ display_name = "一阶水行强化丹"
 icon_name = "t1_water_enhance_pill"
 icon_path = "res://assets/items/t1_water_enhance_pill.png"
 description = "永久强化所选角色的水行属性。"
-stackable = true
 usable = true
-use_scope = "home"
+use_context = "home"
 gain_target = "water"
-payload = {"permanent_attribute_enhance": {"tier_id": "t1", "effects": [{"stat": "element_water"}]}}
+effects = Array[Resource]([SubResource("Resource_ff6bm")])

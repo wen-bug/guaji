@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_knanc"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_orqh6"]
+
+[sub_resource type="Resource" id="Resource_knanc"]
+script = ExtResource("1_knanc")
+effect_id = "unlock_equipment_template"
+kind = "unlock_content"
+target = "none"
+reference_kind = "equipment_template"
+reference_id = "helmet"
+
+[resource]
+script = ExtResource("2_orqh6")
+id = "blueprint_helmet"
+item_no = 1035
+type = "blueprint"
+display_name = "头盔图纸"
+icon_name = "blueprint_helmet"
+icon_path = "res://assets/items/blueprint_helmet.png"
+description = "使用后永久解锁头盔定向打造；重复图纸转化为矿石 x4。"
+usable = true
+use_context = "home"
+effects = Array[Resource]([SubResource("Resource_knanc")])

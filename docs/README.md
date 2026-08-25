@@ -1,6 +1,6 @@
 # 文档索引
 
-本文档是仓库文档的统一入口。游戏当前版本为 `0.2.0`，存档版本为 Schema 20，Mod 接口为 API 2。
+本文档是仓库文档的统一入口。游戏当前版本为 `0.2.0`，存档版本为 Schema 22，Mod 接口为 API 2。
 
 ## 项目与架构
 
@@ -45,7 +45,7 @@
 1. 运行时代码和 `project.godot`。
 2. `resources/` 下的 Godot 资源。
 3. `scripts/tests/` 下的回归测试。
-4. 数据类内容以 `scripts/game/data/data_tables.gd` 为最终事实来源，[内容数据表](item-table.md) 是其人工维护索引。
+4. 核心装备数值以 `resources/equipment/` 为最终事实来源，其他数据类内容以 `scripts/game/data/data_tables.gd` 为最终事实来源；[内容数据表](item-table.md)是人工维护索引。
 5. Mod 契约以 `scripts/modding/internal/mod_schema_validator.gd`、公开 API 类和 JSON Schema 2 共同定义。
 
 ## 维护规范

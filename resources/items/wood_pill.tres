@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_tra00"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_h4jvu"]
+
+[sub_resource type="Resource" id="Resource_tra00"]
+script = ExtResource("1_tra00")
+effect_id = "wood_pill_buff"
+kind = "temporary_modifier"
+target = "combat_global"
+stat = "element_wood"
+value = 3.0
+buff_id = "wood_pill_buff"
+duration_seconds = 60.0
+
+[resource]
+script = ExtResource("2_h4jvu")
+id = "wood_pill"
+item_no = 1046
+type = "pill"
+display_name = "青木丹"
+icon_name = "wood_pill"
+icon_path = "res://assets/items/wood_pill.png"
+description = "全队木行 +3，持续 60 秒。"
+usable = true
+use_context = "both"
+gain_target = "wood"
+combat_cooldown_turns = 3
+shared_cooldown_group = "buff_pill"
+ai_action_type = "buff"
+effects = Array[Resource]([SubResource("Resource_tra00")])

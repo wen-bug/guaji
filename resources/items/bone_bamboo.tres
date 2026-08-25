@@ -1,6 +1,15 @@
-[gd_resource type="Resource" script_class="ItemDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ItemDef" format=3]
 
 [ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_yowhd"]
+
+[sub_resource type="Resource" id="Resource_yowhd"]
+script = ExtResource("1_yowhd")
+effect_id = "seed"
+kind = "farm_seed"
+target = "none"
+amount = 1
+auxiliary_value = 1800.0
 
 [resource]
 script = ExtResource("1")
@@ -11,8 +20,5 @@ display_name = "玉骨竹"
 icon_name = "bone_bamboo"
 icon_path = "res://assets/items/bone_bamboo.png"
 description = "淬炼根骨的根骨属性作物。"
-stackable = true
-usable = false
-use_scope = "none"
 gain_target = "root_bone"
-payload = {"growth_seconds": 360.0, "seed_yield": 1}
+effects = Array[Resource]([SubResource("Resource_yowhd")])

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="EquipmentTemplate" format=3]
+[gd_resource type="Resource" script_class="EquipmentTemplate" format=3 uid="uid://dgb7t1hglmmrd"]
 
 [ext_resource type="Script" uid="uid://d35qu4brlu3y0" path="res://scripts/game/data/equipment_template.gd" id="1"]
 
@@ -13,12 +13,229 @@ icon_name = "accessory"
 icon_path = "res://assets/equipment/accessory.png"
 description = "饰品基础模板，生成时随机形成五行原型与额外属性。"
 attribute_variants = {
-"accessory_earth": {"name": "厚土印", "icon_name": "accessory", "icon_path": "res://assets/equipment/accessory.png", "tier_base_attributes": {"t1": [{"stat": "element_earth", "amount": 1}, {"stat": "defense", "amount": 1}], "t2": [{"stat": "element_earth", "amount": 3}, {"stat": "defense", "amount": 2}], "t3": [{"stat": "element_earth", "amount": 6}, {"stat": "defense", "amount": 4}], "t4": [{"stat": "element_earth", "amount": 12}, {"stat": "defense", "amount": 6}], "t5": [{"stat": "element_earth", "amount": 20}, {"stat": "defense", "amount": 10}]}},
-"accessory_fire": {"name": "赤焰珠", "icon_name": "accessory", "icon_path": "res://assets/equipment/accessory.png", "tier_base_attributes": {"t1": [{"stat": "element_fire", "amount": 1}, {"stat": "attack", "amount": 1}], "t2": [{"stat": "element_fire", "amount": 3}, {"stat": "attack", "amount": 2}], "t3": [{"stat": "element_fire", "amount": 6}, {"stat": "attack", "amount": 4}], "t4": [{"stat": "element_fire", "amount": 12}, {"stat": "attack", "amount": 6}], "t5": [{"stat": "element_fire", "amount": 20}, {"stat": "attack", "amount": 10}]}},
-"accessory_metal": {"name": "玄金令", "icon_name": "accessory", "icon_path": "res://assets/equipment/accessory.png", "tier_base_attributes": {"t1": [{"stat": "element_metal", "amount": 1}, {"stat": "attack", "amount": 1}], "t2": [{"stat": "element_metal", "amount": 3}, {"stat": "attack", "amount": 2}], "t3": [{"stat": "element_metal", "amount": 6}, {"stat": "attack", "amount": 4}], "t4": [{"stat": "element_metal", "amount": 12}, {"stat": "attack", "amount": 6}], "t5": [{"stat": "element_metal", "amount": 20}, {"stat": "attack", "amount": 10}]}},
-"accessory_water": {"name": "沧水环", "icon_name": "accessory", "icon_path": "res://assets/equipment/accessory.png", "tier_base_attributes": {"t1": [{"stat": "element_water", "amount": 1}, {"stat": "max_mp", "amount": 2}], "t2": [{"stat": "element_water", "amount": 3}, {"stat": "max_mp", "amount": 4}], "t3": [{"stat": "element_water", "amount": 6}, {"stat": "max_mp", "amount": 8}], "t4": [{"stat": "element_water", "amount": 12}, {"stat": "max_mp", "amount": 12}], "t5": [{"stat": "element_water", "amount": 20}, {"stat": "max_mp", "amount": 20}]}},
-"accessory_wood": {"name": "青木佩", "icon_name": "accessory", "icon_path": "res://assets/equipment/accessory.png", "tier_base_attributes": {"t1": [{"stat": "element_wood", "amount": 1}, {"stat": "max_hp", "amount": 4}], "t2": [{"stat": "element_wood", "amount": 3}, {"stat": "max_hp", "amount": 8}], "t3": [{"stat": "element_wood", "amount": 6}, {"stat": "max_hp", "amount": 16}], "t4": [{"stat": "element_wood", "amount": 12}, {"stat": "max_hp", "amount": 24}], "t5": [{"stat": "element_wood", "amount": 20}, {"stat": "max_hp", "amount": 40}]}}
+"accessory_earth": {
+"icon_name": "accessory",
+"icon_path": "res://assets/equipment/accessory.png",
+"name": "厚土印",
+"tier_base_attributes": {
+"t1": [{
+"amount": 4,
+"stat": "element_earth"
+}, {
+"amount": 2,
+"stat": "defense"
+}],
+"t2": [{
+"amount": 7,
+"stat": "element_earth"
+}, {
+"amount": 4,
+"stat": "defense"
+}],
+"t3": [{
+"amount": 11,
+"stat": "element_earth"
+}, {
+"amount": 5,
+"stat": "defense"
+}],
+"t4": [{
+"amount": 13,
+"stat": "element_earth"
+}, {
+"amount": 7,
+"stat": "defense"
+}],
+"t5": [{
+"amount": 14,
+"stat": "element_earth"
+}, {
+"amount": 8,
+"stat": "defense"
+}]
 }
-random_attribute_pool = ["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"]
-tier_random_attribute_counts = {"t1": 1, "t2": 2, "t3": 3, "t4": 4, "t5": 5}
-tier_random_attribute_budgets = {"t1": 1, "t2": 2, "t3": 4, "t4": 6, "t5": 10}
+},
+"accessory_fire": {
+"icon_name": "accessory",
+"icon_path": "res://assets/equipment/accessory.png",
+"name": "赤焰珠",
+"tier_base_attributes": {
+"t1": [{
+"amount": 4,
+"stat": "element_fire"
+}, {
+"amount": 2,
+"stat": "attack"
+}],
+"t2": [{
+"amount": 7,
+"stat": "element_fire"
+}, {
+"amount": 4,
+"stat": "attack"
+}],
+"t3": [{
+"amount": 11,
+"stat": "element_fire"
+}, {
+"amount": 5,
+"stat": "attack"
+}],
+"t4": [{
+"amount": 13,
+"stat": "element_fire"
+}, {
+"amount": 7,
+"stat": "attack"
+}],
+"t5": [{
+"amount": 14,
+"stat": "element_fire"
+}, {
+"amount": 8,
+"stat": "attack"
+}]
+}
+},
+"accessory_metal": {
+"icon_name": "accessory",
+"icon_path": "res://assets/equipment/accessory.png",
+"name": "玄金令",
+"tier_base_attributes": {
+"t1": [{
+"amount": 4,
+"stat": "element_metal"
+}, {
+"amount": 2,
+"stat": "attack"
+}],
+"t2": [{
+"amount": 7,
+"stat": "element_metal"
+}, {
+"amount": 4,
+"stat": "attack"
+}],
+"t3": [{
+"amount": 11,
+"stat": "element_metal"
+}, {
+"amount": 5,
+"stat": "attack"
+}],
+"t4": [{
+"amount": 13,
+"stat": "element_metal"
+}, {
+"amount": 7,
+"stat": "attack"
+}],
+"t5": [{
+"amount": 14,
+"stat": "element_metal"
+}, {
+"amount": 8,
+"stat": "attack"
+}]
+}
+},
+"accessory_water": {
+"icon_name": "accessory",
+"icon_path": "res://assets/equipment/accessory.png",
+"name": "沧水环",
+"tier_base_attributes": {
+"t1": [{
+"amount": 4,
+"stat": "element_water"
+}, {
+"amount": 4,
+"stat": "max_mp"
+}],
+"t2": [{
+"amount": 7,
+"stat": "element_water"
+}, {
+"amount": 8,
+"stat": "max_mp"
+}],
+"t3": [{
+"amount": 11,
+"stat": "element_water"
+}, {
+"amount": 10,
+"stat": "max_mp"
+}],
+"t4": [{
+"amount": 13,
+"stat": "element_water"
+}, {
+"amount": 14,
+"stat": "max_mp"
+}],
+"t5": [{
+"amount": 14,
+"stat": "element_water"
+}, {
+"amount": 16,
+"stat": "max_mp"
+}]
+}
+},
+"accessory_wood": {
+"icon_name": "accessory",
+"icon_path": "res://assets/equipment/accessory.png",
+"name": "青木佩",
+"tier_base_attributes": {
+"t1": [{
+"amount": 4,
+"stat": "element_wood"
+}, {
+"amount": 8,
+"stat": "max_hp"
+}],
+"t2": [{
+"amount": 7,
+"stat": "element_wood"
+}, {
+"amount": 16,
+"stat": "max_hp"
+}],
+"t3": [{
+"amount": 11,
+"stat": "element_wood"
+}, {
+"amount": 20,
+"stat": "max_hp"
+}],
+"t4": [{
+"amount": 13,
+"stat": "element_wood"
+}, {
+"amount": 28,
+"stat": "max_hp"
+}],
+"t5": [{
+"amount": 14,
+"stat": "element_wood"
+}, {
+"amount": 32,
+"stat": "max_hp"
+}]
+}
+}
+}
+random_attribute_pool = Array[String](["attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water"])
+tier_random_attribute_counts = {
+"t1": 1,
+"t2": 2,
+"t3": 3,
+"t4": 4,
+"t5": 5
+}
+tier_random_attribute_budgets = {
+"t1": 1,
+"t2": 2,
+"t3": 4,
+"t4": 6,
+"t5": 10
+}

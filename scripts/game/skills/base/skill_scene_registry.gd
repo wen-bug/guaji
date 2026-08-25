@@ -1,11 +1,7 @@
 class_name SkillSceneRegistry
 extends RefCounted
 
-const CORE_SCENE_ROOTS: Array[String] = [
-	"res://scripts/game/skills/damage",
-	"res://scripts/game/skills/heal",
-	"res://scripts/game/skills/buff",
-]
+const SkillConfigParserScript = preload("res://scripts/game/data/skill_config_parser.gd")
 
 var _scenes: Dictionary = {}
 var _definitions: Dictionary = {}
@@ -22,9 +18,12 @@ func clear() -> void:
 
 func scan_core() -> Array[String]:
 	clear()
-	for scene_root in CORE_SCENE_ROOTS:
-		for path in _scene_paths(scene_root):
-			_register_scene(path, "core", "")
+	for parser_error in SkillConfigParserScript.validation_errors():
+		_errors.append(str(parser_error))
+	for skill_id in SkillConfigParserScript.definitions():
+		var path := SkillConfigParserScript.scene_path(str(skill_id))
+		if not path.is_empty():
+			_register_scene(path, "core", str(skill_id))
 	return errors()
 
 
