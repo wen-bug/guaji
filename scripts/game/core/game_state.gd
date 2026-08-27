@@ -818,6 +818,7 @@ func _sanitize_loaded_stack_item(item: Dictionary) -> void:
 	item["combat_cooldown_turns"] = int(definition.get("combat_cooldown_turns", 0))
 	item["shared_cooldown_group"] = str(definition.get("shared_cooldown_group", ""))
 	item["ai_action_type"] = str(definition.get("ai_action_type", ""))
+	item["combat_target_mode"] = str(definition.get("combat_target_mode", DataTables.ITEM_COMBAT_TARGET_SINGLE))
 	item["payload"] = definition.get("payload", {}).duplicate(true)
 	item["obtain_source"] = str(item.get("obtain_source", "non_drop"))
 	item["item_no"] = DataTables.item_no(item_id)
@@ -2292,6 +2293,60 @@ func _use_typed_item_for_member(item: Dictionary, member_id: String) -> bool:
 		return false
 	_remove_inventory_count(str(item.get("item_id", "")), 1)
 	log_added.emit("使用%s" % str(item.get("name", "道具")))
+	changed.emit()
+	return true
+
+
+func use_combat_inventory_item(instance_id: String, current_member_id: String, alive_member_ids: Array[String]) -> bool:
+	var item := inventory_item_by_instance(instance_id)
+	if item.is_empty() or not [DataTables.ITEM_USE_SCOPE_COMBAT, DataTables.ITEM_USE_SCOPE_BOTH].has(str(item.get("use_context", "none"))):
+		return false
+	var effects: Array = item.get("effects", [])
+	if effects.is_empty():
+		return false
+	var target_mode := str(item.get("combat_target_mode", DataTables.ITEM_COMBAT_TARGET_SINGLE))
+	if not [DataTables.ITEM_COMBAT_TARGET_SINGLE, DataTables.ITEM_COMBAT_TARGET_AOE].has(target_mode):
+		return false
+	for raw_effect in effects:
+		if raw_effect is Dictionary and target_mode == DataTables.ITEM_COMBAT_TARGET_SINGLE and str(raw_effect.get("target", "member")) == "combat_global":
+			return false
+	var target_ids: Array[String] = [current_member_id]
+	if target_mode == DataTables.ITEM_COMBAT_TARGET_AOE:
+		target_ids.clear()
+		for member_id in alive_member_ids:
+			var member := member_by_id(member_id)
+			if not member_id.is_empty() and not target_ids.has(member_id) and not member.is_empty() and int(member.get("stats", {}).get("hp", 0)) > 0:
+				target_ids.append(member_id)
+	else:
+		var current_member := member_by_id(current_member_id)
+		if current_member.is_empty() or int(current_member.get("stats", {}).get("hp", 0)) <= 0:
+			target_ids.clear()
+	if target_ids.is_empty():
+		return false
+	var benefited := false
+	for raw_effect in effects:
+		if not (raw_effect is Dictionary):
+			continue
+		var effect: Dictionary = raw_effect
+		match str(effect.get("kind", "")):
+			"restore_resource":
+				for member_id in target_ids:
+					var stat := str(effect.get("stat", ""))
+					var maximum := total_stat_for(member_id, "max_hp" if stat == "hp" else "max_mp")
+					var amount := int(effect.get("amount", 0)) + ceili(float(maximum) * clampf(float(effect.get("ratio", 0.0)), 0.0, 1.0))
+					var restored := heal_member(member_id, amount if stat == "hp" else 0, amount if stat == "mp" else 0)
+					benefited = int(restored.get("hp", 0)) > 0 or int(restored.get("mp", 0)) > 0 or benefited
+			"temporary_modifier":
+				if str(effect.get("target", "member")) == "member":
+					for member_id in target_ids:
+						benefited = _apply_item_modifier_effect(str(item.get("item_id", "")), effect, member_id) or benefited
+				else:
+					benefited = _apply_item_modifier_effect(str(item.get("item_id", "")), effect, current_member_id) or benefited
+	if not benefited:
+		log_added.emit("目标当前无法从该道具获益")
+		return false
+	_remove_inventory_count(str(item.get("item_id", "")), 1)
+	log_added.emit("使用%s（%s）" % [str(item.get("name", "道具")), DataTables.item_combat_target_mode_label(str(item.get("combat_target_mode", "single")))])
 	changed.emit()
 	return true
 

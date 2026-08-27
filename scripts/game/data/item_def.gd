@@ -39,6 +39,8 @@ extends Resource
 @export var shared_cooldown_group := ""
 ## AI 识别的行为分类；空值表示不可放入自动道具栏。
 @export var ai_action_type := ""
+## 战斗中的作用范围；single 只影响当前行动角色，aoe 可影响全体存活队员。
+@export_enum("single", "aoe") var combat_target_mode := "single"
 ## 按顺序结算的类型化 ItemEffectDef 子资源。
 @export var effects: Array[Resource] = []
 ## 仅供旧 Mod API 2 输入使用；核心资源必须保持为空。
@@ -68,6 +70,7 @@ func setup(def_id: String, data: Dictionary) -> ItemDef:
 	combat_cooldown_turns = int(data.get("combat_cooldown_turns", payload.get("cooldown", 0)))
 	shared_cooldown_group = str(data.get("shared_cooldown_group", payload.get("cooldown_group", "")))
 	ai_action_type = str(data.get("ai_action_type", ""))
+	combat_target_mode = str(data.get("combat_target_mode", _infer_combat_target_mode(data.get("effects", []))))
 	return self
 
 
@@ -87,6 +90,7 @@ func to_item_data() -> Dictionary:
 		"combat_cooldown_turns": combat_cooldown_turns,
 		"shared_cooldown_group": shared_cooldown_group,
 		"ai_action_type": ai_action_type,
+		"combat_target_mode": combat_target_mode,
 		"effects": _effect_dictionaries(),
 		"payload": legacy_payload(),
 	}
@@ -98,6 +102,14 @@ func _effect_dictionaries() -> Array:
 		if raw_effect != null and raw_effect.has_method("to_dictionary"):
 			result.append(raw_effect.call("to_dictionary"))
 	return result
+
+
+func _infer_combat_target_mode(raw_effects) -> String:
+	if raw_effects is Array:
+		for effect in raw_effects:
+			if effect is Dictionary and str(effect.get("target", "")) == "combat_global":
+				return "aoe"
+	return "single"
 
 
 func legacy_payload() -> Dictionary:

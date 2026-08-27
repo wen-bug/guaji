@@ -2,7 +2,7 @@
 
 ## 状态与边界
 
-地图驱动遭遇框架已经实现，包括地图独立 Profile、加权方案、类别池、固定编队、异种序列和地图专属兜底。当前已接入六种普通敌人、两种精英和一种 Boss；完整事实来源为[内容数据表](item-table.md)。本文列出的扩展池和未接入 Boss 仍属于规划。
+地图驱动遭遇框架已经实现，包括地图独立 Profile、加权方案、类别池、固定编队、异种序列和地图专属兜底。当前已接入六种普通敌人、两种精英和一种 Boss；敌人 `.tres` 与地图遭遇 Profile 是运行时事实来源，[内容数据表](item-table.md)是人工维护索引。本文列出的扩展池和未接入 Boss 仍属于规划。
 
 普通、精英和 Boss 都是敌人类别，不是职业。核心敌人拥有唯一 `combat_affinity`；技能使用的 `element` 和 `element_power` 是独立数值，不新增职业、学习限制或装备限制。Boss 的详细数据与奖励见[Boss 遭遇](boss-encounters.md)。
 
@@ -109,7 +109,7 @@ for each position:
 | --- | --- | --- |
 | 金 | `edge_commander` 断锋统领 | `pierce_array`：单体1.35、破防4、CD2；`break_formation`：全体1.00、破防3、CD4；`hidden_edge`：攻击+4三回合、CD6；`execution`：目标生命不高于35%时单体1.90、CD5 |
 | 木 | `blight_shaman` 腐木巫祝 | `miasma`：全体0.75、DOT 3 x 3、CD4；`drain_life`：单体1.15、吸血30%、CD3；`regrowth`：自身HOT 6 x 3、生命不高于50%、CD6；`overgrowth`：全体0.95、攻击-3两回合、CD5 |
-| 土 | `stonehide_overlord` 镇岳兽王 | `rockfall`：单体1.20、自身护盾8、CD3；`earthquake`：全体0.90、攻击-3两回合、CD5；`ironhide`：护盾20且防御+4三回合、生命不高于60%、CD7；`crushing_horn`：目标生命不高于35%时单体1.65、破防4、CD6 |
+| 土 | `stone_overlord` 镇岳兽王 | `rockfall`：单体1.20、自身护盾8、CD3；`earthquake`：全体0.90、攻击-3两回合、CD5；`ironhide`：护盾20且防御+4三回合、生命不高于60%、CD7；`crushing_horn`：目标生命不高于35%时单体1.65、破防4、CD6 |
 | 水 | `black_tide_guardian` 玄潮甲将 | `black_tide`：全体0.85、攻击-3两回合、CD4；`water_mirror`：护盾16且HOT 4 x 3、生命不高于60%、CD6；`binding_current`：全体0.75、防御-3三回合、CD5；`overflow`：全体1.20、CD7 |
 | 火 | `cinder_warlord` 烬火战酋 | `cinder_strike`：单体1.40、CD2；`burning_ground`：全体0.90、DOT 4 x 2、CD4；`bloodflame`：攻击+5三回合、CD6；`inferno`：全体1.45、CD7 |
 
@@ -127,13 +127,11 @@ for each position:
 
 ## 实现边界
 
-正式落地前必须补齐：
+地图驱动的类别权重、异种敌人序列、`encounter_class` 和逐只结算框架已经落地。扩展到本文完整规划池前仍需补齐以下内容：
 
-- 可配置的类别权重、普通/精英/Boss 敌人池，以及池内容与 `encounter_class` 一致性校验。
-- `CombatController` 从单一 `enemy_id` 重复生成改为接收异种敌人 ID 序列，并逐只加载各自场景。
-- `encounter_class`、精英属性/奖励倍率、技能解锁偏移和形象池约束的运行时数据与 Mod Schema。
-- 10 个普通、5 个精英的敌人定义、技能定义、场景、固定形象绑定、掉落和自动化测试。
-- Boss 全等级池、逐位置抽取和按阶技能解锁；详细边界见[Boss 遭遇](boss-encounters.md)。
+- 补齐规划池尚缺的普通和精英敌人定义、技能定义、固定形象绑定、掉落与自动化测试。
+- 将现有 `stone_overlord` 等同名敌人直接扩展到规划数值和技能，不创建第二个同名实体或替换稳定 ID。
+- 补齐剩余 Boss 内容和按阶技能；详细边界见[Boss 遭遇](boss-encounters.md)。
 
 不规划召唤、眩晕、冻结、跳过回合、强制嘲讽、锁血或复杂阶段脚本。所有技能只使用现有直伤、DOT、HOT、护盾、吸血、属性增减和破防能力。
 

@@ -17,6 +17,8 @@ const ITEM_TYPE_CROP := "crop"
 const ITEM_TYPE_PILL := "pill"
 const ITEM_TYPE_ALCHEMY_RECIPE := "alchemy_recipe"
 const ITEM_TYPE_BLUEPRINT := "blueprint"
+const ITEM_COMBAT_TARGET_SINGLE := "single"
+const ITEM_COMBAT_TARGET_AOE := "aoe"
 
 const ITEM_ICON_ROOT := "res://assets/items"
 const EQUIPMENT_ICON_ROOT := "res://assets/equipment"
@@ -898,6 +900,7 @@ static func create_stack_item(item_id: String, amount: int) -> Dictionary:
 		"combat_cooldown_turns": int(definition.get("combat_cooldown_turns", 0)),
 		"shared_cooldown_group": str(definition.get("shared_cooldown_group", "")),
 		"ai_action_type": str(definition.get("ai_action_type", "")),
+		"combat_target_mode": str(definition.get("combat_target_mode", ITEM_COMBAT_TARGET_SINGLE)),
 		"payload": definition.get("payload", {}).duplicate(true),
 		"obtain_source": "non_drop",
 		"gain_target": definition.get("gain_target", "none"),
@@ -1863,6 +1866,14 @@ static func item_gain_target(item_id: String) -> String:
 
 static func item_gain_target_label(target_id: String) -> String:
 	return ITEM_GAIN_TARGET_LABELS.get(target_id, target_id)
+
+
+static func item_combat_target_mode(item_id: String) -> String:
+	return str(item_definition(item_id).get("combat_target_mode", ITEM_COMBAT_TARGET_SINGLE))
+
+
+static func item_combat_target_mode_label(mode: String) -> String:
+	return "群体" if mode == ITEM_COMBAT_TARGET_AOE else "单人"
 
 
 static func item_gain_target_color(_target_id: String) -> Color:

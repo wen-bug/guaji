@@ -36,6 +36,7 @@
 
 - `target_scope`：`self`、`single_ally`、`all_allies`、`single_enemy`、`all_enemies`。
 - `target_mode`：`single` 或 `aoe`；技能不按距离判断可用性。
+- 物品 `combat_target_mode`：可选的 `single` 或 `aoe`。省略时，存在 `combat_global` 效果则推导为 `aoe`，否则推导为 `single`；显式 `single` 不能与 `combat_global` 组合。`aoe` 允许包含 `member` 效果，用于群体恢复或群体人物 Buff。
 - 敌人类别：`normal`、`elite`、`boss`。
 - 形象类别：`party`、`enemy`；`contract_version` 当前固定为 `1`。
 - 配方 `unlock_building_level` 为 `1-10`。
@@ -55,6 +56,29 @@
 ```
 
 `tier_id` 当前只接受 `t1`。`effects` 不能为空，属性只能使用攻击、防御、生命、法力、根骨和五行属性，同一物品中不能重复；`amount` 必须为正整数，省略时为 `1`。
+
+战斗群体恢复物品示例：
+
+```json
+{
+  "name": "群体恢复示例",
+  "type": "pill",
+  "usable": true,
+  "use_context": "combat",
+  "combat_target_mode": "aoe",
+  "effects": [
+    {
+      "effect_id": "restore_party_hp",
+      "kind": "restore_resource",
+      "target": "member",
+      "stat": "hp",
+      "ratio": 0.2
+    }
+  ]
+}
+```
+
+战斗中 `single` 的人物效果只作用当前行动角色，`aoe` 的人物效果作用所有存活队员；`combat_global` 每次使用只应用一次。一次使用只消耗一个道具，无目标获益或配置无效时不消耗。家园手动使用不采用群体范围，仍只作用当前选择的角色。
 
 ## Patch 示例
 

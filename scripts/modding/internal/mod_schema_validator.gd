@@ -2,6 +2,7 @@ class_name ModSchemaValidator
 extends RefCounted
 
 const ModContentRegistryScript = preload("res://scripts/modding/api/mod_content_registry.gd")
+const ItemConfigParserScript = preload("res://scripts/game/data/item_config_parser.gd")
 const MANIFEST_SCHEMA_VERSION := 2
 const MOD_API_VERSION := 2
 const GAME_VERSION := "0.2.0"
@@ -143,6 +144,9 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 		elif field in ["name", "scene_path", "visual_id", "slot", "result_item_id", "text"] and str(data.get(field, "")).strip_edges().is_empty():
 			errors.append("%s:%s 字段 %s 不能为空" % [kind, content_id, field])
 	if kind == "item":
+		var combat_target_mode := str(data.get("combat_target_mode", ItemConfigParserScript.infer_combat_target_mode(data.get("effects", []))))
+		if not ["single", "aoe"].has(combat_target_mode):
+			errors.append("item:%s combat_target_mode 只能为 single 或 aoe" % content_id)
 		var payload = data.get("payload", {})
 		if data.has("payload") and not (payload is Dictionary):
 			errors.append("item:%s payload 必须为对象" % content_id)
@@ -188,6 +192,7 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 					var effect_target := str(effect.get("target", "none"))
 					if not ["restore_resource", "temporary_modifier", "permanent_attribute", "unlock_content", "breakthrough", "building_quality", "farm_seed", "equipment_enhancement_material", "currency"].has(effect_kind): errors.append("item:%s effect.kind 无效" % content_id)
 					if not ["none", "member", "home_global", "combat_global"].has(effect_target): errors.append("item:%s effect.target 无效" % content_id)
+					if combat_target_mode == "single" and effect_target == "combat_global": errors.append("item:%s combat_global 效果必须使用 aoe combat_target_mode" % content_id)
 					if effect_kind == "restore_resource":
 						if effect_target != "member" or not ["hp", "mp"].has(str(effect.get("stat", ""))): errors.append("item:%s 恢复效果必须指向人物的 hp/mp" % content_id)
 						if int(effect.get("amount", 0)) <= 0 and float(effect.get("ratio", 0.0)) <= 0.0: errors.append("item:%s 恢复效果必须有正数 amount 或 ratio" % content_id)

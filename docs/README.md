@@ -45,7 +45,7 @@
 1. 运行时代码和 `project.godot`。
 2. `resources/` 下的 Godot 资源。
 3. `scripts/tests/` 下的回归测试。
-4. 核心装备数值以 `resources/equipment/` 为最终事实来源，其他数据类内容以 `scripts/game/data/data_tables.gd` 为最终事实来源；[内容数据表](item-table.md)是人工维护索引。
+4. 物品、技能、装备和敌人的静态定义以 `resources/` 下对应 `.tres` 为最终事实来源；`scripts/game/data/data_tables.gd` 保留稳定 ID、枚举、经济表、兼容回退及解析器生成的运行时字典；[内容数据表](item-table.md)是人工维护索引。
 5. Mod 契约以 `scripts/modding/internal/mod_schema_validator.gd`、公开 API 类和 JSON Schema 2 共同定义。
 
 ## 维护规范

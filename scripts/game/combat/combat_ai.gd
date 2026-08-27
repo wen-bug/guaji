@@ -56,25 +56,40 @@ func select_player_action(game_state, player_range: float, distance_to_enemy: fl
 	}
 
 
-func _find_best_available_action(game_state, action_type: String, hp_ratio: float, mp_ratio: float, skill_cooldowns: Dictionary, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, player_range: float, distance_to_enemy: float, member: Dictionary = {}) -> Dictionary:
-	var actor: Dictionary = member
-	if actor.is_empty():
+func select_auto_item_action(game_state, pill_cooldowns: Dictionary, pill_group_cooldowns: Dictionary, member: Dictionary = {}) -> Dictionary:
+	if member.is_empty():
 		return {}
-	var actor_stats: Dictionary = actor.get("stats", {})
+	var member_id := str(member.get("id", ""))
+	var stats: Dictionary = member.get("stats", {})
+	var hp_ratio := float(stats.get("hp", 0)) / maxf(1.0, float(game_state.total_stat_for(member_id, "max_hp")))
+	var mp_ratio := float(stats.get("mp", 0)) / maxf(1.0, float(game_state.total_stat_for(member_id, "max_mp")))
 	for raw_item_id in game_state.auto_use_item_ids:
 		var item_id := str(raw_item_id)
 		if item_id.is_empty() or game_state.inventory_item_count(item_id) <= 0:
 			continue
 		var item: Dictionary = game_state.inventory_item_by_instance(item_id)
-		var pill_action: Dictionary = _pill_action_from_item(item, action_type)
-		if pill_action.is_empty() or not _item_has_benefit(game_state, item, member, hp_ratio, mp_ratio):
+		var action_type := str(item.get("ai_action_type", ""))
+		if action_type.is_empty():
+			action_type = _pill_action_type(item.get("payload", {}))
+		if not _pill_trigger_matches(action_type, hp_ratio, mp_ratio):
 			continue
-		var group_id: String = str(pill_action.get("cooldown_group", ""))
+		var action := _pill_action_from_item(item, action_type)
+		if action.is_empty() or not _item_has_benefit(game_state, item, member, hp_ratio, mp_ratio):
+			continue
+		var group_id := str(action.get("cooldown_group", ""))
 		if float(pill_cooldowns.get(item_id, 0.0)) > 0.0:
 			continue
 		if not group_id.is_empty() and float(pill_group_cooldowns.get(group_id, 0.0)) > 0.0:
 			continue
-		return pill_action
+		return action
+	return {}
+
+
+func _find_best_available_action(_game_state, action_type: String, hp_ratio: float, mp_ratio: float, skill_cooldowns: Dictionary, _pill_cooldowns: Dictionary, _pill_group_cooldowns: Dictionary, player_range: float, distance_to_enemy: float, member: Dictionary = {}) -> Dictionary:
+	var actor: Dictionary = member
+	if actor.is_empty():
+		return {}
+	var actor_stats: Dictionary = actor.get("stats", {})
 	var candidates: Array[Dictionary] = []
 	for skill in actor.get("skills", []):
 		if bool(skill.get("disabled", false)):
@@ -148,6 +163,20 @@ func _pill_action_type(payload: Dictionary) -> String:
 	if str(payload.get("stat", "")) == "attack":
 		return ACTION_TYPE_DAMAGE
 	return ""
+
+
+func _pill_trigger_matches(action_type: String, hp_ratio: float, mp_ratio: float) -> bool:
+	match action_type:
+		ACTION_TYPE_HEAL:
+			return hp_ratio <= PLAYER_HP_HEAL_THRESHOLD
+		ACTION_TYPE_DEFENSE:
+			return hp_ratio <= PLAYER_HP_DEFENSE_THRESHOLD
+		ACTION_TYPE_RESOURCE:
+			return mp_ratio <= PLAYER_MP_RESOURCE_THRESHOLD
+		ACTION_TYPE_BUFF, ACTION_TYPE_DAMAGE:
+			return true
+		_:
+			return false
 
 
 func _pill_priority(action_type: String) -> int:

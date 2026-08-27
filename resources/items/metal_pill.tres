@@ -28,4 +28,5 @@ gain_target = "metal"
 combat_cooldown_turns = 3
 shared_cooldown_group = "buff_pill"
 ai_action_type = "buff"
+combat_target_mode = "aoe"
 effects = Array[Resource]([SubResource("Resource_57nyo")])

@@ -113,6 +113,9 @@ func _item_meta_text(item: Dictionary, game_state, member_id: String = "") -> St
 		"目标：%s" % DataTables.item_gain_target_label(str(item.get("gain_target", DataTables.item_gain_target(str(item.get("item_id", "")))))),
 		"来源：%s" % _item_source_text(item),
 	]
+	var use_context := str(item.get("use_context", DataTables.item_use_scope(str(item.get("item_id", "")))))
+	if use_context in [DataTables.ITEM_USE_SCOPE_COMBAT, DataTables.ITEM_USE_SCOPE_BOTH]:
+		parts.insert(3, "战斗范围：%s" % DataTables.item_combat_target_mode_label(str(item.get("combat_target_mode", DataTables.ITEM_COMBAT_TARGET_SINGLE))))
 	if item.get("type", "") == DataTables.ITEM_TYPE_EQUIPMENT:
 		parts.append("槽位：%s" % DataTables.slot_name(str(item.get("slot", ""))))
 		parts.append("等级：%d" % int(item.get("equipment_level", 1)))

@@ -24,6 +24,9 @@
     "usable": {
       "type": "boolean"
     },
+    "combat_target_mode": {
+      "enum": ["single", "aoe"]
+    },
     "payload": {
       "type": "object",
       "properties": {

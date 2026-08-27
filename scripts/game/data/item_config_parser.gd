@@ -5,6 +5,7 @@ const INDEX_PATH := "res://resources/items/index.tres"
 const FORMAT_VERSION := 1
 const VALID_TYPES := ["skill_book", "equipment", "material", "crop", "pill", "alchemy_recipe", "blueprint"]
 const VALID_CONTEXTS := ["none", "home", "combat", "both"]
+const VALID_COMBAT_TARGET_MODES := ["single", "aoe"]
 const VALID_TARGETS := ["none", "member", "home_global", "combat_global"]
 const VALID_KINDS := ["restore_resource", "temporary_modifier", "permanent_attribute", "unlock_content", "breakthrough", "building_quality", "farm_seed", "equipment_enhancement_material", "currency"]
 const VALID_STATS := ["hp", "mp", "attack", "defense", "max_hp", "max_mp", "root_bone", "element_wood", "element_fire", "element_earth", "element_metal", "element_water", "farm_speed"]
@@ -71,7 +72,17 @@ static func normalize_external_definition(item_id: String, data: Dictionary) -> 
 	normalized["use_scope"] = normalized["use_context"]
 	if not normalized.has("effects") or not (normalized.get("effects") is Array):
 		normalized["effects"] = legacy_payload_to_effects(item_id, normalized.get("payload", {}), normalized)
+	if not normalized.has("combat_target_mode"):
+		normalized["combat_target_mode"] = infer_combat_target_mode(normalized.get("effects", []))
 	return normalized
+
+
+static func infer_combat_target_mode(effects) -> String:
+	if effects is Array:
+		for effect in effects:
+			if effect is Dictionary and str(effect.get("target", "")) == "combat_global":
+				return "aoe"
+	return "single"
 
 
 static func legacy_payload_to_effects(item_id: String, payload_value, _item_data: Dictionary = {}) -> Array:
@@ -110,6 +121,8 @@ static func validate_definition(data: Dictionary, source_path: String = "<memory
 	if not VALID_TYPES.has(str(data.get("type", ""))): errors.append("%s: type is invalid" % source_path)
 	if str(data.get("name", "")).is_empty(): errors.append("%s: display_name is required" % source_path)
 	if not VALID_CONTEXTS.has(str(data.get("use_context", "none"))): errors.append("%s: use_context is invalid" % source_path)
+	var combat_target_mode := str(data.get("combat_target_mode", infer_combat_target_mode(data.get("effects", []))))
+	if not VALID_COMBAT_TARGET_MODES.has(combat_target_mode): errors.append("%s: combat_target_mode is invalid" % source_path)
 	var effects = data.get("effects", [])
 	if not (effects is Array):
 		errors.append("%s: effects must be an array" % source_path)
@@ -128,6 +141,7 @@ static func validate_definition(data: Dictionary, source_path: String = "<memory
 		if not VALID_KINDS.has(kind): errors.append("%s.kind is invalid" % prefix)
 		var target := str(effect.get("target", "none"))
 		if not VALID_TARGETS.has(target): errors.append("%s.target is invalid" % prefix)
+		if combat_target_mode == "single" and target == "combat_global": errors.append("%s.target combat_global requires aoe combat_target_mode" % prefix)
 		if kind in ["restore_resource", "temporary_modifier", "permanent_attribute"] and not VALID_STATS.has(str(effect.get("stat", ""))): errors.append("%s.stat is invalid" % prefix)
 		if kind == "restore_resource":
 			if target != "member": errors.append("%s.target must be member" % prefix)

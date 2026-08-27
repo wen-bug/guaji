@@ -24,6 +24,7 @@
 - `usable`：是否可直接使用。
 - `effects`：类型化 `ItemEffectDef` 子资源数组。
 - `use_context`：使用范围，当前为 `home`、`combat`、`both`、`none`。
+- `combat_target_mode`：战斗道具目标范围，`single` 为当前行动角色，`aoe` 为当前队伍所有存活成员。
 - `gain_target`：成长或强化倾向标签。
 - `icon_name` / `icon_path`：可选图标覆盖；默认由 `item_id` 推导。
 - `description_effects`：装备结构化富文本公式；格式与维护边界见[物品系统](items.md)。
@@ -55,7 +56,7 @@
 | 1013 | `spirit_stone_water` | 水灵石 | `material` | 否 | `water` | 强化 `element_water`, `+1` |
 | 1014 | `refine_talisman` | 洗练符 | `material` | 否 | `none` | 装备洗练材料 |
 | 1015 | `recipe_pill` | 调息丹方 | `alchemy_recipe` | 是 | `none` | 学习 `pill` 丹方 |
-| 1016 | `pill` | 调息丹 | `pill` | 是 | `none` | 恢复 `hp=18`, `mp=12` |
+| 1016 | `pill` | 调息丹 | `pill` | 是 | `none` | 单人；当前角色恢复 15% 最大生命和法力 |
 | 1017 | `breakthrough_pill` | 破境丹 | `pill` | 是 | `none` | `breakthrough=true` |
 | 1019 | `blade_grass` | 刃纹草 | `crop` | 否 | `attack` | `seed_yield=1`, `growth_seconds=900` |
 | 1020 | `ironroot` | 铁根藤 | `crop` | 否 | `defense` | `seed_yield=1`, `growth_seconds=900` |
@@ -164,27 +165,29 @@
 
 ## 已实现：五行材料、图纸与技能书
 
-| item_no | item_id | 名称 | 用途 |
-| ---: | --- | --- | --- |
-| 1034 | `blueprint_weapon` | 武器图纸 | 永久解锁武器定向打造 |
-| 1035 | `blueprint_helmet` | 头盔图纸 | 永久解锁头盔定向打造 |
-| 1036 | `blueprint_armor` | 护甲图纸 | 永久解锁护甲定向打造 |
-| 1037 | `blueprint_leggings` | 胫甲图纸 | 永久解锁胫甲定向打造 |
-| 1038 | `blueprint_gloves` | 护手图纸 | 永久解锁护手定向打造 |
-| 1039 | `blueprint_accessory` | 饰品图纸 | 永久解锁饰品定向打造 |
-| 1040 | `manual_fragment` | 功法残页 | 3 张加对应五行灵石 1 个兑换功法 |
-| 1041 | `skill_book_water_cold_talisman` | 寒潮符技能书 | 学会水行单体技能寒潮符 |
-| 1042 | `life_pill` | 归元丹 | 恢复 25% 最大生命 |
-| 1043 | `spirit_pill` | 聚灵丹 | 恢复 25% 最大法力 |
-| 1044 | `attack_pill` | 破军丹 | 战斗全局攻击 +3，60 秒，`buff_pill` 组 |
-| 1045 | `defense_pill` | 玄甲丹 | 战斗全局防御 +3，60 秒，`buff_pill` 组 |
-| 1046 | `wood_pill` | 青木丹 | 战斗全局木行 +3，60 秒，`buff_pill` 组 |
-| 1047 | `fire_pill` | 赤焰丹 | 战斗全局火行 +3，60 秒，`buff_pill` 组 |
-| 1048 | `earth_pill` | 厚土丹 | 战斗全局土行 +3，60 秒，`buff_pill` 组 |
-| 1049 | `metal_pill` | 玄金丹 | 战斗全局金行 +3，60 秒，`buff_pill` 组 |
-| 1050 | `water_pill` | 玄水丹 | 战斗全局水行 +3，60 秒，`buff_pill` 组 |
+| item_no | item_id | 名称 | 战斗范围 | 用途 |
+| ---: | --- | --- | --- | --- |
+| 1034 | `blueprint_weapon` | 武器图纸 | - | 永久解锁武器定向打造 |
+| 1035 | `blueprint_helmet` | 头盔图纸 | - | 永久解锁头盔定向打造 |
+| 1036 | `blueprint_armor` | 护甲图纸 | - | 永久解锁护甲定向打造 |
+| 1037 | `blueprint_leggings` | 胫甲图纸 | - | 永久解锁胫甲定向打造 |
+| 1038 | `blueprint_gloves` | 护手图纸 | - | 永久解锁护手定向打造 |
+| 1039 | `blueprint_accessory` | 饰品图纸 | - | 永久解锁饰品定向打造 |
+| 1040 | `manual_fragment` | 功法残页 | - | 3 张加对应五行灵石 1 个兑换功法 |
+| 1041 | `skill_book_water_cold_talisman` | 寒潮符技能书 | - | 学会水行单体技能寒潮符 |
+| 1042 | `life_pill` | 归元丹 | 单人 | 当前角色恢复 25% 最大生命 |
+| 1043 | `spirit_pill` | 聚灵丹 | 单人 | 当前角色恢复 25% 最大法力 |
+| 1044 | `attack_pill` | 破军丹 | 群体 | 战斗全局攻击 +3，60 秒，`buff_pill` 组 |
+| 1045 | `defense_pill` | 玄甲丹 | 群体 | 战斗全局防御 +3，60 秒，`buff_pill` 组 |
+| 1046 | `wood_pill` | 青木丹 | 群体 | 战斗全局木行 +3，60 秒，`buff_pill` 组 |
+| 1047 | `fire_pill` | 赤焰丹 | 群体 | 战斗全局火行 +3，60 秒，`buff_pill` 组 |
+| 1048 | `earth_pill` | 厚土丹 | 群体 | 战斗全局土行 +3，60 秒，`buff_pill` 组 |
+| 1049 | `metal_pill` | 玄金丹 | 群体 | 战斗全局金行 +3，60 秒，`buff_pill` 组 |
+| 1050 | `water_pill` | 玄水丹 | 群体 | 战斗全局水行 +3，60 秒，`buff_pill` 组 |
 
 炼丹建筑自动解锁：1 级调息丹；2 级破境丹（`pill x1 + herb x8`）；3 级归元丹/聚灵丹；4 级破军丹/玄甲丹；5 级五行丹。新档不再发放调息丹方，旧档丹方会自动学习并移除。调息丹恢复 15% 最大生命和法力。炼器 3 级开放通用灵石 3 个兑换指定五行灵石 1 个。
+
+自动道具在角色自身回合开始时按槽位顺序最多成功使用一个，不占用技能或普通攻击。群体人物效果只作用本场战斗中的存活队员，比例恢复按每名目标自身上限计算；全局效果每次只创建一次。成功使用无论目标数都只扣一个，无人获益或配置无效则不扣除、不写冷却。家园手动使用仍只作用选中角色。
 
 ## 已实现：一阶永久属性强化丹
 

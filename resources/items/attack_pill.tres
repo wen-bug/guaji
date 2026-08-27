@@ -28,4 +28,5 @@ gain_target = "attack"
 combat_cooldown_turns = 3
 shared_cooldown_group = "buff_pill"
 ai_action_type = "damage"
+combat_target_mode = "aoe"
 effects = Array[Resource]([SubResource("Resource_aooet")])

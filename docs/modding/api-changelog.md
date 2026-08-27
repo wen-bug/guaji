@@ -9,6 +9,7 @@
 - 新增 `ModAPI.skill_scene()` 和 `skill_scene_definition()` 查询。
 - 敌人内容支持类别、参考倍率、经验和掉率倍率、技能解锁阶位及类别掉落池。
 - 配方支持 `unlock_building_level`，物品支持永久属性强化数据。
+- 物品增加可选 `combat_target_mode`（`single` / `aoe`）。旧 API 2 内容省略时按效果推导：含 `combat_global` 为群体，否则为单人；显式单人与 `combat_global` 的组合会被拒绝。本扩展保持 API 2。
 - 存档当前为 Schema 22；核心物品支持标准 `effects` 数组，旧 `payload` 在 API 2 注册时自动适配。人物、家园全局和战斗全局 Buff 使用统一秒计时容器，自动道具栏引用稳定物品 ID。核心装备兼容接口、隔离存储和 Mod RNG 不变。
 
 API 2 内只允许增加可选字段和带默认值的方法。删除接口或改变既有参数语义必须提升 `MOD_API_VERSION`。

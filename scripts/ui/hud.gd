@@ -1238,7 +1238,8 @@ func _open_auto_item_picker(slot_index: int) -> void:
 		if str(definition.get("ai_action_type", "")).is_empty() or not ["combat", "both"].has(str(definition.get("use_context", definition.get("use_scope", "none")))):
 			continue
 		var count: int = int(current_game_state.inventory_item_count(item_id))
-		auto_item_popup.add_icon_item(DataTables.item_icon_texture(item_id), "%s  x%d" % [DataTables.item_display_name(item_id), count], menu_id)
+		var mode_label := DataTables.item_combat_target_mode_label(str(definition.get("combat_target_mode", DataTables.ITEM_COMBAT_TARGET_SINGLE)))
+		auto_item_popup.add_icon_item(DataTables.item_icon_texture(item_id), "%s [%s]  x%d" % [DataTables.item_display_name(item_id), mode_label, count], menu_id)
 		auto_item_popup_ids[menu_id] = item_id
 		menu_id += 1
 	var mouse := Vector2i(get_viewport().get_mouse_position())
@@ -1268,7 +1269,8 @@ func _refresh_item_buff_hud() -> void:
 			button.text = "%d  %s x%d" % [index + 1, DataTables.item_display_name(item_id), current_game_state.inventory_item_count(item_id)]
 			button.icon = DataTables.item_icon_texture(item_id)
 			button.expand_icon = true
-			button.tooltip_text = str(definition.get("description", ""))
+			var mode_label := DataTables.item_combat_target_mode_label(str(definition.get("combat_target_mode", DataTables.ITEM_COMBAT_TARGET_SINGLE)))
+			button.tooltip_text = "战斗范围：%s\n%s" % [mode_label, str(definition.get("description", ""))]
 
 	var buffs := _global_item_buffs()
 	var signature := _global_buff_signature(buffs)

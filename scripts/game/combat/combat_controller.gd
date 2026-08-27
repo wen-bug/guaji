@@ -114,6 +114,7 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_selection = "", 
 			"skill_cooldowns": {},
 			"pill_cooldowns": {},
 			"pill_group_cooldowns": {},
+			"auto_item_checked": false,
 			"combat_buffs": [],
 			"combat_effects": [],
 			"turn_started": false,
@@ -308,6 +309,7 @@ func _tick_party_combatant(index: int, delta: float, game_state) -> void:
 			party_combatants[index] = combatant
 			_advance_party_turn()
 			return
+	_try_auto_item_for_turn(combatant, member, game_state)
 
 	match str(combatant.get("state", STATE_READY)):
 		STATE_READY:
@@ -403,6 +405,7 @@ func _complete_party_turn(member_id: String) -> void:
 	combatant["pending_action"] = {}
 	combatant["state"] = STATE_RECOVERY
 	combatant["turn_started"] = false
+	combatant["auto_item_checked"] = false
 	party_combatants[index] = combatant
 	_advance_party_turn()
 
@@ -412,8 +415,6 @@ func _resolve_instant_party_action(combatant: Dictionary, member: Dictionary, ac
 	if source == ACTION_SOURCE_SKILL:
 		_resolve_party_skill(combatant, member, action, game_state)
 		return
-	elif source == ACTION_SOURCE_PILL:
-		_resolve_party_pill(combatant, member, action, game_state)
 	_finish_party_turn(combatant)
 
 
@@ -483,11 +484,11 @@ func _complete_party_skill_turn(member_id: String) -> void:
 	party_combatants[index] = combatant
 
 
-func _resolve_party_pill(combatant: Dictionary, member: Dictionary, action: Dictionary, game_state) -> void:
+func _resolve_party_pill(combatant: Dictionary, member: Dictionary, action: Dictionary, game_state) -> bool:
 	var instance_id := str(action.get("id", ""))
 	var item: Dictionary = game_state.inventory_item_by_instance(instance_id)
-	if item.is_empty() or not game_state.use_inventory_item_for_member(instance_id, str(member.get("id", ""))):
-		return
+	if item.is_empty() or not game_state.use_combat_inventory_item(instance_id, str(member.get("id", "")), _alive_party_member_ids()):
+		return false
 	var cooldowns: Dictionary = combatant.get("pill_cooldowns", {})
 	cooldowns[str(item.get("item_id", ""))] = int(action.get("cooldown", 2))
 	combatant["pill_cooldowns"] = cooldowns
@@ -496,6 +497,31 @@ func _resolve_party_pill(combatant: Dictionary, member: Dictionary, action: Dict
 		var groups: Dictionary = combatant.get("pill_group_cooldowns", {})
 		groups[group_id] = int(action.get("cooldown", 2))
 		combatant["pill_group_cooldowns"] = groups
+	return true
+
+
+func _try_auto_item_for_turn(combatant: Dictionary, member: Dictionary, game_state) -> bool:
+	if bool(combatant.get("auto_item_checked", false)):
+		return false
+	combatant["auto_item_checked"] = true
+	var item_action := combat_ai.select_auto_item_action(
+		game_state,
+		combatant.get("pill_cooldowns", {}),
+		combatant.get("pill_group_cooldowns", {}),
+		member
+	)
+	if item_action.is_empty():
+		return false
+	return _resolve_party_pill(combatant, member, item_action, game_state)
+
+
+func _alive_party_member_ids() -> Array[String]:
+	var result: Array[String] = []
+	for combatant in party_combatants:
+		var member_id := str(combatant.get("member_id", ""))
+		if _member_alive(member_id):
+			result.append(member_id)
+	return result
 
 
 func _tick_enemy(delta: float) -> void:
@@ -1218,6 +1244,7 @@ func _begin_next_round() -> void:
 		var combatant: Dictionary = party_combatants[index]
 		var member_id := str(combatant.get("member_id", ""))
 		combatant["turn_started"] = false
+		combatant["auto_item_checked"] = false
 		combatant["state"] = STATE_READY if _member_alive(member_id) else STATE_DEFEATED
 		party_combatants[index] = combatant
 	while _party_turn_index < party_combatants.size() and not _member_alive(str(party_combatants[_party_turn_index].get("member_id", ""))):
