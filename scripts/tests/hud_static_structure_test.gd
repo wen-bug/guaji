@@ -14,6 +14,7 @@ func _run() -> void:
 	add_child(hud)
 	_check_static_nodes(hud)
 	_check_single_initialization(hud)
+	_check_skill_presentation_toggle(hud)
 	_check_global_buff_details(hud)
 	hud.queue_free()
 	await get_tree().process_frame
@@ -50,6 +51,7 @@ func _check_static_nodes(hud: Node) -> void:
 		"Root/ForgePanel/PanelLayout/ForgeUpgradeButton",
 		"Root/AlchemyPanel/PanelLayout/AlchemyUpgradeButton",
 		"Root/RecruitPanel/PanelLayout/RecruitUpgradeButton",
+		"Root/ExpeditionHud/PanelLayout/SkillHitboxModeToggle",
 		"Root/SalvageConfirmationDialog",
 		"Root/MarketRecycleConfirmation",
 		"AutoItemPicker",
@@ -59,6 +61,7 @@ func _check_static_nodes(hud: Node) -> void:
 	_expect_true("global status is button", hud.get_node("Root/MenuPanel/MenuLayout/GlobalItemBuffStatus") is Button)
 	_expect_equal("inventory slots", hud.get_node("Root/InventoryPanel/InventoryLayout/InventoryGrid").get_child_count(), 25)
 	_expect_equal("auto item slots", hud.get_node("Root/InventoryPanel/InventoryLayout/AutoItemSection/Slots").get_child_count(), 4)
+	_expect_true("skill mode control is CheckButton", hud.get_node("Root/ExpeditionHud/PanelLayout/SkillHitboxModeToggle") is CheckButton)
 	for method_name in [
 		"_ensure_menu_panel_refs",
 		"_ensure_market_controls",
@@ -184,6 +187,28 @@ func _check_global_buff_details(hud: Node) -> void:
 	_expect_equal("empty global status", status_button.text, "全局效果 · 0")
 	_expect_equal("expired rows removed", home_rows.get_child_count() + combat_rows.get_child_count(), 0)
 	_expect_true("empty state visible", hud.get_node("Root/GlobalBuffPanel/PanelLayout/EmptyState").visible)
+
+
+func _check_skill_presentation_toggle(hud: Node) -> void:
+	var toggle := hud.get_node("Root/ExpeditionHud/PanelLayout/SkillHitboxModeToggle") as CheckButton
+	var expedition_hud := hud.get_node("Root/ExpeditionHud") as Control
+	SkillPresentation.set_mode(SkillPresentation.MODE_MATERIAL)
+	hud.load_hud_save_data({})
+	_expect_equal("legacy save defaults to material mode", SkillPresentation.get_mode(), SkillPresentation.MODE_MATERIAL)
+	_expect_true("legacy save toggle is off", not toggle.button_pressed)
+	hud.set_expedition_controls_visible(true)
+	_expect_true("skill mode toggle visible in expedition", expedition_hud.visible and toggle.visible)
+	toggle.set_pressed(true)
+	_expect_equal("toggle selects hitbox mode", SkillPresentation.get_mode(), SkillPresentation.MODE_HITBOX)
+	var save_data: Dictionary = hud.to_hud_save_data()
+	_expect_equal("skill mode saved", str(save_data.get("skill_presentation_mode", "")), "hitbox")
+	SkillPresentation.set_mode(SkillPresentation.MODE_MATERIAL)
+	hud.load_hud_save_data(save_data)
+	_expect_equal("skill mode restored", SkillPresentation.get_mode(), SkillPresentation.MODE_HITBOX)
+	_expect_true("restored toggle is on", toggle.button_pressed)
+	hud.set_expedition_controls_visible(false)
+	_expect_true("skill mode toggle hidden at home", not expedition_hud.visible)
+	SkillPresentation.set_mode(SkillPresentation.MODE_MATERIAL)
 
 
 func _expect_true(label: String, condition: bool) -> void:

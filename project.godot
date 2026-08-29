@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 ModAPI="*res://scripts/modding/mod_api.gd"
+SkillPresentation="*res://scripts/game/skills/base/skill_presentation_settings.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]

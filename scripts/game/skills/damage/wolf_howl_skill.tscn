@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://dcwdf7i3jh3ge"]
 
 [ext_resource type="Script" uid="uid://cae4gtod7en42" path="res://scripts/game/skills/damage/direct_damage_skill.gd" id="1_4oc1e"]
-[ext_resource type="Resource" path="res://resources/skills/wolf_howl.tres" id="2_eys0g"]
+[ext_resource type="Resource" uid="uid://uke3f5rs1ed8" path="res://resources/skills/wolf_howl.tres" id="2_eys0g"]
 
 [sub_resource type="Animation" id="Animation_yexh8"]
 length = 0.1
 
-[sub_resource type="Animation" id="Animation_cx73e"]
+[sub_resource type="Animation" id="Animation_4oc1e"]
 length = 0.3
 tracks/0/type = "method"
 tracks/0/imported = false
@@ -15,11 +15,17 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.1, 0.29),
-"transitions": PackedFloat32Array(1, 1),
+"times": PackedFloat32Array(0, 0.1, 0.11, 0.29),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
 "values": [{
 "args": [],
+"method": &"open_hitbox"
+}, {
+"args": [],
 "method": &"impact"
+}, {
+"args": [],
+"method": &"close_hitbox"
 }, {
 "args": [],
 "method": &"finish_cast"
@@ -29,16 +35,25 @@ tracks/0/keys = {
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_02cxo"]
 _data = {
 &"RESET": SubResource("Animation_yexh8"),
-&"cast": SubResource("Animation_cx73e")
+&"cast": SubResource("Animation_4oc1e")
 }
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_eys0g"]
+size = Vector2(480, 96)
 
 [node name="WolfHowlSkill" type="Node2D" unique_id=1549147273]
 script = ExtResource("1_4oc1e")
 skill_resource = ExtResource("2_eys0g")
 anchor_role = "primary_target"
 
-[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=1226970799]
+[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=1226970799 groups=["skill_material_visual"]]
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=995113482]
+callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_02cxo")
+
+[node name="SkillHitbox" type="Area2D" parent="." unique_id=1563175428]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox" unique_id=1484904526]
+shape = SubResource("RectangleShape2D_eys0g")

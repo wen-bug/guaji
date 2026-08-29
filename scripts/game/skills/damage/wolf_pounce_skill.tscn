@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://dgl2v5dles4ji"]
+[gd_scene load_steps=6 format=3 uid="uid://dgl2v5dles4ji"]
 
 [ext_resource type="Script" uid="uid://cae4gtod7en42" path="res://scripts/game/skills/damage/direct_damage_skill.gd" id="1_6nll4"]
 [ext_resource type="Resource" path="res://resources/skills/wolf_pounce.tres" id="2_y0as3"]
@@ -15,16 +15,25 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.1, 0.29),
-"transitions": PackedFloat32Array(1, 1),
+"times": PackedFloat32Array(0, 0.1, 0.11, 0.29),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
 "values": [{
 "args": [],
+"method": &"open_hitbox"
+}, {
+"args": [],
 "method": &"impact"
+}, {
+"args": [],
+"method": &"close_hitbox"
 }, {
 "args": [],
 "method": &"finish_cast"
 }]
 }
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hitbox"]
+size = Vector2(72, 96)
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_tqfdq"]
 _data = {
@@ -37,8 +46,14 @@ script = ExtResource("1_6nll4")
 skill_resource = ExtResource("2_y0as3")
 anchor_role = "primary_target"
 
-[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=501433181]
+[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=501433181 groups=["skill_material_visual"]]
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=159821377]
+callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_tqfdq")
+
+[node name="SkillHitbox" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox"]
+shape = SubResource("RectangleShape2D_hitbox")

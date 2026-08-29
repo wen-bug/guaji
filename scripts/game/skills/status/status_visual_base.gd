@@ -28,6 +28,8 @@ func _ready() -> void:
 	if _animation_player != null and not _animation_player.animation_finished.is_connected(_on_animation_finished):
 		_animation_player.animation_finished.connect(_on_animation_finished)
 	_sprite.modulate = tint
+	_bind_presentation_mode()
+	_sync_presentation_mode()
 	set_process(false)
 
 
@@ -72,6 +74,10 @@ func contract_errors() -> Array[String]:
 
 func set_loop_active(active: bool) -> void:
 	_loop_active = active
+	if _is_hitbox_mode():
+		visible = false
+		set_process(false)
+		return
 	visible = active
 	_loop_elapsed = 0.0
 	set_process(active and not _has_animation("loop"))
@@ -85,6 +91,11 @@ func set_loop_active(active: bool) -> void:
 
 
 func play_event(event_data: Variant) -> float:
+	if _is_hitbox_mode():
+		visible = false
+		set_process(false)
+		call_deferred("_finish_hidden_event")
+		return 0.0
 	visible = true
 	set_process(false)
 	if _event_tween != null and _event_tween.is_valid():
@@ -163,6 +174,10 @@ func _on_fallback_event_finished() -> void:
 
 
 func _restore_loop() -> void:
+	if _is_hitbox_mode():
+		visible = false
+		set_process(false)
+		return
 	if _loop_active:
 		visible = true
 		if _has_animation("loop"):
@@ -180,3 +195,35 @@ func _process(delta: float) -> void:
 	var phase := _loop_elapsed / maxf(0.2, loop_cycle_seconds)
 	var pulse := 1.0 + sin(phase * TAU) * 0.08
 	scale = Vector2(pulse, pulse)
+
+
+func _bind_presentation_mode() -> void:
+	var settings := get_node_or_null("/root/SkillPresentation")
+	if settings == null or not settings.has_signal("mode_changed"):
+		return
+	var callback := Callable(self, "_on_presentation_mode_changed")
+	if not settings.is_connected("mode_changed", callback):
+		settings.connect("mode_changed", callback)
+
+
+func _on_presentation_mode_changed(_mode: StringName) -> void:
+	_sync_presentation_mode()
+
+
+func _sync_presentation_mode() -> void:
+	if _is_hitbox_mode():
+		visible = false
+		set_process(false)
+		if _animation_player != null:
+			_animation_player.stop()
+	else:
+		_restore_loop()
+
+
+func _is_hitbox_mode() -> bool:
+	var settings := get_node_or_null("/root/SkillPresentation")
+	return settings != null and settings.has_method("is_hitbox_mode") and bool(settings.call("is_hitbox_mode"))
+
+
+func _finish_hidden_event() -> void:
+	event_animation_finished.emit()

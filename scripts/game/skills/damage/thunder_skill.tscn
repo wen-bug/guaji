@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://ch8ivf1mukyi8"]
 
 [ext_resource type="Script" uid="uid://cae4gtod7en42" path="res://scripts/game/skills/damage/direct_damage_skill.gd" id="1_damage"]
-[ext_resource type="Resource" path="res://resources/skills/thunder.tres" id="2_04fx3"]
+[ext_resource type="Resource" uid="uid://bty725348hs6b" path="res://resources/skills/thunder.tres" id="2_04fx3"]
 [ext_resource type="Texture2D" uid="uid://beeeygs7klr5" path="res://assets/Super Pixel Effects Gigapack (Free Version)/spritesheet/Lightning/lightning_strike_001/lightning_strike_001_small_violet/spritesheet.png" id="2_effect"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_frame_0"]
@@ -64,7 +64,7 @@ animations = [{
 [sub_resource type="Animation" id="Animation_4efi7"]
 length = 0.1
 
-[sub_resource type="Animation" id="Animation_7ix8b"]
+[sub_resource type="Animation" id="Animation_04fx3"]
 length = 0.4666667
 tracks/0/type = "method"
 tracks/0/imported = false
@@ -73,11 +73,17 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.2, 0.46),
-"transitions": PackedFloat32Array(1, 1),
+"times": PackedFloat32Array(0, 0.2, 0.22, 0.46),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
 "values": [{
 "args": [],
+"method": &"open_hitbox"
+}, {
+"args": [],
 "method": &"impact"
+}, {
+"args": [],
+"method": &"close_hitbox"
 }, {
 "args": [],
 "method": &"finish_cast"
@@ -113,8 +119,11 @@ tracks/2/keys = {
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_yeyrj"]
 _data = {
 &"RESET": SubResource("Animation_4efi7"),
-&"cast": SubResource("Animation_7ix8b")
+&"cast": SubResource("Animation_04fx3")
 }
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4efi7"]
+size = Vector2(72, 96)
 
 [node name="ThunderSkill" type="Node2D" unique_id=2035322110]
 script = ExtResource("1_damage")
@@ -122,7 +131,7 @@ skill_resource = ExtResource("2_04fx3")
 anchor_role = "primary_target"
 effect_offset = Vector2(0, 12)
 
-[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=367014717]
+[node name="EffectSprite" type="AnimatedSprite2D" parent="." unique_id=367014717 groups=["skill_material_visual"]]
 visible = false
 z_index = 20
 texture_filter = 1
@@ -130,5 +139,11 @@ sprite_frames = SubResource("SpriteFrames_cast")
 animation = &"cast"
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=2092460595]
+callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_yeyrj")
+
+[node name="SkillHitbox" type="Area2D" parent="." unique_id=673587610]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox" unique_id=2092190259]
+shape = SubResource("RectangleShape2D_4efi7")

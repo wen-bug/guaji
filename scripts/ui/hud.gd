@@ -3,6 +3,7 @@ extends CanvasLayer
 
 const ModManagerPanelScript = preload("res://scripts/modding/ui/mod_manager_panel.gd")
 const SkillValueResolverScript = preload("res://scripts/game/combat/skill_value_resolver.gd")
+const MemberSkillSlotScript = preload("res://scripts/ui/member_skill_slot.gd")
 
 const MENU_USE := 1
 const MENU_DROP := 2
@@ -11,6 +12,7 @@ const MENU_AFFIX := 4
 const MENU_EQUIP := 5
 const MENU_SALVAGE := 6
 const MENU_ASCEND := 7
+const MENU_SKILL_BOOK_CANCEL := 100
 const FORGE_MODE_CRAFT := "craft"
 const FORGE_MODE_ENHANCE := "enhance"
 const FORGE_MODE_REFINE := "refine"
@@ -148,6 +150,7 @@ const BUFF_TIME_WARNING_COLOR := Color(1.0, 0.66, 0.2, 1.0)
 @onready var fight_action_button: Button = $Root/FightPanel/PanelLayout/ExecuteButton
 @onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
 @onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
+@onready var skill_hitbox_mode_toggle: CheckButton = $Root/ExpeditionHud/PanelLayout/SkillHitboxModeToggle
 @onready var home_camera_controls: Control = $Root/HomeCameraControls
 @onready var home_camera_left_button: Button = $Root/HomeCameraControls/LeftButton
 @onready var home_camera_right_button: Button = $Root/HomeCameraControls/RightButton
@@ -243,6 +246,7 @@ var inventory_slot_texture_rects: Array[TextureRect] = []
 var current_inventory_type: String = DataTables.ITEM_TYPE_EQUIPMENT
 var selected_inventory_instance_id: String = ""
 var hovered_inventory_instance_id: String = ""
+var pending_skill_book_instance_id: String = ""
 var last_inventory_click_instance_id: String = ""
 var last_inventory_click_time_ms: int = 0
 var current_game_state = null
@@ -299,6 +303,10 @@ func _ready() -> void:
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
 	expedition_map_option.item_selected.connect(_on_expedition_map_option_selected)
 	return_home_button.pressed.connect(func(): expedition_exit_requested.emit())
+	skill_hitbox_mode_toggle.toggled.connect(_on_skill_hitbox_mode_toggled)
+	var skill_presentation := get_node_or_null("/root/SkillPresentation")
+	if skill_presentation != null and skill_presentation.has_signal("mode_changed"):
+		skill_presentation.mode_changed.connect(_on_skill_presentation_mode_changed)
 	home_camera_left_button.button_down.connect(func(): home_camera_pan_started.emit(-1))
 	home_camera_left_button.button_up.connect(func(): home_camera_pan_stopped.emit())
 	home_camera_right_button.button_down.connect(func(): home_camera_pan_started.emit(1))
@@ -613,6 +621,18 @@ func set_expedition_controls_visible(controls_visible: bool) -> void:
 	expedition_hud.visible = controls_visible
 
 
+func _on_skill_hitbox_mode_toggled(enabled: bool) -> void:
+	var skill_presentation := get_node_or_null("/root/SkillPresentation")
+	if skill_presentation == null or not skill_presentation.has_method("set_mode"):
+		return
+	skill_presentation.call("set_mode", &"hitbox" if enabled else &"material")
+	hud_save_requested.emit()
+
+
+func _on_skill_presentation_mode_changed(mode: StringName) -> void:
+	skill_hitbox_mode_toggle.set_pressed_no_signal(mode == &"hitbox")
+
+
 func set_home_camera_controls(controls_visible: bool, can_move_left: bool, can_move_right: bool) -> void:
 	home_camera_controls.visible = controls_visible
 	home_camera_left_button.disabled = not can_move_left
@@ -693,6 +713,11 @@ func _input(event: InputEvent) -> void:
 
 func load_hud_save_data(data: Dictionary) -> void:
 	saved_panel_positions.clear()
+	var mode := StringName(str(data.get("skill_presentation_mode", "material")))
+	var skill_presentation := get_node_or_null("/root/SkillPresentation")
+	if skill_presentation != null and skill_presentation.has_method("set_mode"):
+		skill_presentation.call("set_mode", mode)
+		skill_hitbox_mode_toggle.set_pressed_no_signal(bool(skill_presentation.call("is_hitbox_mode")))
 	var panel_positions: Variant = data.get("panel_positions", {})
 	if panel_positions is Dictionary:
 		for panel_name in panel_positions.keys():
@@ -707,7 +732,14 @@ func load_hud_save_data(data: Dictionary) -> void:
 
 func to_hud_save_data() -> Dictionary:
 	_capture_current_panel_positions()
-	return {"panel_positions": saved_panel_positions.duplicate(true)}
+	var mode := "material"
+	var skill_presentation := get_node_or_null("/root/SkillPresentation")
+	if skill_presentation != null and skill_presentation.has_method("get_mode"):
+		mode = str(skill_presentation.call("get_mode"))
+	return {
+		"panel_positions": saved_panel_positions.duplicate(true),
+		"skill_presentation_mode": mode,
+	}
 
 
 func refresh(game_state) -> void:
@@ -1011,30 +1043,44 @@ func _refresh_member_info_skills(game_state) -> void:
 		member_info_skill_grid.add_child(_create_member_info_slot("技能", "暂无角色", ""))
 		return
 	var member_skills: Array = member.get("skills", [])
-	if member_skills.is_empty():
-		member_info_skill_grid.add_child(_create_member_info_slot("技能", "未学习技能", ""))
-		return
-	for skill in member_skills:
-		var skill_id: String = str(skill.get("id", ""))
-		if bool(skill.get("disabled", false)):
-			member_info_skill_grid.add_child(_create_member_info_slot("技能", skill_id, "Mod 技能缺失，当前已禁用"))
+	var slot_count: int = maxi(member_skills.size(), game_state.MAX_MEMBER_SKILL_SLOTS)
+	for skill_index in range(slot_count):
+		if skill_index >= member_skills.size():
+			member_info_skill_grid.add_child(_create_member_info_slot("技能%d" % (skill_index + 1), "空槽位", ""))
 			continue
-		var element_id: String = str(skill.get("element", ""))
-		var target_mode_text: String = DataTables.skill_target_mode_name(DataTables.skill_target_mode(skill))
-		var effect_names := PackedStringArray()
-		for tag in DataTables.skill_effect_tags(skill):
-			if effect_names.size() >= 2:
-				break
-			effect_names.append(DataTables.skill_effect_tag_name(str(tag)))
-		var classification := target_mode_text
-		if not effect_names.is_empty():
-			classification += "·%s" % "/".join(effect_names)
-		var cooldown_text: String = str(int(skill.get("cooldown", 0)))
-		var detail: String = "%s  %s  CD%s  MP%d" % [classification, DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0))]
-		var scaling_text := _skill_scaling_text(skill, game_state, selected_party_member_id)
-		if not scaling_text.is_empty():
-			detail += "\n%s" % scaling_text
-		member_info_skill_grid.add_child(_create_member_info_slot("技能", str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id)))
+		var skill: Dictionary = member_skills[skill_index]
+		var skill_id: String = str(skill.get("id", ""))
+		var slot: PanelContainer
+		if bool(skill.get("disabled", false)):
+			slot = _create_member_info_slot("技能%d" % (skill_index + 1), skill_id, "Mod 技能缺失，当前已禁用")
+		else:
+			var element_id: String = str(skill.get("element", ""))
+			var target_mode_text: String = DataTables.skill_target_mode_name(DataTables.skill_target_mode(skill))
+			var effect_names := PackedStringArray()
+			for tag in DataTables.skill_effect_tags(skill):
+				if effect_names.size() >= 2:
+					break
+				effect_names.append(DataTables.skill_effect_tag_name(str(tag)))
+			var classification := target_mode_text
+			if not effect_names.is_empty():
+				classification += "·%s" % "/".join(effect_names)
+			var cooldown_text: String = str(int(skill.get("cooldown", 0)))
+			var detail: String = "%s  %s  CD%s  MP%d" % [classification, DataTables.element_name(element_id), cooldown_text, int(skill.get("mp_cost", 0))]
+			var scaling_text := _skill_scaling_text(skill, game_state, selected_party_member_id)
+			if not scaling_text.is_empty():
+				detail += "\n%s" % scaling_text
+			slot = _create_member_info_slot("技能%d" % (skill_index + 1), str(skill.get("name", "未命名技能")), detail, DataTables.skill_icon_texture(skill_id))
+		slot.set_script(MemberSkillSlotScript)
+		slot.slot_index = skill_index
+		slot.swap_callback = Callable(self, "_on_member_skill_slot_swap")
+		member_info_skill_grid.add_child(slot)
+
+
+func _on_member_skill_slot_swap(from_index: int, to_index: int) -> void:
+	if current_game_state == null:
+		return
+	if current_game_state.reorder_member_skill(selected_party_member_id, from_index, to_index):
+		_refresh_member_info(current_game_state)
 
 
 func _skill_scaling_text(skill: Dictionary, game_state, member_id: String) -> String:
@@ -2217,8 +2263,60 @@ func _on_inventory_detail_use_pressed() -> void:
 		return
 	if DataTables.item_use_scope(str(item.get("item_id", ""))) not in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]:
 		return
-	if current_game_state.use_inventory_item_for_member(selected_inventory_instance_id, selected_party_member_id):
+	if _try_use_inventory_item(selected_inventory_instance_id):
 		_refresh_after_inventory_action()
+
+
+func _try_use_inventory_item(instance_id: String) -> bool:
+	if current_game_state == null or instance_id.is_empty():
+		return false
+	var item: Dictionary = current_game_state.inventory_item_by_instance(instance_id)
+	if item.is_empty():
+		return false
+	if str(item.get("type", "")) != DataTables.ITEM_TYPE_SKILL_BOOK or not current_game_state.member_skill_slots_full(selected_party_member_id):
+		return current_game_state.use_inventory_item_for_member(instance_id, selected_party_member_id)
+	pending_skill_book_instance_id = instance_id
+	_show_skill_book_replace_menu()
+	return true
+
+
+func _show_skill_book_replace_menu() -> void:
+	var member: Dictionary = current_game_state.member_by_id(selected_party_member_id)
+	if member.is_empty():
+		pending_skill_book_instance_id = ""
+		return
+	var skill_book_menu := PopupMenu.new()
+	add_child(skill_book_menu)
+	var member_skills: Array = member.get("skills", [])
+	for skill_index in range(member_skills.size()):
+		var skill: Dictionary = member_skills[skill_index]
+		var skill_name: String = str(skill.get("name", str(skill.get("id", "未命名技能"))))
+		if bool(skill.get("disabled", false)):
+			skill_name = "%s（已禁用）" % skill_name
+		skill_book_menu.add_item("替换槽位%d：%s" % [skill_index + 1, skill_name], skill_index)
+	skill_book_menu.add_item("取消", MENU_SKILL_BOOK_CANCEL)
+	skill_book_menu.id_pressed.connect(func(id: int): _on_skill_book_replace_menu_id(id))
+	skill_book_menu.close_requested.connect(func(): _on_skill_book_replace_menu_id(MENU_SKILL_BOOK_CANCEL))
+	skill_book_menu.popup_centered()
+	skill_book_menu.visibility_changed.connect(func():
+		if not skill_book_menu.visible:
+			skill_book_menu.queue_free())
+
+
+func _on_skill_book_replace_menu_id(id: int) -> void:
+	var instance_id: String = pending_skill_book_instance_id
+	pending_skill_book_instance_id = ""
+	if id == MENU_SKILL_BOOK_CANCEL or current_game_state == null or instance_id.is_empty():
+		return
+	var replace_index: int = id
+	var member: Dictionary = current_game_state.member_by_id(selected_party_member_id)
+	if replace_index < 0 or replace_index >= member.get("skills", []).size():
+		return
+	if current_game_state.use_skill_book_replacing(instance_id, selected_party_member_id, replace_index):
+		_refresh_after_inventory_action()
+		if member_info_panel.visible:
+			_refresh_member_info(current_game_state)
+
 
 func show_damage_popup(amount: int, world_position: Vector2, target_key: String = "", damage_type: String = "physical", is_heal: bool = false) -> void:
 	if is_heal:
@@ -2360,7 +2458,7 @@ func _on_inventory_slot_pressed(slot_index: int) -> void:
 	var clicked_item: Dictionary = current_game_state.inventory_item_by_instance(instance_id)
 	var can_direct_use: bool = current_game_state.is_inventory_item_direct_usable(instance_id) or str(clicked_item.get("type", "")) == DataTables.ITEM_TYPE_EQUIPMENT
 	if is_double_click and can_direct_use:
-		if current_game_state.use_inventory_item_for_member(instance_id, selected_party_member_id):
+		if _try_use_inventory_item(instance_id):
 			_refresh_after_inventory_action()
 
 
@@ -2423,7 +2521,7 @@ func _on_inventory_menu_id_pressed(id: int) -> void:
 	match id:
 		MENU_USE:
 			if DataTables.item_use_scope(str(selected_item.get("item_id", ""))) in [DataTables.ITEM_USE_SCOPE_HOME, DataTables.ITEM_USE_SCOPE_BOTH]:
-				current_game_state.use_inventory_item_for_member(selected_inventory_instance_id, selected_party_member_id)
+				_try_use_inventory_item(selected_inventory_instance_id)
 		MENU_EQUIP:
 			current_game_state.equip_item_for_member(selected_inventory_instance_id, selected_party_member_id)
 		MENU_ENHANCE:

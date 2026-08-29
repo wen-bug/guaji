@@ -6,6 +6,7 @@ signal combat_events_emitted(events: Array)
 signal impact_resolved(impact_id: StringName, result: Dictionary)
 
 const CombatSkillExecutorScript = preload("res://scripts/game/combat/combat_skill_executor.gd")
+const SkillHitboxDebugDrawerScript = preload("res://scripts/game/skills/base/skill_hitbox_debug_drawer.gd")
 const STATUS_ANIMATION_NAMES: Array[StringName] = [
 	&"apply", &"refresh", &"stack", &"loop", &"tick", &"absorb", &"break", &"remove",
 ]
@@ -34,10 +35,14 @@ var _impact_applied := false
 var _resolved_impact_ids: Dictionary = {}
 var _current_impact_id := StringName()
 var _hitbox_window_open := false
+var _hitbox_drawer: Node2D
+var _material_visuals: Array[CanvasItem] = []
 
 
 func _ready() -> void:
 	_bind_scene_nodes()
+	_bind_presentation_mode()
+	_sync_presentation_mode()
 
 
 func start_cast(cast_context: SkillCastContext) -> void:
@@ -65,6 +70,7 @@ func start_cast(cast_context: SkillCastContext) -> void:
 		return
 	global_position = _anchor_position() + effect_offset
 	_configure_projectile_paths()
+	_sync_presentation_mode()
 	_animation_player.play(&"cast")
 
 
@@ -81,6 +87,7 @@ func open_hitbox(impact_id: StringName = &"impact") -> void:
 	_current_impact_id = impact_id
 	_hitbox_window_open = true
 	_skill_hitbox.monitoring = true
+	_sync_presentation_mode()
 	call_deferred("_collect_overlaps")
 
 
@@ -89,6 +96,7 @@ func close_hitbox() -> void:
 		_skill_hitbox.set_deferred("monitoring", false)
 	_hitbox_window_open = false
 	_current_impact_id = StringName()
+	_sync_presentation_mode()
 
 
 func impact(impact_id: StringName = &"") -> void:
@@ -202,6 +210,9 @@ func contract_errors() -> Array[String]:
 			errors.append("包含 SkillHitbox 时 AnimationPlayer 处理模式必须为 Physics")
 		if not _has_collision_shape(_skill_hitbox):
 			errors.append("SkillHitbox 缺少手工创建的 CollisionShape2D")
+		for shape_node in _collision_shapes(_skill_hitbox):
+			if not _is_supported_debug_shape(shape_node.shape):
+				errors.append("SkillHitbox 包含不支持可视化的形状 %s" % shape_node.shape.get_class())
 	var projectile_paths: Array[SkillProjectilePath] = []
 	_find_projectile_paths(self, projectile_paths)
 	if not projectile_paths.is_empty():
@@ -238,6 +249,69 @@ func _bind_scene_nodes() -> void:
 		_skill_hitbox.collision_layer = 0
 		if not _skill_hitbox.area_entered.is_connected(_on_hitbox_area_entered):
 			_skill_hitbox.area_entered.connect(_on_hitbox_area_entered)
+	_bind_material_visuals()
+	_ensure_hitbox_drawer()
+
+
+func _bind_presentation_mode() -> void:
+	var settings := get_node_or_null("/root/SkillPresentation")
+	if settings == null or not settings.has_signal("mode_changed"):
+		return
+	var callback := Callable(self, "_on_presentation_mode_changed")
+	if not settings.is_connected("mode_changed", callback):
+		settings.connect("mode_changed", callback)
+
+
+func _bind_material_visuals() -> void:
+	_material_visuals.clear()
+	_find_material_visuals(self)
+	var fallback := get_node_or_null("EffectSprite") as CanvasItem
+	if fallback != null and not _material_visuals.has(fallback):
+		_material_visuals.append(fallback)
+	for visual in _material_visuals:
+		if not visual.has_meta("skill_material_visibility_layer"):
+			visual.set_meta("skill_material_visibility_layer", visual.visibility_layer)
+
+
+func _find_material_visuals(node: Node) -> void:
+	for child in node.get_children():
+		if child is CanvasItem and child.is_in_group("skill_material_visual"):
+			_material_visuals.append(child as CanvasItem)
+		_find_material_visuals(child)
+
+
+func _ensure_hitbox_drawer() -> void:
+	if _skill_hitbox == null or _hitbox_drawer != null:
+		return
+	_hitbox_drawer = SkillHitboxDebugDrawerScript.new()
+	_hitbox_drawer.name = "SkillHitboxDebugDrawer"
+	add_child(_hitbox_drawer)
+	_hitbox_drawer.setup(_skill_hitbox, _targets_allies())
+
+
+func _sync_presentation_mode() -> void:
+	var hitbox_mode := _is_hitbox_mode()
+	for visual in _material_visuals:
+		if visual != null and is_instance_valid(visual):
+			visual.visibility_layer = 0 if hitbox_mode else int(visual.get_meta("skill_material_visibility_layer", 1))
+	if _hitbox_drawer != null:
+		_hitbox_drawer.visible = hitbox_mode and _hitbox_window_open
+		_hitbox_drawer.queue_redraw()
+
+
+func _on_presentation_mode_changed(_mode: StringName) -> void:
+	_sync_presentation_mode()
+
+
+func _is_hitbox_mode() -> bool:
+	var settings := get_node_or_null("/root/SkillPresentation")
+	return settings != null and settings.has_method("is_hitbox_mode") and bool(settings.call("is_hitbox_mode"))
+
+
+func _targets_allies() -> bool:
+	if context != null:
+		return str(context.skill_data.get("target_scope", "")) in ["self", "single_ally", "all_allies"]
+	return skill_resource != null and skill_resource.target_scope in ["self", "single_ally", "all_allies"]
 
 
 func _bind_resolvers() -> void:
@@ -518,6 +592,19 @@ func _has_collision_shape(node: Node) -> bool:
 		if _has_collision_shape(child):
 			return true
 	return false
+
+
+func _collision_shapes(node: Node) -> Array[CollisionShape2D]:
+	var result: Array[CollisionShape2D] = []
+	for child in node.get_children():
+		if child is CollisionShape2D and (child as CollisionShape2D).shape != null:
+			result.append(child as CollisionShape2D)
+		result.append_array(_collision_shapes(child))
+	return result
+
+
+func _is_supported_debug_shape(shape: Shape2D) -> bool:
+	return shape is RectangleShape2D or shape is CircleShape2D or shape is CapsuleShape2D or shape is ConvexPolygonShape2D
 
 
 func _contains_status_visual(node: Node) -> bool:

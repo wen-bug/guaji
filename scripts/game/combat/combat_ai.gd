@@ -112,7 +112,8 @@ func _find_best_available_action(_game_state, action_type: String, hp_ratio: flo
 
 	if candidates.is_empty():
 		return {}
-	candidates.sort_custom(func(a, b): return int(a.get("priority", 0)) > int(b.get("priority", 0)))
+	# Slot order decides: skills are collected in member slot order, so the first
+	# candidate is the front-most usable skill of this action type.
 	return candidates[0]
 
 

@@ -8,7 +8,16 @@
 - Windows 10/11；其他平台不保证透明置顶和任务栏定位行为。
 - 主场景：[main.tscn](main.tscn)。
 
-使用编辑器打开项目：
+### 通过 godot-ai MCP 操作编辑器（推荐）
+
+项目内置 [godot_ai](addons/godot_ai/README.md) 插件（项目设置 > 插件 > Godot AI），编辑器打开时自动启动 MCP 服务器。开发、运行与测试验证优先通过 MCP 完成，不依赖命令行：
+
+- 运行项目或测试：`project_run`。测试用 `mode="custom"` 指定场景（如 `res://scripts/tests/core_loop_regression_test.tscn`），并传 `autosave=false`，避免把验证用的临时改动落盘。
+- 读取运行输出：`logs_read(source="game")`，测试通过以输出的 `*_PASS` 尾行为准（如 `CORE_LOOP_STAGE_5_PASS`）。
+- 修改脚本或场景文件后先 `filesystem_manage(op="scan")` 刷新编辑器文件系统，再运行。
+- 运行期检查活体游戏用 `game_eval`；主场景运行后用 `project_manage(op="stop")` 停止（测试场景会自行退出）。
+
+命令行方式作为无编辑器环境的后备。使用编辑器打开项目：
 
 ```powershell
 godot --editor --path .
@@ -33,7 +42,7 @@ godot --headless --path . scripts/tests/core_loop_regression_test.tscn
 godot --headless --path . scripts/tests/market_economy_test.tscn
 ```
 
-Mod API 2 示例契约需要先构建 PCK，再执行测试：
+Mod API 2 示例契约基于 `SceneTree`、没有 `.tscn` 场景，MCP 无法直接运行，需要先构建 PCK，再用命令行 `--script` 执行测试：
 
 ```powershell
 godot --headless --path . --script mod_sdk/example_mod/build_mod.gd -- artifacts/example_mod.pck

@@ -1575,7 +1575,7 @@ anchor_right = 1.0
 offset_left = -246.0
 offset_top = 8.0
 offset_right = -8.0
-offset_bottom = 118.0
+offset_bottom = 153.0
 grow_horizontal = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
@@ -1602,6 +1602,12 @@ theme_override_constants/outline_size = 1
 text = "正在自动寻找怪物"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="SkillHitboxModeToggle" type="CheckButton" parent="Root/ExpeditionHud/PanelLayout" unique_id=1676468942]
+custom_minimum_size = Vector2(216, 30)
+layout_mode = 2
+tooltip_text = "隐藏技能素材并显示真实物理判定范围"
+text = "判定块模式"
 
 [node name="ReturnHomeButton" type="Button" parent="Root/ExpeditionHud/PanelLayout" unique_id=600000302]
 custom_minimum_size = Vector2(216, 30)

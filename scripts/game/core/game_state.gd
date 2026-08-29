@@ -12,6 +12,7 @@ const FARM_STATUS_GROWING = "growing"
 const FARM_STATUS_READY = "ready"
 const PARTY_MAX_SIZE = 4
 const ROSTER_MAX_SIZE = 8
+const MAX_MEMBER_SKILL_SLOTS := 4
 const RECRUIT_RESOURCE_ID = "spirit_stone"
 const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
@@ -2098,7 +2099,7 @@ func _unequip_if_needed(instance_id: String) -> void:
 		item.erase("equipped_slot")
 
 
-func _use_skill_book(item: Dictionary, member_id: String = "") -> bool:
+func _use_skill_book(item: Dictionary, member_id: String = "", replace_index: int = -1) -> bool:
 	if member_id.is_empty():
 		member_id = default_party_member_id()
 	var member: Dictionary = member_by_id(member_id)
@@ -2118,11 +2119,57 @@ func _use_skill_book(item: Dictionary, member_id: String = "") -> bool:
 		log_added.emit("技能不存在，技能书未消耗")
 		return false
 	var member_skills: Array = member.get("skills", [])
-	# Learned character skills are append-only: skill books never replace an existing skill.
+	if member_skills.size() >= MAX_MEMBER_SKILL_SLOTS:
+		# Slots full: learn in place only when the caller chose a skill to replace.
+		if replace_index < 0 or replace_index >= member_skills.size():
+			log_added.emit("技能槽已满，请选择要替换的技能")
+			return false
+		member_skills[replace_index] = skill
+		_remove_inventory_count(item["item_id"], 1)
+		log_added.emit("学会%s并替换槽位%d" % [skill["name"], replace_index + 1])
+		changed.emit()
+		return true
 	member_skills.append(skill)
 	member["skills"] = member_skills
 	_remove_inventory_count(item["item_id"], 1)
 	log_added.emit("学会%s" % skill["name"])
+	changed.emit()
+	return true
+
+
+func member_skill_slots_full(member_id: String = "") -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		return false
+	return member.get("skills", []).size() >= MAX_MEMBER_SKILL_SLOTS
+
+
+func use_skill_book_replacing(instance_id: String, member_id: String, replace_index: int) -> bool:
+	var item: Dictionary = inventory_item_by_instance(instance_id)
+	if item.is_empty():
+		return false
+	return _use_skill_book(item, member_id, replace_index)
+
+
+func reorder_member_skill(member_id: String, index_a: int, index_b: int) -> bool:
+	if member_id.is_empty():
+		member_id = default_party_member_id()
+	var member: Dictionary = member_by_id(member_id)
+	if member.is_empty():
+		return false
+	var member_skills: Array = member.get("skills", [])
+	if index_a == index_b:
+		return false
+	if index_a < 0 or index_a >= member_skills.size():
+		return false
+	if index_b < 0 or index_b >= member_skills.size():
+		return false
+	var swapped = member_skills[index_a]
+	member_skills[index_a] = member_skills[index_b]
+	member_skills[index_b] = swapped
+	member["skills"] = member_skills
 	changed.emit()
 	return true
 
