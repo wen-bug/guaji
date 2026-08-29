@@ -309,7 +309,7 @@ func _check_schema_18_migration() -> void:
 	_expect_equal("stable t3 affixes generated", item.get("affixes", []).size(), 3)
 	_expect_equal("blueprints compensated", state.inventory_item_count(DataTables.ITEM_ID_ORE), 8)
 	_expect_equal("blueprint pity removed", int(state.reward_progress.get("blueprint_pity", -1)), 0)
-	_expect_equal("schema upgraded", int(state.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("schema upgraded", int(state.to_save_data().get("schema_version", 0)), 23)
 
 
 func _check_schema_19_migration() -> void:
@@ -335,7 +335,7 @@ func _check_schema_19_migration() -> void:
 	_expect_equal("water attack maps to mp", int(water.get("enhancement_allocations", {}).get("max_mp", 0)), 2)
 	_expect_equal("water element allocation retained", int(water.get("enhancement_allocations", {}).get("element_water", 0)), 1)
 	_expect_true("water hidden attack removed", not water.get("enhancement_allocations", {}).has("attack"))
-	_expect_equal("schema nineteen saved as current", int(state.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("schema nineteen saved as current", int(state.to_save_data().get("schema_version", 0)), 23)
 
 
 func _check_schema_20_migration() -> void:
@@ -368,7 +368,7 @@ func _check_schema_20_migration() -> void:
 	_expect_equal("schema twenty maps accessory id", str(water.get("item_id", "")), "accessory")
 	_expect_equal("schema twenty keeps accessory icon", str(water.get("icon_path", "")), "res://assets/equipment/accessory.png")
 	_expect_equal("schema twenty restores missing base", water.get("base_attributes", []), DataTables.equipment_tier_base_attributes("accessory", "t3", "accessory_water"))
-	_expect_equal("schema twenty saved", int(state.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("schema twenty saved", int(state.to_save_data().get("schema_version", 0)), 23)
 
 
 func _check_schema_21_migration() -> void:
@@ -417,7 +417,7 @@ func _check_schema_21_migration() -> void:
 	var member := state.member_by_id("member")
 	_expect_equal("schema twenty-one does not refill hp", int(member.get("stats", {}).get("hp", 0)), 20)
 	_expect_equal("schema twenty-one clamps mp to rebuilt maximum", int(member.get("stats", {}).get("mp", 0)), 60)
-	_expect_equal("schema twenty-one saves current schema", int(state.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("schema twenty-one saves current schema", int(state.to_save_data().get("schema_version", 0)), 23)
 
 
 func _expect_true(label: String, value: bool) -> void:

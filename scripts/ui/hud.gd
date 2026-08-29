@@ -21,7 +21,6 @@ const PARTY_MAX_SIZE := 4
 const ROSTER_MAX_SIZE := 8
 const INVENTORY_CATEGORIES := [
 	{"type": DataTables.ITEM_TYPE_SKILL_BOOK, "label": "技能书", "node": "SkillBookButton"},
-	{"type": DataTables.ITEM_TYPE_ALCHEMY_RECIPE, "label": "丹方", "node": "RecipeButton"},
 	{"type": DataTables.ITEM_TYPE_BLUEPRINT, "label": "装备图纸", "node": "BlueprintButton"},
 	{"type": DataTables.ITEM_TYPE_EQUIPMENT, "label": "装备", "node": "EquipmentButton"},
 	{"type": DataTables.ITEM_TYPE_MATERIAL, "label": "材料", "node": "MaterialButton"},
@@ -1960,7 +1959,7 @@ func _action_button_disabled(progress_id: String) -> bool:
 	if progress_id == "forge":
 		return current_game_state == null or current_game_state.inventory_item_count(DataTables.ITEM_ID_ORE) < current_game_state.forge_material_cost()
 	if progress_id == "alchemy":
-		return current_game_state == null or current_game_state.known_alchemy_recipes.is_empty()
+		return current_game_state == null or current_game_state.unlocked_alchemy_recipes().is_empty()
 	return current_game_state == null
 
 
@@ -3039,13 +3038,13 @@ func _refresh_alchemy_panel() -> void:
 	alchemy_craft_button.text = "立即炼丹"
 
 	if selected_alchemy_recipe_id.is_empty() or DataTables.alchemy_recipe_def(selected_alchemy_recipe_id).is_empty():
-		alchemy_recipe_slot_button.text = "选择图纸"
+		alchemy_recipe_slot_button.text = "选择丹方"
 		alchemy_max_count_label.text = "最多可做：0"
 		alchemy_craft_count_spinbox.min_value = 0.0
 		alchemy_craft_count_spinbox.max_value = 0.0
 		alchemy_craft_count_spinbox.value = 0.0
 		alchemy_craft_button.disabled = true
-		alchemy_hint_label.text = "%s\n请选择图纸" % _building_level_summary("alchemy")
+		alchemy_hint_label.text = "%s\n请选择丹方" % _building_level_summary("alchemy")
 		_clear_alchemy_material_grid()
 		return
 
@@ -3059,10 +3058,10 @@ func _refresh_alchemy_panel() -> void:
 
 	_refresh_alchemy_material_cost_grid()
 
-	var learned: bool = current_game_state.known_alchemy_recipes.has(selected_alchemy_recipe_id)
-	alchemy_craft_button.disabled = max_count <= 0 or not learned
-	if not learned:
-		alchemy_hint_label.text = "尚未学习该丹方"
+	var unlocked: bool = current_game_state.unlocked_alchemy_recipes().has(selected_alchemy_recipe_id)
+	alchemy_craft_button.disabled = max_count <= 0 or not unlocked
+	if not unlocked:
+		alchemy_hint_label.text = "炼丹建筑等级不足"
 	elif max_count <= 0:
 		alchemy_hint_label.text = "材料不足"
 	else:
@@ -3092,12 +3091,33 @@ func _refresh_alchemy_recipe_list() -> void:
 	alchemy_recipe_list.clear()
 	if current_game_state == null:
 		return
-	for recipe_id in current_game_state.known_alchemy_recipes:
+	var recipe_ids: Array = DataTables.ALCHEMY_RECIPE_DEFS.keys()
+	for registered_id in DataTables.content_ids("recipe", DataTables.ALCHEMY_RECIPE_DEFS):
+		if not recipe_ids.has(registered_id):
+			recipe_ids.append(registered_id)
+	var entries: Array = []
+	for raw_recipe_id in recipe_ids:
+		var recipe_id := str(raw_recipe_id)
 		if recipe_id.is_empty():
 			continue
-		var label: String = DataTables.resource_name(recipe_id)
-		var index: int = alchemy_recipe_list.add_item(label)
-		alchemy_recipe_list.set_item_metadata(index, recipe_id)
+		var recipe: Dictionary = DataTables.alchemy_recipe_def(recipe_id)
+		entries.append({
+			"id": recipe_id,
+			"name": DataTables.resource_name(recipe_id),
+			"unlock_level": maxi(1, int(recipe.get("unlock_building_level", 1))),
+		})
+	entries.sort_custom(func(a, b):
+		if int(a["unlock_level"]) != int(b["unlock_level"]):
+			return int(a["unlock_level"]) < int(b["unlock_level"])
+		return str(a["id"]) < str(b["id"]))
+	var alchemy_level: int = current_game_state.building_level("alchemy")
+	for entry in entries:
+		var unlock_level: int = int(entry["unlock_level"])
+		var index: int = alchemy_recipe_list.add_item("%s（%d级）" % [entry["name"], unlock_level])
+		alchemy_recipe_list.set_item_metadata(index, entry["id"])
+		alchemy_recipe_list.set_item_disabled(index, alchemy_level < unlock_level)
+		if alchemy_level < unlock_level:
+			alchemy_recipe_list.set_item_tooltip(index, "炼丹建筑 %d 级解锁" % unlock_level)
 
 
 func _clear_alchemy_material_grid() -> void:

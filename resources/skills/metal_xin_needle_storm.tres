@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/debuff.tscn" id="3_status_debuff_stat"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+base_amount = 7
+attribute_multiplier = 0.6
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "metal_xin_needle_storm_defense"
+kind = "status"
+target = "hit_targets"
+requires_hit = true
+base_amount = -2
+status_id = "metal_xin_needle_storm_defense"
+status_kind = "debuff_stat"
+stat = "defense"
+duration_turns = 3
+status_visual_scene = ExtResource("3_status_debuff_stat")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "metal_xin_needle_storm"
+display_name = "漫天花雨"
+icon_name = "metal_xin_needle_storm"
+icon_path = "res://assets/skills/metal_xin_needle_storm.png"
+element = "metal"
+mp_cost = 8
+cooldown = 4.0
+priority = 60
+target_scope = "all_enemies"
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_metal_xin_needle_storm"
+exchange_element_stone_id = "spirit_stone_metal"
+exchange_fragment_cost = 6
+exchange_stone_cost = 2
+description = "飞针如雨，伤敌并削弱其防御。"

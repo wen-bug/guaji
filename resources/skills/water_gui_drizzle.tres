@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/debuff.tscn" id="3_status_debuff_stat"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+base_amount = 7
+attribute_multiplier = 0.9
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "water_gui_drizzle_attack"
+kind = "status"
+target = "hit_targets"
+requires_hit = true
+base_amount = -1
+status_id = "water_gui_drizzle_attack"
+status_kind = "debuff_stat"
+stat = "attack"
+duration_turns = 3
+status_visual_scene = ExtResource("3_status_debuff_stat")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "water_gui_drizzle"
+display_name = "细雨符"
+icon_name = "water_gui_drizzle"
+icon_path = "res://assets/skills/water_gui_drizzle.png"
+element = "water"
+mp_cost = 5
+cooldown = 2.0
+priority = 90
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_water_gui_drizzle"
+exchange_element_stone_id = "spirit_stone_water"
+exchange_fragment_cost = 15
+exchange_stone_cost = 5
+description = "细雨侵体，削弱单个敌人攻击。"

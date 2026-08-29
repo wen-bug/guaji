@@ -1,12 +1,16 @@
 # Mod 存档与迁移
 
-Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 22 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
+Mod 存档字段从 GameState Schema 10 起包含 `mod_profile`、`mod_data`、`mod_rng` 和 `orphaned_mod_data`，当前 Schema 23 继续保留。每个 `ModPlugin` 收到的 `storage` 都已绑定自己的 Mod ID，只能使用 `storage.get_value(key, fallback)`、`set_value(key, value)`、`erase_value(key)` 和 `all()` 访问该命名空间。值必须能由 Godot Variant/ConfigFile 序列化。
 
 当已加载版本与存档 profile 不同，入口实例调用 `migrate_save(data, from_version, to_version)`。必须返回新的 Dictionary；返回其他类型会将该 Mod 标记为失败，并保留导入前数据。
 
 缺失定义的背包实例、装备、技能、命格和配方会移入 `orphaned_mod_data`，不参与玩法。装备保留 owner 与 slot。相同内容 ID 恢复后，在普通存档清洗前还原原角色、槽位和列表。未知形象只回退显示，不删除 `visual_id`。
 
 覆盖类 Mod 不改变内容 ID，因此不会触发休眠；作者负责让新定义兼容旧实例字段。
+
+## Schema 23
+
+Schema 23 移除炼丹学习机制：存档不再保存 `known_alchemy_recipes`，丹方完全由炼丹建筑等级解锁，旧档残留字段直接丢弃。核心物品 `recipe_pill` 同步退出：旧档残留库存按回收价双倍补偿灵石 x2 后移除。`recipe` 内容类型的 `unlock_building_level` 语义不变，Mod 配方不受影响。
 
 ## Schema 22
 
@@ -53,6 +57,6 @@ Schema 18 将核心装备迁移为十四个稳定模板、固定阶位基础值�
 - `blueprint_pity`：图纸十胜保底进度。
 - `unlocked_blueprints`：永久解锁的装备模板集合。
 
-迁移会按角色实际等级重算阶段、等级上限和 `next_exp`，并按比例保留当前经验进度；装备只迁移固定阶位穿戴需求，保留属性、强化、洗练和归属。旧调息丹方会自动学习并从背包移除。
+迁移会按角色实际等级重算阶段、等级上限和 `next_exp`，并按比例保留当前经验进度；装备只迁移固定阶位穿戴需求，保留属性、强化、洗练和归属。当时的旧调息丹方物品在该轮迁移中自动学习并从背包移除（丹方学习机制已在 Schema 23 退出，现为建筑等级自动解锁）。
 
 `equipment_level`、永久建筑品质和 `task_exp` 继续序列化以兼容旧档与 Mod，新逻辑不依赖旧语义。超出当前历练建筑上限的旧建筑不降级，但在历练追平前不可继续升级。

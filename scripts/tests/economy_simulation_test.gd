@@ -76,8 +76,7 @@ func _check_breakthrough_reachability() -> void:
 	var state := GameState.new()
 	state.account_progression["expedition_level"] = 6
 	state.building_levels["alchemy"] = 2
-	state._ensure_building_unlocked_recipes()
-	_expect_true("breakthrough recipe reachable by expedition six", state.known_alchemy_recipes.has("breakthrough_pill"))
+	_expect_true("breakthrough recipe reachable by expedition six", state.unlocked_alchemy_recipes().has("breakthrough_pill"))
 	var recipe := DataTables.alchemy_recipe_def("breakthrough_pill")
 	_expect_equal("breakthrough uses one base pill", int(recipe.get("materials", [])[0].get("amount", 0)), 1)
 	_expect_equal("breakthrough uses eight herb", int(recipe.get("materials", [])[1].get("amount", 0)), 8)

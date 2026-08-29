@@ -546,16 +546,6 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "技能书"
 
-[node name="RecipeButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=571620100]
-custom_minimum_size = Vector2(62, 24)
-layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
-text = "图纸"
-
 [node name="EquipmentButton" type="Button" parent="Root/InventoryPanel/InventoryLayout/CategoryRow" unique_id=1538518689]
 custom_minimum_size = Vector2(62, 24)
 layout_mode = 2

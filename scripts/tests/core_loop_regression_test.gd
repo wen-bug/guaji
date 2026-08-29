@@ -30,7 +30,6 @@ func _fresh_state() -> GameState:
 	state.party_order.clear()
 	state.reserve_order.clear()
 	state.recruit_candidates.clear()
-	state.known_alchemy_recipes.clear()
 	state.rng.seed = 173
 	return state
 
@@ -151,7 +150,21 @@ func _check_stage_2_progression() -> void:
 	_expect_true("schema 18 removes equip requirement", migrated_equipment.get("equip_requirement", {}).is_empty())
 	_expect_equal("schema 14 preserves enhancement", int(migrated_equipment.get("enhance_count", 0)), 3)
 	_expect_equal("schema 14 preserves refinement", migrated_equipment.get("refine_affixes", []).size(), 1)
-	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("new save schema", int(migrated.to_save_data().get("schema_version", 0)), 23)
+
+	var legacy := _fresh_state()
+	legacy.load_save_data({
+		"schema_version": 22,
+		"inventory": [
+			{"instance_id": "legacy-recipe", "item_id": "recipe_pill", "type": DataTables.ITEM_TYPE_ALCHEMY_RECIPE, "count": 1, "stackable": true},
+			{"instance_id": "legacy-stone", "item_id": "spirit_stone", "type": DataTables.ITEM_TYPE_MATERIAL, "count": 5, "stackable": true},
+		],
+		"known_alchemy_recipes": ["pill"],
+	})
+	_expect_true("schema 23 drops legacy recipe stock", legacy.inventory_item_count(DataTables.ITEM_ID_RECIPE_PILL) == 0)
+	_expect_equal("schema 23 compensates spirit stones", legacy.inventory_item_count("spirit_stone"), 7)
+	_expect_true("schema 23 save omits known recipes", not legacy.to_save_data().has("known_alchemy_recipes"))
+	_expect_true("alchemy lists unlocked by building level", legacy.unlocked_alchemy_recipes().has("pill"))
 
 
 func _check_stage_3_equipment_loop() -> void:
@@ -217,12 +230,11 @@ func _check_stage_4_skills_and_pills() -> void:
 	_expect_equal("stone conversion output", state.inventory_item_count("spirit_stone_fire"), 1)
 
 	var new_state := GameState.new()
-	_expect_true("new state automatically knows basic pill", new_state.known_alchemy_recipes.has("pill"))
+	_expect_true("new state unlocks basic pill", new_state.unlocked_alchemy_recipes().has("pill"))
 	_expect_equal("new state has no legacy recipe item", new_state.inventory_item_count("recipe_pill"), 0)
 	state.building_levels["alchemy"] = 5
-	state._ensure_building_unlocked_recipes()
 	for recipe_id in ["breakthrough_pill", "life_pill", "spirit_pill", "attack_pill", "defense_pill", "wood_pill", "fire_pill", "earth_pill", "metal_pill", "water_pill"]:
-		_expect_true("alchemy recipe unlocked: %s" % recipe_id, state.known_alchemy_recipes.has(recipe_id))
+		_expect_true("alchemy recipe unlocked: %s" % recipe_id, state.unlocked_alchemy_recipes().has(recipe_id))
 
 	var member: Dictionary = state.party_service.create_recruit_candidate(0, {})
 	member["kind"] = "companion"

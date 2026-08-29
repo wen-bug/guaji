@@ -21,9 +21,9 @@
 
 ## 游戏状态与数据
 
-`scripts/game/core/game_state.gd` 是账号和角色持久状态的聚合入口。它维护存档 Schema 22，向 UI 提供稳定门面，并把背包、队伍、生产、坊市和战斗结算委派给相应服务。
+`scripts/game/core/game_state.gd` 是账号和角色持久状态的聚合入口。它维护存档 Schema 23，向 UI 提供稳定门面，并把背包、队伍、生产、坊市和战斗结算委派给相应服务。
 
-`resources/items/` 与 `resources/skills/` 分别是 58 个核心物品和 12 个核心技能配置的唯一事实来源；两个 Inspector 可编辑 `index.tres` 由 `ItemConfigParser`、`SkillConfigParser` 严格加载、校验和缓存。`DataTables` 只保留稳定 ID、枚举、经济表及解析器生成的兼容字典。核心装备仍以十四个 Inspector 可编辑 `.tres` 为数值事实来源。
+`resources/items/` 与 `resources/skills/` 分别是 90 个核心物品和 51 个核心技能配置的唯一事实来源；两个 Inspector 可编辑 `index.tres` 由 `ItemConfigParser`、`SkillConfigParser` 严格加载、校验和缓存。`DataTables` 只保留稳定 ID、枚举、经济表及解析器生成的兼容字典。核心装备仍以十四个 Inspector 可编辑 `.tres` 为数值事实来源。
 
 主要服务边界：
 
@@ -70,6 +70,8 @@ Mod API 当前版本为 2：
 | `resources/skills/` | `SkillDef` 资源 |
 | `resources/maps/` | 地图和遭遇 Profile |
 | `assets/` | 图片、字体和其他导入资产 |
+| `artifacts/` | 构建产物输出目录，例如示例 Mod 打包出的 `example_mod.pck` 和过程截图 |
+| `scripts/editor/` | 编辑器侧内容工具，例如批量生成技能三件套的 `skill_scaffold.gd` 脚手架 |
 
 运行时资源路径使用 `res://`。文档链接使用相对仓库路径，避免把本机绝对路径写入文档。
 

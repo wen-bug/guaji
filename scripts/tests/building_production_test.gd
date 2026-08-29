@@ -28,7 +28,6 @@ func _fresh_state() -> GameState:
 	state.party_order.clear()
 	state.reserve_order.clear()
 	state.recruit_candidates.clear()
-	state.known_alchemy_recipes.clear()
 	state.rng.seed = 17
 	return state
 
@@ -37,7 +36,6 @@ func _check_character_free_production() -> void:
 	var state := _fresh_state()
 	state.add_inventory_item("herb", 10, false)
 	state.add_inventory_item("ore", 8, false)
-	state.known_alchemy_recipes.append("pill")
 	state.account_progression["expedition_level"] = 17
 
 	_expect_true("farm plants without characters", state.plant_farm_slot(0, "herb"))

@@ -1,6 +1,6 @@
 # 文档索引
 
-本文档是仓库文档的统一入口。游戏当前版本为 `0.2.0`，存档版本为 Schema 22，Mod 接口为 API 2。
+本文档是仓库文档的统一入口。游戏当前版本为 `0.2.0`，存档版本为 Schema 23，Mod 接口为 API 2。
 
 ## 项目与架构
 
@@ -36,7 +36,9 @@
 - [存档与迁移](modding/save-and-migration.md)
 - [安全与排错](modding/security-and-troubleshooting.md)
 - [API 变更记录](modding/api-changelog.md)
-- [JSON Schema 2](modding/schemas/v2/manifest.schema.json)
+- [示例 Mod](../mod_sdk/example_mod/README.md)：可构建的完整示例工程。
+- [JSON Schema 2](modding/schemas/v2/manifest.schema.json)：Manifest 与内容 Schema，目录 [modding/schemas/v2/](modding/schemas/v2/) 共 13 个。
+- 构建产物统一输出到 [artifacts/](../artifacts/)，例如示例 Mod 的 `example_mod.pck`。
 
 ## 事实来源
 

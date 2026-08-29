@@ -32,7 +32,6 @@ func _fresh_state(member_count: int = 1) -> GameState:
 	state.party_order.clear()
 	state.reserve_order.clear()
 	state.recruit_candidates.clear()
-	state.known_alchemy_recipes.clear()
 	state.rng.seed = 173
 	for index in range(member_count):
 		var member: Dictionary = state.party_service.create_recruit_candidate(index, {})
@@ -81,12 +80,10 @@ func _check_definitions_and_recipes() -> void:
 
 	var state := _fresh_state()
 	state.building_levels["alchemy"] = 5
-	state._ensure_building_unlocked_recipes()
-	_expect_true("tier one stat recipe locked at level five", not state.known_alchemy_recipes.has("t1_attack_enhance_pill"))
+	_expect_true("tier one stat recipe locked at level five", not state.unlocked_alchemy_recipes().has("t1_attack_enhance_pill"))
 	state.building_levels["alchemy"] = 6
-	state._ensure_building_unlocked_recipes()
-	_expect_true("stat recipe unlocks at level six", state.known_alchemy_recipes.has("t1_attack_enhance_pill"))
-	_expect_true("element recipe remains locked at level six", not state.known_alchemy_recipes.has("t1_fire_enhance_pill"))
+	_expect_true("stat recipe unlocks at level six", state.unlocked_alchemy_recipes().has("t1_attack_enhance_pill"))
+	_expect_true("element recipe remains locked at level six", not state.unlocked_alchemy_recipes().has("t1_fire_enhance_pill"))
 	state.add_inventory_item("blade_grass", 3, false)
 	state.add_inventory_item("herb", 8, false)
 	state.add_inventory_item("spirit_stone", 2, false)
@@ -96,8 +93,7 @@ func _check_definitions_and_recipes() -> void:
 	_expect_equal("craft spends stones", state.inventory_item_count("spirit_stone"), 0)
 	_expect_equal("permanent pill ignores level-six multiplier", state.inventory_item_count("t1_attack_enhance_pill"), 1)
 	state.building_levels["alchemy"] = 7
-	state._ensure_building_unlocked_recipes()
-	_expect_true("element recipe unlocks at level seven", state.known_alchemy_recipes.has("t1_fire_enhance_pill"))
+	_expect_true("element recipe unlocks at level seven", state.unlocked_alchemy_recipes().has("t1_fire_enhance_pill"))
 
 
 func _check_default_gain_and_targeting() -> void:
@@ -174,7 +170,7 @@ func _check_shared_limit_and_persistence() -> void:
 	_expect_equal("failed item count absent", state.permanent_attribute_enhance_item_uses_for(member_id, "t1_defense_enhance_pill"), 0)
 
 	var saved := state.to_save_data()
-	_expect_equal("save schema twenty-two", int(saved.get("schema_version", 0)), 22)
+	_expect_equal("save schema twenty-three", int(saved.get("schema_version", 0)), 23)
 	var loaded := GameState.new()
 	loaded.load_save_data(saved)
 	_expect_equal("tier count persists", loaded.permanent_attribute_enhance_tier_uses_for(member_id, "t1"), 100)

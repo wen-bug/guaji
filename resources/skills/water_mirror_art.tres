@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/shield.tscn" id="3_status_shield"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/hot.tscn" id="3_status_hot"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+effect_id = "water_mirror_art_shield"
+kind = "status"
+base_amount = 8
+status_id = "water_mirror_art_shield"
+status_kind = "shield"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_shield")
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "water_mirror_art_hot"
+kind = "status"
+base_amount = 2
+status_id = "water_mirror_art_hot"
+status_kind = "hot"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_hot")
+
+[sub_resource type="Resource" id="Resource_fx_2"]
+script = ExtResource("2_effect")
+effect_id = "water_mirror_art_cooldown"
+kind = "cooldown"
+target = "caster"
+cooldown_multiplier = 0.8
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "water_mirror_art"
+display_name = "水镜诀"
+icon_name = "water_mirror_art"
+icon_path = "res://assets/skills/water_mirror_art.png"
+element = "water"
+mp_cost = 8
+cooldown = 5.0
+priority = 75
+type = "buff"
+target_scope = "self"
+triggers = Array[String](["hp_below_60"])
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1"), SubResource("Resource_fx_2")])
+exchange_book_item_id = "skill_book_water_mirror_art"
+exchange_element_stone_id = "spirit_stone_water"
+exchange_fragment_cost = 10
+exchange_stone_cost = 3
+description = "水镜护身，并加速自身技能回转。"

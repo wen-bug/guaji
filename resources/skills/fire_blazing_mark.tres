@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/dot.tscn" id="3_status_dot"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+base_amount = 7
+attribute_multiplier = 0.85
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "fire_blazing_mark_dot"
+kind = "status"
+target = "hit_targets"
+requires_hit = true
+base_amount = 3
+status_id = "fire_blazing_mark_dot"
+status_kind = "dot"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_dot")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "fire_blazing_mark"
+display_name = "烈焰印"
+icon_name = "fire_blazing_mark"
+icon_path = "res://assets/skills/fire_blazing_mark.png"
+element = "fire"
+mp_cost = 9
+cooldown = 5.0
+priority = 75
+target_scope = "all_enemies"
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_fire_blazing_mark"
+exchange_element_stone_id = "spirit_stone_fire"
+exchange_fragment_cost = 10
+exchange_stone_cost = 3
+description = "烈焰烙印，灼烧全场敌人。"

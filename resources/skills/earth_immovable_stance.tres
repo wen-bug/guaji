@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/buff.tscn" id="3_status_buff_stat"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+effect_id = "earth_immovable_stance_defense"
+kind = "status"
+target = "caster"
+base_amount = 3
+status_id = "earth_immovable_stance_defense"
+status_kind = "buff_stat"
+stat = "defense"
+duration_turns = 3
+status_visual_scene = ExtResource("3_status_buff_stat")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "earth_immovable_stance"
+display_name = "不动势"
+icon_name = "earth_immovable_stance"
+icon_path = "res://assets/skills/earth_immovable_stance.png"
+element = "earth"
+mp_cost = 6
+cooldown = 6.0
+priority = 45
+type = "buff"
+target_scope = "self"
+triggers = Array[String](["hp_below_60"])
+effects = Array[Resource]([SubResource("Resource_fx_0")])
+exchange_book_item_id = "skill_book_earth_immovable_stance"
+exchange_element_stone_id = "spirit_stone_earth"
+exchange_fragment_cost = 3
+exchange_stone_cost = 1
+description = "稳如山岳，短时间提升自身防御。"

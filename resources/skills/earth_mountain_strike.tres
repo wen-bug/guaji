@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/shield.tscn" id="3_status_shield"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+base_amount = 7
+attribute_multiplier = 1.1
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "earth_mountain_strike_shield"
+kind = "status"
+target = "caster"
+base_amount = 4
+status_id = "earth_mountain_strike_shield"
+status_kind = "shield"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_shield")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "earth_mountain_strike"
+display_name = "震岳击"
+icon_name = "earth_mountain_strike"
+icon_path = "res://assets/skills/earth_mountain_strike.png"
+element = "earth"
+mp_cost = 6
+cooldown = 3.0
+priority = 45
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_earth_mountain_strike"
+exchange_element_stone_id = "spirit_stone_earth"
+exchange_fragment_cost = 3
+exchange_stone_cost = 1
+description = "崩山一击，并以土盾护身。"

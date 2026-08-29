@@ -43,7 +43,7 @@
 仓库示例构建命令：
 
 ```powershell
-godot --headless --path . --script mod_sdk/example_mod/build_mod.gd -- example_mod.pck
+godot --headless --path . --script mod_sdk/example_mod/build_mod.gd -- artifacts/example_mod.pck
 ```
 
 ## 下一步

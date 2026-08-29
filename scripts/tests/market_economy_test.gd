@@ -34,7 +34,6 @@ func _fresh_state(now_unix: int = TEST_NOW) -> GameState:
 	state.party_order.clear()
 	state.reserve_order.clear()
 	state.recruit_candidates.clear()
-	state.known_alchemy_recipes.clear()
 	state.market_state = {
 		"next_free_refresh_unix": now_unix + DataTables.MARKET_REFRESH_SECONDS,
 		"paid_refresh_count": 0,
@@ -58,7 +57,7 @@ func _check_market_data() -> void:
 	_expect_true("market token cannot be recycled", not DataTables.MARKET_RECYCLE_DEFS.has(DataTables.ITEM_ID_MARKET_TOKEN))
 	var state := _fresh_state()
 	_expect_equal("market data validates", state.market_validation_errors(), [])
-	_expect_equal("offer category count", DataTables.MARKET_GOODS_POOLS.size(), 5)
+	_expect_equal("offer category count", DataTables.MARKET_GOODS_POOLS.size(), 4)
 	var weight_total := 0
 	for pool in DataTables.MARKET_GOODS_POOLS.values():
 		weight_total += int(pool.get("weight", 0))
@@ -208,7 +207,7 @@ func _check_save_and_migration() -> void:
 	state.market_state["paid_refresh_count"] = 2
 	state.market_state["offers"][0]["sold"] = true
 	var saved := state.to_save_data()
-	_expect_equal("save schema twenty-two", int(saved.get("schema_version", 0)), 22)
+	_expect_equal("save schema twenty-three", int(saved.get("schema_version", 0)), 23)
 	var expected_market: Dictionary = saved.get("market_state", {}).duplicate(true)
 	var loaded := GameState.new()
 	loaded.load_save_data(saved)
@@ -217,7 +216,7 @@ func _check_save_and_migration() -> void:
 	legacy.load_save_data({"schema_version": 15, "inventory": [], "companions": [], "party_order": [], "recruit_candidates": []})
 	_expect_equal("schema fifteen gains six offers", legacy.market_offers().size(), 6)
 	_expect_equal("schema fifteen gains commissions", legacy.market_commissions().size(), 3)
-	_expect_equal("schema fifteen saves as twenty-two", int(legacy.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("schema fifteen saves as twenty-three", int(legacy.to_save_data().get("schema_version", 0)), 23)
 
 
 func _check_economy_guards() -> void:
@@ -238,7 +237,6 @@ func _check_economy_guards() -> void:
 
 	state = _fresh_state()
 	state.building_levels["alchemy"] = 7
-	state.known_alchemy_recipes.append("t1_attack_enhance_pill")
 	state.add_inventory_item("blade_grass", 3, false)
 	state.add_inventory_item("herb", 8, false)
 	state.add_inventory_item("spirit_stone", 2, false)

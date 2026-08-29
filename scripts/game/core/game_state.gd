@@ -18,7 +18,7 @@ const RECRUIT_COST_SPIRIT_STONE = 1
 const TEST_INVENTORY_ITEM_MIN_COUNT = 1
 const TEST_INVENTORY_SETTING := "game/development/seed_test_inventory"
 const LEVEL_ATTRIBUTE_POINTS = 5
-const SAVE_SCHEMA_VERSION = 22
+const SAVE_SCHEMA_VERSION = 23
 const BUILDING_RECRUIT = "recruit"
 const BUILDING_FORGE = "forge"
 const BUILDING_ALCHEMY = "alchemy"
@@ -57,7 +57,6 @@ var task_exp: Dictionary = {
 var inventory: Array = []
 var inventory_service: InventoryService
 var market_service
-var known_alchemy_recipes: Array = []
 var companions: Array = []
 var party_order: Array = []
 var reserve_order: Array = []
@@ -110,7 +109,6 @@ func _init() -> void:
 	party_service = PartyService.new(self)
 	rng.randomize()
 	_ensure_building_state()
-	_ensure_building_unlocked_recipes()
 	_ensure_reward_progress()
 	_ensure_account_progression()
 	_ensure_permanent_building_bonuses()
@@ -164,7 +162,6 @@ func to_save_data() -> Dictionary:
 		"selected_expedition_map_id": selected_expedition_map_id,
 		"task_exp": task_exp.duplicate(true),
 		"inventory": inventory.duplicate(true),
-		"known_alchemy_recipes": known_alchemy_recipes.duplicate(),
 		"companions": _companions_save_data(),
 		"party_order": party_order.duplicate(),
 		"reserve_order": reserve_order.duplicate(),
@@ -219,10 +216,6 @@ func load_save_data(data: Dictionary) -> void:
 		_migrate_schema_21_equipment_values()
 	if data.has("market_state") and data.get("market_state") is Dictionary:
 		market_state = data.get("market_state", {}).duplicate(true)
-	if data.has("known_alchemy_recipes"):
-		known_alchemy_recipes.clear()
-		for recipe_id in data.get("known_alchemy_recipes", []):
-			known_alchemy_recipes.append(str(recipe_id))
 	if data.has("companions"):
 		companions.assign(_duplicate_array(data.get("companions", [])))
 	_resolve_member_skill_references()
@@ -255,7 +248,8 @@ func load_save_data(data: Dictionary) -> void:
 	if data.has("permanent_building_bonuses"):
 		_load_dictionary_values(permanent_building_bonuses, data.get("permanent_building_bonuses", {}))
 	_ensure_building_state()
-	_ensure_building_unlocked_recipes()
+	if loaded_schema_version < 23:
+		_migrate_schema_23_alchemy(data)
 	if loaded_schema_version < 5:
 		account_progression = {
 			"expedition_level": 1,
@@ -269,7 +263,6 @@ func load_save_data(data: Dictionary) -> void:
 	_resolve_member_skill_references()
 	_quarantine_unknown_mod_content()
 	_sanitize_loaded_inventory()
-	_migrate_legacy_recipe_items()
 	if loaded_schema_version < 12:
 		_migrate_removed_production_traits()
 		_settle_legacy_production_jobs(legacy_production_jobs)
@@ -338,14 +331,6 @@ func _restore_available_mod_content() -> void:
 			if not owner.is_empty() and not slot.is_empty():
 				owner.get("equipped", {})[slot] = instance_id
 	orphaned_mod_data["inventory"] = remaining_inventory
-	var remaining_recipes: Array = []
-	for recipe_id in orphaned_mod_data["recipes"]:
-		if DataTables.content_has("recipe", str(recipe_id), DataTables.ALCHEMY_RECIPE_DEFS):
-			if not known_alchemy_recipes.has(str(recipe_id)):
-				known_alchemy_recipes.append(str(recipe_id))
-		else:
-			remaining_recipes.append(recipe_id)
-	orphaned_mod_data["recipes"] = remaining_recipes
 	for category in ["skills", "traits"]:
 		var remaining: Array = []
 		var kind := "skill" if category == "skills" else "trait"
@@ -460,13 +445,6 @@ func _quarantine_unknown_mod_content() -> void:
 		else:
 			kept_inventory.append(item)
 	inventory = kept_inventory
-	var kept_recipes: Array = []
-	for recipe_id in known_alchemy_recipes:
-		if DataTables.content_has("recipe", str(recipe_id), DataTables.ALCHEMY_RECIPE_DEFS):
-			kept_recipes.append(recipe_id)
-		else:
-			orphaned_mod_data["recipes"].append(recipe_id)
-	known_alchemy_recipes = kept_recipes
 	for member in companions:
 		if not (member is Dictionary):
 			continue
@@ -671,7 +649,6 @@ func upgrade_building(building_id: String) -> bool:
 		log_added.emit("%s不足，升级需要 %s x%d" % [DataTables.resource_name(item_id), DataTables.resource_name(item_id), amount])
 		return false
 	building_levels[building_id] = current_level + 1
-	_ensure_building_unlocked_recipes()
 	log_added.emit("%s等级提升至 %d" % [DataTables.building_name(building_id), int(building_levels[building_id])])
 	changed.emit()
 	return true
@@ -2184,20 +2161,6 @@ func _knows_skill(skill_id: String, member_id: String = "") -> bool:
 	return false
 
 
-func _use_alchemy_recipe(item: Dictionary) -> bool:
-	var recipe_id: String = item.get("payload", {}).get("recipe_id", "")
-	if recipe_id.is_empty():
-		return false
-	if known_alchemy_recipes.has(recipe_id):
-		log_added.emit("已学会该丹方")
-		return false
-	known_alchemy_recipes.append(recipe_id)
-	_remove_inventory_count(item["item_id"], 1)
-	log_added.emit("学会丹方：%s" % DataTables.resource_name(recipe_id))
-	changed.emit()
-	return true
-
-
 func permanent_attribute_enhance_tier_uses_for(member_id: String, tier_id: String) -> int:
 	var member: Dictionary = member_by_id(member_id)
 	if member.is_empty():
@@ -2307,7 +2270,6 @@ func _use_typed_item_for_member(item: Dictionary, member_id: String) -> bool:
 		"unlock_content":
 			var reference_kind := str(first_effect.get("reference_kind", ""))
 			if reference_kind == "skill": return _use_skill_book(item, member_id)
-			if reference_kind == "alchemy_recipe": return _use_alchemy_recipe(item)
 			if reference_kind == "equipment_template": return use_equipment_blueprint(item)
 		"building_quality":
 			return apply_permanent_building_quality(item)
@@ -2768,10 +2730,11 @@ func _refresh_farm_progress_state() -> void:
 		clear_progress_state("farm")
 
 
-func random_known_alchemy_recipe() -> String:
-	if known_alchemy_recipes.is_empty():
+func random_unlocked_alchemy_recipe() -> String:
+	var recipe_ids: Array[String] = unlocked_alchemy_recipes()
+	if recipe_ids.is_empty():
 		return ""
-	return str(known_alchemy_recipes[rng.randi_range(0, known_alchemy_recipes.size() - 1)])
+	return recipe_ids[rng.randi_range(0, recipe_ids.size() - 1)]
 
 
 func alchemy_max_craft_count(recipe_id: String) -> int:
@@ -2796,8 +2759,8 @@ func craft_alchemy_recipe(recipe_id: String, amount: int) -> bool:
 	if recipe_id.is_empty() or amount < 1:
 		log_added.emit("炼丹数量无效")
 		return false
-	if not known_alchemy_recipes.has(recipe_id):
-		log_added.emit("尚未学习丹方")
+	if not unlocked_alchemy_recipes().has(recipe_id):
+		log_added.emit("炼丹建筑等级不足")
 		return false
 
 	var recipe: Dictionary = DataTables.alchemy_recipe_def(recipe_id)
@@ -3176,17 +3139,19 @@ func _attribute_gains_text(gains: Dictionary) -> String:
 	return "、".join(parts)
 
 
-func _ensure_building_unlocked_recipes() -> void:
+func unlocked_alchemy_recipes() -> Array[String]:
 	var alchemy_level: int = building_level(BUILDING_ALCHEMY)
 	var recipe_ids: Array = DataTables.ALCHEMY_RECIPE_DEFS.keys()
 	for registered_id in DataTables.content_ids("recipe", DataTables.ALCHEMY_RECIPE_DEFS):
 		if not recipe_ids.has(registered_id):
 			recipe_ids.append(registered_id)
+	var unlocked: Array[String] = []
 	for recipe_id in recipe_ids:
 		var recipe: Dictionary = DataTables.alchemy_recipe_def(str(recipe_id))
 		var unlock_level: int = maxi(1, int(recipe.get("unlock_building_level", 1)))
-		if alchemy_level >= unlock_level and not known_alchemy_recipes.has(str(recipe_id)):
-			known_alchemy_recipes.append(str(recipe_id))
+		if alchemy_level >= unlock_level:
+			unlocked.append(str(recipe_id))
+	return unlocked
 
 
 func _migrate_schema_14_progression() -> void:
@@ -3280,12 +3245,14 @@ func salvage_equipment(instance_id: String) -> bool:
 	return false
 
 
-func _migrate_legacy_recipe_items() -> void:
+func _migrate_schema_23_alchemy(_data: Dictionary) -> void:
+	# 丹方改为按炼丹建筑等级直接解锁，known_alchemy_recipes 字段自然丢弃。
+	# 残留 recipe_pill（调息丹方图纸）库存按回收价值补偿灵石后移除。
 	var legacy_count: int = inventory_item_count(DataTables.ITEM_ID_RECIPE_PILL)
 	if legacy_count > 0:
 		_remove_inventory_count(DataTables.ITEM_ID_RECIPE_PILL, legacy_count)
-	if not known_alchemy_recipes.has("pill"):
-		known_alchemy_recipes.append("pill")
+		add_inventory_item("spirit_stone", legacy_count * 2, false)
+		log_added.emit("丹方已随炼丹建筑等级解锁，回收调息丹方图纸 x%d，补偿灵石 x%d" % [legacy_count, legacy_count * 2])
 
 
 func exchange_skill_manual(skill_id: String) -> bool:

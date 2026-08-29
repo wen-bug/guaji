@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/item_effect_def.gd" id="1_effect"]
+[ext_resource type="Script" path="res://scripts/game/data/item_def.gd" id="2_item"]
+
+[sub_resource type="Resource" id="Resource_unlock"]
+script = ExtResource("1_effect")
+effect_id = "unlock_skill"
+kind = "unlock_content"
+reference_kind = "skill"
+reference_id = "wood_breath_array"
+
+[resource]
+script = ExtResource("2_item")
+id = "skill_book_wood_breath_array"
+item_no = 1079
+type = "skill_book"
+display_name = "生息阵技能书"
+icon_name = "skill_book_wood_breath_array"
+icon_path = "res://assets/items/skill_book_wood_breath_array.png"
+description = "使用后令选中角色永久学会生息阵。"
+usable = true
+use_context = "home"
+gain_target = "wood"
+effects = Array[Resource]([SubResource("Resource_unlock")])

@@ -47,7 +47,7 @@ const ITEM_ID_SPIRIT_STONE_WOOD := "spirit_stone_wood"
 const ITEM_ID_SPIRIT_STONE_METAL := "spirit_stone_metal"
 const ITEM_ID_SPIRIT_STONE_WATER := "spirit_stone_water"
 const ITEM_ID_REFINE_TALISMAN := "refine_talisman"
-const ITEM_ID_RECIPE_PILL := "recipe_pill"
+const ITEM_ID_RECIPE_PILL := "recipe_pill"  # 已废弃：仅 Schema 23 迁移引用
 const ITEM_ID_PILL := "pill"
 const ITEM_ID_BREAKTHROUGH_PILL := "breakthrough_pill"
 const ITEM_ID_SKILL_BOOK_THUNDER := "skill_book_thunder"
@@ -362,7 +362,6 @@ const MARKET_RECYCLE_DEFS := {
 	"metal_pill": {"amount": 5, "tokens": 1},
 	"water_pill": {"amount": 5, "tokens": 1},
 	"breakthrough_pill": {"amount": 3, "tokens": 1},
-	"recipe_pill": {"amount": 1, "tokens": 2, "valuable": true},
 	"skill_book_thunder": {"amount": 1, "tokens": 2, "valuable": true},
 	"skill_book_poison": {"amount": 1, "tokens": 2, "valuable": true},
 	"skill_book_heal": {"amount": 1, "tokens": 2, "valuable": true},
@@ -382,7 +381,7 @@ const MARKET_RECYCLE_DEFS := {
 }
 
 const MARKET_GOODS_POOLS := {
-	"basic": {"weight": 40, "entries": [
+	"basic": {"weight": 45, "entries": [
 		{"item_id": "herb", "amount": 8, "price": 2},
 		{"item_id": "ore", "amount": 6, "price": 2},
 		{"item_id": "blade_grass", "amount": 4, "price": 2},
@@ -396,7 +395,7 @@ const MARKET_GOODS_POOLS := {
 		{"item_id": "metal_reed", "amount": 4, "price": 2},
 		{"item_id": "water_orchid", "amount": 4, "price": 2},
 	]},
-	"production": {"weight": 25, "entries": [
+	"production": {"weight": 30, "entries": [
 		{"item_id": "spirit_stone", "amount": 2, "price": 4},
 		{"item_id": "spirit_stone_wood", "amount": 1, "price": 3},
 		{"item_id": "spirit_stone_fire", "amount": 1, "price": 3},
@@ -419,9 +418,6 @@ const MARKET_GOODS_POOLS := {
 		{"item_id": "earth_pill", "amount": 1, "price": 4, "recipe_id": "earth_pill"},
 		{"item_id": "metal_pill", "amount": 1, "price": 4, "recipe_id": "metal_pill"},
 		{"item_id": "water_pill", "amount": 1, "price": 4, "recipe_id": "water_pill"},
-	]},
-	"knowledge": {"weight": 10, "entries": [
-		{"item_id": "recipe_pill", "amount": 1, "price": 16},
 	]},
 	"rare": {"weight": 5, "entries": [
 		{"item_id": "skill_book_thunder", "amount": 1, "price": 32, "min_expedition_level": 6},
@@ -1839,7 +1835,7 @@ static func item_type_name(type_id: String) -> String:
 		ITEM_TYPE_PILL:
 			return "丹药"
 		ITEM_TYPE_ALCHEMY_RECIPE:
-			return "图纸"
+			return "图纸"  # 已废弃：核心已无图纸物品，保留类型名供 Mod 物品兼容
 		_:
 			return type_id
 

@@ -210,7 +210,7 @@ StatusVisualRoot           Node2D，绑定 StatusVisualBase
 └─ AnimationPlayer
 ```
 
-复制 `status_visual_template.tscn` 或继承五类通用场景。状态贴图默认使用来源技能图标，
+复制 `res://scripts/game/skills/status/status_visual_template.tscn` 或继承五类通用场景。状态贴图默认使用来源技能图标，
 也可以在专属变体中覆盖贴图或 `tint`。状态场景只能包含属性轨道，禁止方法轨道。
 
 | 动画名 | 战斗事件 | 是否阻塞 | 适用类型 |
@@ -282,6 +282,63 @@ effects[1] = status(dot, status_visual_scene = poison.tscn)
 - 判定模式仍等待状态动画：状态场景根必须继承 `StatusVisualBase`，不要自行等待
   `AnimationPlayer.animation_finished`。
 - 契约报告不支持的形状：只使用矩形、圆、胶囊和凸多边形，或先扩展绘制契约和测试。
+
+## 脚手架生成器
+
+批量制作新技能时优先使用 `res://scripts/editor/skill_scaffold.gd`。它在
+`MANIFEST` 常量中登记技能清单，一次性生成三件套并注册索引：
+
+1. `resources/skills/<id>.tres`：SkillDef，含占位效果（伤害/治疗
+   `base_amount = 7`）、按阶段自动填写的兑换成本与优先级；
+2. `scripts/game/skills/<分类>/<id>_skill.tscn`：契约合法的释放场景（空白
+   `EffectSprite`、RESET/cast 动画、方法轨道、判定形状按预设配置）；
+3. `resources/items/skill_book_<id>.tres`：技能书 ItemDef（item_no 从 1070
+   顺延），并自动注册技能索引与物品索引。
+
+调用方式（编辑器运行中，任意 `game_eval` 或调试控制台）：
+
+```gdscript
+load("res://scripts/editor/skill_scaffold.gd").generate_all()
+```
+
+生成器**幂等**：目标文件已存在则跳过，索引只追加缺失条目，支持分批登记与
+断点续跑。生成结果打印报告（生成/跳过/错误与人工步骤清单）。
+
+`MANIFEST` 条目字段：`id`、`name`、`element`、`stage`（1–4，决定兑换成本
+3/6/10/15 残卷与 1/2/3/5 灵石）、`preset`、`mp`、`cd`、`desc`，可选
+`trigger`（AI 触发条件）与 `fx`（效果简写数组）。`fx` 简写约定：
+
+| 简写 | 含义 |
+| --- | --- |
+| `["d", 倍率]` | 伤害；可加第三位无视防御、第四位 `impact_id`（多段） |
+| `["h", 倍率]` | 治疗 |
+| `["dot", 数值, 回合]` | DOT 状态，随伤害挂命中目标 |
+| `["hot", 数值, 回合, 目标?]` | HOT；目标省略为受击方，`"caster"` 为施法者 |
+| `["shield", 数值, 回合, 目标?]` | 护盾，同上 |
+| `["stat", 属性, ±数值, 回合]` | 属性增减；负值随伤害挂命中目标，正值挂判定重叠目标（自身预设挂施法者） |
+| `["cd", 倍率]` | 冷却加速（`kind = "cooldown"`，挂施法者） |
+
+预设表（时间轴与判定形状遵循上文契约）：
+
+| preset | 根脚本 | target_scope | 形状 | cast |
+| --- | --- | --- | --- | --- |
+| `single_enemy` | DirectDamageSkill | single_enemy | Rect 72×96 | 0.3s |
+| `aoe_enemy` | DirectDamageSkill | all_enemies | Rect 480×96 | 0.4s |
+| `self_buff` | BuffSkill | self | Rect 72×96 | 0.3s |
+| `ally_buff` | BuffSkill | single_ally | Circle 96 | 0.5s |
+| `heal_ally` | HealSkill | single_ally | Circle 96 | 0.5s |
+| `heal_all` | HealSkill | all_allies | Rect 480×96 | 0.5s |
+| `team_buff` | BuffSkill | all_allies | Rect 480×96 | 0.5s |
+| `projectile` | DirectDamageSkill | single_enemy | Capsule 12×48 + ProjectilePath | 0.6s |
+| `multi_hit_2` | DirectDamageSkill | single_enemy | Rect 72×96 | 0.7s，hit_1/hit_2 |
+| `multi_hit_3` | DirectDamageSkill | single_enemy | Rect 72×96 | 1.0s，hit_1/2/3 |
+
+生成后的人工三步（也是脚手架不代替的部分）：
+
+1. 在 Inspector 中填写真实数值与效果，替换占位值；
+2. 给 `EffectSprite` 贴 `SpriteFrames`（参照 `thunder_skill` 三轨道模式补
+   play/visible 轨道），并补充图标素材；
+3. 判定块模式实放，微调 open/impact/close 时机与判定形状。
 
 ## 模板约定
 

@@ -82,9 +82,9 @@ func _on_home_action_requested(task_type: int) -> void:
 	elif task_type == GameDefs.TaskType.FORGE:
 		game_state.craft_equipment()
 	elif task_type == GameDefs.TaskType.ALCHEMY:
-		var pill_id: String = game_state.random_known_alchemy_recipe()
+		var pill_id: String = game_state.random_unlocked_alchemy_recipe()
 		if pill_id.is_empty():
-			hud.push_log("没有已学丹方")
+			hud.push_log("炼丹建筑等级不足")
 			return
 		game_state.craft_alchemy_recipe(pill_id, 1)
 	elif task_type == GameDefs.TaskType.FIGHT:

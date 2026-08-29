@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/dot.tscn" id="3_status_dot"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/hot.tscn" id="3_status_hot"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+base_amount = 7
+attribute_multiplier = 0.7
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "wood_yi_parasitic_seed_dot"
+kind = "status"
+target = "hit_targets"
+requires_hit = true
+base_amount = 2
+status_id = "wood_yi_parasitic_seed_dot"
+status_kind = "dot"
+duration_turns = 4
+status_visual_scene = ExtResource("3_status_dot")
+
+[sub_resource type="Resource" id="Resource_fx_2"]
+script = ExtResource("2_effect")
+effect_id = "wood_yi_parasitic_seed_hot"
+kind = "status"
+target = "caster"
+base_amount = 2
+status_id = "wood_yi_parasitic_seed_hot"
+status_kind = "hot"
+duration_turns = 4
+status_visual_scene = ExtResource("3_status_hot")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "wood_yi_parasitic_seed"
+display_name = "寄种术"
+icon_name = "wood_yi_parasitic_seed"
+icon_path = "res://assets/skills/wood_yi_parasitic_seed.png"
+element = "wood"
+mp_cost = 8
+cooldown = 4.0
+priority = 60
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1"), SubResource("Resource_fx_2")])
+exchange_book_item_id = "skill_book_wood_yi_parasitic_seed"
+exchange_element_stone_id = "spirit_stone_wood"
+exchange_fragment_cost = 6
+exchange_stone_cost = 2
+description = "寄生种子汲取敌血反哺自身。"

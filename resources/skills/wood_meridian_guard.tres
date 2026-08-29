@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/shield.tscn" id="3_status_shield"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/hot.tscn" id="3_status_hot"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+effect_id = "wood_meridian_guard_shield"
+kind = "status"
+base_amount = 8
+status_id = "wood_meridian_guard_shield"
+status_kind = "shield"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_shield")
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "wood_meridian_guard_hot"
+kind = "status"
+base_amount = 2
+status_id = "wood_meridian_guard_hot"
+status_kind = "hot"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_hot")
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "wood_meridian_guard"
+display_name = "青木护脉"
+icon_name = "wood_meridian_guard"
+icon_path = "res://assets/skills/wood_meridian_guard.png"
+element = "wood"
+mp_cost = 11
+cooldown = 7.0
+priority = 45
+type = "defense"
+target_scope = "single_ally"
+triggers = Array[String](["hp_below_60"])
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_wood_meridian_guard"
+exchange_element_stone_id = "spirit_stone_wood"
+exchange_fragment_cost = 3
+exchange_stone_cost = 1
+description = "木灵护脉，为同伴护盾并续疗。"

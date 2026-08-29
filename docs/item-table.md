@@ -11,7 +11,6 @@
 | `material` | 材料 | 消耗、强化、洗练、招募等 |
 | `crop` | 作物 | 农田种子和炼丹材料 |
 | `pill` | 丹药 | 恢复、突破或 Buff |
-| `alchemy_recipe` | 炼丹图纸 | 使用后学习丹方 |
 
 ## 已实现：物品定义字段
 
@@ -37,9 +36,9 @@
 
 当前 `.tres` 是核心内容配置来源：
 
-- 物品：`resources/items/index.tres` 索引 58 个 `ItemDef`，效果使用类型化子资源；`ITEM_DEFS` 由解析器生成。
+- 物品：`resources/items/index.tres` 索引 90 个 `ItemDef`（51 个核心物品加 39 本五行技能书），效果使用类型化子资源；`ITEM_DEFS` 由解析器生成。
 - 装备：`resources/equipment/index.tres` 索引十四个独立 `.tres`；每件资源通过共享的纯结构脚本暴露 Inspector 字段并保存完整五阶数值，脚本本身不记录具体装备数据。
-- 技能：`resources/skills/index.tres` 索引 10 个主动技能及两个普通攻击；`SKILL_DEFS`、普通攻击和功法兑换表均由解析器生成。
+- 技能：`resources/skills/index.tres` 索引 49 个主动技能（含 39 个脚手架占位技能）及两个普通攻击；`SKILL_DEFS`、普通攻击和功法兑换表均由解析器生成。
 
 普通物品、技能和核心装备的图标读取顺序均为 `.tres.icon_texture` -> `icon_path` 图片 -> UI 占位色块或文字；装备 `.tres` 是基础值、随机层、强化和升阶数值的事实来源。
 
@@ -55,7 +54,6 @@
 | 1012 | `spirit_stone_metal` | 金灵石 | `material` | 否 | `metal` | 强化 `element_metal`, `+1` |
 | 1013 | `spirit_stone_water` | 水灵石 | `material` | 否 | `water` | 强化 `element_water`, `+1` |
 | 1014 | `refine_talisman` | 洗练符 | `material` | 否 | `none` | 装备洗练材料 |
-| 1015 | `recipe_pill` | 调息丹方 | `alchemy_recipe` | 是 | `none` | 学习 `pill` 丹方 |
 | 1016 | `pill` | 调息丹 | `pill` | 是 | `none` | 单人；当前角色恢复 15% 最大生命和法力 |
 | 1017 | `breakthrough_pill` | 破境丹 | `pill` | 是 | `none` | `breakthrough=true` |
 | 1019 | `blade_grass` | 刃纹草 | `crop` | 否 | `attack` | `seed_yield=1`, `growth_seconds=900` |
@@ -74,7 +72,7 @@
 | 1032 | `skill_book_attack_up` | 燃锋诀技能书 | `skill_book` | 是 | `fire` | 学习 `attack_up` |
 | 1033 | `skill_book_spirit_shield` | 玄甲术技能书 | `skill_book` | 是 | `earth` | 学习 `spirit_shield` |
 
-`item_no` 1002、1003、1007、1008 和 1018 曾用于已删除物品，后续不复用。
+`item_no` 1002、1003、1007、1008、1015、1018 和 1034-1039 曾用于已删除物品，后续不复用；1015 为 Schema 23 移除的调息丹方，1034-1039 为已退出系统的六张装备图纸。
 
 ## 已实现：普通攻击
 
@@ -92,26 +90,51 @@
 | `poison` | 蚀骨毒雾 | `damage` | `wood` | 8 | 4 | 120 | 伤害 `7 + 木属性 x 0.9`；DOT 每回合 `2 + 木属性 x 0.5`，持续 3 回合 |
 | `attack_up` | 燃锋诀 | `buff` | `fire` | 5 | 6 | 0 | 攻击提升 `2 + 火属性 x 0.5`，持续 3 个自身回合 |
 | `spirit_shield` | 玄甲术 | `defense` | `earth` | 7 | 6 | 0 | 护盾 `10 + 土属性 x 0.5`，最多持续 3 回合；血量低于 60% 时优先使用 |
+| `water_cold_talisman` | 寒潮符 | `damage` | `water` | 6 | 3 | - | 伤害 `7 + 水属性 x 1.10`；目标攻击 -1，持续 2 个目标回合 |
+
+技能资源不再配置 `release_distance`，UI 也不显示技能距离；表中"释放距离"列仅保留旧数据参考，寒潮符以 `-` 标注。技能可用性不按距离判断，普通攻击仍保留内部接近与攻击范围。
 
 冷却在角色每次获得自身回合时递减 1；百分比修正后的冷却向上取整。
 
 所有属性倍率公式最终向下取整。技能使用自身五行对应的施法者属性；effect 显式提供 `element` 时以 effect 为准。敌人技能遵循同一规则并读取敌人运行时 `elements`。
 
-五本初阶技能书由正式新档各赠送 1 本；版本 9 迁移会为旧存档补齐尚未持有且尚未学会的技能书。技能书不进入敌人掉落；历练 6 级后，队伍仍有学习需求的六种已实现技能书可低概率进入坊市稀有池。技能书成功学习后消耗 1 本；重复学习失败时不消耗，人物已学技能不可替换或遗忘。
+五本初阶技能书由正式新档各赠送 1 本；寒潮符技能书通过功法残页 3 张加水灵石 1 个兑换。版本 9 迁移会为旧存档补齐尚未持有且尚未学会的技能书。技能书不进入敌人掉落；历练 6 级后，队伍仍有学习需求的已实现技能书可低概率进入坊市稀有池。技能书成功学习后消耗 1 本；重复学习失败时不消耗，人物已学技能不可替换或遗忘。
 
-二十个五行技能属于独立规划，完整特色、数值和 AI 条件见[五行技能](skills.md)，不能作为当前 `SKILL_DEFS` 的已实现内容。
+三十九个五行技能的 SkillDef、释放场景与技能书已由脚手架生成器登记进当前索引，但数值仍为占位、素材留空；完整特色、数值和 AI 条件见[五行技能](skills.md)，人工校准数值前不能作为当前 `SKILL_DEFS` 的已实现内容。
 
 ## 已实现：炼丹配方
 
-| recipe_id | 产物 | 材料 |
-| --- | --- | --- |
-| `pill` | `pill` 调息丹 | `herb x2` |
+丹方随炼丹建筑等级自动解锁，无需图纸；配方由 `ALCHEMY_RECIPE_DEFS` 定义，共 21 方。
 
-更多丹方属于规划内容，见本文“规划物品与装备设定”。
+| 解锁等级 | 配方 | 产物 | 材料 |
+| ---: | --- | --- | --- |
+| 1 | `pill` | 调息丹 | `herb x2` |
+| 2 | `breakthrough_pill` | 破境丹 | `pill x1 + herb x8` |
+| 3 | `life_pill` | 归元丹 | 见数据表 |
+| 3 | `spirit_pill` | 聚灵丹 | 见数据表 |
+| 4 | `attack_pill` | 破军丹 | 见数据表 |
+| 4 | `defense_pill` | 玄甲丹 | 见数据表 |
+| 5 | `wood_pill` | 青木丹 | 见数据表 |
+| 5 | `fire_pill` | 赤焰丹 | 见数据表 |
+| 5 | `earth_pill` | 厚土丹 | 见数据表 |
+| 5 | `metal_pill` | 玄金丹 | 见数据表 |
+| 5 | `water_pill` | 玄水丹 | 见数据表 |
+| 6 | `t1_attack_enhance_pill` | 一阶攻击强化丹 | 刃纹草 3、草药 8、灵石 2 |
+| 6 | `t1_defense_enhance_pill` | 一阶防御强化丹 | 铁根藤 3、草药 8、灵石 2 |
+| 6 | `t1_max_hp_enhance_pill` | 一阶气血强化丹 | 血参 3、草药 8、灵石 2 |
+| 6 | `t1_max_mp_enhance_pill` | 一阶法力强化丹 | 灵泉莲 3、草药 8、灵石 2 |
+| 6 | `t1_root_bone_enhance_pill` | 一阶根骨强化丹 | 玉骨竹 3、草药 8、灵石 2 |
+| 7 | `t1_wood_enhance_pill` | 一阶木行强化丹 | 青木藤 3、草药 8、木灵石 2 |
+| 7 | `t1_fire_enhance_pill` | 一阶火行强化丹 | 赤焰花 3、草药 8、火灵石 2 |
+| 7 | `t1_earth_enhance_pill` | 一阶土行强化丹 | 厚土苔 3、草药 8、土灵石 2 |
+| 7 | `t1_metal_enhance_pill` | 一阶金行强化丹 | 玄金苇 3、草药 8、金灵石 2 |
+| 7 | `t1_water_enhance_pill` | 一阶水行强化丹 | 玄水兰 3、草药 8、水灵石 2 |
+
+归元丹、聚灵丹、破军丹、玄甲丹与五种五行丹的完整材料以 `DataTables.ALCHEMY_RECIPE_DEFS` 为准。丹方没有对应物品，全部由炼丹建筑等级解锁；旧档残留的 `recipe_pill` 已在 Schema 23 迁移中按双倍回收价补偿灵石后移除。
 
 ## 已实现：装备模板
 
-当前装备使用六个槽位基础模板。每件装备保留双固定原型属性，并按阶位追加 1-5 项实例随机基础属性；核心装备没有穿戴等级要求。模板、五阶数值、强化、三词条、升阶、分解经济和当前 Schema 22 存档规则的完整事实以[装备成长 V2](equipment-progression-v2.md)为准。
+当前装备使用六个槽位基础模板。每件装备保留双固定原型属性，并按阶位追加 1-5 项实例随机基础属性；核心装备没有穿戴等级要求。模板、五阶数值、强化、三词条、升阶、分解经济和当前 Schema 23 存档规则的完整事实以[装备成长 V2](equipment-progression-v2.md)为准。
 
 ## 已实现：命格数据索引
 
@@ -141,7 +164,7 @@
 
 ## 已实现：开局、建筑与生产节奏
 
-正式新档物资为 `spirit_stone x1`、`herb x1`、`recipe_pill x1` 和五本初阶技能书各 1 本。项目设置 `game/development/seed_test_inventory` 默认为 `false`，开启后才补齐其余测试物品和基础装备。
+正式新档物资为 `spirit_stone x1`、`herb x1` 和五本初阶技能书各 1 本。项目设置 `game/development/seed_test_inventory` 默认为 `false`，开启后才补齐其余测试物品和基础装备。
 
 | 建筑 | 1 级升级消耗 | 升级成本 | 生产方式 |
 | --- | --- | --- | --- |
@@ -163,16 +186,10 @@
 - 新增技能时创建 `SkillDef`、绑定释放场景并登记 `resources/skills/index.tres`；若要通过背包学习，还要新增对应技能书物品。
 - 新增本体敌人时创建 `resources/enemies/<enemy_id>.tres`，并同步补充兼容用 `ENEMY_TEMPLATES`、场景映射与敌人场景目录。
 
-## 已实现：五行材料、图纸与技能书
+## 已实现：功法残页、技能书与丹药
 
 | item_no | item_id | 名称 | 战斗范围 | 用途 |
 | ---: | --- | --- | --- | --- |
-| 1034 | `blueprint_weapon` | 武器图纸 | - | 永久解锁武器定向打造 |
-| 1035 | `blueprint_helmet` | 头盔图纸 | - | 永久解锁头盔定向打造 |
-| 1036 | `blueprint_armor` | 护甲图纸 | - | 永久解锁护甲定向打造 |
-| 1037 | `blueprint_leggings` | 胫甲图纸 | - | 永久解锁胫甲定向打造 |
-| 1038 | `blueprint_gloves` | 护手图纸 | - | 永久解锁护手定向打造 |
-| 1039 | `blueprint_accessory` | 饰品图纸 | - | 永久解锁饰品定向打造 |
 | 1040 | `manual_fragment` | 功法残页 | - | 3 张加对应五行灵石 1 个兑换功法 |
 | 1041 | `skill_book_water_cold_talisman` | 寒潮符技能书 | - | 学会水行单体技能寒潮符 |
 | 1042 | `life_pill` | 归元丹 | 单人 | 当前角色恢复 25% 最大生命 |
@@ -185,7 +202,7 @@
 | 1049 | `metal_pill` | 玄金丹 | 群体 | 战斗全局金行 +3，60 秒，`buff_pill` 组 |
 | 1050 | `water_pill` | 玄水丹 | 群体 | 战斗全局水行 +3，60 秒，`buff_pill` 组 |
 
-炼丹建筑自动解锁：1 级调息丹；2 级破境丹（`pill x1 + herb x8`）；3 级归元丹/聚灵丹；4 级破军丹/玄甲丹；5 级五行丹。新档不再发放调息丹方，旧档丹方会自动学习并移除。调息丹恢复 15% 最大生命和法力。炼器 3 级开放通用灵石 3 个兑换指定五行灵石 1 个。
+炼丹建筑自动解锁：1 级调息丹；2 级破境丹（`pill x1 + herb x8`）；3 级归元丹/聚灵丹；4 级破军丹/玄甲丹；5 级五行丹。调息丹恢复 15% 最大生命和法力。炼器 3 级开放通用灵石 3 个兑换指定五行灵石 1 个。
 
 自动道具在角色自身回合开始时按槽位顺序最多成功使用一个，不占用技能或普通攻击。群体人物效果只作用本场战斗中的存活队员，比例恢复按每名目标自身上限计算；全局效果每次只创建一次。成功使用无论目标数都只扣一个，无人获益或配置无效则不扣除、不写冷却。家园手动使用仍只作用选中角色。
 
@@ -214,15 +231,15 @@
 
 坊市使用独立持久化 RNG，每 600 秒按 Unix 时间免费刷新，离线时间有效。货架每轮 6 格且 item_id 唯一，每格限购一次；手动刷新费用依次为 2、4、8、16 坊市令，之后固定 16，且不更换委托或重置免费刷新时间。
 
-商品分类权重为基础材料 40、生产材料 25、丹药 20、图纸 10、稀有 5。已学丹方、已解锁图纸、全队无需学习的技能书、全队一阶强化丹额度已满的条目会被过滤。Mod 物品首期不进入坊市。
+商品分类权重为基础材料 45、生产材料 30、丹药 20、稀有 5。丹药条目按炼丹建筑等级过滤（未解锁配方的产物不生成）、全队无需学习的技能书与全队一阶强化丹额度已满的条目会被过滤。Mod 物品首期不进入坊市。
 
-每轮委托基础价值为 2/4/6，奖励为 3/6/9 坊市令，三项之间不重复 item_id。回收按 `MARKET_RECYCLE_DEFS` 的完整批次结算，不保留小数；图纸、技能书和永久强化丹等贵重物品必须二次确认。购买、回收、委托和刷新均先完整校验再提交。
+每轮委托基础价值为 2/4/6，奖励为 3/6/9 坊市令，三项之间不重复 item_id。回收按 `MARKET_RECYCLE_DEFS` 的完整批次结算，不保留小数；丹方、技能书和永久强化丹等贵重物品必须二次确认。购买、回收、委托和刷新均先完整校验再提交。
 
 ## 规划：装备 V2 与五行内容扩展
 
 以下内容是规划设定，当前不代表 `DataTables` 已实现。
 
-当前五阶装备模板、固定双属性、实例随机属性、强化、三词条、升阶、分解经济和 Schema 22 存档规则统一见[装备成长 V2](equipment-progression-v2.md)。
+当前五阶装备模板、固定双属性、实例随机属性、强化、三词条、升阶、分解经济和 Schema 23 存档规则统一见[装备成长 V2](equipment-progression-v2.md)。
 
 五行只定义技能特色，不新增角色职业或学习限制。四十个五行技能的完整数值、目标和 AI 条件见[五行技能](skills.md)；六个装备槽位的固定双属性、五行原型和随机属性见[装备成长 V2](equipment-progression-v2.md)。
 
@@ -262,6 +279,8 @@
 
 技能书均使用现有 `skill_book` 类型，可堆叠、可在家园使用；成功学习后消耗 1 本，重复学习不消耗。来源统一为秘法残页加对应五行灵石的定向兑换。
 
+39 本技能书（`item_no` 1070-1108）、对应 SkillDef 和释放场景已由脚手架生成器批量产出（见[技能制作手册](skill-authoring.md)的脚手架章节），数值与素材仍待人工填写；下表保留规划定位，兑换成本与生成结果一致。
+
 | item_id | 名称 | 五行 | 阶段 | 兑换成本 |
 | --- | --- | --- | ---: | --- |
 | `skill_book_metal_sword_flash` | 流光剑技能书 | 金 | 一 | 残页 3、金灵石 1 |
@@ -283,5 +302,25 @@
 | `skill_book_fire_blazing_mark` | 烈焰印技能书 | 火 | 二 | 残页 6、火灵石 2 |
 | `skill_book_fire_edge_rite` | 燃锋祭技能书 | 火 | 三 | 残页 10、火灵石 3 |
 | `skill_book_fire_heavenly_flame` | 天火劫技能书 | 火 | 四 | 残页 15、火灵石 5 |
+| `skill_book_metal_xin_thread_pierce` | 穿云一线技能书 | 金 | 一 | 残页 3、金灵石 1 |
+| `skill_book_metal_xin_needle_storm` | 漫天花雨技能书 | 金 | 二 | 残页 6、金灵石 2 |
+| `skill_book_metal_xin_jade_bind` | 珠缚诀技能书 | 金 | 三 | 残页 10、金灵石 3 |
+| `skill_book_metal_xin_thousand_needles` | 千针封喉技能书 | 金 | 四 | 残页 15、金灵石 5 |
+| `skill_book_wood_yi_vine_lash` | 绊藤击技能书 | 木 | 一 | 残页 3、木灵石 1 |
+| `skill_book_wood_yi_parasitic_seed` | 寄种术技能书 | 木 | 二 | 残页 6、木灵石 2 |
+| `skill_book_wood_yi_creeping_thicket` | 蔓生棘丛技能书 | 木 | 三 | 残页 10、木灵石 3 |
+| `skill_book_wood_yi_strangling_root` | 绞根杀技能书 | 木 | 四 | 残页 15、木灵石 5 |
+| `skill_book_earth_ji_loam_strike` | 沃土击技能书 | 土 | 一 | 残页 3、土灵石 1 |
+| `skill_book_earth_ji_garden_ward` | 田园护技能书 | 土 | 二 | 残页 6、土灵石 2 |
+| `skill_book_earth_ji_furrow_shelter` | 垄亩庇技能书 | 土 | 三 | 残页 10、土灵石 3 |
+| `skill_book_earth_ji_harvest_bulwark` | 丰穰壁技能书 | 土 | 四 | 残页 15、土灵石 5 |
+| `skill_book_water_gui_drizzle` | 细雨符技能书 | 水 | 一 | 残页 3、水灵石 1 |
+| `skill_book_water_gui_mist_veil` | 薄雾纱技能书 | 水 | 二 | 残页 6、水灵石 2 |
+| `skill_book_water_gui_eroding_rain` | 侵蚀雨技能书 | 水 | 三 | 残页 10、水灵石 3 |
+| `skill_book_water_gui_dew_mercy` | 甘霖降技能书 | 水 | 四 | 残页 15、水灵石 5 |
+| `skill_book_fire_ding_ember_touch` | 星火引技能书 | 火 | 一 | 残页 3、火灵石 1 |
+| `skill_book_fire_ding_smolder_seal` | 慢灼印技能书 | 火 | 二 | 残页 6、火灵石 2 |
+| `skill_book_fire_ding_wick_flare` | 灯心焰技能书 | 火 | 三 | 残页 10、火灵石 3 |
+| `skill_book_fire_ding_cinder_storm` | 余烬劫技能书 | 火 | 四 | 残页 15、火灵石 5 |
 
-寒潮符及对应技能书已经实现，不在规划表重复列出。尚不存在于当前数据表的规划 ID 未分配稳定 `item_no`；正式实现时只能从当前最大编号之后追加，并同步 `ITEM_DEFS`、UI、存档迁移和对应资源。
+寒潮符及对应技能书已经实现，不在规划表重复列出。上表 39 本技能书已由脚手架分配稳定 `item_no` 1070-1108；今后新增规划技能仍只能从当前最大编号之后追加，并同步 `ITEM_DEFS`、UI、存档迁移和对应资源。

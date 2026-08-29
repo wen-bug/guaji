@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+effect_id = "metal_xin_thousand_needles_damage_hit_1"
+base_amount = 7
+attribute_multiplier = 0.6
+defense_ignore = 5
+impact_id = "hit_1"
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "metal_xin_thousand_needles_damage_hit_2"
+base_amount = 7
+attribute_multiplier = 0.6
+defense_ignore = 5
+impact_id = "hit_2"
+
+[sub_resource type="Resource" id="Resource_fx_2"]
+script = ExtResource("2_effect")
+effect_id = "metal_xin_thousand_needles_damage_hit_3"
+base_amount = 7
+attribute_multiplier = 0.6
+defense_ignore = 5
+impact_id = "hit_3"
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "metal_xin_thousand_needles"
+display_name = "千针封喉"
+icon_name = "metal_xin_thousand_needles"
+icon_path = "res://assets/skills/metal_xin_thousand_needles.png"
+element = "metal"
+mp_cost = 15
+cooldown = 7.0
+priority = 60
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1"), SubResource("Resource_fx_2")])
+exchange_book_item_id = "skill_book_metal_xin_thousand_needles"
+exchange_element_stone_id = "spirit_stone_metal"
+exchange_fragment_cost = 6
+exchange_stone_cost = 2
+description = "千针连刺，三段贯穿单个敌人。"

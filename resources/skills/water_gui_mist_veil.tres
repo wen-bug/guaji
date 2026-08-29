@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/shield.tscn" id="3_status_shield"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+effect_id = "water_gui_mist_veil_shield"
+kind = "status"
+base_amount = 5
+status_id = "water_gui_mist_veil_shield"
+status_kind = "shield"
+duration_turns = 2
+status_visual_scene = ExtResource("3_status_shield")
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "water_gui_mist_veil_cooldown"
+kind = "cooldown"
+target = "caster"
+cooldown_multiplier = 0.8
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "water_gui_mist_veil"
+display_name = "薄雾纱"
+icon_name = "water_gui_mist_veil"
+icon_path = "res://assets/skills/water_gui_mist_veil.png"
+element = "water"
+mp_cost = 6
+cooldown = 4.0
+priority = 90
+type = "buff"
+target_scope = "self"
+triggers = Array[String](["hp_below_60"])
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_water_gui_mist_veil"
+exchange_element_stone_id = "spirit_stone_water"
+exchange_fragment_cost = 15
+exchange_stone_cost = 5
+description = "薄雾掩形，并加速自身技能回转。"

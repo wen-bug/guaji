@@ -129,8 +129,6 @@ func use_inventory_item_for_member(instance_id: String, member_id: String) -> bo
 			return game_state.equip_item_for_member(instance_id, member_id)
 		DataTables.ITEM_TYPE_SKILL_BOOK:
 			return game_state._use_skill_book(item, member_id)
-		DataTables.ITEM_TYPE_ALCHEMY_RECIPE:
-			return game_state._use_alchemy_recipe(item)
 		DataTables.ITEM_TYPE_BLUEPRINT:
 			return game_state.use_equipment_blueprint(item)
 		DataTables.ITEM_TYPE_PILL:

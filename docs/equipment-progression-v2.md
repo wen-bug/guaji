@@ -85,7 +85,7 @@
 
 ## 存档迁移
 
-当前存档版本为 Schema 22，新生成核心装备的 `attribute_generation_version` 为 4。Schema 22 只新增统一道具 Buff 与自动道具栏，不重算 Schema 21 装备或推进装备 RNG。
+当前存档版本为 Schema 23，新生成核心装备的 `attribute_generation_version` 为 4。Schema 22 只新增统一道具 Buff 与自动道具栏，不重算 Schema 21 装备或推进装备 RNG；Schema 23 仅移除炼丹学习机制，同样不改动任何装备数据。
 
 - Schema 21 按原阶位、五行原型和已保存的随机属性顺序重算核心装备基础值，不重新抽取且不消耗 RNG。空随机属性列表继续为空。
 - Schema 21 保留强化分配、强化总数、词条、洗练、穿戴者、实例 ID 和来源；Mod 与非核心装备不参与重算。

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SkillDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+
+[sub_resource type="Resource" id="Resource_fx_0"]
+script = ExtResource("2_effect")
+effect_id = "metal_xin_thread_pierce_damage_hit_1"
+base_amount = 7
+attribute_multiplier = 0.6
+impact_id = "hit_1"
+
+[sub_resource type="Resource" id="Resource_fx_1"]
+script = ExtResource("2_effect")
+effect_id = "metal_xin_thread_pierce_damage_hit_2"
+base_amount = 7
+attribute_multiplier = 0.6
+impact_id = "hit_2"
+
+
+[resource]
+script = ExtResource("1_skill")
+id = "metal_xin_thread_pierce"
+display_name = "穿云一线"
+icon_name = "metal_xin_thread_pierce"
+icon_path = "res://assets/skills/metal_xin_thread_pierce.png"
+element = "metal"
+mp_cost = 5
+cooldown = 2.0
+priority = 60
+effects = Array[Resource]([SubResource("Resource_fx_0"), SubResource("Resource_fx_1")])
+exchange_book_item_id = "skill_book_metal_xin_thread_pierce"
+exchange_element_stone_id = "spirit_stone_metal"
+exchange_fragment_cost = 6
+exchange_stone_cost = 2
+description = "剑气连绵，两段穿刺单个敌人。"

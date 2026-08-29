@@ -7,3 +7,4 @@ addons/
 .agents/
 .godot_user/
 .vscode/
+.claude/

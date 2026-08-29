@@ -308,12 +308,18 @@ func _goods_entry_available(entry: Dictionary) -> bool:
 	if game_state.expedition_level() < int(entry.get("min_expedition_level", 1)) or game_state.building_level("alchemy") < int(entry.get("min_alchemy_level", 1)):
 		return false
 	var required_recipe := str(entry.get("recipe_id", ""))
-	if not required_recipe.is_empty() and not game_state.known_alchemy_recipes.has(required_recipe):
-		return false
+	if not required_recipe.is_empty():
+		var recipe := DataTables.alchemy_recipe_def(required_recipe)
+		var unlock_level := maxi(1, int(recipe.get("unlock_building_level", 1)))
+		if game_state.building_level("alchemy") < unlock_level:
+			return false
 	var definition := DataTables.item_definition(item_id)
 	var type_id := str(definition.get("type", ""))
 	if type_id == DataTables.ITEM_TYPE_ALCHEMY_RECIPE:
-		return not game_state.known_alchemy_recipes.has(str(definition.get("payload", {}).get("recipe_id", "")))
+		# 核心已无图纸货物；Mod 丹药物品按其配方解锁等级判断是否仍值得购买
+		var payload_recipe := str(definition.get("payload", {}).get("recipe_id", ""))
+		var payload_def := DataTables.alchemy_recipe_def(payload_recipe)
+		return game_state.building_level("alchemy") < maxi(1, int(payload_def.get("unlock_building_level", 1)))
 	if type_id == DataTables.ITEM_TYPE_BLUEPRINT:
 		return not game_state.unlocked_blueprint_templates().has(str(definition.get("payload", {}).get("equipment_template_id", "")))
 	if type_id == DataTables.ITEM_TYPE_SKILL_BOOK:
@@ -387,7 +393,7 @@ func _commission_item_available(item_id: String) -> bool:
 		for recipe_id in DataTables.ALCHEMY_RECIPE_DEFS.keys():
 			var recipe := DataTables.alchemy_recipe_def(str(recipe_id))
 			if str(recipe.get("result_item_id", "")) == item_id:
-				return game_state.known_alchemy_recipes.has(str(recipe_id))
+				return game_state.unlocked_alchemy_recipes().has(str(recipe_id))
 	return true
 
 

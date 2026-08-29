@@ -39,8 +39,8 @@ func _fresh_state() -> GameState:
 
 
 func _check_parsers() -> void:
-	_expect_equal("item count", ItemParser.item_ids().size(), 58)
-	_expect_equal("active skill count", SkillParser.definitions().size(), 10)
+	_expect_equal("item count", ItemParser.item_ids().size(), 90)
+	_expect_equal("active skill count", SkillParser.definitions().size(), 49)
 	_expect_equal("basic attack count", SkillParser.basic_attack_definitions().size(), 2)
 	_expect_true("item parser valid", ItemParser.validation_errors().is_empty(), str(ItemParser.validation_errors()))
 	_expect_true("skill parser valid", SkillParser.validation_errors().is_empty(), str(SkillParser.validation_errors()))
@@ -320,7 +320,7 @@ func _check_schema_22_migration() -> void:
 			item.erase("combat_target_mode")
 	var loaded := GameState.new()
 	loaded.load_save_data(data)
-	_expect_equal("schema 22 saved", int(loaded.to_save_data().get("schema_version", 0)), 22)
+	_expect_equal("schema 22 saved", int(loaded.to_save_data().get("schema_version", 0)), 23)
 	_expect_equal("legacy buffs merged", loaded.active_item_buffs.size(), 2)
 	_expect_equal("auto slots initialize empty", loaded.auto_use_item_ids, ["", "", "", ""])
 	_expect_equal("loaded stack refreshes target mode", loaded.inventory_item_by_instance("attack_pill").get("combat_target_mode", ""), "aoe")
