@@ -457,7 +457,14 @@ func _on_party_skill_finished(result: Dictionary, member_id: String, skill_id: S
 	var cooldowns: Dictionary = combatant.get("skill_cooldowns", {})
 	var skill: Dictionary = DataTables.create_skill(skill_id)
 	if bool(result.get("cast_succeeded", false)):
-		cooldowns[skill_id] = _cooldown_turns(int(skill.get("cooldown", 0)), float(result.get("cooldown_multiplier", 1.0)))
+		var cooldown_multiplier := float(result.get("cooldown_multiplier", 1.0))
+		var cooldown_adjustment := 0
+		var caster_status: CombatActorStatus = party_actor_statuses.get(member_id)
+		if caster_status != null:
+			var modifiers := caster_status.equipment_combat_modifiers()
+			cooldown_multiplier *= 1.0 + float(modifiers.get("skill_cooldown_percent", 0.0))
+			cooldown_adjustment = int(modifiers.get("skill_cooldown_turns", 0))
+		cooldowns[skill_id] = _cooldown_turns(int(skill.get("cooldown", 0)), cooldown_multiplier, cooldown_adjustment)
 	else:
 		var caster: CombatActorStatus = party_actor_statuses.get(member_id)
 		if caster != null:
@@ -767,7 +774,8 @@ func _grant_victory_rewards() -> void:
 		var boss_tier := DataTables.EQUIPMENT_RARITY_ORDER.find(str(enemy.get("rank", "t1"))) + 1
 		pending_game_state.add_inventory_item(DataTables.ITEM_ID_ASCENSION_STONE, maxi(1, boss_tier), false)
 		log_added.emit("Boss掉落升阶石 x%d" % maxi(1, boss_tier))
-	if bool(enemy.get("use_drop", true)) and pending_game_state.rng.randf() < float(enemy.get("equipment_drop_chance", 0.0)):
+	# 保留旧 Mod 命格的掉落加成兼容路径。
+	if bool(enemy.get("use_drop", true)) and pending_game_state.rng.randf() < clampf(float(enemy.get("equipment_drop_chance", 0.0)) * _drop_chance_multiplier(pending_game_state), 0.0, 1.0):
 		var rarity_weights: Dictionary = enemy.get("drop_profile", {}).get("rarity_weights", {})
 		pending_game_state.add_equipment(DataTables.create_equipment(int(enemy.get("level", pending_game_state.expedition_level())), pending_game_state.rng, pending_game_state.craft_bonus(), "drop", rarity_weights))
 	log_added.emit("击败%s，账号历练 +%d" % [enemy.get("name", "敌人"), exp_amount])
@@ -784,13 +792,21 @@ func _resolve_drops(game_state) -> void:
 		_resolve_rank_drop(game_state, awarded_item_ids)
 
 
+func _drop_chance_multiplier(game_state) -> float:
+	# 命格掉落加成乘数；GameState 未提供 helper 时退回 1.0（兼容宿主注入的自定义状态对象）。
+	if game_state != null and game_state.has_method("party_drop_chance_multiplier"):
+		return maxf(0.0, float(game_state.party_drop_chance_multiplier()))
+	return 1.0
+
+
 func _resolve_explicit_drops(game_state, awarded_item_ids: Dictionary) -> void:
 	var explicit_drops = enemy.get("drops", {})
 	if not (explicit_drops is Dictionary):
 		return
+	var multiplier := _drop_chance_multiplier(game_state)
 	for item_id in explicit_drops.keys():
 		var drop_def: Dictionary = explicit_drops.get(item_id, {})
-		if game_state.rng.randf() > clampf(float(drop_def.get("chance", 0.0)), 0.0, 1.0):
+		if game_state.rng.randf() > clampf(float(drop_def.get("chance", 0.0)) * multiplier, 0.0, 1.0):
 			continue
 		var low := maxi(1, int(drop_def.get("min", 1)))
 		var high := maxi(low, int(drop_def.get("max", low)))
@@ -804,13 +820,14 @@ func _resolve_class_drops(game_state, awarded_item_ids: Dictionary) -> void:
 	var entries = profile.get("entries", [])
 	if not (entries is Array) or entries.is_empty():
 		return
+	var multiplier := _drop_chance_multiplier(game_state)
 	match str(profile.get("mode", "")):
 		"independent":
 			for entry_value in entries:
 				if not (entry_value is Dictionary):
 					continue
 				var entry: Dictionary = entry_value
-				if game_state.rng.randf() > clampf(float(entry.get("chance", 0.0)), 0.0, 1.0):
+				if game_state.rng.randf() > clampf(float(entry.get("chance", 0.0)) * multiplier, 0.0, 1.0):
 					continue
 				_award_unique_drop(game_state, awarded_item_ids, str(entry.get("item_id", "")), int(entry.get("amount", 1)))
 		"weighted_one":
@@ -849,7 +866,7 @@ func _resolve_rank_drop(game_state, awarded_item_ids: Dictionary) -> void:
 		return
 	var rank_level := int(enemy.get("rank_level", 1))
 	var level_steps := mini(3, floori(float(rank_level - 1) / 5.0))
-	var chance := clampf(float(profile.get("base_chance", 0.0)) + 0.05 * float(level_steps), 0.0, 1.0)
+	var chance := clampf((float(profile.get("base_chance", 0.0)) + 0.05 * float(level_steps)) * _drop_chance_multiplier(game_state), 0.0, 1.0)
 	if game_state.rng.randf() > chance:
 		return
 	var rarity := _roll_drop_rarity(profile.get("rarity_weights", {}), game_state.rng)
@@ -1207,8 +1224,9 @@ func _advance_turn_cooldowns(combatant: Dictionary) -> void:
 		combatant[key] = values
 
 
-func _cooldown_turns(base_turns: int, multiplier: float = 1.0) -> int:
-	return maxi(0, ceili(float(maxi(0, base_turns)) * maxf(0.0, multiplier)))
+func _cooldown_turns(base_turns: int, multiplier: float = 1.0, turn_adjustment: int = 0) -> int:
+	var scaled_turns := ceili(float(maxi(0, base_turns)) * maxf(0.0, multiplier))
+	return maxi(0, scaled_turns + turn_adjustment)
 
 
 func _advance_party_turn() -> void:

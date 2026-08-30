@@ -131,7 +131,7 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 		"skill": ["name", "type", "target_scope", "target_mode", "effects"],
 		"basic_attack": ["name", "effects"],
 		"recipe": ["result_item_id", "materials"],
-		"trait": ["name", "effects"],
+		"trait": ["name"],
 		"enemy": ["name", "visual_id", "scene_path"],
 		"enemy_rank": ["name"],
 		"drop_table": [],
@@ -143,6 +143,20 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 			errors.append("%s:%s 缺少字段 %s" % [kind, content_id, field])
 		elif field in ["name", "scene_path", "visual_id", "slot", "result_item_id", "text"] and str(data.get(field, "")).strip_edges().is_empty():
 			errors.append("%s:%s 字段 %s 不能为空" % [kind, content_id, field])
+	if kind == "trait":
+		var has_effects := data.get("effects", null) is Array
+		var effects_by_rarity = data.get("effects_by_rarity", null)
+		var has_rarity_effects := effects_by_rarity is Dictionary
+		if not has_effects and not has_rarity_effects:
+			errors.append("trait:%s 必须提供 effects 或 effects_by_rarity" % content_id)
+		if has_effects:
+			_validate_trait_effects(content_id, "effects", data.get("effects", []), errors)
+		if has_rarity_effects:
+			for rarity in effects_by_rarity.keys():
+				if not ["common", "rare", "exceptional"].has(str(rarity)):
+					errors.append("trait:%s effects_by_rarity 包含无效品质 %s" % [content_id, rarity])
+					continue
+				_validate_trait_effects(content_id, "effects_by_rarity.%s" % rarity, effects_by_rarity.get(rarity), errors)
 	if kind == "item":
 		var combat_target_mode := str(data.get("combat_target_mode", ItemConfigParserScript.infer_combat_target_mode(data.get("effects", []))))
 		if not ["single", "aoe"].has(combat_target_mode):
@@ -267,6 +281,20 @@ func validate_definition(kind: String, content_id: String, data: Dictionary) -> 
 		if int(data.get("min_level", 1)) > int(data.get("max_level", 2147483647)):
 			errors.append("dialogue:%s min_level 不能大于 max_level" % content_id)
 	return errors
+
+
+func _validate_trait_effects(content_id: String, field: String, value, errors: Array[String]) -> void:
+	if not (value is Array):
+		errors.append("trait:%s %s 必须为数组" % [content_id, field])
+		return
+	for effect in value:
+		if not (effect is Dictionary):
+			errors.append("trait:%s %s 元素必须为对象" % [content_id, field])
+			continue
+		if str(effect.get("kind", "")).is_empty():
+			errors.append("trait:%s %s 缺少 kind" % [content_id, field])
+		if str(effect.get("kind", "")) == "skill_cooldown_turns" and typeof(effect.get("amount", 0)) != TYPE_INT:
+			errors.append("trait:%s %s.skill_cooldown_turns.amount 必须为整数" % [content_id, field])
 
 
 func validate_owned_values(value, mod_id: String, key: String = "") -> Array[String]:

@@ -111,6 +111,11 @@ const ITEM_GAIN_TARGET_LABELS := {
 	"earth": "土",
 	"metal": "金",
 	"water": "水",
+	"element_wood": "木行",
+	"element_fire": "火行",
+	"element_earth": "土行",
+	"element_metal": "金行",
+	"element_water": "水行",
 }
 
 const PERMANENT_ATTRIBUTE_ENHANCE_STATS := [
@@ -179,6 +184,7 @@ const BUILDING_DEFS := {
 	"farm": {"name": "农田", "max_level": 10, "cost_item": "herb", "cost_offset": 0},
 }
 
+## 兼容旧调用者的五条基础主命格 ID。
 const BASIC_RECRUIT_TRAIT_IDS := [
 	"robust_body",
 	"sharp_edge",
@@ -186,6 +192,9 @@ const BASIC_RECRUIT_TRAIT_IDS := [
 	"full_vigor",
 	"good_root",
 ]
+
+## 基础主命格池兼容别名，与 BASIC_RECRUIT_TRAIT_IDS 同源。
+const MAIN_TRAIT_POOL_BASIC := BASIC_RECRUIT_TRAIT_IDS
 
 const INNATE_TRAIT_RARITY_NAMES := {
 	"common": "普通",
@@ -527,40 +536,143 @@ const EQUIPMENT_ATTRIBUTE_DEFS := [
 const INNATE_TRAIT_DEFS := {
 	"robust_body": {
 		"name": "健体",
-		"description": "体魄稳健，气血更充足。",
-		"effects": [
-			{"kind": "stat_flat", "stat": "max_hp", "amount": 20},
-		],
+		"description": "体魄稳健，气血上限提高。",
+		"effects_by_rarity": {"common": [{"kind": "stat_flat", "stat": "max_hp", "amount": 20}], "rare": [{"kind": "stat_flat", "stat": "max_hp", "amount": 24}], "exceptional": [{"kind": "stat_flat", "stat": "max_hp", "amount": 28}]},
 	},
 	"sharp_edge": {
 		"name": "锋芒",
-		"description": "出手锐利，攻击小幅提高。",
-		"effects": [
-			{"kind": "stat_flat", "stat": "attack", "amount": 2},
-		],
+		"description": "出手锐利，攻击提高。",
+		"effects_by_rarity": {"common": [{"kind": "stat_flat", "stat": "attack", "amount": 2}], "rare": [{"kind": "stat_flat", "stat": "attack", "amount": 3}], "exceptional": [{"kind": "stat_flat", "stat": "attack", "amount": 4}]},
 	},
 	"steady_guard": {
 		"name": "稳守",
-		"description": "守势沉稳，防御小幅提高。",
-		"effects": [
-			{"kind": "stat_flat", "stat": "defense", "amount": 2},
-		],
+		"description": "守势沉稳，防御提高。",
+		"effects_by_rarity": {"common": [{"kind": "stat_flat", "stat": "defense", "amount": 2}], "rare": [{"kind": "stat_flat", "stat": "defense", "amount": 3}], "exceptional": [{"kind": "stat_flat", "stat": "defense", "amount": 4}]},
 	},
 	"full_vigor": {
 		"name": "充沛",
 		"description": "灵力充沛，法力上限提高。",
-		"effects": [
-			{"kind": "stat_flat", "stat": "max_mp", "amount": 12},
-		],
+		"effects_by_rarity": {"common": [{"kind": "stat_flat", "stat": "max_mp", "amount": 12}], "rare": [{"kind": "stat_flat", "stat": "max_mp", "amount": 15}], "exceptional": [{"kind": "stat_flat", "stat": "max_mp", "amount": 18}]},
 	},
 	"good_root": {
 		"name": "良根",
-		"description": "根骨良好，成长潜力更高。",
-		"effects": [
-			{"kind": "stat_flat", "stat": "root_bone", "amount": 2},
-		],
+		"description": "根骨良好，基础根骨提高。",
+		"effects_by_rarity": {"common": [{"kind": "stat_flat", "stat": "root_bone", "amount": 2}], "rare": [{"kind": "stat_flat", "stat": "root_bone", "amount": 3}], "exceptional": [{"kind": "stat_flat", "stat": "root_bone", "amount": 4}]},
+	},
+	"wood_virtue": {
+		"name": "木德长生",
+		"description": "造成的直接伤害提高 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.05}], "rare": [{"kind": "direct_damage_percent", "amount": 0.07}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.10}]},
+	},
+	"venom_body": {
+		"name": "万毒灵胎",
+		"description": "受到的元素伤害降低 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "element_damage_taken_percent", "amount": -0.05}], "rare": [{"kind": "element_damage_taken_percent", "amount": -0.07}], "exceptional": [{"kind": "element_damage_taken_percent", "amount": -0.10}]},
+	},
+	"fire_aspect": {
+		"name": "离火真脉",
+		"description": "造成的直接伤害提高 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.05}], "rare": [{"kind": "direct_damage_percent", "amount": 0.07}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.10}]},
+	},
+	"blazing_soul": {
+		"name": "赤阳命火",
+		"description": "五行克制目标时伤害提高 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "weakness_damage_percent", "amount": 0.05}], "rare": [{"kind": "weakness_damage_percent", "amount": 0.07}], "exceptional": [{"kind": "weakness_damage_percent", "amount": 0.10}]},
+	},
+	"earth_body": {
+		"name": "厚土道体",
+		"description": "受到的物理伤害降低 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "physical_damage_taken_percent", "amount": -0.05}], "rare": [{"kind": "physical_damage_taken_percent", "amount": -0.07}], "exceptional": [{"kind": "physical_damage_taken_percent", "amount": -0.10}]},
+	},
+	"mountain_bone": {
+		"name": "镇岳灵骨",
+		"description": "受到的元素伤害降低 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "element_damage_taken_percent", "amount": -0.05}], "rare": [{"kind": "element_damage_taken_percent", "amount": -0.07}], "exceptional": [{"kind": "element_damage_taken_percent", "amount": -0.10}]},
+	},
+	"sword_bone": {
+		"name": "天生剑骨",
+		"description": "普通攻击伤害提高 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "normal_attack_percent", "amount": 0.05}], "rare": [{"kind": "normal_attack_percent", "amount": 0.07}], "exceptional": [{"kind": "normal_attack_percent", "amount": 0.10}]},
+	},
+	"metal_edge": {
+		"name": "庚金锋魄",
+		"description": "造成的直接伤害提高 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.05}], "rare": [{"kind": "direct_damage_percent", "amount": 0.07}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.10}]},
+	},
+	"full_spirit_root": {
+		"name": "太阴灵脉",
+		"description": "技能冷却减少 1 / 1 / 2 回合；普通档直接伤害降低 6%。",
+		"effects_by_rarity": {"common": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "direct_damage_percent", "amount": -0.06}], "rare": [{"kind": "skill_cooldown_turns", "amount": -1}], "exceptional": [{"kind": "skill_cooldown_turns", "amount": -2}]},
+	},
+	"water_mind": {
+		"name": "水镜道心",
+		"description": "受到的元素伤害降低 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "element_damage_taken_percent", "amount": -0.05}], "rare": [{"kind": "element_damage_taken_percent", "amount": -0.07}], "exceptional": [{"kind": "element_damage_taken_percent", "amount": -0.10}]},
+	},
+	"earth_scout": {
+		"name": "地听寻珍",
+		"description": "造成的直接伤害提高 2% / 3% / 4%。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.02}], "rare": [{"kind": "direct_damage_percent", "amount": 0.03}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.04}]},
+	},
+	"clear_mind": {
+		"name": "澄心善学",
+		"description": "受到的物理伤害降低 2% / 3% / 4%。",
+		"effects_by_rarity": {"common": [{"kind": "physical_damage_taken_percent", "amount": -0.02}], "rare": [{"kind": "physical_damage_taken_percent", "amount": -0.03}], "exceptional": [{"kind": "physical_damage_taken_percent", "amount": -0.04}]},
+	},
+	"withered_meridian": {
+		"name": "枯荣逆脉",
+		"description": "造成的直接伤害提高；但受到的物理伤害增加。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.08}, {"kind": "physical_damage_taken_percent", "amount": 0.04}], "rare": [{"kind": "direct_damage_percent", "amount": 0.10}, {"kind": "physical_damage_taken_percent", "amount": 0.05}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.12}, {"kind": "physical_damage_taken_percent", "amount": 0.06}]},
+	},
+	"burning_heart": {
+		"name": "烈性攻心",
+		"description": "普通攻击伤害提高；但受到的元素伤害增加。",
+		"effects_by_rarity": {"common": [{"kind": "normal_attack_percent", "amount": 0.08}, {"kind": "element_damage_taken_percent", "amount": 0.04}], "rare": [{"kind": "normal_attack_percent", "amount": 0.10}, {"kind": "element_damage_taken_percent", "amount": 0.05}], "exceptional": [{"kind": "normal_attack_percent", "amount": 0.12}, {"kind": "element_damage_taken_percent", "amount": 0.06}]},
+	},
+	"heavy_body": {
+		"name": "重浊之身",
+		"description": "技能冷却减少；但造成的直接伤害降低。",
+		"effects_by_rarity": {"common": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "direct_damage_percent", "amount": -0.04}], "rare": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "direct_damage_percent", "amount": -0.05}], "exceptional": [{"kind": "skill_cooldown_turns", "amount": -2}, {"kind": "direct_damage_percent", "amount": -0.06}]},
+	},
+	"lone_edge": {
+		"name": "孤锋煞命",
+		"description": "五行克制伤害提高；但受到的元素伤害增加。",
+		"effects_by_rarity": {"common": [{"kind": "weakness_damage_percent", "amount": 0.08}, {"kind": "element_damage_taken_percent", "amount": 0.04}], "rare": [{"kind": "weakness_damage_percent", "amount": 0.10}, {"kind": "element_damage_taken_percent", "amount": 0.05}], "exceptional": [{"kind": "weakness_damage_percent", "amount": 0.12}, {"kind": "element_damage_taken_percent", "amount": 0.06}]},
+	},
+	"cold_obsession": {
+		"name": "寒魄偏执",
+		"description": "技能冷却减少；但普通攻击伤害降低。",
+		"effects_by_rarity": {"common": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "normal_attack_percent", "amount": -0.06}], "rare": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "normal_attack_percent", "amount": -0.08}], "exceptional": [{"kind": "skill_cooldown_turns", "amount": -2}, {"kind": "normal_attack_percent", "amount": -0.10}]},
 	},
 }
+
+## 全部主命格池：三种品质均可抽取。
+const MAIN_TRAIT_IDS := [
+	"robust_body", "sharp_edge", "steady_guard", "full_vigor", "good_root",
+	"wood_virtue", "venom_body", "fire_aspect", "blazing_soul", "earth_body",
+	"mountain_bone", "sword_bone", "metal_edge", "full_spirit_root", "water_mind",
+]
+
+## 兼容旧调用者的基础主命格池别名。
+const ELEMENTAL_MAIN_TRAIT_IDS := [
+	"wood_virtue", "venom_body", "fire_aspect", "blazing_soul", "earth_body",
+	"mountain_bone", "sword_bone", "metal_edge", "full_spirit_root", "water_mind",
+]
+
+## 副命格池：招募建筑 4 级起为所有品质追加一条。
+const SUB_TRAIT_IDS := [
+	"earth_scout",
+	"clear_mind",
+]
+
+## 缺陷命格池：异禀品质且招募建筑 7 级后有概率追加一条，不占命格容量。
+const FLAW_TRAIT_IDS := [
+	"withered_meridian",
+	"burning_heart",
+	"heavy_body",
+	"lone_edge",
+	"cold_obsession",
+]
 
 const ENEMY_TEMPLATES := {
 	"training_dummy": {"id": "training_dummy", "visual_id": "training_dummy", "name": "木桩", "encounter_class": "normal", "enemy_class": ENEMY_CLASS_NORMAL, "level_offset": 0, "max_hp": 40, "attack": 3, "defense": 0, "move_speed": 48.0, "player_move_speed": 96.0, "attack_range": 72.0, "player_attack_range": 96.0, "spawn_delay": 0.4, "turn_wait": 1.8, "element": "wood", "combat_affinity": "normal", "attribute_point_multiplier": 0.0, "growth_primary_stat": "max_hp", "growth_secondary_stats": ["attack", "defense"], "skills": [], "drop_profile": {"base_chance": 0.0, "items": []}, "equipment_drop_chance": 0.0, "exp": 6, "use_drop": false, "is_training_dummy": true},
@@ -1778,13 +1890,22 @@ static func innate_trait_description(raw_trait) -> String:
 	return str(definition.get("description", "暂无说明"))
 
 
-static func innate_trait_effect_summary(raw_trait) -> String:
+static func innate_trait_effects(raw_trait) -> Array:
 	var definition: Dictionary = content_definition("trait", innate_trait_id(raw_trait), INNATE_TRAIT_DEFS.get(innate_trait_id(raw_trait), {}))
 	var effects: Array = []
-	if definition.get("effects", []) is Array:
+	var effects_by_rarity = definition.get("effects_by_rarity", {})
+	var rarity_effects = effects_by_rarity.get(innate_trait_rarity(raw_trait), []) if effects_by_rarity is Dictionary else []
+	if rarity_effects is Array and not rarity_effects.is_empty():
+		effects.append_array(rarity_effects)
+	elif definition.get("effects", []) is Array:
 		effects.append_array(definition.get("effects", []))
 	if raw_trait is Dictionary and raw_trait.get("effects", []) is Array:
 		effects.append_array(raw_trait.get("effects", []))
+	return effects
+
+
+static func innate_trait_effect_summary(raw_trait) -> String:
+	var effects := innate_trait_effects(raw_trait)
 	var parts: Array[String] = []
 	for effect in effects:
 		if not (effect is Dictionary):
@@ -1796,6 +1917,28 @@ static func innate_trait_effect_summary(raw_trait) -> String:
 				parts.append("%s %+d" % [attribute_display_name(str(effect.get("stat", ""))), int(amount)])
 			"element_flat":
 				parts.append("%s行 %+d" % [element_name(str(effect.get("element", ""))), int(amount)])
+			"stat_percent":
+				parts.append("%s %+.0f%%" % [attribute_display_name(str(effect.get("stat", effect.get("target", "")))), amount * 100.0])
+			"element_percent":
+				parts.append("%s行 %+.0f%%" % [element_name(str(effect.get("element", effect.get("target", "")))), amount * 100.0])
+			"direct_damage_percent":
+				parts.append("伤害 %+.0f%%" % [amount * 100.0])
+			"normal_attack_percent":
+				parts.append("普攻 %+.0f%%" % [amount * 100.0])
+			"weakness_damage_percent":
+				parts.append("克制伤害 %+.0f%%" % [amount * 100.0])
+			"leech_percent":
+				parts.append("吸血 %+.0f%%" % [amount * 100.0])
+			"defense_ignore":
+				parts.append("无视防御 %+d" % [int(amount)])
+			"physical_damage_taken_percent":
+				parts.append("受物理伤害 %+.0f%%" % [amount * 100.0])
+			"element_damage_taken_percent":
+				parts.append("受元素伤害 %+.0f%%" % [amount * 100.0])
+			"skill_cooldown_percent":
+				parts.append("技能冷却 %+.0f%%" % [amount * 100.0])
+			"skill_cooldown_turns":
+				parts.append("技能冷却 %+d 回合" % int(amount))
 	return "；".join(parts) if not parts.is_empty() else "暂无直接效果"
 
 

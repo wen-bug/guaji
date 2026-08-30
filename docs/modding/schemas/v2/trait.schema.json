@@ -5,8 +5,11 @@
   "type": "object",
   "additionalProperties": true,
   "required": [
-    "name",
-    "effects"
+    "name"
+  ],
+  "anyOf": [
+    { "required": ["effects"] },
+    { "required": ["effects_by_rarity"] }
   ],
   "properties": {
     "name": {
@@ -17,6 +20,15 @@
     },
     "effects": {
       "type": "array"
+    },
+    "effects_by_rarity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "common": { "type": "array" },
+        "rare": { "type": "array" },
+        "exceptional": { "type": "array" }
+      }
     }
   }
 }

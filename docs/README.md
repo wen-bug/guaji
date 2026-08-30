@@ -15,7 +15,7 @@
 - [Boss 遭遇](boss-encounters.md)：当前 Boss 和后续 Boss 规格。
 - [物品系统](items.md)：背包、装备、生产、炼丹和坊市规则。
 - [内容数据表](item-table.md)：已实现物品、配方、技能、装备、敌人和掉落索引。
-- [先天命格](innate-traits.md)：已实现命格字段与后续觉醒规划。
+- [先天命格](innate-traits.md)：已实现三档命格池、固定战斗效果与回合冷却修正。
 - [五行技能](skills.md)：当前技能规则和五行技能规划。
 - [装备成长 V2](equipment-progression-v2.md)：当前五阶装备、强化、词条、升阶与经济循环。
 

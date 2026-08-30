@@ -17,31 +17,6 @@
 - 修改脚本或场景文件后先 `filesystem_manage(op="scan")` 刷新编辑器文件系统，再运行。
 - 运行期检查活体游戏用 `game_eval`；主场景运行后用 `project_manage(op="stop")` 停止（测试场景会自行退出）。
 
-命令行方式作为无编辑器环境的后备。使用编辑器打开项目：
-
-```powershell
-godot --editor --path .
-```
-
-直接运行：
-
-```powershell
-godot --path .
-```
-
-无界面启动检查：
-
-```powershell
-godot --headless --path . --quit-after 5
-```
-
-测试场景可以直接作为启动场景运行，例如：
-
-```powershell
-godot --headless --path . scripts/tests/core_loop_regression_test.tscn
-godot --headless --path . scripts/tests/market_economy_test.tscn
-```
-
 Mod API 2 示例契约基于 `SceneTree`、没有 `.tscn` 场景，MCP 无法直接运行，需要先构建 PCK，再用命令行 `--script` 执行测试：
 
 ```powershell

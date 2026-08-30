@@ -261,6 +261,7 @@ var selected_forge_affix_index := 0
 var selected_party_member_id: String = ""
 var selected_recruit_candidate_id: String = ""
 var selected_recruit_party_member_id: String = ""
+var recruit_exchange_list_populated: bool = false
 var pending_release_member_id: String = ""
 var selected_alchemy_recipe_id: String = ""
 var selected_expedition_map_id := ""
@@ -758,7 +759,7 @@ func refresh(game_state) -> void:
 	if member_info_panel.visible:
 		_refresh_member_info(current_game_state)
 	if recruit_panel.visible:
-		_refresh_recruit_panel()
+		_update_recruit_controls()
 	if market_panel.visible:
 		_refresh_market_panel()
 	_refresh_visible_action_details()
@@ -973,8 +974,6 @@ func _refresh_member_info_traits(game_state) -> void:
 			DataTables.innate_trait_rarity_name(DataTables.innate_trait_rarity(raw_trait)),
 			DataTables.innate_trait_slot_name(slot),
 		]
-		if raw_trait is Dictionary and bool(raw_trait.get("awakened", false)):
-			header += " · 已觉醒"
 		var detail := "%s\n%s" % [
 			DataTables.innate_trait_description(raw_trait),
 			DataTables.innate_trait_effect_summary(raw_trait),
@@ -1231,15 +1230,19 @@ func show_home_action_panel(task_type: int) -> void:
 	_close_popup_panels()
 	menu_panel.visible = false
 	panel.visible = true
-	_refresh_action_detail(task_type)
 	if task_type == GameDefs.TaskType.FARM:
+		_refresh_action_detail(task_type)
 		_refresh_farm_panel()
-	if task_type == GameDefs.TaskType.FORGE:
+	elif task_type == GameDefs.TaskType.FORGE:
+		_refresh_action_detail(task_type)
 		_refresh_forge_panel()
-	if task_type == GameDefs.TaskType.ALCHEMY:
+	elif task_type == GameDefs.TaskType.ALCHEMY:
+		_refresh_action_detail(task_type)
 		_refresh_alchemy_panel()
-	if task_type == GameDefs.TaskType.RECRUIT:
-		_refresh_recruit_panel()
+	elif task_type == GameDefs.TaskType.RECRUIT:
+		_refresh_action_detail(task_type)
+	elif task_type == GameDefs.TaskType.FIGHT:
+		_refresh_action_detail(task_type)
 	panel.reset_size()
 	_apply_saved_panel_position(panel)
 	call_deferred("_apply_saved_panel_position_if_visible", panel)
@@ -1555,6 +1558,8 @@ func _on_building_upgrade_pressed(building_id: String) -> void:
 		return
 	if current_game_state.upgrade_building(building_id):
 		_refresh_visible_action_details()
+		if recruit_panel.visible:
+			_refresh_recruit_panel()
 		if inventory_panel.visible:
 			_refresh_inventory()
 
@@ -1843,6 +1848,8 @@ func _refresh_after_debug_change() -> void:
 		_refresh_forge_panel()
 	if alchemy_panel.visible:
 		_refresh_alchemy_panel()
+	if recruit_panel.visible:
+		_refresh_recruit_panel()
 	_refresh_visible_action_details()
 
 
@@ -1901,8 +1908,6 @@ func _refresh_visible_action_details() -> void:
 		_refresh_forge_panel()
 	if alchemy_panel.visible:
 		_refresh_alchemy_panel()
-	if recruit_panel.visible:
-		_refresh_action_detail(GameDefs.TaskType.RECRUIT)
 	if fight_panel.visible:
 		_refresh_action_detail(GameDefs.TaskType.FIGHT)
 
@@ -2005,6 +2010,15 @@ func _progress_detail_text(detail: String) -> String:
 func _refresh_recruit_panel() -> void:
 	if current_game_state == null:
 		return
+	_refresh_recruit_candidate_list()
+	_refresh_recruit_party_list()
+	_refresh_manual_exchange_page()
+	_update_recruit_controls()
+
+
+func _update_recruit_controls() -> void:
+	if current_game_state == null:
+		return
 	var stone_count: int = current_game_state.recruit_stone_count()
 	var recruit_cost: int = current_game_state.recruit_cost()
 	_refresh_building_upgrade_button(recruit_upgrade_button, "recruit")
@@ -2017,9 +2031,6 @@ func _refresh_recruit_panel() -> void:
 		stone_count,
 		recruit_cost,
 	]
-	_refresh_recruit_candidate_list()
-	_refresh_recruit_party_list()
-	_refresh_manual_exchange_page()
 	var candidate_selected := not selected_recruit_candidate_id.is_empty()
 	recruit_button.disabled = not candidate_selected or not current_game_state.can_recruit()
 	if current_game_state.roster_member_count() >= ROSTER_MAX_SIZE:
@@ -2134,7 +2145,7 @@ func _on_recruit_candidate_selected(index: int) -> void:
 	if index < 0 or index >= recruit_candidate_list.item_count:
 		return
 	selected_recruit_candidate_id = str(recruit_candidate_list.get_item_metadata(index))
-	_refresh_recruit_panel()
+	_update_recruit_controls()
 
 
 func _on_recruit_pressed() -> void:
@@ -2165,7 +2176,7 @@ func _on_recruit_party_member_selected(index: int) -> void:
 		return
 	selected_recruit_party_member_id = str(party_list.get_item_metadata(index))
 	selected_party_member_id = selected_recruit_party_member_id
-	_refresh_recruit_panel()
+	_update_recruit_controls()
 	_refresh_member_info(current_game_state)
 
 
@@ -3200,18 +3211,22 @@ func _refresh_manual_exchange_page() -> void:
 	var previous_id := ""
 	if manual_exchange_list.get_selected_items().size() > 0:
 		previous_id = str(manual_exchange_list.get_item_metadata(manual_exchange_list.get_selected_items()[0]))
-	manual_exchange_list.clear()
-	var skill_ids: Array = DataTables.SKILL_EXCHANGE_DEFS.keys()
-	skill_ids.sort()
-	for skill_id in skill_ids:
-		var exchange: Dictionary = DataTables.SKILL_EXCHANGE_DEFS.get(skill_id, {})
-		var skill: Dictionary = DataTables.create_skill(str(skill_id))
-		var stone_id := str(exchange.get("element_stone_id", ""))
-		var label := "%s  残页3 + %s1" % [str(skill.get("name", skill_id)), DataTables.resource_name(stone_id)]
-		manual_exchange_list.add_item(label)
-		manual_exchange_list.set_item_metadata(manual_exchange_list.item_count - 1, str(skill_id))
-		if str(skill_id) == previous_id:
-			manual_exchange_list.select(manual_exchange_list.item_count - 1)
+	if not recruit_exchange_list_populated:
+		manual_exchange_list.clear()
+		var skill_ids: Array = DataTables.SKILL_EXCHANGE_DEFS.keys()
+		skill_ids.sort()
+		for skill_id in skill_ids:
+			var exchange: Dictionary = DataTables.SKILL_EXCHANGE_DEFS.get(skill_id, {})
+			var skill: Dictionary = DataTables.create_skill(str(skill_id))
+			var stone_id := str(exchange.get("element_stone_id", ""))
+			var label := "%s  残页3 + %s1" % [str(skill.get("name", skill_id)), DataTables.resource_name(stone_id)]
+			manual_exchange_list.add_item(label)
+			manual_exchange_list.set_item_metadata(manual_exchange_list.item_count - 1, str(skill_id))
+		recruit_exchange_list_populated = true
+	manual_exchange_list.deselect_all()
+	for index in range(manual_exchange_list.item_count):
+		if str(manual_exchange_list.get_item_metadata(index)) == previous_id and previous_id != "":
+			manual_exchange_list.select(index)
 	manual_exchange_button.disabled = manual_exchange_list.get_selected_items().is_empty()
 
 

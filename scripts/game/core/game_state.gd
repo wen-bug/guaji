@@ -1488,6 +1488,7 @@ func _total_defense_for_member(member: Dictionary) -> int:
 func _total_stat_for_member(member: Dictionary, stat_id: String) -> int:
 	var member_stats: Dictionary = member.get("stats", {})
 	var base_value := float(int(member_stats.get(stat_id, 0)) + _stat_bonus_for_member(member, stat_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	base_value *= 1.0 + _trait_stat_percent_bonus_for_member(member, stat_id)
 	return _apply_item_buff_modifiers(base_value, stat_id, "member", str(member.get("id", "")))
 
 
@@ -1495,6 +1496,7 @@ func _total_element_for_member(member: Dictionary, element_id: String) -> int:
 	var member_elements: Dictionary = member.get("elements", {})
 	var stat_id := "element_%s" % element_id
 	var base_value := float(int(member_elements.get(element_id, 0)) + _trait_element_flat_bonus_for_member(member, element_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	base_value *= 1.0 + _trait_element_percent_bonus_for_member(member, element_id)
 	return _apply_item_buff_modifiers(base_value, stat_id, "member", str(member.get("id", "")))
 
 
@@ -1554,6 +1556,7 @@ func combat_total_stat_for(member_id: String, stat_id: String) -> int:
 		return 0
 	var member_stats: Dictionary = member.get("stats", {})
 	var base_value := float(int(member_stats.get(stat_id, 0)) + _stat_bonus_for_member(member, stat_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	base_value *= 1.0 + _trait_stat_percent_bonus_for_member(member, stat_id)
 	var value := _apply_item_buff_modifiers_for_targets(base_value, stat_id, ["member", "combat_global"], member_id)
 	if stat_id == "attack":
 		var element_power := 0
@@ -1570,6 +1573,7 @@ func combat_total_element_for(member_id: String, element_id: String) -> int:
 	var stat_id := "element_%s" % element_id
 	var member_elements: Dictionary = member.get("elements", {})
 	var base_value := float(int(member_elements.get(element_id, 0)) + _trait_element_flat_bonus_for_member(member, element_id) + _equipment_attribute_bonus_for_member(member, stat_id))
+	base_value *= 1.0 + _trait_element_percent_bonus_for_member(member, element_id)
 	return _apply_item_buff_modifiers_for_targets(base_value, stat_id, ["member", "combat_global"], member_id)
 
 
@@ -1800,6 +1804,14 @@ func add_cultivation(amount: int) -> void:
 
 func add_task_experience(task_type: int, amount: int) -> void:
 	var key: String = DataTables.task_zone_id(task_type)
+	# 保留 task_exp_percent 作为旧 Mod 命格兼容字段；内置命格不再使用。
+	var bonus := 0.0
+	for member_id in party_order:
+		var member := member_by_id(str(member_id))
+		if member.is_empty():
+			continue
+		bonus += _innate_trait_modifier_for_member(member, "task_exp_percent")
+	amount = maxi(1, roundi(float(amount) * (1.0 + bonus)))
 	task_exp[key] = task_exp.get(key, 0) + amount
 	if task_exp[key] % 10 == 0:
 		log_added.emit("%s熟练度达到 %d" % [DataTables.task_name(task_type), task_exp[key]])
@@ -2643,30 +2655,75 @@ func _trait_element_flat_bonus_for_member(member: Dictionary, element_id: String
 	return value
 
 
+func _innate_trait_modifier_for_member(member: Dictionary, kind: String) -> float:
+	var value := 0.0
+	for effect in _innate_trait_effects_for_member(member):
+		if not (effect is Dictionary):
+			continue
+		if str(effect.get("kind", "")) != kind:
+			continue
+		value += float(effect.get("amount", effect.get("value", 0.0)))
+	return value
+
+
+func _trait_stat_percent_bonus_for_member(member: Dictionary, stat_id: String) -> float:
+	var value := 0.0
+	for effect in _innate_trait_effects_for_member(member):
+		if not (effect is Dictionary):
+			continue
+		if str(effect.get("kind", "")) != "stat_percent":
+			continue
+		if str(effect.get("stat", "")) != stat_id:
+			continue
+		value += float(effect.get("amount", effect.get("value", 0.0)))
+	return value
+
+
+func _trait_element_percent_bonus_for_member(member: Dictionary, element_id: String) -> float:
+	var value := 0.0
+	var stat_id := "element_%s" % element_id
+	for effect in _innate_trait_effects_for_member(member):
+		if not (effect is Dictionary):
+			continue
+		var kind: String = str(effect.get("kind", ""))
+		if kind == "element_percent" and str(effect.get("element", "")) == element_id:
+			value += float(effect.get("amount", effect.get("value", 0.0)))
+		elif kind == "stat_percent" and str(effect.get("stat", "")) == stat_id:
+			value += float(effect.get("amount", effect.get("value", 0.0)))
+	return value
+
+
 func _innate_trait_effects_for_member(member: Dictionary) -> Array:
 	var effects: Array = []
-	var source: Variant = member.get("innate_traits", [])
-	var raw_traits: Array = []
-	if source is Array:
-		raw_traits.assign(source)
-	for raw_trait in raw_traits:
-		if raw_trait is String:
-			var trait_id: String = str(raw_trait)
-			var definition = DataTables.content_definition("trait", trait_id, DataTables.INNATE_TRAIT_DEFS.get(trait_id, {}))
-			if definition is Dictionary:
-				_append_effects_from_value(effects, definition.get("effects", []))
-		elif raw_trait is Dictionary:
-			var trait_id: String = str(raw_trait.get("id", ""))
-			if not trait_id.is_empty():
-				var definition = DataTables.content_definition("trait", trait_id, DataTables.INNATE_TRAIT_DEFS.get(trait_id, {}))
-				if definition is Dictionary:
-					_append_effects_from_value(effects, definition.get("effects", []))
-					if bool(raw_trait.get("awakened", false)):
-						_append_effects_from_value(effects, definition.get("awakened_effects", []))
-			_append_effects_from_value(effects, raw_trait.get("effects", []))
-			if bool(raw_trait.get("awakened", false)):
-				_append_effects_from_value(effects, raw_trait.get("awakened_effects", []))
+	var source = member.get("innate_traits", [])
+	if not (source is Array):
+		return effects
+	for raw_trait in source:
+		_append_effects_from_value(effects, DataTables.innate_trait_effects(raw_trait))
 	return effects
+
+
+func innate_trait_effects_of_kind(member_id: String, kind: String) -> Array:
+	# 返回成员命格中指定 kind 的原始效果字典，供兼容内容消费。
+	var matched: Array = []
+	var member := member_by_id(member_id)
+	if member.is_empty():
+		return matched
+	for effect in _innate_trait_effects_for_member(member):
+		if effect is Dictionary and str(effect.get("kind", "")) == kind:
+			matched.append((effect as Dictionary).duplicate(true))
+	return matched
+
+
+func party_drop_chance_multiplier() -> float:
+	# 保留 drop_chance_percent 作为旧 Mod 命格兼容字段；内置命格不再使用。
+	var bonus := 0.0
+	for member_id in party_order:
+		var member := member_by_id(str(member_id))
+		if member.is_empty():
+			continue
+		bonus += _innate_trait_modifier_for_member(member, "drop_chance_percent")
+	return 1.0 + maxf(0.0, bonus)
 
 
 func _append_effects_from_value(effects: Array, value) -> void:
@@ -2982,6 +3039,18 @@ func equipment_combat_modifiers_for(member_id: String) -> Dictionary:
 				result[affix_id] = int(result[affix_id]) + int(value)
 			else:
 				result[affix_id] = float(result[affix_id]) + float(value)
+	# 命格战斗修正按出生品质读取，与装备词条同一套上限约束。
+	result["direct_damage_percent"] = float(result["direct_damage_percent"]) + _innate_trait_modifier_for_member(member, "direct_damage_percent")
+	result["leech_percent"] = float(result["leech_percent"]) + _innate_trait_modifier_for_member(member, "leech_percent")
+	result["defense_ignore"] = int(result["defense_ignore"]) + int(_innate_trait_modifier_for_member(member, "defense_ignore"))
+	# 命格专属修正：装备词条不存在这些 key，仅作为统一读取出口，不设上限。
+	result["normal_attack_percent"] = _innate_trait_modifier_for_member(member, "normal_attack_percent")
+	result["weakness_damage_percent"] = _innate_trait_modifier_for_member(member, "weakness_damage_percent")
+	result["physical_damage_taken_percent"] = _innate_trait_modifier_for_member(member, "physical_damage_taken_percent")
+	result["element_damage_taken_percent"] = _innate_trait_modifier_for_member(member, "element_damage_taken_percent")
+	result["skill_cooldown_turns"] = int(_innate_trait_modifier_for_member(member, "skill_cooldown_turns"))
+	# 仅兼容旧 Mod 命格；内置命格不再使用百分比冷却。
+	result["skill_cooldown_percent"] = _innate_trait_modifier_for_member(member, "skill_cooldown_percent")
 	for capped_id in DataTables.EQUIPMENT_COMBAT_MODIFIER_CAPS:
 		result[capped_id] = minf(float(result.get(capped_id, 0.0)), DataTables.equipment_combat_modifier_cap(str(capped_id)))
 	return result

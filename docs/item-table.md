@@ -138,17 +138,46 @@
 
 ## 已实现：命格数据索引
 
-完整规则见[先天命格](innate-traits.md)。当前 `DataTables.INNATE_TRAIT_DEFS` 中已实现：
+完整规则见[先天命格](innate-traits.md)。当前 `DataTables.INNATE_TRAIT_DEFS` 共 22 条，按槽位分组：
+
+**主命格（统一池 `MAIN_TRAIT_IDS`）：**
+
+| id | 名称 | 方向 | 普通 / 优秀 / 异禀 |
+| --- | --- | --- | --- |
+| `robust_body` | 健体 | 生存 | 气血 +20 / +24 / +28 |
+| `sharp_edge` | 锋芒 | 输出 | 攻击 +2 / +3 / +4 |
+| `steady_guard` | 稳守 | 防御 | 防御 +2 / +3 / +4 |
+| `full_vigor` | 充沛 | 法力 | 法力 +12 / +15 / +18 |
+| `good_root` | 良根 | 根骨 | 根骨 +2 / +3 / +4 |
+| `wood_virtue` | 木德长生 | 输出 | 直接伤害 +5% / +7% / +10% |
+| `venom_body` | 万毒灵胎 | 减伤 | 受元素伤害 -5% / -7% / -10% |
+| `fire_aspect` | 离火真脉 | 输出 | 直接伤害 +5% / +7% / +10% |
+| `blazing_soul` | 赤阳命火 | 克制 | 克制伤害 +5% / +7% / +10% |
+| `earth_body` | 厚土道体 | 减伤 | 受物理伤害 -5% / -7% / -10% |
+| `mountain_bone` | 镇岳灵骨 | 减伤 | 受元素伤害 -5% / -7% / -10% |
+| `sword_bone` | 天生剑骨 | 普攻 | 普攻伤害 +5% / +7% / +10% |
+| `metal_edge` | 庚金锋魄 | 输出 | 直接伤害 +5% / +7% / +10% |
+| `full_spirit_root` | 太阴灵脉 | 冷却 | CD -1 且伤害 -6% / CD -1 / CD -2 |
+| `water_mind` | 水镜道心 | 减伤 | 受元素伤害 -5% / -7% / -10% |
+
+**副命格（`SUB_TRAIT_IDS`）：**
 
 | id | 名称 | 方向 | 效果摘要 |
 | --- | --- | --- | --- |
-| `robust_body` | 健体 | 生存 | `max_hp +20` |
-| `sharp_edge` | 锋芒 | 输出 | `attack +2` |
-| `steady_guard` | 稳守 | 防御 | `defense +2` |
-| `full_vigor` | 充沛 | 法力 | `max_mp +12` |
-| `good_root` | 良根 | 根骨 | `root_bone +2` |
+| `earth_scout` | 地听寻珍 | 输出 | 直接伤害 +2% / +3% / +4% |
+| `clear_mind` | 澄心善学 | 减伤 | 受物理伤害 -2% / -3% / -4% |
 
-基础招募命格池当前为 `robust_body`、`sharp_edge`、`steady_guard`、`full_vigor`、`good_root`。
+**缺陷命格（`FLAW_TRAIT_IDS`，异禀且招募建筑 7 级后概率追加）：**
+
+| id | 名称 | 异禀效果 |
+| --- | --- | --- |
+| `withered_meridian` | 枯荣逆脉 | 直接伤害 +12%，受物理伤害 +6% |
+| `burning_heart` | 烈性攻心 | 普攻伤害 +12%，受元素伤害 +6% |
+| `heavy_body` | 重浊之身 | CD -2 回合，直接伤害 -6% |
+| `lone_edge` | 孤锋煞命 | 克制伤害 +12%，受元素伤害 +6% |
+| `cold_obsession` | 寒魄偏执 | CD -2 回合，普攻伤害 -10% |
+
+三种品质均从完整主池抽取；招募建筑 4 级起所有品质追加副命格。命格不可升级或觉醒，完整三档数值和生成规则见[先天命格](innate-traits.md)。
 
 ## 已实现：敌人与掉落
 

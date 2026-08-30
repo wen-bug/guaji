@@ -23,12 +23,14 @@
 | `skill` | `scene_path`；定义从场景绑定的 `SkillDef` 读取 |
 | `basic_attack` | `name`、`effects` |
 | `recipe` | `result_item_id`、`materials` |
-| `trait` | `name`、`effects` |
+| `trait` | `name`，以及 `effects` 或 `effects_by_rarity` |
 | `enemy` | `name`、`visual_id`、`scene_path` |
 | `enemy_rank` | `name` |
 | `drop_table` | 无必填字段 |
 | `appearance` | `kind`、`scene_path` |
 | `dialogue` | `text` |
+
+`trait` 推荐使用 `effects_by_rarity`，分别声明 `common`、`rare`、`exceptional`；省略时回退读取 `effects`。当前推荐 kind 为 `stat_flat`、`element_flat`、`stat_percent`、`element_percent`、`normal_attack_percent`、`direct_damage_percent`、`weakness_damage_percent`、`skill_cooldown_turns`、`physical_damage_taken_percent` 和 `element_damage_taken_percent`。`skill_cooldown_turns.amount` 必须为整数，负数减少冷却。旧 `skill_cooldown_percent` 仍兼容读取，但不应在新内容中使用。命格不可觉醒，`awakened` 和 `awakened_effects` 不参与结算。
 
 技能、敌人、配方等引用使用完整内容 ID。本体 ID 为兼容存档保持短 ID；Mod 新内容必须使用自动命名空间。Mod 只能引用自身或硬依赖提供的逻辑 ID，不能引用其他 Mod 的私有资源路径。
 

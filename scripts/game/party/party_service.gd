@@ -425,27 +425,37 @@ func random_basic_recruit_traits() -> Array:
 	if game_state != null and game_state.has_method("building_level"):
 		recruit_level = int(game_state.call("building_level", "recruit"))
 	var max_count: int = DataTables.recruit_max_trait_count(recruit_level)
-	var trait_count: int = 1
 	var rarity := DataTables.random_innate_trait_rarity(game_state.rng)
-	if max_count >= 2 and rarity != "common":
-		trait_count = 2
-	trait_count = mini(trait_count, max_count)
-	var pool: Array = DataTables.BASIC_RECRUIT_TRAIT_IDS.duplicate()
-	var traits: Array = []
-	while traits.size() < trait_count and not pool.is_empty():
-		var index: int = game_state.rng.randi_range(0, pool.size() - 1)
-		var trait_id: String = str(pool[index])
-		pool.remove_at(index)
-		var definition: Dictionary = DataTables.content_definition("trait", trait_id, DataTables.INNATE_TRAIT_DEFS.get(trait_id, {}))
-		traits.append({
-			"id": trait_id,
-			"name": str(definition.get("name", trait_id)),
-			"slot": "main" if traits.is_empty() else "sub",
-			"rarity": rarity,
-			"level": 1,
-			"awakened": false,
-		})
+	var traits: Array = [_roll_trait_from_pool(DataTables.MAIN_TRAIT_IDS.duplicate(), "main", rarity)]
+	# 招募建筑 4 级起，所有品质都追加一条同品质副命格。
+	if max_count >= 2 and not DataTables.SUB_TRAIT_IDS.is_empty():
+		traits.append(_roll_trait_from_pool(DataTables.SUB_TRAIT_IDS.duplicate(), "sub", rarity))
+	# 缺陷：异禀且招募建筑 >=7 时 35% 追加，不占 recruit_max_trait_count 容量。
+	if rarity == "exceptional" and recruit_level >= 7 and game_state.rng.randf() < 0.35:
+		traits.append(_roll_trait_from_pool(DataTables.FLAW_TRAIT_IDS.duplicate(), "flaw", rarity))
 	return traits
+
+
+func _roll_trait_from_pool(pool: Array, slot: String, rarity: String) -> Dictionary:
+	var picked_id := ""
+	while not pool.is_empty():
+		var index: int = game_state.rng.randi_range(0, pool.size() - 1)
+		picked_id = str(pool[index])
+		pool.remove_at(index)
+		if not DataTables.content_definition("trait", picked_id, {}).is_empty():
+			break
+		picked_id = ""
+	if picked_id.is_empty():
+		picked_id = str(DataTables.BASIC_RECRUIT_TRAIT_IDS[game_state.rng.randi_range(0, DataTables.BASIC_RECRUIT_TRAIT_IDS.size() - 1)])
+	var definition: Dictionary = DataTables.content_definition("trait", picked_id, DataTables.INNATE_TRAIT_DEFS.get(picked_id, {}))
+	return {
+		"id": picked_id,
+		"name": str(definition.get("name", picked_id)),
+		"slot": slot,
+		"rarity": rarity,
+		"level": 1,
+		"awakened": false,
+	}
 
 
 func random_recruit_name(used_names: Dictionary) -> String:

@@ -84,6 +84,8 @@ func _apply_damage_effect(
 	var raw_damage := SkillValueResolverScript.effect_amount(effect, scaling_element, caster)
 	var attacker_modifiers := caster.equipment_combat_modifiers()
 	raw_damage = maxi(1, roundi(float(raw_damage) * (1.0 + float(attacker_modifiers.get("direct_damage_percent", 0.0)))))
+	if str(skill.get("type", "")) == "normal_attack":
+		raw_damage = maxi(1, roundi(float(raw_damage) * (1.0 + float(attacker_modifiers.get("normal_attack_percent", 0.0)))))
 	var is_critical := rng != null and rng.randf() < float(attacker_modifiers.get("critical_chance", 0.0))
 	if is_critical:
 		raw_damage = maxi(1, roundi(float(raw_damage) * float(attacker_modifiers.get("critical_multiplier", 1.5))))
@@ -98,12 +100,20 @@ func _apply_damage_effect(
 		context["blocked_by_shield"] = 0
 		var affinity_relation := DataTables.combat_affinity_relation(damage_affinity, target.combat_affinity())
 		var defense_ignore := int(effect.get("defense_ignore", 0)) + int(attacker_modifiers.get("defense_ignore", 0))
-		var final_damage := _final_damage(raw_damage, affinity_relation, defense_ignore, target)
-		var target_reduction := float(target.equipment_combat_modifiers().get("direct_damage_reduction", 0.0))
+		var weakness_multiplier := 1.0 + (float(attacker_modifiers.get("weakness_damage_percent", 0.0)) if affinity_relation == "overcome" else 0.0)
+		var final_damage := maxi(1, roundi(float(_final_damage(raw_damage, affinity_relation, defense_ignore, target)) * weakness_multiplier))
+		var target_modifiers := target.equipment_combat_modifiers()
+		var target_reduction := float(target_modifiers.get("direct_damage_reduction", 0.0))
 		final_damage = maxi(1, roundi(float(final_damage) * (1.0 - target_reduction)))
+		# 命格受伤修正：按伤害类型分拆，负值为减伤、正值为易伤（缺陷命格），DOT 不经过此乘区。
+		var damage_type := _damage_type(damage_affinity)
+		var taken_key := "physical_damage_taken_percent" if damage_type == "physical" else "element_damage_taken_percent"
+		var taken_percent := float(target_modifiers.get(taken_key, 0.0))
+		if taken_percent != 0.0:
+			final_damage = maxi(1, roundi(float(final_damage) * (1.0 + taken_percent)))
 		if bool(effect.get("shieldable", true)) and final_damage > 0:
 			final_damage = target.apply_shields(final_damage, context)
-		var damage_result := target.apply_damage(final_damage, _damage_type(damage_affinity), {
+		var damage_result := target.apply_damage(final_damage, damage_type, {
 			"skill_id": str(skill.get("id", "")),
 			"effect_id": str(effect.get("effect_id", "")),
 			"caster_id": caster.actor_id,
