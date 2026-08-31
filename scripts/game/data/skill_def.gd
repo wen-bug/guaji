@@ -18,6 +18,10 @@ extends Resource
 @export_enum("normal_attack", "damage", "heal", "buff", "defense", "resource") var type := "damage"
 ## 目标范围，例如 self、single_enemy、all_enemies 或 all_allies。
 @export_enum("self", "single_ally", "all_allies", "single_enemy", "all_enemies") var target_scope := "single_enemy"
+## 群体技能最多作用的目标数；仅 all_allies / all_enemies 生效。
+@export_range(1, 4, 1) var target_count := 2
+## 群体技能从编队前方或后方开始截取目标。
+@export_enum("front", "back") var target_tendency := "front"
 ## 下列字段由解析器从 target_scope 和 effects 推导，不在核心资源中重复配置。
 var target_mode := "single"
 var is_aoe := false
@@ -67,6 +71,8 @@ func setup(skill_id: String, data: Dictionary) -> SkillDef:
 	icon_path = data.get("icon_path", "res://assets/skills/%s.png" % icon_name)
 	type = data.get("type", "damage")
 	target_scope = data.get("target_scope", "single_enemy")
+	target_count = clampi(int(data.get("target_count", 2)), 1, 4)
+	target_tendency = str(data.get("target_tendency", "front"))
 	target_mode = data.get("target_mode", "single")
 	is_aoe = bool(data.get("is_aoe", target_mode == "aoe"))
 	effect_tags.assign(data.get("effect_tags", []))
@@ -96,6 +102,8 @@ func to_dictionary() -> Dictionary:
 		"type": type,
 		"target_scope": target_scope,
 		"target_mode": target_mode,
+		"target_count": target_count,
+		"target_tendency": target_tendency,
 		"element": element,
 		"mp_cost": mp_cost,
 		"cooldown": cooldown,

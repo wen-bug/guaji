@@ -5,6 +5,7 @@ const INDEX_PATH := "res://resources/skills/index.tres"
 const FORMAT_VERSION := 1
 const VALID_TYPES := ["normal_attack", "damage", "heal", "buff", "defense", "resource"]
 const VALID_SCOPES := ["self", "single_ally", "all_allies", "single_enemy", "all_enemies"]
+const VALID_TARGET_TENDENCIES := ["front", "back"]
 const VALID_EFFECT_KINDS := ["damage", "heal", "status", "cooldown"]
 const VALID_EFFECT_TARGETS := ["skill_targets", "caster", "primary_target", "hit_targets"]
 const VALID_STATUS_KINDS := ["dot", "hot", "shield", "buff_stat", "debuff_stat"]
@@ -61,6 +62,8 @@ static func validate_definition(data: Dictionary, source_path: String = "<memory
 	if str(data.get("name", "")).is_empty(): errors.append("%s: display_name is required" % source_path)
 	if not VALID_TYPES.has(str(data.get("type", ""))): errors.append("%s: type is invalid" % source_path)
 	if not VALID_SCOPES.has(str(data.get("target_scope", ""))): errors.append("%s: target_scope is invalid" % source_path)
+	if data.has("target_count") and (int(data.get("target_count", 0)) < 1 or int(data.get("target_count", 0)) > 4): errors.append("%s: target_count must be between 1 and 4" % source_path)
+	if data.has("target_tendency") and not VALID_TARGET_TENDENCIES.has(str(data.get("target_tendency", ""))): errors.append("%s: target_tendency is invalid" % source_path)
 	if int(data.get("mp_cost", 0)) < 0: errors.append("%s: mp_cost must be non-negative" % source_path)
 	if float(data.get("cooldown", 0.0)) < 0.0: errors.append("%s: cooldown must be non-negative" % source_path)
 	if float(data.get("weight", 1.0)) <= 0.0: errors.append("%s: weight must be positive" % source_path)

@@ -153,7 +153,8 @@ finish_cast()
 
 ```text
 单体敌方：锚到 primary_target -> open -> 物理帧 -> impact -> close -> 尾帧 -> finish
-群体敌方：锚到 primary_target -> 宽形状 open -> 物理帧 -> impact -> close -> finish
+群体敌方伤害/Debuff：锚到有限目标范围起点 -> 宽形状 open -> 物理帧 -> impact -> close -> finish
+群体友方治疗/Buff/护盾：锚到 caster -> impact -> finish
 自身技能：锚到 caster -> 与施法者 Hurtbox 重叠 -> open -> 物理帧 -> impact -> close -> finish
 多段技能：open(hit_1) -> impact(hit_1) -> close -> open(hit_2) -> impact(hit_2) -> close -> finish
 弹道技能：open -> flight_progress 0..1 -> impact -> close -> 落地/消散 -> finish
@@ -183,7 +184,7 @@ SkillSceneRoot
 └─ AnimationPlayer
 ```
 
-`SkillProjectilePath` 在 `start_cast()` 时冻结施法者效果锚点和首个预选目标命中锚点。
+`SkillProjectilePath` 在 `start_cast()` 时冻结施法者效果锚点和表现锚点。友方 AOE 的表现锚点是施法者；对敌 AOE 的表现锚点是前后倾截取范围的起点。
 在 `cast` 中添加 `ProjectilePath:flight_progress` 属性轨道，从 `0` 动画到 `1`；
 `arc_height` 控制抛物线高度，`start_offset` / `end_offset` 控制两端偏移。碰撞窗口和
 多段方法轨道仍由制作者手工安排，代码不会创建碰撞块、形状或属性关键帧。

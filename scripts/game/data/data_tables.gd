@@ -96,6 +96,8 @@ const SKILL_TARGET_SCOPES := [
 ]
 const SKILL_TARGET_MODE_SINGLE := "single"
 const SKILL_TARGET_MODE_AOE := "aoe"
+const SKILL_TARGET_TENDENCY_FRONT := "front"
+const SKILL_TARGET_TENDENCY_BACK := "back"
 const SKILL_BUFF_EFFECT_KINDS := ["hot", "shield", "buff_stat"]
 const SKILL_DEBUFF_EFFECT_KINDS := ["dot", "debuff_stat"]
 
@@ -1121,6 +1123,11 @@ static func normalize_skill_definition(definition: Dictionary) -> Dictionary:
 		scope = _default_skill_target_scope(str(skill.get("type", "")))
 	skill["target_scope"] = scope
 	skill["target_mode"] = SKILL_TARGET_MODE_AOE if scope in [SKILL_TARGET_ALL_ALLIES, SKILL_TARGET_ALL_ENEMIES] else SKILL_TARGET_MODE_SINGLE
+	if skill.has("target_count"):
+		skill["target_count"] = clampi(int(skill.get("target_count", 2)), 1, 4)
+	if skill.has("target_tendency"):
+		var tendency := str(skill.get("target_tendency", SKILL_TARGET_TENDENCY_FRONT))
+		skill["target_tendency"] = tendency if tendency in [SKILL_TARGET_TENDENCY_FRONT, SKILL_TARGET_TENDENCY_BACK] else SKILL_TARGET_TENDENCY_FRONT
 	skill.erase("release_distance")
 	skill["is_aoe"] = skill["target_mode"] == SKILL_TARGET_MODE_AOE
 	var tags: Array[String] = _skill_effect_tags(skill)
@@ -1140,6 +1147,23 @@ static func skill_target_mode(skill: Dictionary) -> String:
 
 static func skill_is_aoe(skill: Dictionary) -> bool:
 	return bool(normalize_skill_definition(skill).get("is_aoe", false))
+
+
+static func skill_target_count(skill: Dictionary, available_count: int) -> int:
+	if not skill_is_aoe(skill) or available_count <= 0:
+		return mini(1, maxi(0, available_count))
+	if not skill.has("target_count"):
+		return available_count
+	return mini(available_count, clampi(int(skill.get("target_count", 2)), 1, 4))
+
+
+static func skill_target_tendency(skill: Dictionary) -> String:
+	var value := str(skill.get("target_tendency", SKILL_TARGET_TENDENCY_FRONT))
+	return value if value in [SKILL_TARGET_TENDENCY_FRONT, SKILL_TARGET_TENDENCY_BACK] else SKILL_TARGET_TENDENCY_FRONT
+
+
+static func skill_target_tendency_name(value: String) -> String:
+	return "后倾" if value == SKILL_TARGET_TENDENCY_BACK else "前倾"
 
 
 static func skill_effect_tags(skill: Dictionary) -> Array:
@@ -1221,9 +1245,6 @@ static func create_enemy(level: int, rng: RandomNumberGenerator, enemy_id: Strin
 	var element_power := maxi(0, int(template.get("element_power", 0)) + int(float(rank_level) / 5.0))
 	var elements: Dictionary = {element_id: element_power} if not element_id.is_empty() else {}
 	var skills: Array = template.get("skills", []).duplicate(true) if template.get("skills", []) is Array else []
-	var skill_limit := int(rank.get("skill_count", 0))
-	while skills.size() > skill_limit:
-		skills.pop_back()
 	var drop_profile: Dictionary = rank_drop_profile(rank_id, template.get("drop_profile", {}))
 	var enemy_class: String = str(template.get("enemy_class", ENEMY_CLASS_NORMAL))
 	var combat_affinity := COMBAT_AFFINITY_NORMAL

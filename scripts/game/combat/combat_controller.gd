@@ -28,6 +28,9 @@ const PARTY_FORMATION_SPACING := Vector2(-68, 0)
 const POSITION_EPSILON := 2.0
 const DEFAULT_MOVE_SPEED := 120.0
 const MAX_ENEMY_COUNT := 8
+const MAX_CONCURRENT_ENEMIES := 4
+const ENEMY_FORMATION_SPACING := Vector2(68, 0)
+const VIEWPORT_SAFE_MARGIN := 48.0
 
 var active := false
 var finished := false
@@ -39,6 +42,8 @@ var party_actor_views: Dictionary = {}
 var party_actor_statuses: Dictionary = {}
 var current_enemy_node: BaseEnemy = null
 var enemy_actor_status: CombatActorStatus = null
+var enemy_combatants: Array = []
+var enemy_waiting_queue: Array = []
 var battle_map: Node2D = null
 var pending_game_state = null
 var combat_ai := CombatAI.new()
@@ -58,6 +63,8 @@ var _enemy_pending_action: Dictionary = {}
 var _enemy_home_position := DEFAULT_ENEMY_POSITION
 var _enemy_death_waiting := false
 var _enemy_turn_started := false
+var _enemy_turn_order: Array[String] = []
+var _enemy_turn_index := 0
 var _rewards_granted := false
 var _combat_result := RESULT_NONE
 var _active_skill_scenes: Dictionary = {}
@@ -140,13 +147,22 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_selection = "", 
 		var generated_enemy: Dictionary = DataTables.create_enemy(game_state.expedition_level(), game_state.rng, selected_enemy_id)
 		generated_enemy["combat_id"] = "enemy_%d" % (index + 1)
 		enemy_group.append(generated_enemy)
-	enemy_group_index = 0
-	enemy = enemy_group[enemy_group_index]
-	_spawn_enemy_node(str(enemy.get("id", "")))
-	if current_enemy_node == null:
+	# Reposition the party now that the simultaneous enemy count is known.
+	base_position = _party_front_position(party_combatants.size(), mini(MAX_CONCURRENT_ENEMIES, enemy_group.size()))
+	for index in range(party_combatants.size()):
+		var formation: Vector2 = base_position + PARTY_FORMATION_SPACING * float(index)
+		party_combatants[index]["position"] = formation
+		party_combatants[index]["formation_position"] = formation
+		var actor := _party_actor(str(party_combatants[index].get("member_id", "")))
+		if actor != null:
+			actor.call("enter_combat", formation)
+			actor.call("set_formation_position", formation)
+	for generated in enemy_group:
+		enemy_waiting_queue.append(generated)
+	_refill_enemy_slots()
+	_sync_front_enemy_aliases()
+	if enemy_combatants.is_empty():
 		return
-	_enemy_home_position = DEFAULT_ENEMY_POSITION
-	current_enemy_node.set_combat_position(_enemy_home_position)
 	_turn_phase = PHASE_PARTY
 	_party_turn_index = 0
 	_round_number = 1
@@ -159,7 +175,7 @@ func begin_encounter(game_state, map_node: Node2D = null, enemy_selection = "", 
 		"enemy_count": enemy_group.size(),
 		"party_member_ids": party_combatants.map(func(value): return str(value.get("member_id", ""))),
 	})
-	log_added.emit("遭遇%s（共%d只），属性%s" % [enemy.get("name", "敌人"), enemy_group.size(), DataTables.combat_affinity_name(str(enemy.get("combat_affinity", "normal")))])
+	log_added.emit("遭遇%s（共%d只，%d只同场），属性%s" % [enemy.get("name", "敌人"), enemy_group.size(), enemy_combatants.size(), DataTables.combat_affinity_name(str(enemy.get("combat_affinity", "normal")))])
 
 
 func _normalized_encounter_enemy_ids(enemy_selection, legacy_enemy_count: int) -> Array[String]:
@@ -190,7 +206,7 @@ func _enemy_group_ids() -> Array[String]:
 
 
 func tick(delta: float, game_state) -> void:
-	if not active or finished or _enemy_death_waiting:
+	if not active or finished:
 		return
 	pending_game_state = game_state
 	if _presentation_active:
@@ -224,11 +240,15 @@ func clear() -> void:
 		var actor := _party_actor(str(combatant.get("member_id", "")))
 		if actor != null:
 			actor.call("cancel_combat_action")
-	if current_enemy_node != null and is_instance_valid(current_enemy_node):
-		current_enemy_node.cancel_combat_action()
-		current_enemy_node.queue_free()
+	for enemy_combatant in enemy_combatants:
+		var node: BaseEnemy = enemy_combatant.get("node") as BaseEnemy
+		if node != null and is_instance_valid(node):
+			node.cancel_combat_action()
+			node.queue_free()
 	current_enemy_node = null
 	enemy_actor_status = null
+	enemy_combatants.clear()
+	enemy_waiting_queue.clear()
 	party_actor_statuses.clear()
 	party_combatants.clear()
 	enemy_group.clear()
@@ -241,6 +261,8 @@ func clear() -> void:
 	_combat_result = RESULT_NONE
 	_enemy_death_waiting = false
 	_enemy_turn_started = false
+	_enemy_turn_order.clear()
+	_enemy_turn_index = 0
 	_rewards_granted = false
 	_enemy_action_id = 0
 	_enemy_target_id = ""
@@ -261,11 +283,15 @@ func combat_status() -> Dictionary:
 		"party_turn_index": _party_turn_index,
 		"current_member_id": _current_party_member_id(),
 		"enemy_state": _enemy_state,
+		"current_enemy_combat_id": str(enemy.get("combat_id", "")),
+		"enemy_turn_index": _enemy_turn_index,
 		"party_combatants": party_combatants.duplicate(true),
 		"enemy": enemy.duplicate(true),
 		"enemy_count": enemy_group.size(),
 		"enemy_index": enemy_group_index,
 		"enemies": enemy_group.duplicate(true),
+		"active_enemies": _enemy_combatant_snapshots(),
+		"waiting_enemies": enemy_waiting_queue.duplicate(true),
 		"marker_reservations": _marker_reservations.duplicate(true),
 	}
 
@@ -326,8 +352,10 @@ func _tick_party_combatant(index: int, delta: float, game_state) -> void:
 
 
 func _begin_party_action(combatant: Dictionary, member: Dictionary, game_state) -> void:
-	if int(enemy.get("hp", 0)) <= 0:
+	_sync_front_enemy_aliases()
+	if enemy_actor_status == null or not enemy_actor_status.is_alive():
 		return
+	var context := _combat_ai_context(party_actor_statuses.get(str(member.get("id", ""))))
 	var action: Dictionary = combat_ai.select_player_action(
 		game_state,
 		float(enemy.get("player_attack_range", 96.0)),
@@ -335,7 +363,8 @@ func _begin_party_action(combatant: Dictionary, member: Dictionary, game_state) 
 		combatant.get("skill_cooldowns", {}),
 		combatant.get("pill_cooldowns", {}),
 		combatant.get("pill_group_cooldowns", {}),
-		member
+		member,
+		context
 	)
 	if action.is_empty():
 		_finish_party_turn(combatant)
@@ -344,7 +373,10 @@ func _begin_party_action(combatant: Dictionary, member: Dictionary, game_state) 
 		_resolve_instant_party_action(combatant, member, action, game_state)
 		return
 	var member_id: String = str(combatant.get("member_id", ""))
-	var target_id: String = str(enemy.get("combat_id", "enemy_1"))
+	var target_id: String = str(action.get("preferred_target_id", enemy.get("combat_id", "enemy_1")))
+	if _enemy_status(target_id) == null:
+		target_id = str(enemy.get("combat_id", "enemy_1"))
+	action["preferred_target_id"] = target_id
 	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
 	if attack_mode == DataTables.ATTACK_MODE_MELEE and not _reserve_marker(target_id, member_id):
 		return
@@ -356,18 +388,22 @@ func _begin_party_action(combatant: Dictionary, member: Dictionary, game_state) 
 
 
 func _tick_party_approach(combatant: Dictionary, actor: Node, delta: float) -> void:
-	if current_enemy_node == null or int(enemy.get("hp", 0)) <= 0:
+	var action: Dictionary = combatant.get("pending_action", {})
+	var target_node := _enemy_node(str(action.get("preferred_target_id", "")))
+	if target_node == null:
+		_sync_front_enemy_aliases()
+		target_node = current_enemy_node
+	if target_node == null:
 		combatant["state"] = STATE_RETURN
 		return
-	var action: Dictionary = combatant.get("pending_action", {})
 	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
-	var target_position := current_enemy_node.melee_approach_position()
+	var target_position := target_node.melee_approach_position()
 	var reached := false
 	if attack_mode == DataTables.ATTACK_MODE_RANGED:
 		var basic_attack_range: float = float(action.get("range", enemy.get("player_attack_range", 96.0)))
-		reached = _distance_to_enemy(combatant) <= basic_attack_range
+		reached = _distance_to_enemy_target(combatant, target_node) <= basic_attack_range
 		if not reached:
-			target_position = _ranged_approach_position(combatant, basic_attack_range)
+			target_position = _ranged_approach_position_for(combatant, basic_attack_range, target_node)
 			reached = _move_actor_toward(combatant, actor, target_position, delta)
 	else:
 		reached = _move_actor_toward(combatant, actor, target_position, delta)
@@ -424,7 +460,8 @@ func _resolve_party_skill(combatant: Dictionary, member: Dictionary, action: Dic
 		return
 	var member_id: String = str(member.get("id", ""))
 	var caster: CombatActorStatus = party_actor_statuses.get(member_id)
-	var targets: Array = _skill_targets(caster, skill)
+	var preferred := _status_by_id(str(action.get("preferred_target_id", "")))
+	var targets: Array = _skill_targets(caster, skill, preferred)
 	var scene := _create_skill_scene(skill)
 	if scene == null:
 		log_added.emit("%s释放%s失败" % [member.get("name", "成员"), skill.get("name", "技能")])
@@ -483,7 +520,7 @@ func _complete_party_skill_turn(member_id: String) -> void:
 		return
 	var combatant: Dictionary = party_combatants[index]
 	_check_combat_result()
-	if not active or finished or _enemy_death_waiting:
+	if not active or finished:
 		return
 	if _turn_phase != PHASE_PARTY or _current_party_member_id() != member_id:
 		return
@@ -532,7 +569,8 @@ func _alive_party_member_ids() -> Array[String]:
 
 
 func _tick_enemy(delta: float) -> void:
-	if current_enemy_node == null or enemy_actor_status == null or int(enemy.get("hp", 0)) <= 0:
+	if not _has_current_enemy_turn() and not _select_current_enemy_turn():
+		_begin_next_round()
 		return
 	match _enemy_state:
 		STATE_READY:
@@ -560,7 +598,8 @@ func _begin_enemy_action() -> void:
 	if target_id.is_empty():
 		_check_combat_result()
 		return
-	if not _reserve_marker(target_id, str(enemy.get("combat_id", "enemy_1"))):
+	var acting_enemy_id := enemy_actor_status.actor_id if enemy_actor_status != null else str(enemy.get("combat_id", "enemy_1"))
+	if not _reserve_marker(target_id, acting_enemy_id):
 		return
 	var enemy_cooldowns: Dictionary = enemy.get("skill_cooldowns", {})
 	for skill_id in enemy_cooldowns.keys():
@@ -568,7 +607,11 @@ func _begin_enemy_action() -> void:
 	enemy["skill_cooldowns"] = enemy_cooldowns
 	_enemy_target_id = target_id
 	var target_status: CombatActorStatus = party_actor_statuses.get(target_id)
-	_enemy_pending_action = current_enemy_node.select_action(pending_game_state, target_status)
+	_enemy_pending_action = current_enemy_node.select_action_with_context(pending_game_state, _combat_ai_context(enemy_actor_status)) if current_enemy_node.has_method("select_action_with_context") else current_enemy_node.select_action(pending_game_state, target_status)
+	var preferred_id := str(_enemy_pending_action.get("preferred_target_id", target_id))
+	if _member_alive(preferred_id):
+		target_id = preferred_id
+	_enemy_target_id = target_id
 	_enemy_action_id = _allocate_action_id()
 	_resolved_hits[_enemy_action_id] = {}
 	_enemy_state = STATE_APPROACH
@@ -603,11 +646,18 @@ func _tick_enemy_return(delta: float) -> void:
 
 func _complete_enemy_return() -> void:
 	_enemy_turn_started = false
-	_begin_next_round()
+	_store_current_enemy_runtime()
+	_enemy_turn_index += 1
+	_enemy_state = STATE_READY
+	_enemy_action_id = 0
+	_enemy_target_id = ""
+	_enemy_pending_action.clear()
+	if not _select_current_enemy_turn():
+		_begin_next_round()
 
 
 func _on_party_hit_candidate(action_id: int, target_id: String, member_id: String) -> void:
-	if not active or _enemy_death_waiting or _turn_phase != PHASE_PARTY or member_id != _current_party_member_id():
+	if not active or _turn_phase != PHASE_PARTY or member_id != _current_party_member_id():
 		return
 	var index := _combatant_index(member_id)
 	if index < 0:
@@ -615,12 +665,14 @@ func _on_party_hit_candidate(action_id: int, target_id: String, member_id: Strin
 	var combatant: Dictionary = party_combatants[index]
 	if str(combatant.get("state", "")) != STATE_ATTACK or int(combatant.get("action_id", 0)) != action_id:
 		return
-	if target_id != str(enemy.get("combat_id", "enemy_1")) or not _claim_hit(action_id, target_id):
+	var expected_target := str(combatant.get("pending_action", {}).get("preferred_target_id", enemy.get("combat_id", "enemy_1")))
+	if target_id != expected_target or not _claim_hit(action_id, target_id):
 		return
 	var caster: CombatActorStatus = party_actor_statuses.get(member_id)
-	if caster == null or enemy_actor_status == null:
+	var target_status := _enemy_status(target_id)
+	if caster == null or target_status == null:
 		return
-	_resolve_party_basic_attack(combatant, caster)
+	_resolve_party_basic_attack(combatant, caster, target_status)
 
 
 func _on_party_attack_finished(action_id: int, member_id: String) -> void:
@@ -634,11 +686,12 @@ func _on_party_attack_finished(action_id: int, member_id: String) -> void:
 		return
 	var action: Dictionary = combatant.get("pending_action", {})
 	if str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE)) == DataTables.ATTACK_MODE_RANGED:
-		var target_id: String = str(enemy.get("combat_id", "enemy_1"))
+		var target_id: String = str(action.get("preferred_target_id", enemy.get("combat_id", "enemy_1")))
 		if _claim_hit(action_id, target_id):
 			var caster: CombatActorStatus = party_actor_statuses.get(member_id)
-			if caster != null and enemy_actor_status != null:
-				_resolve_party_basic_attack(combatant, caster)
+			var target_status := _enemy_status(target_id)
+			if caster != null and target_status != null:
+				_resolve_party_basic_attack(combatant, caster, target_status)
 	combatant["state"] = STATE_RETURN
 	party_combatants[index] = combatant
 
@@ -650,10 +703,12 @@ func _on_enemy_hit_candidate(action_id: int, target_id: String) -> void:
 	if target == null or not target.is_alive():
 		return
 	var action := _enemy_pending_action
-	var skill: Dictionary = _basic_attack_skill(int(action.get("base_damage", enemy.get("attack", 1))))
+	var acting_index := _enemy_combatant_index(enemy_actor_status.actor_id if enemy_actor_status != null else "")
+	var acting_data: Dictionary = enemy_combatants[acting_index].get("data", {}) if acting_index >= 0 else enemy
+	var skill: Dictionary = _basic_attack_skill(int(action.get("base_damage", acting_data.get("attack", 1))))
 	var targets := _skill_targets(enemy_actor_status, skill, target)
 	var result := combat_skill_executor.execute(enemy_actor_status, targets, skill, combat_effect_resolver, pending_game_state.rng)
-	log_added.emit("%s攻击%s，造成%d点伤害%s" % [enemy.get("name", "敌人"), target.actor_name, int(result.get("damage", 0)), _affinity_result_suffix(result)])
+	log_added.emit("%s攻击%s，造成%d点伤害%s" % [acting_data.get("name", "敌人"), target.actor_name, int(result.get("damage", 0)), _affinity_result_suffix(result)])
 	_check_combat_result()
 
 
@@ -663,8 +718,8 @@ func _on_enemy_attack_finished(action_id: int) -> void:
 
 
 func _on_actor_defeated(actor_id: String) -> void:
-	if actor_id == str(enemy.get("combat_id", "enemy_1")):
-		_start_enemy_death()
+	if _enemy_combatant_index(actor_id) >= 0:
+		_start_enemy_death(actor_id)
 		return
 	var index := _combatant_index(actor_id)
 	if index < 0:
@@ -680,32 +735,44 @@ func _on_actor_defeated(actor_id: String) -> void:
 		_enemy_state = STATE_RETURN
 
 
-func _start_enemy_death() -> void:
-	if _enemy_death_waiting:
+func _start_enemy_death(actor_id: String = "") -> void:
+	var index := _enemy_combatant_index(actor_id if not actor_id.is_empty() else str(enemy.get("combat_id", "")))
+	if index < 0:
 		return
-	_enemy_death_waiting = true
-	for index in range(party_combatants.size()):
-		var combatant: Dictionary = party_combatants[index]
-		if str(combatant.get("state", "")) != STATE_DEFEATED:
-			var actor := _party_actor(str(combatant.get("member_id", "")))
-			if actor != null:
-				actor.call("cancel_combat_action")
-			combatant["state"] = STATE_RECOVERY
-		party_combatants[index] = combatant
-	_marker_reservations.clear()
-	if current_enemy_node != null:
-		current_enemy_node.cancel_combat_action()
-		current_enemy_node.play_death_feedback()
+	var enemy_combatant: Dictionary = enemy_combatants[index]
+	if bool(enemy_combatant.get("death_waiting", false)) or bool(enemy_combatant.get("rewarded", false)):
+		return
+	enemy_combatant["death_waiting"] = true
+	enemy_combatants[index] = enemy_combatant
+	var node: BaseEnemy = enemy_combatant.get("node") as BaseEnemy
+	if node != null:
+		node.cancel_combat_action()
+		node.play_death_feedback()
 	else:
-		_on_enemy_death_finished()
+		_on_enemy_death_finished(str(enemy_combatant.get("combat_id", "")))
 
 
-func _on_enemy_death_finished() -> void:
-	if not _enemy_death_waiting:
+func _on_enemy_death_finished(actor_id: String = "") -> void:
+	var index := _enemy_combatant_index(actor_id if not actor_id.is_empty() else str(enemy.get("combat_id", "")))
+	if index < 0:
 		return
-	_grant_victory_rewards()
-	if enemy_group_index + 1 < enemy_group.size():
-		_advance_enemy_group()
+	var defeated: Dictionary = enemy_combatants[index]
+	if not bool(defeated.get("rewarded", false)):
+		enemy = defeated.get("data", {})
+		_rewards_granted = false
+		_grant_victory_rewards()
+		defeated["rewarded"] = true
+	var defeated_id := str(defeated.get("combat_id", ""))
+	_release_markers_for(defeated_id)
+	var node: BaseEnemy = defeated.get("node") as BaseEnemy
+	if node != null and is_instance_valid(node):
+		node.queue_free()
+	enemy_combatants.remove_at(index)
+	_refill_enemy_slots()
+	_layout_enemy_slots()
+	_sync_front_enemy_aliases()
+	if not enemy_combatants.is_empty() or not enemy_waiting_queue.is_empty():
+		_check_combat_result()
 		return
 	var reward_eligible := true
 	for defeated_enemy in enemy_group:
@@ -720,45 +787,11 @@ func _on_enemy_death_finished() -> void:
 		"enemy_id": str(enemy.get("id", "")),
 		"enemy_ids": _enemy_group_ids(),
 	})
-	_enemy_death_waiting = false
 	active = false
 	finished = true
 	for combatant in party_combatants:
 		if str(combatant.get("state", "")) != STATE_DEFEATED:
 			combatant["state"] = STATE_VICTORY
-
-
-func _advance_enemy_group() -> void:
-	if current_enemy_node != null and is_instance_valid(current_enemy_node):
-		current_enemy_node.queue_free()
-	current_enemy_node = null
-	enemy_actor_status = null
-	enemy_group_index += 1
-	enemy = enemy_group[enemy_group_index]
-	_spawn_enemy_node(str(enemy.get("id", DataTables.DEFAULT_ENEMY_ID)))
-	if current_enemy_node == null:
-		_combat_result = RESULT_DEFEAT
-		_emit_mod_event(&"combat_finished", {
-			"result": RESULT_DEFEAT,
-			"enemy_id": str(enemy.get("id", "")),
-			"enemy_ids": _enemy_group_ids(),
-		})
-		active = false
-		finished = true
-		_enemy_death_waiting = false
-		return
-	current_enemy_node.set_combat_position(_enemy_home_position)
-	_turn_phase = PHASE_PARTY
-	_party_turn_index = 0
-	_round_number = 1
-	_enemy_state = STATE_READY
-	_enemy_action_id = 0
-	_enemy_target_id = ""
-	_enemy_pending_action.clear()
-	_enemy_turn_started = false
-	_enemy_death_waiting = false
-	_rewards_granted = false
-	log_added.emit("下一只%s进入战斗，属性%s（剩余 %d）" % [enemy.get("name", "敌人"), DataTables.combat_affinity_name(str(enemy.get("combat_affinity", "normal"))), enemy_group.size() - enemy_group_index])
 
 
 func _grant_victory_rewards() -> void:
@@ -914,12 +947,17 @@ func _roll_drop_rarity(weights, rng: RandomNumberGenerator) -> String:
 
 
 func _check_combat_result() -> void:
-	if int(enemy.get("hp", 0)) <= 0:
-		_start_enemy_death()
+	for enemy_combatant in enemy_combatants.duplicate():
+		var status: CombatActorStatus = enemy_combatant.get("status") as CombatActorStatus
+		if status != null and not status.is_alive():
+			_start_enemy_death(str(enemy_combatant.get("combat_id", "")))
+	if enemy_combatants.is_empty() and enemy_waiting_queue.is_empty():
 		return
 	if _first_alive_party_member_id().is_empty():
-		if current_enemy_node != null:
-			current_enemy_node.cancel_combat_action()
+		for combatant in enemy_combatants:
+			var node: BaseEnemy = combatant.get("node") as BaseEnemy
+			if node != null and is_instance_valid(node):
+				node.cancel_combat_action()
 		active = false
 		finished = true
 		_combat_result = RESULT_DEFEAT
@@ -931,25 +969,140 @@ func _check_combat_result() -> void:
 		log_added.emit("队伍全灭")
 
 
-func _spawn_enemy_node(enemy_id: String) -> void:
+func _spawn_enemy_node(_enemy_id: String) -> void:
+	var data := enemy
+	var combatant := _spawn_enemy_combatant(data, enemy_combatants.size())
+	if not combatant.is_empty():
+		enemy_combatants.append(combatant)
+		_sync_front_enemy_aliases()
+
+
+func _spawn_enemy_combatant(data: Dictionary, slot_index: int) -> Dictionary:
+	var enemy_id := str(data.get("id", ""))
 	var scene_path := DataTables.enemy_scene_path(enemy_id)
 	var packed := load(scene_path) as PackedScene
 	if packed == null:
 		push_error("敌人模板加载失败: %s" % scene_path)
-		return
-	current_enemy_node = packed.instantiate() as BaseEnemy
-	if current_enemy_node == null:
+		return {}
+	var node := packed.instantiate() as BaseEnemy
+	if node == null:
 		push_error("敌人模板根节点必须继承 BaseEnemy: %s" % scene_path)
+		return {}
+	add_child(node)
+	node.setup(data)
+	var combat_id := str(data.get("combat_id", "enemy"))
+	node.hit_candidate.connect(_on_enemy_hit_candidate)
+	node.attack_finished.connect(_on_enemy_attack_finished)
+	node.death_finished.connect(_on_enemy_death_finished.bind(combat_id), CONNECT_ONE_SHOT)
+	var status := node.ensure_combat_status()
+	status.set_effect_resolver(combat_effect_resolver)
+	status.bind_enemy(data, node)
+	_connect_status(status)
+	var formation := _enemy_slot_position(slot_index)
+	node.set_combat_position(formation)
+	return {
+		"combat_id": combat_id,
+		"data": data,
+		"node": node,
+		"status": status,
+		"slot_index": slot_index,
+		"formation_position": formation,
+		"position": formation,
+		"state": STATE_READY,
+		"action_id": 0,
+		"target_id": "",
+		"pending_action": {},
+		"turn_started": false,
+		"death_waiting": false,
+		"rewarded": false,
+	}
+
+
+func _refill_enemy_slots() -> void:
+	while enemy_combatants.size() < MAX_CONCURRENT_ENEMIES and not enemy_waiting_queue.is_empty():
+		var data: Dictionary = enemy_waiting_queue.pop_front()
+		var combatant := _spawn_enemy_combatant(data, enemy_combatants.size())
+		if not combatant.is_empty():
+			enemy_combatants.append(combatant)
+	_layout_enemy_slots()
+
+
+func _layout_enemy_slots() -> void:
+	for index in range(enemy_combatants.size()):
+		var formation := _enemy_slot_position(index)
+		enemy_combatants[index]["slot_index"] = index
+		enemy_combatants[index]["formation_position"] = formation
+		enemy_combatants[index]["position"] = formation
+		var node: BaseEnemy = enemy_combatants[index].get("node") as BaseEnemy
+		if node != null:
+			node.set_combat_position(formation)
+
+
+func _party_front_position(_party_count: int, enemy_count: int) -> Vector2:
+	var enemy_back_x := 866.0 + ENEMY_FORMATION_SPACING.x * float(maxi(0, enemy_count - 1))
+	var shift := maxf(0.0, enemy_back_x - (960.0 - VIEWPORT_SAFE_MARGIN))
+	return DEFAULT_PARTY_POSITION - Vector2(shift, 0)
+
+
+func _enemy_slot_position(index: int) -> Vector2:
+	var active_capacity := mini(MAX_CONCURRENT_ENEMIES, maxi(1, enemy_group.size()))
+	var enemy_back_x := DEFAULT_ENEMY_POSITION.x + ENEMY_FORMATION_SPACING.x * float(active_capacity - 1)
+	var shift := maxf(0.0, enemy_back_x - (960.0 - VIEWPORT_SAFE_MARGIN))
+	return DEFAULT_ENEMY_POSITION - Vector2(shift, 0) + ENEMY_FORMATION_SPACING * float(index)
+
+
+func _sync_front_enemy_aliases() -> void:
+	var combatant := _first_alive_enemy_combatant()
+	if combatant.is_empty():
+		enemy = {}
+		current_enemy_node = null
+		enemy_actor_status = null
 		return
-	add_child(current_enemy_node)
-	current_enemy_node.setup(enemy)
-	current_enemy_node.hit_candidate.connect(_on_enemy_hit_candidate)
-	current_enemy_node.attack_finished.connect(_on_enemy_attack_finished)
-	current_enemy_node.death_finished.connect(_on_enemy_death_finished)
-	enemy_actor_status = current_enemy_node.ensure_combat_status()
-	enemy_actor_status.set_effect_resolver(combat_effect_resolver)
-	enemy_actor_status.bind_enemy(enemy, current_enemy_node)
-	_connect_status(enemy_actor_status)
+	enemy = combatant.get("data", {})
+	current_enemy_node = combatant.get("node") as BaseEnemy
+	enemy_actor_status = combatant.get("status") as CombatActorStatus
+	_enemy_home_position = combatant.get("formation_position", DEFAULT_ENEMY_POSITION)
+
+
+func _first_alive_enemy_combatant() -> Dictionary:
+	for combatant in enemy_combatants:
+		var status: CombatActorStatus = combatant.get("status") as CombatActorStatus
+		if status != null and status.is_alive() and not bool(combatant.get("death_waiting", false)):
+			return combatant
+	return {}
+
+
+func _enemy_combatant_index(combat_id: String) -> int:
+	for index in range(enemy_combatants.size()):
+		if str(enemy_combatants[index].get("combat_id", "")) == combat_id:
+			return index
+	return -1
+
+
+func _enemy_status(combat_id: String) -> CombatActorStatus:
+	var index := _enemy_combatant_index(combat_id)
+	return enemy_combatants[index].get("status") as CombatActorStatus if index >= 0 else null
+
+
+func _enemy_node(combat_id: String) -> BaseEnemy:
+	var index := _enemy_combatant_index(combat_id)
+	return enemy_combatants[index].get("node") as BaseEnemy if index >= 0 else null
+
+
+func _status_by_id(actor_id: String) -> CombatActorStatus:
+	var party_status: CombatActorStatus = party_actor_statuses.get(actor_id)
+	return party_status if party_status != null else _enemy_status(actor_id)
+
+
+func _enemy_combatant_snapshots() -> Array:
+	var result: Array = []
+	for combatant in enemy_combatants:
+		var status: CombatActorStatus = combatant.get("status") as CombatActorStatus
+		var snapshot := status.combat_snapshot() if status != null else {}
+		snapshot["slot_index"] = int(combatant.get("slot_index", 0))
+		snapshot["formation_position"] = combatant.get("formation_position", Vector2.ZERO)
+		result.append(snapshot)
+	return result
 
 
 func _emit_mod_event(event_id: StringName, payload: Dictionary) -> void:
@@ -974,11 +1127,14 @@ func _basic_attack_skill(base_damage: int) -> Dictionary:
 	return attack
 
 
-func _resolve_party_basic_attack(combatant: Dictionary, caster: CombatActorStatus) -> void:
+func _resolve_party_basic_attack(combatant: Dictionary, caster: CombatActorStatus, target_status: CombatActorStatus = null) -> void:
 	var action: Dictionary = combatant.get("pending_action", {})
 	var attack_mode: String = str(action.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
 	var attack: Dictionary = DataTables.create_basic_attack(attack_mode, caster.total_stat("attack"))
-	var result := combat_skill_executor.execute(caster, [enemy_actor_status], attack, combat_effect_resolver, pending_game_state.rng)
+	var target := target_status if target_status != null else enemy_actor_status
+	if target == null:
+		return
+	var result := combat_skill_executor.execute(caster, [target], attack, combat_effect_resolver, pending_game_state.rng)
 	log_added.emit("%s使用%s命中%s，造成%d点伤害%s" % [
 		caster.actor_name,
 		attack.get("name", "普通攻击"),
@@ -1005,7 +1161,16 @@ func _create_skill_scene(skill: Dictionary) -> SkillSceneBase:
 
 
 func _skill_cast_context(caster: CombatActorStatus, targets: Array, skill: Dictionary, rng: RandomNumberGenerator) -> SkillCastContext:
-	return SkillCastContext.create(caster, targets, _skill_candidates(caster, skill), skill, combat_effect_resolver, rng)
+	var anchor: CombatActorStatus = targets[0] as CombatActorStatus if not targets.is_empty() else null
+	var scope := DataTables.skill_target_scope(skill)
+	# Friendly AOE reads as an aura from the caster. Enemy-facing damage and
+	# debuffs keep the finite-range start target as their presentation anchor.
+	if scope == DataTables.SKILL_TARGET_ALL_ALLIES:
+		anchor = caster
+	elif scope == DataTables.SKILL_TARGET_ALL_ENEMIES and not targets.is_empty():
+		anchor = targets[0] as CombatActorStatus
+	var direction := 1 if caster != null and caster.actor_kind == CombatActorStatus.KIND_MEMBER else -1
+	return SkillCastContext.create(caster, targets, targets, skill, combat_effect_resolver, rng, anchor, direction)
 
 
 func _skill_candidates(caster: CombatActorStatus, skill: Dictionary) -> Array:
@@ -1022,7 +1187,7 @@ func _skill_candidates(caster: CombatActorStatus, skill: Dictionary) -> Array:
 			if status != null and status.is_alive():
 				result.append(status)
 		return result
-	return [enemy_actor_status] if enemy_actor_status != null and enemy_actor_status.is_alive() else []
+	return _alive_enemy_statuses()
 
 
 func _enemy_action_is_skill() -> bool:
@@ -1053,9 +1218,13 @@ func _on_enemy_skill_finished(result: Dictionary, scene_key: String, skill_id: S
 	if scene != null and is_instance_valid(scene):
 		scene.queue_free()
 	if not bool(result.get("cast_succeeded", false)):
-		var cooldowns: Dictionary = enemy.get("skill_cooldowns", {})
-		cooldowns[skill_id] = 0
-		enemy["skill_cooldowns"] = cooldowns
+		var enemy_index := _enemy_combatant_index(scene_key)
+		if enemy_index >= 0:
+			var enemy_data: Dictionary = enemy_combatants[enemy_index].get("data", {})
+			var cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
+			cooldowns[skill_id] = 0
+			enemy_data["skill_cooldowns"] = cooldowns
+			enemy_combatants[enemy_index]["data"] = enemy_data
 	if _wait_for_presentation(Callable(self, "_complete_enemy_skill")):
 		return
 	_complete_enemy_skill()
@@ -1063,7 +1232,7 @@ func _on_enemy_skill_finished(result: Dictionary, scene_key: String, skill_id: S
 
 func _complete_enemy_skill() -> void:
 	_check_combat_result()
-	if active and not finished and not _enemy_death_waiting:
+	if active and not finished:
 		_enemy_state = STATE_RETURN
 
 
@@ -1144,7 +1313,9 @@ func _start_next_presentation_event() -> void:
 		return
 	var event: Dictionary = _presentation_events.pop_front()
 	var actor_id := str(event.get("actor_id", ""))
-	var event_owner: Node = current_enemy_node if enemy_actor_status != null and actor_id == enemy_actor_status.actor_id else _party_actor(actor_id)
+	var event_owner: Node = _enemy_node(actor_id)
+	if event_owner == null:
+		event_owner = _party_actor(actor_id)
 	var duration := 0.08
 	if event_owner != null and event_owner.has_method("present_combat_event"):
 		duration = maxf(duration, float(event_owner.call("present_combat_event", event)))
@@ -1154,8 +1325,8 @@ func _start_next_presentation_event() -> void:
 func _skill_targets(caster: CombatActorStatus, skill: Dictionary, preferred_target: CombatActorStatus = null) -> Array:
 	if caster == null:
 		return []
-	var allies: Array = _alive_party_statuses() if caster.actor_kind == CombatActorStatus.KIND_MEMBER else [enemy_actor_status]
-	var opponents: Array = [enemy_actor_status] if caster.actor_kind == CombatActorStatus.KIND_MEMBER else _alive_party_statuses()
+	var allies: Array = _alive_party_statuses() if caster.actor_kind == CombatActorStatus.KIND_MEMBER else _alive_enemy_statuses()
+	var opponents: Array = _alive_enemy_statuses() if caster.actor_kind == CombatActorStatus.KIND_MEMBER else _alive_party_statuses()
 	allies = allies.filter(func(status): return status is CombatActorStatus and status.is_alive())
 	opponents = opponents.filter(func(status): return status is CombatActorStatus and status.is_alive())
 	match DataTables.skill_target_scope(skill):
@@ -1164,9 +1335,9 @@ func _skill_targets(caster: CombatActorStatus, skill: Dictionary, preferred_targ
 		DataTables.SKILL_TARGET_SINGLE_ALLY:
 			return [_preferred_target(preferred_target, allies, caster)]
 		DataTables.SKILL_TARGET_ALL_ALLIES:
-			return allies
+			return _limited_aoe_targets(allies, skill)
 		DataTables.SKILL_TARGET_ALL_ENEMIES:
-			return opponents
+			return _limited_aoe_targets(opponents, skill)
 		_:
 			var fallback = opponents[0] if not opponents.is_empty() else null
 			return [_preferred_target(preferred_target, opponents, fallback)] if fallback != null else []
@@ -1188,6 +1359,23 @@ func _alive_party_statuses() -> Array:
 	return result
 
 
+func _alive_enemy_statuses() -> Array:
+	var result: Array = []
+	for combatant in enemy_combatants:
+		var status: CombatActorStatus = combatant.get("status") as CombatActorStatus
+		if status != null and status.is_alive() and not bool(combatant.get("death_waiting", false)):
+			result.append(status)
+	return result
+
+
+func _limited_aoe_targets(candidates: Array, skill: Dictionary) -> Array:
+	if candidates.is_empty():
+		return []
+	var count := DataTables.skill_target_count(skill, candidates.size())
+	var start := candidates.size() - count if DataTables.skill_target_tendency(skill) == DataTables.SKILL_TARGET_TENDENCY_BACK else 0
+	return candidates.slice(start, start + count)
+
+
 func _move_actor_toward(combatant: Dictionary, actor: Node, target: Vector2, delta: float) -> bool:
 	var current_position: Vector2 = combatant.get("position", actor.call("combat_position"))
 	var speed := float(combatant.get("move_speed", DEFAULT_MOVE_SPEED))
@@ -1198,7 +1386,11 @@ func _move_actor_toward(combatant: Dictionary, actor: Node, target: Vector2, del
 
 
 func _ranged_approach_position(combatant: Dictionary, basic_attack_range: float) -> Vector2:
-	var enemy_position: Vector2 = current_enemy_node.combat_position()
+	return _ranged_approach_position_for(combatant, basic_attack_range, current_enemy_node)
+
+
+func _ranged_approach_position_for(combatant: Dictionary, basic_attack_range: float, target_node: BaseEnemy) -> Vector2:
+	var enemy_position: Vector2 = target_node.combat_position() if target_node != null else DEFAULT_ENEMY_POSITION
 	var actor_position: Vector2 = combatant.get("position", Vector2.ZERO)
 	var direction: Vector2 = actor_position.direction_to(enemy_position) * -1.0
 	if direction == Vector2.ZERO:
@@ -1214,6 +1406,12 @@ func _move_enemy_toward(target: Vector2, delta: float) -> bool:
 	current_enemy_node.set_combat_position(current_position)
 	current_enemy_node.play_run()
 	return current_position.distance_to(target) <= POSITION_EPSILON
+
+
+func _distance_to_enemy_target(combatant: Dictionary, target_node: BaseEnemy) -> float:
+	if target_node == null:
+		return INF
+	return Vector2(combatant.get("position", Vector2.ZERO)).distance_to(target_node.combat_position())
 
 
 func _advance_turn_cooldowns(combatant: Dictionary) -> void:
@@ -1248,9 +1446,16 @@ func _advance_party_turn() -> void:
 
 func _begin_enemy_phase() -> void:
 	_turn_phase = PHASE_ENEMY
+	_enemy_turn_order.clear()
+	for combatant in enemy_combatants:
+		var status: CombatActorStatus = combatant.get("status") as CombatActorStatus
+		if status != null and status.is_alive() and not bool(combatant.get("death_waiting", false)):
+			_enemy_turn_order.append(str(combatant.get("combat_id", "")))
+	_enemy_turn_index = 0
 	_enemy_state = STATE_READY
 	_enemy_action_id = 0
 	_enemy_target_id = ""
+	_select_current_enemy_turn()
 
 
 func _begin_next_round() -> void:
@@ -1258,6 +1463,8 @@ func _begin_next_round() -> void:
 	_turn_phase = PHASE_PARTY
 	_party_turn_index = 0
 	_marker_reservations.clear()
+	_enemy_turn_order.clear()
+	_enemy_turn_index = 0
 	for index in range(party_combatants.size()):
 		var combatant: Dictionary = party_combatants[index]
 		var member_id := str(combatant.get("member_id", ""))
@@ -1354,3 +1561,54 @@ func _distance_to_enemy(combatant: Dictionary) -> float:
 		return INF
 	var combatant_position: Vector2 = combatant.get("position", Vector2.ZERO)
 	return combatant_position.distance_to(current_enemy_node.combat_position())
+
+
+func _select_current_enemy_turn() -> bool:
+	while _enemy_turn_index < _enemy_turn_order.size():
+		var combat_id := str(_enemy_turn_order[_enemy_turn_index])
+		var index := _enemy_combatant_index(combat_id)
+		if index < 0:
+			_enemy_turn_index += 1
+			continue
+		var combatant: Dictionary = enemy_combatants[index]
+		var status: CombatActorStatus = combatant.get("status") as CombatActorStatus
+		if status == null or not status.is_alive() or bool(combatant.get("death_waiting", false)):
+			_enemy_turn_index += 1
+			continue
+		enemy = combatant.get("data", {})
+		current_enemy_node = combatant.get("node") as BaseEnemy
+		enemy_actor_status = status
+		_enemy_home_position = combatant.get("formation_position", DEFAULT_ENEMY_POSITION)
+		_enemy_state = str(combatant.get("state", STATE_READY))
+		return current_enemy_node != null
+	return false
+
+
+func _has_current_enemy_turn() -> bool:
+	if _turn_phase != PHASE_ENEMY or _enemy_turn_index < 0 or _enemy_turn_index >= _enemy_turn_order.size():
+		return false
+	var combat_id := str(_enemy_turn_order[_enemy_turn_index])
+	if enemy_actor_status == null or enemy_actor_status.actor_id != combat_id:
+		return false
+	var index := _enemy_combatant_index(combat_id)
+	if index < 0:
+		return false
+	var status: CombatActorStatus = enemy_combatants[index].get("status") as CombatActorStatus
+	return status != null and status.is_alive() and not bool(enemy_combatants[index].get("death_waiting", false))
+
+
+func _store_current_enemy_runtime() -> void:
+	var index := _enemy_combatant_index(str(enemy.get("combat_id", "")))
+	if index < 0:
+		return
+	enemy_combatants[index]["data"] = enemy
+	enemy_combatants[index]["position"] = current_enemy_node.combat_position() if current_enemy_node != null else _enemy_home_position
+	enemy_combatants[index]["state"] = STATE_READY
+
+
+func _combat_ai_context(caster: CombatActorStatus) -> Dictionary:
+	return {
+		"caster": caster,
+		"allies": _alive_party_statuses() if caster != null and caster.actor_kind == CombatActorStatus.KIND_MEMBER else _alive_enemy_statuses(),
+		"opponents": _alive_enemy_statuses() if caster != null and caster.actor_kind == CombatActorStatus.KIND_MEMBER else _alive_party_statuses(),
+	}

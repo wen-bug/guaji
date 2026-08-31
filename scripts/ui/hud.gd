@@ -1054,6 +1054,9 @@ func _refresh_member_info_skills(game_state) -> void:
 		else:
 			var element_id: String = str(skill.get("element", ""))
 			var target_mode_text: String = DataTables.skill_target_mode_name(DataTables.skill_target_mode(skill))
+			if DataTables.skill_is_aoe(skill):
+				var count_text := "全体" if not skill.has("target_count") else "目标%d" % int(skill.get("target_count", 2))
+				target_mode_text += "·%s·%s" % [count_text, DataTables.skill_target_tendency_name(DataTables.skill_target_tendency(skill))]
 			var effect_names := PackedStringArray()
 			for tag in DataTables.skill_effect_tags(skill):
 				if effect_names.size() >= 2:

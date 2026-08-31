@@ -16,6 +16,7 @@ var visual_root: Node2D
 var combat_visual: CombatVisual
 var combat_status: CombatActorStatus
 var _death_started := false
+var _combat_ai := CombatAI.new()
 
 
 func _ready() -> void:
@@ -102,6 +103,24 @@ func select_action(_game_state, target_status = null) -> Dictionary:
 		"base_damage": int(enemy_data.get("attack", 1)),
 		"attack_mode": DataTables.ATTACK_MODE_MELEE,
 	}
+
+
+func select_action_with_context(_game_state, combat_context: Dictionary) -> Dictionary:
+	if enemy_data.is_empty():
+		return {}
+	var chosen := _combat_ai.select_enemy_action(enemy_data, combat_context)
+	if chosen.is_empty():
+		return {
+			"kind": "basic_attack",
+			"source": "basic",
+			"base_damage": int(enemy_data.get("attack", 1)),
+			"attack_mode": DataTables.ATTACK_MODE_MELEE,
+		}
+	var cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
+	var skill_id := str(chosen.get("id", ""))
+	cooldowns[skill_id] = maxi(0, int(DataTables.create_skill(skill_id).get("cooldown", 0)))
+	enemy_data["skill_cooldowns"] = cooldowns
+	return DataTables.create_skill(skill_id).merged({"preferred_target_id": str(chosen.get("preferred_target_id", ""))}, true)
 
 
 func _skill_triggered(skill: Dictionary, target_status) -> bool:

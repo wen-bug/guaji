@@ -249,6 +249,9 @@ static func _skill_def_text(spec: Dictionary) -> String:
 		lines.append("type = \"%s\"" % str(preset["type"]))
 	if str(preset["target_scope"]) != "single_enemy":
 		lines.append("target_scope = \"%s\"" % str(preset["target_scope"]))
+	if str(preset["target_scope"]) in ["all_allies", "all_enemies"]:
+		lines.append("target_count = %d" % int(spec.get("target_count", 2)))
+		lines.append("target_tendency = \"%s\"" % str(spec.get("target_tendency", "front")))
 	if spec.has("trigger"):
 		lines.append("triggers = Array[String]([\"%s\"])" % str(spec["trigger"]))
 	lines.append("effects = Array[Resource]([%s])" % ", ".join(sub_ids.map(func(sub: String) -> String: return "SubResource(\"%s\")" % sub)))

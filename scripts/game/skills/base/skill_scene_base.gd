@@ -69,6 +69,8 @@ func start_cast(cast_context: SkillCastContext) -> void:
 		_abort_cast("；".join(errors))
 		return
 	global_position = _anchor_position() + effect_offset
+	global_position.x += effect_offset.x * float(context.facing_direction - 1)
+	scale.x = absf(scale.x) * float(context.facing_direction)
 	_configure_projectile_paths()
 	_sync_presentation_mode()
 	_animation_player.play(&"cast")
@@ -231,6 +233,8 @@ func accepts_skill_type(_skill_type: String) -> bool:
 
 
 func primary_target() -> CombatActorStatus:
+	if context != null and context.anchor_target != null:
+		return context.anchor_target
 	if context == null or context.selected_targets.is_empty():
 		return null
 	return context.selected_targets[0] as CombatActorStatus
