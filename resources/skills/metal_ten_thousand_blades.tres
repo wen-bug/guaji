@@ -1,13 +1,12 @@
-[gd_resource type="Resource" script_class="SkillDef" format=3]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://bqvqqowga5hp5"]
 
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
 
 [sub_resource type="Resource" id="Resource_fx_0"]
 script = ExtResource("2_effect")
 base_amount = 7
 attribute_multiplier = 1.4
-
 
 [resource]
 script = ExtResource("1_skill")
@@ -15,13 +14,13 @@ id = "metal_ten_thousand_blades"
 display_name = "万剑归宗"
 icon_name = "metal_ten_thousand_blades"
 icon_path = "res://assets/skills/metal_ten_thousand_blades.png"
+target_scope = "all_enemies"
+target_count = 3
 element = "metal"
+attack_mode = "ranged"
 mp_cost = 16
 cooldown = 7.0
 priority = 45
-target_scope = "all_enemies"
-target_count = 3
-target_tendency = "front"
 effects = Array[Resource]([SubResource("Resource_fx_0")])
 exchange_book_item_id = "skill_book_metal_ten_thousand_blades"
 exchange_element_stone_id = "spirit_stone_metal"

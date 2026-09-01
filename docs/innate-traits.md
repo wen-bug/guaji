@@ -36,7 +36,7 @@
 | `blazing_soul` | 赤阳命火 | 克制伤害 +5% | +7% | +10% |
 | `earth_body` | 厚土道体 | 受物理伤害 -5% | -7% | -10% |
 | `mountain_bone` | 镇岳灵骨 | 受元素伤害 -5% | -7% | -10% |
-| `sword_bone` | 天生剑骨 | 普攻伤害 +5% | +7% | +10% |
+| `sword_bone` | 天生剑骨 | 直接伤害 +5% | +7% | +10% |
 | `metal_edge` | 庚金锋魄 | 直接伤害 +5% | +7% | +10% |
 | `full_spirit_root` | 太阴灵脉 | CD -1 回合、直接伤害 -6% | CD -1 回合 | CD -2 回合 |
 | `water_mind` | 水镜道心 | 受元素伤害 -5% | -7% | -10% |
@@ -50,15 +50,15 @@
 
 ## 缺陷命格
 
-正常生成时缺陷只会是异禀档。普通和优秀档保留给旧存档或 Mod 内容使用。
+正常生成时缺陷只会是异禀档。普通和优秀档仅用于兼容旧存档。
 
 | id | 名称 | 普通 | 优秀 | 异禀 |
 | --- | --- | --- | --- | --- |
 | `withered_meridian` | 枯荣逆脉 | 伤害 +8%、受物伤 +4% | +10%、+5% | +12%、+6% |
-| `burning_heart` | 烈性攻心 | 普攻 +8%、受元素伤 +4% | +10%、+5% | +12%、+6% |
+| `burning_heart` | 烈性攻心 | 伤害 +8%、受元素伤 +4% | +10%、+5% | +12%、+6% |
 | `heavy_body` | 重浊之身 | CD -1、伤害 -4% | CD -1、伤害 -5% | CD -2、伤害 -6% |
 | `lone_edge` | 孤锋煞命 | 克制伤害 +8%、受元素伤 +4% | +10%、+5% | +12%、+6% |
-| `cold_obsession` | 寒魄偏执 | CD -1、普攻 -6% | CD -1、普攻 -8% | CD -2、普攻 -10% |
+| `cold_obsession` | 寒魄偏执 | CD -1、伤害 -6% | CD -1、伤害 -8% | CD -2、伤害 -10% |
 
 ## 效果字段
 
@@ -71,7 +71,6 @@
 | `stat_percent` | 人物属性百分比修正，保留兼容 |
 | `element_percent` | 五行属性百分比修正，保留兼容 |
 | `direct_damage_percent` | 直接伤害修正 |
-| `normal_attack_percent` | 普通攻击伤害修正 |
 | `weakness_damage_percent` | 五行克制时的伤害修正 |
 | `physical_damage_taken_percent` | 受到的物理伤害修正，负值为减伤 |
 | `element_damage_taken_percent` | 受到的元素伤害修正，负值为减伤 |
@@ -83,7 +82,7 @@
 final_cooldown = max(0, ceil(base_cooldown * skill_multiplier) + skill_cooldown_turns)
 ```
 
-内置命格不再使用成长权重、掉落、熟练度、吸血、毒伤或无视防御。`effects` 和旧 `skill_cooldown_percent` 仍作为 Mod/旧内容兼容入口，但新内容应使用 `effects_by_rarity` 和 `skill_cooldown_turns`。
+内置命格不再使用成长权重、掉落、熟练度、吸血、毒伤或无视防御。`effects` 和旧 `skill_cooldown_percent` 仅用于兼容旧存档，新内容应使用 `effects_by_rarity` 和 `skill_cooldown_turns`。
 
 ## 数据结构
 
@@ -105,17 +104,17 @@ final_cooldown = max(0, ceil(base_cooldown * skill_multiplier) + skill_cooldown_
 ```gdscript
 "sword_bone": {
     "name": "天生剑骨",
-    "description": "普通攻击伤害提高 5% / 7% / 10%。",
+    "description": "直接伤害提高 5% / 7% / 10%。",
     "effects_by_rarity": {
-        "common": [{"kind": "normal_attack_percent", "amount": 0.05}],
-        "rare": [{"kind": "normal_attack_percent", "amount": 0.07}],
-        "exceptional": [{"kind": "normal_attack_percent", "amount": 0.10}]
+        "common": [{"kind": "direct_damage_percent", "amount": 0.05}],
+        "rare": [{"kind": "direct_damage_percent", "amount": 0.07}],
+        "exceptional": [{"kind": "direct_damage_percent", "amount": 0.10}]
     }
 }
 ```
 
-## UI 与扩展边界
+## UI 与边界
 
 成员面板和招募候选列表显示命格名称、槽位、品质以及当前品质的实际效果，不显示觉醒状态。缺陷命格使用独立样式。
 
-新增命格时同步更新 `DataTables.INNATE_TRAIT_DEFS`、本文档和命格测试。命格不承担复杂战斗触发器、生产收益或成长分配；这类能力应由技能、装备或独立系统实现。
+新增命格时同步更新 `DataTables.INNATE_TRAIT_DEFS` 和本文档，并通过调试面板进入战斗技能沙盒后使用 Godot MCP 验证数值结算。命格不承担复杂战斗触发器、生产收益或成长分配；这类能力应由技能、装备或独立系统实现。

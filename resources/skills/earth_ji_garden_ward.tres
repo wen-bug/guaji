@@ -32,6 +32,7 @@ id = "earth_ji_garden_ward"
 display_name = "田园护"
 icon_name = "earth_ji_garden_ward"
 icon_path = "res://assets/skills/earth_ji_garden_ward.png"
+attack_mode = "ranged"
 element = "earth"
 mp_cost = 7
 cooldown = 5.0

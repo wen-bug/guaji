@@ -1401,7 +1401,7 @@ layout_mode = 0
 offset_left = 160.0
 offset_top = 44.0
 offset_right = 520.0
-offset_bottom = 342.0
+offset_bottom = 382.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="PanelLayout" type="VBoxContainer" parent="Root/DebugPanel" unique_id=1259809172]
@@ -1553,6 +1553,17 @@ theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
 text = "设置属性"
 
+[node name="SkillTestButton" type="Button" parent="Root/DebugPanel/PanelLayout"]
+custom_minimum_size = Vector2(340, 32)
+layout_mode = 2
+tooltip_text = "打开使用临时数据的战斗技能测试沙盒"
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_focus")
+text = "技能测试"
+
 [node name="InventoryMenu" type="PopupMenu" parent="Root" unique_id=197141140]
 oversampling_override = 1.0
 
@@ -1592,12 +1603,6 @@ theme_override_constants/outline_size = 1
 text = "正在自动寻找怪物"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="SkillHitboxModeToggle" type="CheckButton" parent="Root/ExpeditionHud/PanelLayout" unique_id=1676468942]
-custom_minimum_size = Vector2(216, 30)
-layout_mode = 2
-tooltip_text = "隐藏技能素材并显示真实物理判定范围"
-text = "判定块模式"
 
 [node name="ReturnHomeButton" type="Button" parent="Root/ExpeditionHud/PanelLayout" unique_id=600000302]
 custom_minimum_size = Vector2(216, 30)

@@ -97,12 +97,10 @@ func select_action(_game_state, target_status = null) -> Dictionary:
 		cooldowns[str(chosen.get("id", ""))] = maxi(0, int(chosen.get("cooldown", 0)))
 		enemy_data["skill_cooldowns"] = cooldowns
 		return chosen
-	return {
-		"kind": "basic_attack",
-		"source": "basic",
-		"base_damage": int(enemy_data.get("attack", 1)),
-		"attack_mode": DataTables.ATTACK_MODE_MELEE,
-	}
+	var attack := DataTables.create_default_attack_skill(int(enemy_data.get("attack", 1)))
+	cooldowns[DataTables.DEFAULT_ATTACK_SKILL_ID] = int(attack.get("cooldown", 1))
+	enemy_data["skill_cooldowns"] = cooldowns
+	return attack
 
 
 func select_action_with_context(_game_state, combat_context: Dictionary) -> Dictionary:
@@ -110,12 +108,11 @@ func select_action_with_context(_game_state, combat_context: Dictionary) -> Dict
 		return {}
 	var chosen := _combat_ai.select_enemy_action(enemy_data, combat_context)
 	if chosen.is_empty():
-		return {
-			"kind": "basic_attack",
-			"source": "basic",
-			"base_damage": int(enemy_data.get("attack", 1)),
-			"attack_mode": DataTables.ATTACK_MODE_MELEE,
-		}
+		var fallback := DataTables.create_default_attack_skill(int(enemy_data.get("attack", 1)))
+		var fallback_cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
+		fallback_cooldowns[DataTables.DEFAULT_ATTACK_SKILL_ID] = int(fallback.get("cooldown", 1))
+		enemy_data["skill_cooldowns"] = fallback_cooldowns
+		return fallback
 	var cooldowns: Dictionary = enemy_data.get("skill_cooldowns", {})
 	var skill_id := str(chosen.get("id", ""))
 	cooldowns[skill_id] = maxi(0, int(DataTables.create_skill(skill_id).get("cooldown", 0)))
@@ -135,11 +132,6 @@ func _skill_triggered(skill: Dictionary, target_status) -> bool:
 	if triggers.has("target_hp_below_35") and target_status != null:
 		var snapshot: Dictionary = target_status.combat_snapshot()
 		if float(snapshot.get("hp", 0)) / maxf(1.0, float(snapshot.get("max_hp", 1))) <= 0.35:
-			return true
-	var api := get_node_or_null("/root/ModAPI")
-	for trigger in triggers:
-		var callback: Callable = api.ai_condition(str(trigger)) if api != null else Callable()
-		if callback.is_valid() and bool(callback.call(skill.duplicate(true), enemy_data.duplicate(true), target_status)):
 			return true
 	return false
 

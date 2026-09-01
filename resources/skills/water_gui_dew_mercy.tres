@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="SkillDef" format=3]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://cpymhx6apmhmm"]
 
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
 
 [sub_resource type="Resource" id="Resource_fx_0"]
 script = ExtResource("2_effect")
@@ -9,21 +9,20 @@ kind = "heal"
 base_amount = 7
 attribute_multiplier = 0.6
 
-
 [resource]
 script = ExtResource("1_skill")
 id = "water_gui_dew_mercy"
 display_name = "甘霖降"
 icon_name = "water_gui_dew_mercy"
 icon_path = "res://assets/skills/water_gui_dew_mercy.png"
-element = "water"
-mp_cost = 13
-cooldown = 8.0
-priority = 90
 type = "heal"
 target_scope = "all_allies"
 target_count = 3
-target_tendency = "front"
+element = "water"
+attack_mode = "ranged"
+mp_cost = 13
+cooldown = 8.0
+priority = 90
 triggers = Array[String](["hp_below_35"])
 effects = Array[Resource]([SubResource("Resource_fx_0")])
 exchange_book_item_id = "skill_book_water_gui_dew_mercy"

@@ -35,6 +35,7 @@ display_name = "千针封喉"
 icon_name = "metal_xin_thousand_needles"
 icon_path = "res://assets/skills/metal_xin_thousand_needles.png"
 element = "metal"
+attack_mode = "ranged"
 mp_cost = 15
 cooldown = 7.0
 priority = 60

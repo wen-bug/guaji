@@ -29,6 +29,7 @@ id = "wood_yi_creeping_thicket"
 display_name = "蔓生棘丛"
 icon_name = "wood_yi_creeping_thicket"
 icon_path = "res://assets/skills/wood_yi_creeping_thicket.png"
+attack_mode = "ranged"
 element = "wood"
 mp_cost = 10
 cooldown = 6.0

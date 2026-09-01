@@ -358,28 +358,12 @@ animations = [{
 "speed": 3.5
 }]
 
-[sub_resource type="RectangleShape2D" id="HurtShape"]
-size = Vector2(50, 50)
-
-[sub_resource type="RectangleShape2D" id="AttackShape"]
-size = Vector2(70, 48)
-
 [node name="MinotaurVisual" unique_id=1478164833 instance=ExtResource("1_base")]
-attack_hit_start_frame = 4
-attack_hit_end_frame = 7
 
 [node name="Sprite" parent="." index="0"]
 sprite_frames = SubResource("SpriteFrames_minotaur")
 animation = &"idle"
 autoplay = "idle"
-
-[node name="CollisionShape2D" parent="Hurtbox" index="0"]
-position = Vector2(0, -1)
-shape = SubResource("HurtShape")
-
-[node name="CollisionShape2D" parent="AttackHitbox" index="0"]
-position = Vector2(-42, 0)
-shape = SubResource("AttackShape")
 
 [node name="Marker2D" parent="." index="3"]
 position = Vector2(-38, 0)

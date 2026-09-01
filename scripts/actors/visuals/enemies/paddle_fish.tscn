@@ -163,28 +163,12 @@ animations = [{
 "speed": 5.0
 }]
 
-[sub_resource type="RectangleShape2D" id="HurtShape"]
-size = Vector2(36, 28)
-
-[sub_resource type="RectangleShape2D" id="AttackShape"]
-size = Vector2(48, 32)
-
 [node name="PaddleFishVisual" unique_id=966744368 instance=ExtResource("1_base")]
-attack_hit_start_frame = 2
-attack_hit_end_frame = 3
 
 [node name="Sprite" parent="." index="0"]
 sprite_frames = SubResource("SpriteFrames_paddle_fish")
 animation = &"idle"
 autoplay = "idle"
-
-[node name="CollisionShape2D" parent="Hurtbox" index="0"]
-position = Vector2(0, 4)
-shape = SubResource("HurtShape")
-
-[node name="CollisionShape2D" parent="AttackHitbox" index="0"]
-position = Vector2(-28, 3)
-shape = SubResource("AttackShape")
 
 [node name="Marker2D" parent="." index="3"]
 position = Vector2(-26, 0)

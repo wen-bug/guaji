@@ -23,6 +23,7 @@ id = "fire_edge_rite"
 display_name = "燃锋祭"
 icon_name = "fire_edge_rite"
 icon_path = "res://assets/skills/fire_edge_rite.png"
+attack_mode = "ranged"
 element = "fire"
 mp_cost = 7
 cooldown = 6.0

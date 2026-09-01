@@ -5,8 +5,6 @@ signal hit_candidate(action_id: int, target_id: String)
 signal attack_finished(action_id: int)
 signal death_finished
 
-const CombatHitboxScript = preload("res://scripts/actors/visuals/combat_hitbox.gd")
-const CombatHurtboxScript = preload("res://scripts/actors/visuals/combat_hurtbox.gd")
 const CombatStatusPresenterScript = preload("res://scripts/game/combat/combat_status_presenter.gd")
 
 const WALK_ANIMATIONS: Array[StringName] = [&"walk", &"run", &"idle"]
@@ -15,21 +13,16 @@ const MELEE_ATTACK_ANIMATIONS: Array[StringName] = [&"melee_attack", &"attack"]
 const RANGED_ATTACK_ANIMATIONS: Array[StringName] = [&"ranged_attack", &"attack", &"melee_attack"]
 
 @export var placeholder_color := Color.WHITE
-@export var attack_hit_start_frame := 3
-@export var attack_hit_end_frame := 5
 
 var actor_id := ""
 var team := ""
 var active_action_id := 0
 var active_attack_animation: StringName = &""
-var active_attack_uses_hitbox := false
 var active_transient_animation: StringName = &""
 
 var sprite: CanvasItem
 var animated_sprite: AnimatedSprite2D
 var animation_player: AnimationPlayer
-var hurtbox: CombatHurtbox
-var attack_hitbox: CombatHitbox
 var melee_marker: Marker2D
 var hit_socket: Marker2D
 var effect_socket: Marker2D
@@ -44,23 +37,19 @@ func _ready() -> void:
 	_bind_nodes()
 	_ensure_runtime_contract()
 	_bind_nodes()
+	_ensure_attack_animation_aliases()
 	_connect_nodes()
 	_apply_placeholder_color()
-	close_attack_window()
 
 
 func configure_identity(value_actor_id: String, value_team: String) -> void:
 	_bind_nodes()
 	_ensure_runtime_contract()
 	_bind_nodes()
+	_ensure_attack_animation_aliases()
 	_connect_nodes()
 	actor_id = value_actor_id
 	team = value_team
-	if hurtbox != null:
-		hurtbox.configure_identity(actor_id, team)
-	if attack_hitbox != null:
-		attack_hitbox.configure_identity(actor_id, team)
-	close_attack_window()
 
 
 func play_idle() -> void:
@@ -83,17 +72,15 @@ func play_attack(action_id: int) -> void:
 
 
 func play_melee_attack(action_id: int) -> void:
-	_play_attack(action_id, MELEE_ATTACK_ANIMATIONS, true)
+	_play_attack(action_id, MELEE_ATTACK_ANIMATIONS)
 
 
 func play_ranged_attack(action_id: int) -> void:
-	_play_attack(action_id, RANGED_ATTACK_ANIMATIONS, false)
+	_play_attack(action_id, RANGED_ATTACK_ANIMATIONS)
 
 
-func _play_attack(action_id: int, animation_names: Array[StringName], uses_hitbox: bool) -> void:
+func _play_attack(action_id: int, animation_names: Array[StringName]) -> void:
 	active_action_id = action_id
-	active_attack_uses_hitbox = uses_hitbox
-	close_attack_window()
 	active_attack_animation = _play_first_available(animation_names, false)
 	if active_attack_animation.is_empty():
 		call_deferred("_finish_attack")
@@ -133,10 +120,8 @@ func play_level_up() -> void:
 
 
 func cancel_action() -> void:
-	close_attack_window()
 	active_action_id = 0
 	active_attack_animation = &""
-	active_attack_uses_hitbox = false
 	active_transient_animation = &""
 	if animation_player != null:
 		animation_player.stop()
@@ -181,10 +166,6 @@ func contract_error() -> String:
 		return "缺少 AnimatedSprite2D 或 Sprite2D"
 	if animation_player == null:
 		return "缺少 AnimationPlayer"
-	if hurtbox == null or hurtbox.get_node_or_null("CollisionShape2D") == null:
-		return "缺少 Hurtbox/CollisionShape2D"
-	if attack_hitbox == null or attack_hitbox.get_node_or_null("CollisionShape2D") == null:
-		return "缺少 AttackHitbox/CollisionShape2D"
 	if melee_marker == null:
 		return "缺少 Marker2D"
 	if hit_socket == null:
@@ -204,13 +185,41 @@ func set_hit_points(current_hp: int, max_hp: int) -> void:
 
 
 func open_attack_window() -> void:
-	if attack_hitbox != null and active_action_id > 0 and active_attack_uses_hitbox:
-		attack_hitbox.open_window(active_action_id)
+	# Legacy compatibility: attack targets are resolved by combat logic.
+	pass
 
 
 func close_attack_window() -> void:
-	if attack_hitbox != null:
-		attack_hitbox.close_window()
+	# Legacy compatibility: attack targets are resolved by combat logic.
+	pass
+
+
+func _ensure_attack_animation_aliases() -> void:
+	if animated_sprite == null or animated_sprite.sprite_frames == null:
+		return
+	var frames := animated_sprite.sprite_frames
+	var source_animation: StringName = &""
+	if frames.has_animation(&"melee_attack"):
+		source_animation = &"melee_attack"
+	elif frames.has_animation(&"attack"):
+		source_animation = &"attack"
+	elif frames.has_animation(&"ranged_attack"):
+		source_animation = &"ranged_attack"
+	if source_animation.is_empty():
+		return
+	if not frames.has_animation(&"melee_attack"):
+		frames.add_animation(&"melee_attack")
+		_copy_animation_frames(frames, source_animation, &"melee_attack")
+	if not frames.has_animation(&"ranged_attack"):
+		frames.add_animation(&"ranged_attack")
+		_copy_animation_frames(frames, source_animation, &"ranged_attack")
+
+
+func _copy_animation_frames(frames: SpriteFrames, source: StringName, target: StringName) -> void:
+	frames.set_animation_loop(target, false)
+	frames.set_animation_speed(target, frames.get_animation_speed(source))
+	for index in range(frames.get_frame_count(source)):
+		frames.add_frame(target, frames.get_frame_texture(source, index), frames.get_frame_duration(source, index))
 
 
 func _play_named_animation(animation_name: StringName, looped: bool) -> void:
@@ -238,12 +247,7 @@ func _has_animation(animation_name: StringName) -> bool:
 
 
 func _on_sprite_frame_changed() -> void:
-	if animated_sprite == null or animated_sprite.animation != active_attack_animation or active_action_id <= 0:
-		return
-	if active_attack_uses_hitbox and animated_sprite.frame >= attack_hit_start_frame and animated_sprite.frame <= attack_hit_end_frame:
-		open_attack_window()
-	else:
-		close_attack_window()
+	pass
 
 
 func _on_sprite_animation_finished() -> void:
@@ -273,10 +277,8 @@ func _finish_attack() -> void:
 	if active_action_id <= 0:
 		return
 	var finished_action_id := active_action_id
-	close_attack_window()
 	active_action_id = 0
 	active_attack_animation = &""
-	active_attack_uses_hitbox = false
 	attack_finished.emit(finished_action_id)
 
 
@@ -304,10 +306,6 @@ func _bind_nodes() -> void:
 			sprite = get_node_or_null("Visual") as CanvasItem
 	if animation_player == null:
 		animation_player = get_node_or_null("AnimationPlayer") as AnimationPlayer
-	if hurtbox == null:
-		hurtbox = get_node_or_null("Hurtbox") as CombatHurtbox
-	if attack_hitbox == null:
-		attack_hitbox = get_node_or_null("AttackHitbox") as CombatHitbox
 	if melee_marker == null:
 		melee_marker = get_node_or_null("Marker2D") as Marker2D
 	if hit_socket == null:
@@ -319,27 +317,6 @@ func _bind_nodes() -> void:
 
 
 func _ensure_runtime_contract() -> void:
-	if hurtbox == null:
-		hurtbox = CombatHurtboxScript.new()
-		hurtbox.name = "Hurtbox"
-		add_child(hurtbox)
-		var hurt_shape := CollisionShape2D.new()
-		hurt_shape.name = "CollisionShape2D"
-		var hurt_rectangle := RectangleShape2D.new()
-		hurt_rectangle.size = Vector2(28.0, 38.0)
-		hurt_shape.shape = hurt_rectangle
-		hurtbox.add_child(hurt_shape)
-	if attack_hitbox == null:
-		attack_hitbox = CombatHitboxScript.new()
-		attack_hitbox.name = "AttackHitbox"
-		attack_hitbox.position = Vector2(22.0, 0.0)
-		add_child(attack_hitbox)
-		var attack_shape := CollisionShape2D.new()
-		attack_shape.name = "CollisionShape2D"
-		var attack_rectangle := RectangleShape2D.new()
-		attack_rectangle.size = Vector2(28.0, 28.0)
-		attack_shape.shape = attack_rectangle
-		attack_hitbox.add_child(attack_shape)
 	if melee_marker == null:
 		melee_marker = Marker2D.new()
 		melee_marker.name = "Marker2D"
@@ -369,8 +346,6 @@ func _connect_nodes() -> void:
 			animated_sprite.animation_finished.connect(_on_sprite_animation_finished)
 	if animation_player != null and not animation_player.animation_finished.is_connected(_on_animation_finished):
 		animation_player.animation_finished.connect(_on_animation_finished)
-	if attack_hitbox != null and not attack_hitbox.hit_candidate.is_connected(_on_hit_candidate):
-		attack_hitbox.hit_candidate.connect(_on_hit_candidate)
 
 
 func _apply_placeholder_color() -> void:

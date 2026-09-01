@@ -29,6 +29,7 @@ display_name = "灯心焰"
 icon_name = "fire_ding_wick_flare"
 icon_path = "res://assets/skills/fire_ding_wick_flare.png"
 element = "fire"
+attack_mode = "ranged"
 mp_cost = 9
 cooldown = 5.0
 priority = 90

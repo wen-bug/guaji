@@ -73,21 +73,9 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.2, 0.22, 0.46),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"values": [{
-"args": [],
-"method": &"open_hitbox"
-}, {
-"args": [],
-"method": &"impact"
-}, {
-"args": [],
-"method": &"close_hitbox"
-}, {
-"args": [],
-"method": &"finish_cast"
-}]
+"times": PackedFloat32Array(0.2, 0.46),
+"transitions": PackedFloat32Array(1, 1),
+"values": [{"args": [], "method": &"impact"}, {"args": [], "method": &"finish_cast"}]
 }
 tracks/1/type = "method"
 tracks/1/imported = false
@@ -122,9 +110,6 @@ _data = {
 &"cast": SubResource("Animation_04fx3")
 }
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_4efi7"]
-size = Vector2(72, 96)
-
 [node name="ThunderSkill" type="Node2D" unique_id=2035322110]
 script = ExtResource("1_damage")
 skill_resource = ExtResource("2_04fx3")
@@ -142,8 +127,3 @@ animation = &"cast"
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_yeyrj")
-
-[node name="SkillHitbox" type="Area2D" parent="." unique_id=673587610]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox" unique_id=2092190259]
-shape = SubResource("RectangleShape2D_4efi7")

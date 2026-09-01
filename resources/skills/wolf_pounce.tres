@@ -15,6 +15,7 @@ id = "wolf_pounce"
 display_name = "扑杀"
 icon_texture = ExtResource("2_icon")
 element = "wood"
+attack_mode = "melee"
 cooldown = 5.0
 priority = 80
 triggers = Array[String](["target_hp_below_35"])

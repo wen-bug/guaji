@@ -6,6 +6,7 @@ extends Node2D
 const GAME_STATE_SCRIPT := preload("res://scripts/game/core/game_state.gd")
 const ACTOR_SCENE := preload("res://scripts/actors/actor.tscn")
 const COMBAT_SCENE := preload("res://scripts/game/combat/combat_controller.tscn")
+const MAIN_SCENE_PATH := "res://main.tscn"
 
 const VIEWPORT_SIZE := Vector2(960, 480)
 const MAX_MEMBERS := 4
@@ -243,6 +244,7 @@ func _build_ui() -> void:
 	canvas.name = "DebugCanvas"
 	add_child(canvas)
 	var root := Control.new()
+	root.name = "Root"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(root)
 	var background := ColorRect.new()
@@ -265,6 +267,14 @@ func _build_ui() -> void:
 	subtitle.position = Vector2(20, 44)
 	subtitle.modulate = Color("9fb3c8")
 	root.add_child(subtitle)
+	var return_button := Button.new()
+	return_button.name = "ReturnToMainButton"
+	return_button.text = "返回主场景"
+	return_button.tooltip_text = "退出技能测试并返回正式游戏"
+	return_button.position = Vector2(800, 14)
+	return_button.size = Vector2(140, 32)
+	return_button.pressed.connect(_return_to_main)
+	root.add_child(return_button)
 	member_list = VBoxContainer.new()
 	member_list.position = Vector2(20, 82)
 	member_list.size = Vector2(370, 270)
@@ -317,7 +327,7 @@ func _build_ui() -> void:
 	root.add_child(enemy_count_spin)
 	battle_status_label = Label.new()
 	battle_status_label.position = Vector2(430, 18)
-	battle_status_label.size = Vector2(510, 64)
+	battle_status_label.size = Vector2(350, 64)
 	battle_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	battle_status_label.modulate = Color("d7e3ef")
 	root.add_child(battle_status_label)
@@ -326,6 +336,13 @@ func _build_ui() -> void:
 	hint.position = Vector2(430, 92)
 	hint.modulate = Color("9fb3c8")
 	root.add_child(hint)
+
+
+func _return_to_main() -> void:
+	reset_battle()
+	var error := get_tree().change_scene_to_file(MAIN_SCENE_PATH)
+	if error != OK:
+		_update_status("返回主场景失败：%s" % error_string(error))
 
 
 func _refresh_member_list() -> void:

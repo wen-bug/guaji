@@ -64,54 +64,12 @@ static func validation_errors() -> Array[String]:
 	return _errors.duplicate()
 
 
-static func normalize_external_definition(item_id: String, data: Dictionary) -> Dictionary:
-	var normalized := data.duplicate(true)
-	normalized["id"] = item_id
-	if not normalized.has("use_context"):
-		normalized["use_context"] = str(normalized.get("use_scope", "none"))
-	normalized["use_scope"] = normalized["use_context"]
-	if not normalized.has("effects") or not (normalized.get("effects") is Array):
-		normalized["effects"] = legacy_payload_to_effects(item_id, normalized.get("payload", {}), normalized)
-	if not normalized.has("combat_target_mode"):
-		normalized["combat_target_mode"] = infer_combat_target_mode(normalized.get("effects", []))
-	return normalized
-
-
 static func infer_combat_target_mode(effects) -> String:
 	if effects is Array:
 		for effect in effects:
 			if effect is Dictionary and str(effect.get("target", "")) == "combat_global":
 				return "aoe"
 	return "single"
-
-
-static func legacy_payload_to_effects(item_id: String, payload_value, _item_data: Dictionary = {}) -> Array:
-	var payload: Dictionary = payload_value if payload_value is Dictionary else {}
-	var result: Array = []
-	for resource_id in ["hp", "mp"]:
-		if int(payload.get(resource_id, 0)) > 0 or float(payload.get("%s_ratio" % resource_id, 0.0)) > 0.0:
-			result.append({"effect_id": "restore_%s" % resource_id, "kind": "restore_resource", "target": "member", "stat": resource_id, "amount": int(payload.get(resource_id, 0)), "ratio": float(payload.get("%s_ratio" % resource_id, 0.0))})
-	if payload.has("stat") and payload.has("duration"):
-		result.append({"effect_id": "%s_buff" % item_id, "kind": "temporary_modifier", "target": "combat_global", "stat": str(payload.get("stat", "")), "operation": "flat", "value": float(payload.get("amount", 0.0)), "buff_id": "%s_buff" % item_id, "duration_mode": "timed", "duration_seconds": float(payload.get("duration", 0.0)), "stack_mode": "refresh", "max_stacks": 1})
-	if bool(payload.get("farm_speed", false)):
-		result.append({"effect_id": "farm_speed", "kind": "temporary_modifier", "target": "home_global", "stat": "farm_speed", "operation": "percent", "value": 0.5, "buff_id": "farm_speed", "duration_mode": "timed", "duration_seconds": 300.0, "stack_mode": "refresh", "max_stacks": 1})
-	if bool(payload.get("breakthrough", false)):
-		result.append({"effect_id": "breakthrough", "kind": "breakthrough", "target": "member"})
-	for pair in [["skill_id", "skill"], ["recipe_id", "alchemy_recipe"], ["equipment_template_id", "equipment_template"]]:
-		if not str(payload.get(pair[0], "")).is_empty():
-			result.append({"effect_id": "unlock_%s" % pair[1], "kind": "unlock_content", "target": "member" if pair[1] == "skill" else "none", "reference_kind": pair[1], "reference_id": str(payload.get(pair[0], ""))})
-	var permanent = payload.get("permanent_attribute_enhance", {})
-	if permanent is Dictionary:
-		for raw_effect in permanent.get("effects", []):
-			if raw_effect is Dictionary:
-				result.append({"effect_id": "permanent_%s" % str(raw_effect.get("stat", "")), "kind": "permanent_attribute", "target": "member", "stat": str(raw_effect.get("stat", "")), "amount": int(raw_effect.get("amount", 0)), "tier_id": str(permanent.get("tier_id", ""))})
-	if payload.has("seed_yield"):
-		result.append({"effect_id": "seed", "kind": "farm_seed", "target": "none", "amount": int(payload.get("seed_yield", 0)), "auxiliary_value": float(payload.get("growth_seconds", 0.0))})
-	if payload.has("enhance_amount"):
-		result.append({"effect_id": "enhance_material", "kind": "equipment_enhancement_material", "target": "none", "stat": str(payload.get("stat", "")), "amount": int(payload.get("enhance_amount", 0)), "group_id": str(payload.get("stone_group", ""))})
-	if bool(payload.get("market_currency", false)) or bool(payload.get("recruit_currency", false)):
-		result.append({"effect_id": "currency", "kind": "currency", "target": "none", "group_id": "market" if bool(payload.get("market_currency", false)) else "recruit"})
-	return result
 
 
 static func validate_definition(data: Dictionary, source_path: String = "<memory>") -> Array[String]:

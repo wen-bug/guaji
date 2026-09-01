@@ -12,12 +12,12 @@ shieldable = true
 
 [resource]
 script = ExtResource("1_skill")
-id = "basic_attack"
-display_name = "普通攻击"
-type = "normal_attack"
+id = "attack_skill"
+display_name = "攻击术"
+type = "damage"
 target_scope = "single_enemy"
+cooldown = 1.0
 attack_mode = "melee"
+enemy_only = true
 effects = Array[Resource]([SubResource("Resource_damage")])
-basic_attack_mode = "melee"
-basic_attack_range = 0.0
-description = "近战角色的普通攻击。"
+description = "战斗中默认使用的攻击技能，不占用技能槽。"

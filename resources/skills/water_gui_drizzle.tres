@@ -30,6 +30,7 @@ display_name = "细雨符"
 icon_name = "water_gui_drizzle"
 icon_path = "res://assets/skills/water_gui_drizzle.png"
 element = "water"
+attack_mode = "ranged"
 mp_cost = 5
 cooldown = 2.0
 priority = 90

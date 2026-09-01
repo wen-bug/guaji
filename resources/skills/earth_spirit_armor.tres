@@ -21,6 +21,7 @@ id = "earth_spirit_armor"
 display_name = "厚土玄甲"
 icon_name = "earth_spirit_armor"
 icon_path = "res://assets/skills/earth_spirit_armor.png"
+attack_mode = "ranged"
 element = "earth"
 mp_cost = 10
 cooldown = 6.0

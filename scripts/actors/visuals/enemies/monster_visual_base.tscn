@@ -1,14 +1,6 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/actors/visuals/combat_visual.gd" id="1_visual"]
-[ext_resource type="Script" path="res://scripts/actors/visuals/combat_hurtbox.gd" id="2_hurtbox"]
-[ext_resource type="Script" path="res://scripts/actors/visuals/combat_hitbox.gd" id="3_hitbox"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape_hurt"]
-size = Vector2(40, 32)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape_attack"]
-size = Vector2(52, 40)
 
 [node name="MonsterVisualBase" type="Node2D"]
 z_index = 20
@@ -17,21 +9,6 @@ script = ExtResource("1_visual")
 [node name="Sprite" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.28, 0.28)
 flip_h = true
-
-[node name="Hurtbox" type="Area2D" parent="."]
-script = ExtResource("2_hurtbox")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
-position = Vector2(0, 2)
-shape = SubResource("RectangleShape_hurt")
-
-[node name="AttackHitbox" type="Area2D" parent="."]
-monitoring = false
-script = ExtResource("3_hitbox")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox"]
-position = Vector2(-28, 0)
-shape = SubResource("RectangleShape_attack")
 
 [node name="Marker2D" type="Marker2D" parent="."]
 position = Vector2(-28, 0)

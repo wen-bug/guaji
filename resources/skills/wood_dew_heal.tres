@@ -17,6 +17,7 @@ id = "wood_dew_heal"
 display_name = "青露回春"
 icon_name = "wood_dew_heal"
 icon_path = "res://assets/skills/wood_dew_heal.png"
+attack_mode = "ranged"
 element = "wood"
 mp_cost = 6
 cooldown = 4.0

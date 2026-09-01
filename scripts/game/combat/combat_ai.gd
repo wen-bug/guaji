@@ -8,13 +8,11 @@ const SHIELD_SAFE_RATIO := 0.20
 
 const ACTION_SOURCE_SKILL := "skill"
 const ACTION_SOURCE_PILL := "pill"
-const ACTION_SOURCE_BASIC := "basic"
 const ACTION_TYPE_HEAL := "heal"
 const ACTION_TYPE_DEFENSE := "defense"
 const ACTION_TYPE_BUFF := "buff"
 const ACTION_TYPE_RESOURCE := "resource"
 const ACTION_TYPE_DAMAGE := "damage"
-const ACTION_TYPE_NORMAL_ATTACK := "normal_attack"
 func select_player_action(game_state, player_range: float, distance_to_enemy: float, skill_cooldowns: Dictionary, _pill_cooldowns: Dictionary, _pill_group_cooldowns: Dictionary, member: Dictionary = {}, combat_context: Dictionary = {}) -> Dictionary:
 	var actor: Dictionary = member
 	if actor.is_empty():
@@ -44,21 +42,13 @@ func select_player_action(game_state, player_range: float, distance_to_enemy: fl
 	if not damage_action.is_empty():
 		return damage_action
 
-	var attack_mode: String = str(actor.get("attack_mode", DataTables.ATTACK_MODE_MELEE))
-	var basic_attack: Dictionary = DataTables.create_basic_attack(attack_mode)
-	var basic := {
-		"source": ACTION_SOURCE_BASIC,
-		"action_type": ACTION_TYPE_NORMAL_ATTACK,
-		"id": str(basic_attack.get("id", "basic_attack")),
-		"attack_mode": str(basic_attack.get("attack_mode", DataTables.ATTACK_MODE_MELEE)),
-		"priority": 0,
-		"range": max(player_range, float(basic_attack.get("basic_attack_range", 0.0))),
-		"cooldown_group": "",
-	}
+	if float(skill_cooldowns.get(DataTables.DEFAULT_ATTACK_SKILL_ID, 0.0)) > 0.0:
+		return {}
+	var default_attack := _action_from_skill(DataTables.create_skill(DataTables.DEFAULT_ATTACK_SKILL_ID), ACTION_TYPE_DAMAGE)
 	var opponents: Array = combat_context.get("opponents", [])
 	if not opponents.is_empty() and opponents[0] is CombatActorStatus:
-		basic["preferred_target_id"] = (opponents[0] as CombatActorStatus).actor_id
-	return basic
+		default_attack["preferred_target_id"] = (opponents[0] as CombatActorStatus).actor_id
+	return default_attack
 
 
 func select_enemy_action(enemy_data: Dictionary, combat_context: Dictionary) -> Dictionary:

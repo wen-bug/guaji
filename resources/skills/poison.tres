@@ -30,7 +30,6 @@ icon_name = "poison"
 icon_path = "res://assets/skills/poison.png"
 target_scope = "all_enemies"
 target_count = 3
-target_tendency = "front"
 element = "wood"
 mp_cost = 8
 priority = 55

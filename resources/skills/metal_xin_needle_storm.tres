@@ -29,6 +29,7 @@ id = "metal_xin_needle_storm"
 display_name = "漫天花雨"
 icon_name = "metal_xin_needle_storm"
 icon_path = "res://assets/skills/metal_xin_needle_storm.png"
+attack_mode = "ranged"
 element = "metal"
 mp_cost = 8
 cooldown = 4.0

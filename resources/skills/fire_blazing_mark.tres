@@ -28,6 +28,7 @@ id = "fire_blazing_mark"
 display_name = "烈焰印"
 icon_name = "fire_blazing_mark"
 icon_path = "res://assets/skills/fire_blazing_mark.png"
+attack_mode = "ranged"
 element = "fire"
 mp_cost = 9
 cooldown = 5.0

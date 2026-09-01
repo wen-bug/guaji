@@ -1,6 +1,6 @@
 # 挂机家园
 
-挂机家园是一个运行在 Windows 桌面上的 Godot 4.7 2D 在线挂机原型。当前版本为 `0.2.0`，包含角色招募、家园生产、自动历练、装备与技能成长、坊市经济和 Mod API 2。
+挂机家园是一个运行在 Windows 桌面上的 Godot 4.7 2D 在线挂机原型。当前版本为 `0.2.0`，包含角色招募、家园生产、自动历练、装备与技能成长和坊市经济。
 
 ## 开发环境
 
@@ -12,26 +12,19 @@
 
 项目内置 [godot_ai](addons/godot_ai/README.md) 插件（项目设置 > 插件 > Godot AI），编辑器打开时自动启动 MCP 服务器。开发、运行与测试验证优先通过 MCP 完成，不依赖命令行：
 
-- 运行项目或测试：`project_run`。测试用 `mode="custom"` 指定场景（如 `res://scripts/tests/core_loop_regression_test.tscn`），并传 `autosave=false`，避免把验证用的临时改动落盘。
-- 读取运行输出：`logs_read(source="game")`，测试通过以输出的 `*_PASS` 尾行为准（如 `CORE_LOOP_STAGE_5_PASS`）。
+- 运行项目：`project_run`，并传 `autosave=false`，避免把调试改动落盘。
+- 从主场景 HUD 的“调试”面板进入“技能测试”，或用 `mode="custom"` 打开 `res://scripts/debug/combat_sandbox.tscn`。
+- 用场景树、UI 操作、运行日志和 `game_eval` 检查配置、近战/远程行为、结算和场景切换。
 - 修改脚本或场景文件后先 `filesystem_manage(op="scan")` 刷新编辑器文件系统，再运行。
-- 运行期检查活体游戏用 `game_eval`；主场景运行后用 `project_manage(op="stop")` 停止（测试场景会自行退出）。
-
-Mod API 2 示例契约基于 `SceneTree`、没有 `.tscn` 场景，MCP 无法直接运行，需要先构建 PCK，再用命令行 `--script` 执行测试：
-
-```powershell
-godot --headless --path . --script mod_sdk/example_mod/build_mod.gd -- artifacts/example_mod.pck
-godot --headless --path . --script scripts/tests/mod_api_v2_contract_test.gd
-```
+- 运行期检查活体游戏用 `game_eval`；完成后用 `project_manage(op="stop")` 停止。
 
 ## 项目入口
 
-- [文档索引](docs/README.md)：架构、玩法、内容制作和 Mod 开发文档。
+- [文档索引](docs/README.md)：架构、玩法和内容制作文档。
 - [设计基线](docs/design.md)：产品定位、核心循环和验收边界。
 - [项目结构](docs/project-structure.md)：子系统职责和主要代码入口。
 - [内容数据表](docs/item-table.md)：当前物品、技能、装备、敌人和掉落索引。
 - [开发路线](PLAN.md)：尚未完成的工作和后续方向。
-- [Mod 快速开始](docs/modding/quick-start.md)：Mod API 2 制作流程。
 
 ## 核心目录
 
@@ -40,14 +33,12 @@ godot --headless --path . --script scripts/tests/mod_api_v2_contract_test.gd
 | `scripts/game/` | 游戏状态、数据、战斗、队伍、物品和生产逻辑 |
 | `scripts/map/` | 家园、历练地图和遭遇生成 |
 | `scripts/ui/` | HUD、面板和描述渲染 |
-| `scripts/modding/` | Mod API、校验、加载和管理界面 |
 | `resources/` | 物品、装备、技能和地图资源 |
-| `scripts/tests/` | Godot 无界面测试场景 |
-| `mod_sdk/example_mod/` | 可构建的 Mod API 2 示例 |
+| `scripts/debug/` | 可交互的战斗技能沙盒 |
 
 ## 文档约定
 
-运行时代码、资源和自动化测试是已实现行为的事实来源；文档负责解释这些行为。未落地设计必须明确标记为“规划”，不能混入“当前实现”。修改系统行为时，应同步更新对应主题文档和 [文档索引](docs/README.md) 中列出的维护关系。
+运行时代码、资源和交互调试场景是已实现行为的事实来源；文档负责解释这些行为。未落地设计必须明确标记为“规划”，不能混入“当前实现”。修改系统行为时，应同步更新对应主题文档和 [文档索引](docs/README.md) 中列出的维护关系。
 
 ## 许可
 

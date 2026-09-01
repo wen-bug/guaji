@@ -5,14 +5,12 @@ const SkillConfigParserScript = preload("res://scripts/game/data/skill_config_pa
 
 var _scenes: Dictionary = {}
 var _definitions: Dictionary = {}
-var _sources: Dictionary = {}
 var _errors: Array[String] = []
 
 
 func clear() -> void:
 	_scenes.clear()
 	_definitions.clear()
-	_sources.clear()
 	_errors.clear()
 
 
@@ -23,27 +21,8 @@ func scan_core() -> Array[String]:
 	for skill_id in SkillConfigParserScript.definitions():
 		var path := SkillConfigParserScript.scene_path(str(skill_id))
 		if not path.is_empty():
-			_register_scene(path, "core", str(skill_id))
+			_register_scene(path, str(skill_id))
 	return errors()
-
-
-func register_mod_scene(path: String, mod_id: String, local_id: String) -> Dictionary:
-	return _register_scene(path, mod_id, local_id)
-
-
-func replace_scene(content_id: String, path: String, source_id: String) -> Dictionary:
-	var registry_snapshot := snapshot()
-	_scenes.erase(content_id)
-	_definitions.erase(content_id)
-	_sources.erase(content_id)
-	var local_id := content_id.get_slice(":", 1) if content_id.contains(":") else content_id
-	var identity_source := content_id.get_slice(":", 0) if content_id.contains(":") else "core"
-	var result := _register_scene(path, identity_source, local_id)
-	if not bool(result.get("ok", false)) or str(result.get("content_id", "")) != content_id:
-		restore(registry_snapshot)
-		return {"ok": false, "error": str(result.get("error", "技能场景 ID 不匹配"))}
-	_sources[content_id] = source_id
-	return result
 
 
 func packed_scene(skill_id: String) -> PackedScene:
@@ -62,31 +41,11 @@ func has(skill_id: String) -> bool:
 	return _scenes.has(skill_id) and _definitions.has(skill_id)
 
 
-func source_of(skill_id: String) -> String:
-	return str(_sources.get(skill_id, ""))
-
-
 func errors() -> Array[String]:
 	return _errors.duplicate()
 
 
-func snapshot() -> Dictionary:
-	return {
-		"scenes": _scenes.duplicate(),
-		"definitions": _definitions.duplicate(true),
-		"sources": _sources.duplicate(),
-		"errors": _errors.duplicate(),
-	}
-
-
-func restore(value: Dictionary) -> void:
-	_scenes = value.get("scenes", {}).duplicate()
-	_definitions = value.get("definitions", {}).duplicate(true)
-	_sources = value.get("sources", {}).duplicate()
-	_errors = value.get("errors", []).duplicate()
-
-
-func _register_scene(path: String, source_id: String, expected_local_id: String) -> Dictionary:
+func _register_scene(path: String, expected_skill_id: String) -> Dictionary:
 	var packed_scene_resource := load(path) as PackedScene
 	if packed_scene_resource == null:
 		return _fail("技能场景无法加载: %s" % path)
@@ -98,17 +57,16 @@ func _register_scene(path: String, source_id: String, expected_local_id: String)
 	if skill_scene.skill_resource == null:
 		skill_scene.free()
 		return {"ok": true, "ignored": true}
-	var local_id := str(skill_scene.skill_resource.id)
-	if local_id.is_empty():
+	var skill_id := str(skill_scene.skill_resource.id)
+	if skill_id.is_empty():
 		skill_scene.free()
 		return _fail("技能场景绑定的 SkillDef.id 不能为空: %s" % path)
-	if not expected_local_id.is_empty() and local_id != expected_local_id:
+	if not expected_skill_id.is_empty() and skill_id != expected_skill_id:
 		skill_scene.free()
-		return _fail("技能场景资源 ID 与 local_id 不一致: %s（%s != %s）" % [path, local_id, expected_local_id])
-	var content_id := "%s:%s" % [source_id, local_id] if source_id != "core" else local_id
-	if _scenes.has(content_id):
+		return _fail("技能场景资源 ID 不一致: %s（%s != %s）" % [path, skill_id, expected_skill_id])
+	if _scenes.has(skill_id):
 		skill_scene.free()
-		return _fail("存在重复技能场景 ID %s: %s" % [content_id, path])
+		return _fail("存在重复技能场景 ID %s: %s" % [skill_id, path])
 	var registration_errors := skill_scene.contract_errors()
 	registration_errors.append_array(status_visual_errors(skill_scene.skill_resource))
 	if not registration_errors.is_empty():
@@ -116,15 +74,14 @@ func _register_scene(path: String, source_id: String, expected_local_id: String)
 		return _fail("技能场景契约无效 %s: %s" % [path, "；".join(registration_errors)])
 	var skill_definition := skill_scene.skill_resource.to_dictionary()
 	var skill_resource_path := skill_scene.skill_resource.resource_path
-	skill_definition["id"] = content_id
+	skill_definition["id"] = skill_id
 	skill_definition["scene_path"] = path
-	_scenes[content_id] = packed_scene_resource
-	_definitions[content_id] = skill_definition
-	_sources[content_id] = source_id
+	_scenes[skill_id] = packed_scene_resource
+	_definitions[skill_id] = skill_definition
 	skill_scene.free()
 	return {
 		"ok": true,
-		"content_id": content_id,
+		"content_id": skill_id,
 		"definition": skill_definition.duplicate(true),
 		"scene_path": path,
 		"resource_path": skill_resource_path,
@@ -157,17 +114,3 @@ func status_visual_errors(skill: SkillDef) -> Array[String]:
 func _fail(message: String) -> Dictionary:
 	_errors.append(message)
 	return {"ok": false, "error": message}
-
-
-func _scene_paths(root_path: String) -> Array[String]:
-	var result: Array[String] = []
-	var directory := DirAccess.open(root_path)
-	if directory == null:
-		return result
-	for file_name in directory.get_files():
-		if file_name.get_extension().to_lower() == "tscn":
-			result.append("%s/%s" % [root_path, file_name])
-	for directory_name in directory.get_directories():
-		result.append_array(_scene_paths("%s/%s" % [root_path, directory_name]))
-	result.sort()
-	return result

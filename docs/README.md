@@ -1,6 +1,6 @@
 # 文档索引
 
-本文档是仓库文档的统一入口。游戏当前版本为 `0.2.0`，存档版本为 Schema 23，Mod 接口为 API 2。
+本文档是仓库文档的统一入口。游戏当前版本为 `0.2.0`，存档版本为 Schema 23。
 
 ## 项目与架构
 
@@ -23,32 +23,14 @@
 
 - [技能与状态动画制作](skill-authoring.md)：本体技能资源、场景和状态动画契约。
 
-## Mod 开发
-
-- [快速开始](modding/quick-start.md)
-- [包格式](modding/package-format.md)
-- [内容格式参考](modding/content-reference.md)
-- [GDScript API 2](modding/scripting-api.md)
-- [技能](modding/skills.md)
-- [形象](modding/appearances.md)
-- [角色状态](modding/actor-states.md)
-- [条件对白](modding/dialogues.md)
-- [存档与迁移](modding/save-and-migration.md)
-- [安全与排错](modding/security-and-troubleshooting.md)
-- [API 变更记录](modding/api-changelog.md)
-- [示例 Mod](../mod_sdk/example_mod/README.md)：可构建的完整示例工程。
-- [JSON Schema 2](modding/schemas/v2/manifest.schema.json)：Manifest 与内容 Schema，目录 [modding/schemas/v2/](modding/schemas/v2/) 共 13 个。
-- 构建产物统一输出到 [artifacts/](../artifacts/)，例如示例 Mod 的 `example_mod.pck`。
-
 ## 事实来源
 
 文档中的“当前实现”必须能在以下来源中得到验证：
 
 1. 运行时代码和 `project.godot`。
 2. `resources/` 下的 Godot 资源。
-3. `scripts/tests/` 下的回归测试。
+3. `scripts/debug/combat_sandbox.tscn` 交互调试场景及 Godot MCP 的场景树、UI 操作、运行日志和 `game_eval` 结果。
 4. 物品、技能、装备和敌人的静态定义以 `resources/` 下对应 `.tres` 为最终事实来源；`scripts/game/data/data_tables.gd` 保留稳定 ID、枚举、经济表、兼容回退及解析器生成的运行时字典；[内容数据表](item-table.md)是人工维护索引。
-5. Mod 契约以 `scripts/modding/internal/mod_schema_validator.gd`、公开 API 类和 JSON Schema 2 共同定义。
 
 ## 维护规范
 
@@ -56,5 +38,4 @@
 - 当前行为置于规划之前；未实现内容必须在标题或段首明确标记为“规划”。
 - 不用存档 Schema 编号命名普通功能章节；Schema 编号只用于迁移记录。
 - 文档、代码和资源引用使用相对链接；运行时 `res://` 路径保留为代码格式。
-- JSON 示例必须使用当前 Manifest/内容 Schema 2，且能够通过运行时校验。
-- 修改物品、战斗、命格、技能或 Mod 接口时，同步更新对应主题文档。
+- 修改物品、战斗、命格或技能时，同步更新对应主题文档。

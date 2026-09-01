@@ -28,6 +28,7 @@ id = "wood_corroding_vine"
 display_name = "蚀骨藤"
 icon_name = "wood_corroding_vine"
 icon_path = "res://assets/skills/wood_corroding_vine.png"
+attack_mode = "ranged"
 element = "wood"
 mp_cost = 8
 cooldown = 4.0

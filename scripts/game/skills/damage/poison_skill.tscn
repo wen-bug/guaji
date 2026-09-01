@@ -143,21 +143,9 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.3333333, 0.35, 1.126),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"values": [{
-"args": [],
-"method": &"open_hitbox"
-}, {
-"args": [],
-"method": &"impact"
-}, {
-"args": [],
-"method": &"close_hitbox"
-}, {
-"args": [],
-"method": &"finish_cast"
-}]
+"times": PackedFloat32Array(0.3333333, 1.126),
+"transitions": PackedFloat32Array(1, 1),
+"values": [{"args": [], "method": &"impact"}, {"args": [], "method": &"finish_cast"}]
 }
 tracks/1/type = "method"
 tracks/1/imported = false
@@ -192,9 +180,6 @@ _data = {
 &"cast": SubResource("Animation_owyld")
 }
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_whjnw"]
-size = Vector2(480, 96)
-
 [node name="PoisonSkill" type="Node2D" unique_id=1139879165]
 script = ExtResource("1_damage")
 skill_resource = ExtResource("2_owyld")
@@ -212,8 +197,3 @@ frame_progress = 1.0
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_foxv1")
-
-[node name="SkillHitbox" type="Area2D" parent="." unique_id=2136689167]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox" unique_id=1085655062]
-shape = SubResource("RectangleShape2D_whjnw")

@@ -17,7 +17,6 @@ enum ActorMode {
 	DEAD,
 }
 
-const ActorStateMachineScript = preload("res://scripts/modding/api/actor_state_machine.gd")
 const CombatActorStatusScript = preload("res://scripts/game/combat/combat_actor_status.gd")
 const DEFAULT_VISUAL_ID := "actor_default"
 const PARTY_VISUAL_ROOT := "res://scripts/actors/visuals/party"
@@ -51,12 +50,10 @@ var talk_label: Label
 var talk_tween: Tween
 var combat_visual: CombatVisual
 var combat_status: CombatActorStatus
-var actor_state_machine = ActorStateMachineScript.new()
 
 
 func _ready() -> void:
 	_bind_scene_nodes()
-	actor_state_machine.setup(self, _resolve_actor_state_factory)
 	rng.randomize()
 
 
@@ -206,11 +203,6 @@ func ensure_combat_status() -> CombatActorStatus:
 
 
 func _process(delta: float) -> void:
-	if actor_state_machine.state != null:
-		var requested = actor_state_machine.update(delta)
-		if requested is String and not str(requested).is_empty():
-			_apply_requested_actor_state(str(requested))
-		return
 	if moving:
 		_update_home_movement(delta)
 		return
@@ -277,8 +269,6 @@ func _face_target(target: Vector2) -> void:
 
 
 func _set_state(next_state: ActorMode, play_animation: bool = true) -> void:
-	if actor_state_machine.state != null:
-		actor_state_machine.clear()
 	if state == next_state and play_animation:
 		return
 	state = next_state
@@ -354,65 +344,14 @@ func _load_combat_visual() -> void:
 	_play_visual_state(&"idle")
 
 
-func request_actor_state(state_id: String, payload: Dictionary = {}) -> bool:
-	if state_id.begins_with("core:"):
-		_apply_requested_actor_state(state_id)
-		return true
-	moving = false
-	_hide_talk_bubble(true)
-	return actor_state_machine.transition(state_id, payload)
-
-
-func send_actor_state_event(event_id: StringName, payload: Dictionary = {}) -> void:
-	if actor_state_machine.state == null:
-		return
-	var requested = actor_state_machine.handle_event(event_id, payload)
-	if requested is String and not str(requested).is_empty():
-		_apply_requested_actor_state(str(requested))
-
-
-func _apply_requested_actor_state(state_id: String) -> void:
-	if not state_id.begins_with("core:"):
-		actor_state_machine.transition(state_id)
-		return
-	actor_state_machine.clear()
-	var core_id := state_id.trim_prefix("core:")
-	var mode_map := {
-		"idle": ActorMode.IDLE,
-		"roaming": ActorMode.ROAMING,
-		"talking": ActorMode.TALKING,
-		"paused": ActorMode.PAUSED,
-		"expedition_running": ActorMode.EXPEDITION_RUNNING,
-		"combat_ready": ActorMode.COMBAT_READY,
-		"combat_moving": ActorMode.COMBAT_MOVING,
-		"combat_acting": ActorMode.COMBAT_ACTING,
-		"dead": ActorMode.DEAD,
-	}
-	if mode_map.has(core_id):
-		_set_state(mode_map[core_id])
-
-
-func _resolve_actor_state_factory(state_id: String) -> Callable:
-	var api := get_node_or_null("/root/ModAPI")
-	return api.actor_state_factory(state_id) if api != null else Callable()
-
-
 func _pick_dialogue() -> Dictionary:
-	var api := get_node_or_null("/root/ModAPI")
-	if api == null:
-		return {}
-	var stats: Dictionary = member_data.get("stats", {})
-	var trait_ids: Array = []
-	for raw_trait in member_data.get("innate_traits", []):
-		trait_ids.append(DataTables.innate_trait_id(raw_trait))
-	return api.pick_dialogue({
-		"scene": "home",
-		"state": "idle",
-		"member_id": member_id,
-		"visual_id": visual_id,
-		"level": int(stats.get("level", 1)),
-		"trait_ids": trait_ids,
-	}, rng)
+	var lines := [
+		"今天也要稳稳修行。",
+		"家里真清静。",
+		"等一个新任务。",
+		"先散散步。",
+	]
+	return {"text": lines[rng.randi_range(0, lines.size() - 1)]}
 
 
 func _appearance_scene_path(requested_id: String, expected_kind: String, fallback_id: String) -> String:

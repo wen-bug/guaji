@@ -44,6 +44,7 @@ id = "earth_ji_harvest_bulwark"
 display_name = "丰穣壁"
 icon_name = "earth_ji_harvest_bulwark"
 icon_path = "res://assets/skills/earth_ji_harvest_bulwark.png"
+attack_mode = "ranged"
 element = "earth"
 mp_cost = 13
 cooldown = 8.0

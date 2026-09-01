@@ -287,26 +287,12 @@ animations = [{
 "speed": 3.5
 }]
 
-[sub_resource type="RectangleShape2D" id="HurtShape"]
-size = Vector2(48, 38)
-
-[sub_resource type="RectangleShape2D" id="AttackShape"]
-size = Vector2(66, 42)
-
 [node name="TurtleVisual" unique_id=2081178847 instance=ExtResource("1_base")]
 
 [node name="Sprite" parent="." index="0"]
 sprite_frames = SubResource("SpriteFrames_turtle")
 animation = &"idle"
 autoplay = "idle"
-
-[node name="CollisionShape2D" parent="Hurtbox" index="0"]
-position = Vector2(0, 3)
-shape = SubResource("HurtShape")
-
-[node name="CollisionShape2D" parent="AttackHitbox" index="0"]
-position = Vector2(-39, 2)
-shape = SubResource("AttackShape")
 
 [node name="Marker2D" parent="." index="3"]
 position = Vector2(-36, 0)

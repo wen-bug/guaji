@@ -17,6 +17,7 @@ display_name = "断岳式"
 icon_name = "metal_mountain_break"
 icon_path = "res://assets/skills/metal_mountain_break.png"
 element = "metal"
+attack_mode = "melee"
 mp_cost = 8
 cooldown = 4.0
 priority = 45

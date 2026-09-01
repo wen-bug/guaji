@@ -62,7 +62,7 @@ for each position:
 
 ## 规划：数据与形象池
 
-敌人模板新增兼容字段 `encounter_class`，枚举为 `normal`、`elite`、`boss`，未填写时固定按 `normal` 处理。该默认值保证已有本体敌人和未更新 Mod 继续进入普通池。
+敌人模板的兼容字段 `encounter_class` 枚举为 `normal`、`elite`、`boss`，未填写时固定按 `normal` 处理。
 
 普通和精英分别维护独立形象池。每个 `enemy_id` 在数据落地时固定绑定一个 `visual_id`，不能在每次生成时独立随机外观；绑定的形象必须存在于相同 `encounter_class` 的形象池。Boss 使用自身独立形象，不进入普通或精英形象池。
 
@@ -129,7 +129,7 @@ for each position:
 
 地图驱动的类别权重、异种敌人序列、`encounter_class` 和逐只结算框架已经落地。扩展到本文完整规划池前仍需补齐以下内容：
 
-- 补齐规划池尚缺的普通和精英敌人定义、技能定义、固定形象绑定、掉落与自动化测试。
+- 补齐规划池尚缺的普通和精英敌人定义、技能定义、固定形象绑定和掉落，并通过调试沙盒和 Godot MCP 验证。
 - 将现有 `stone_overlord` 等同名敌人直接扩展到规划数值和技能，不创建第二个同名实体或替换稳定 ID。
 - 补齐剩余 Boss 内容和按阶技能；详细边界见[Boss 遭遇](boss-encounters.md)。
 

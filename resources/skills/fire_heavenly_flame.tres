@@ -15,6 +15,7 @@ id = "fire_heavenly_flame"
 display_name = "天火劫"
 icon_name = "fire_heavenly_flame"
 icon_path = "res://assets/skills/fire_heavenly_flame.png"
+attack_mode = "ranged"
 element = "fire"
 mp_cost = 16
 cooldown = 8.0

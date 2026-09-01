@@ -30,6 +30,10 @@ var has_buff := false
 var has_debuff := false
 ## 技能默认五行；效果自身 element 非空时会覆盖它。
 @export var element := ""
+## 释放方式标签：melee 近战（走到目标身前后释放），ranged 远程（原地释放）。
+## auto 由 DataTables.normalize_skill_definition 按目标范围推导；
+## 普通攻击以 basic_attack_mode 为准。
+@export_enum("auto", "melee", "ranged") var attack_mode := "auto"
 
 @export_group("消耗与 AI")
 ## 释放技能消耗的法力值。
@@ -79,6 +83,7 @@ func setup(skill_id: String, data: Dictionary) -> SkillDef:
 	has_buff = bool(data.get("has_buff", false))
 	has_debuff = bool(data.get("has_debuff", false))
 	element = data.get("element", "")
+	attack_mode = _sanitize_attack_mode(data.get("attack_mode", attack_mode))
 	mp_cost = int(data.get("mp_cost", 0))
 	cooldown = float(data.get("cooldown", 0.0))
 	priority = int(data.get("priority", 0))
@@ -113,7 +118,7 @@ func to_dictionary() -> Dictionary:
 		"weight": weight,
 		"effects": effect_values,
 		"basic_attack_mode": basic_attack_mode,
-		"attack_mode": basic_attack_mode,
+		"attack_mode": attack_mode,
 		"basic_attack_range": basic_attack_range,
 		"exchange": {
 			"book_item_id": exchange_book_item_id,
@@ -123,3 +128,8 @@ func to_dictionary() -> Dictionary:
 		} if not exchange_book_item_id.is_empty() else {},
 		"description": description,
 	}
+
+
+static func _sanitize_attack_mode(value: Variant) -> String:
+	var mode := str(value)
+	return mode if ["auto", "melee", "ranged"].has(mode) else "auto"

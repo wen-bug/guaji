@@ -18,8 +18,4 @@ func setup(data: Dictionary) -> void:
 func select_action(_game_state, _target_status = null) -> Dictionary:
 	if enemy_data.is_empty():
 		return {}
-	return {
-		"kind": "basic_attack",
-		"base_damage": int(enemy_data.get("attack", 1)),
-		"element": "",
-	}
+	return DataTables.create_default_attack_skill(int(enemy_data.get("attack", 1)))

@@ -28,6 +28,7 @@ display_name = "震岳击"
 icon_name = "earth_mountain_strike"
 icon_path = "res://assets/skills/earth_mountain_strike.png"
 element = "earth"
+attack_mode = "melee"
 mp_cost = 6
 cooldown = 3.0
 priority = 45

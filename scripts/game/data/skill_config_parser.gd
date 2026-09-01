@@ -10,6 +10,7 @@ const VALID_EFFECT_KINDS := ["damage", "heal", "status", "cooldown"]
 const VALID_EFFECT_TARGETS := ["skill_targets", "caster", "primary_target", "hit_targets"]
 const VALID_STATUS_KINDS := ["dot", "hot", "shield", "buff_stat", "debuff_stat"]
 const VALID_STACK_MODES := ["refresh", "stack"]
+const VALID_ATTACK_MODES := ["auto", "melee", "ranged"]
 const ContentIndexResourceScript = preload("res://scripts/game/data/content_index_resource.gd")
 
 static var _loaded := false
@@ -67,6 +68,7 @@ static func validate_definition(data: Dictionary, source_path: String = "<memory
 	if int(data.get("mp_cost", 0)) < 0: errors.append("%s: mp_cost must be non-negative" % source_path)
 	if float(data.get("cooldown", 0.0)) < 0.0: errors.append("%s: cooldown must be non-negative" % source_path)
 	if float(data.get("weight", 1.0)) <= 0.0: errors.append("%s: weight must be positive" % source_path)
+	if data.has("attack_mode") and not VALID_ATTACK_MODES.has(str(data.get("attack_mode", ""))): errors.append("%s: attack_mode must be auto, melee or ranged" % source_path)
 	var effects = data.get("effects", [])
 	if not (effects is Array) or effects.is_empty():
 		errors.append("%s: effects must be a non-empty array" % source_path)

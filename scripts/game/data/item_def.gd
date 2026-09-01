@@ -43,7 +43,7 @@ extends Resource
 @export_enum("single", "aoe") var combat_target_mode := "single"
 ## 按顺序结算的类型化 ItemEffectDef 子资源。
 @export var effects: Array[Resource] = []
-## 仅供旧 Mod API 2 输入使用；核心资源必须保持为空。
+## 兼容旧物品数据的结构化载荷；新资源优先使用 effects。
 @export_storage var payload: Dictionary = {}
 
 

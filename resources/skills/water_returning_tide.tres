@@ -16,6 +16,7 @@ id = "water_returning_tide"
 display_name = "沧海归流"
 icon_name = "water_returning_tide"
 icon_path = "res://assets/skills/water_returning_tide.png"
+attack_mode = "ranged"
 element = "water"
 mp_cost = 15
 cooldown = 8.0

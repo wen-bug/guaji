@@ -29,6 +29,7 @@ id = "water_binding_array"
 display_name = "玄水缚"
 icon_name = "water_binding_array"
 icon_path = "res://assets/skills/water_binding_array.png"
+attack_mode = "ranged"
 element = "water"
 mp_cost = 11
 cooldown = 6.0

@@ -316,7 +316,7 @@ func _goods_entry_available(entry: Dictionary) -> bool:
 	var definition := DataTables.item_definition(item_id)
 	var type_id := str(definition.get("type", ""))
 	if type_id == DataTables.ITEM_TYPE_ALCHEMY_RECIPE:
-		# 核心已无图纸货物；Mod 丹药物品按其配方解锁等级判断是否仍值得购买
+		# 核心已无图纸货物；丹药按其配方解锁等级判断是否仍值得购买。
 		var payload_recipe := str(definition.get("payload", {}).get("recipe_id", ""))
 		var payload_def := DataTables.alchemy_recipe_def(payload_recipe)
 		return game_state.building_level("alchemy") < maxi(1, int(payload_def.get("unlock_building_level", 1)))

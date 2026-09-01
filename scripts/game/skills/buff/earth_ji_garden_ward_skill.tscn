@@ -15,13 +15,10 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.0, 0.2, 0.21, 0.49),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"values": [{"args": [], "method": &"open_hitbox"}, {"args": [], "method": &"impact"}, {"args": [], "method": &"close_hitbox"}, {"args": [], "method": &"finish_cast"}]
+"times": PackedFloat32Array(0.2, 0.49),
+"transitions": PackedFloat32Array(1, 1),
+"values": [{"args": [], "method": &"impact"}, {"args": [], "method": &"finish_cast"}]
 }
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_hitbox"]
-radius = 96.0
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_main"]
 _data = {&"RESET": SubResource("Animation_reset"), &"cast": SubResource("Animation_cast")}
@@ -37,8 +34,3 @@ anchor_role = "primary_target"
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_main")
-
-[node name="SkillHitbox" type="Area2D" parent="."]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox"]
-shape = SubResource("CircleShape2D_hitbox")

@@ -29,6 +29,7 @@ display_name = "星火引"
 icon_name = "fire_ding_ember_touch"
 icon_path = "res://assets/skills/fire_ding_ember_touch.png"
 element = "fire"
+attack_mode = "melee"
 mp_cost = 5
 cooldown = 2.0
 priority = 90

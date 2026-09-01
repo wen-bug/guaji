@@ -28,6 +28,7 @@ id = "fire_ding_cinder_storm"
 display_name = "余烬劫"
 icon_name = "fire_ding_cinder_storm"
 icon_path = "res://assets/skills/fire_ding_cinder_storm.png"
+attack_mode = "ranged"
 element = "fire"
 mp_cost = 14
 cooldown = 7.0

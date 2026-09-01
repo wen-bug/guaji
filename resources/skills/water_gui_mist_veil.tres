@@ -28,6 +28,7 @@ id = "water_gui_mist_veil"
 display_name = "薄雾纱"
 icon_name = "water_gui_mist_veil"
 icon_path = "res://assets/skills/water_gui_mist_veil.png"
+attack_mode = "ranged"
 element = "water"
 mp_cost = 6
 cooldown = 4.0

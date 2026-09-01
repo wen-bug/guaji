@@ -34,6 +34,7 @@ id = "earth_mountain_wall"
 display_name = "山河壁"
 icon_name = "earth_mountain_wall"
 icon_path = "res://assets/skills/earth_mountain_wall.png"
+attack_mode = "ranged"
 element = "earth"
 mp_cost = 14
 cooldown = 8.0

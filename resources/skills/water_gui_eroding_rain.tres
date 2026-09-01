@@ -42,6 +42,7 @@ id = "water_gui_eroding_rain"
 display_name = "侵蚀雨"
 icon_name = "water_gui_eroding_rain"
 icon_path = "res://assets/skills/water_gui_eroding_rain.png"
+attack_mode = "ranged"
 element = "water"
 mp_cost = 11
 cooldown = 6.0

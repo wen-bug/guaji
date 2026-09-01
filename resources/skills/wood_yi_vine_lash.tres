@@ -28,6 +28,7 @@ id = "wood_yi_vine_lash"
 display_name = "绊藤击"
 icon_name = "wood_yi_vine_lash"
 icon_path = "res://assets/skills/wood_yi_vine_lash.png"
+attack_mode = "melee"
 element = "wood"
 mp_cost = 5
 cooldown = 2.0

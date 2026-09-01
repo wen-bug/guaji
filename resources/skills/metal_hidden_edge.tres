@@ -23,6 +23,7 @@ id = "metal_hidden_edge"
 display_name = "藏锋诀"
 icon_name = "metal_hidden_edge"
 icon_path = "res://assets/skills/metal_hidden_edge.png"
+attack_mode = "ranged"
 element = "metal"
 mp_cost = 6
 cooldown = 6.0

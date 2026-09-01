@@ -30,6 +30,7 @@ id = "wolf_howl"
 display_name = "狼嚎"
 icon_texture = ExtResource("2_icon")
 target_scope = "all_enemies"
+attack_mode = "ranged"
 target_count = 3
 target_tendency = "front"
 element = "wood"

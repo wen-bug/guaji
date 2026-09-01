@@ -15,9 +15,9 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.05, 0.2, 0.25),
-"transitions": PackedFloat32Array(1, 1, 1),
-"values": [{"args": ["hit_1"], "method": &"open_hitbox"}, {"args": ["hit_1"], "method": &"impact"}, {"args": [], "method": &"close_hitbox"}]
+"times": PackedFloat32Array(0.2),
+"transitions": PackedFloat32Array(1),
+"values": [{"args": ["hit_1"], "method": &"impact"}]
 }
 tracks/1/type = "method"
 tracks/1/imported = false
@@ -26,9 +26,9 @@ tracks/1/path = NodePath(".")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0.4, 0.55, 0.6),
-"transitions": PackedFloat32Array(1, 1, 1),
-"values": [{"args": ["hit_2"], "method": &"open_hitbox"}, {"args": ["hit_2"], "method": &"impact"}, {"args": [], "method": &"close_hitbox"}]
+"times": PackedFloat32Array(0.55),
+"transitions": PackedFloat32Array(1),
+"values": [{"args": ["hit_2"], "method": &"impact"}]
 }
 tracks/2/type = "method"
 tracks/2/imported = false
@@ -37,9 +37,9 @@ tracks/2/path = NodePath(".")
 tracks/2/interp = 1
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0.75, 0.9, 0.95),
-"transitions": PackedFloat32Array(1, 1, 1),
-"values": [{"args": ["hit_3"], "method": &"open_hitbox"}, {"args": ["hit_3"], "method": &"impact"}, {"args": [], "method": &"close_hitbox"}]
+"times": PackedFloat32Array(0.9),
+"transitions": PackedFloat32Array(1),
+"values": [{"args": ["hit_3"], "method": &"impact"}]
 }
 tracks/3/type = "method"
 tracks/3/imported = false
@@ -52,9 +52,6 @@ tracks/3/keys = {
 "transitions": PackedFloat32Array(1),
 "values": [{"args": [], "method": &"finish_cast"}]
 }
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_hitbox"]
-size = Vector2(72.0, 96.0)
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_main"]
 _data = {&"RESET": SubResource("Animation_reset"), &"cast": SubResource("Animation_cast")}
@@ -70,8 +67,3 @@ anchor_role = "primary_target"
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_main")
-
-[node name="SkillHitbox" type="Area2D" parent="."]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox"]
-shape = SubResource("RectangleShape2D_hitbox")

@@ -21,6 +21,7 @@ id = "earth_ji_furrow_shelter"
 display_name = "垄亩庇"
 icon_name = "earth_ji_furrow_shelter"
 icon_path = "res://assets/skills/earth_ji_furrow_shelter.png"
+attack_mode = "ranged"
 element = "earth"
 mp_cost = 9
 cooldown = 6.0

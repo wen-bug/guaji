@@ -41,6 +41,7 @@ display_name = "寄种术"
 icon_name = "wood_yi_parasitic_seed"
 icon_path = "res://assets/skills/wood_yi_parasitic_seed.png"
 element = "wood"
+attack_mode = "ranged"
 mp_cost = 8
 cooldown = 4.0
 priority = 60

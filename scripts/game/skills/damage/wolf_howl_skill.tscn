@@ -15,21 +15,9 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.11, 0.29),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"values": [{
-"args": [],
-"method": &"open_hitbox"
-}, {
-"args": [],
-"method": &"impact"
-}, {
-"args": [],
-"method": &"close_hitbox"
-}, {
-"args": [],
-"method": &"finish_cast"
-}]
+"times": PackedFloat32Array(0.1, 0.29),
+"transitions": PackedFloat32Array(1, 1),
+"values": [{"args": [], "method": &"impact"}, {"args": [], "method": &"finish_cast"}]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_02cxo"]
@@ -37,9 +25,6 @@ _data = {
 &"RESET": SubResource("Animation_yexh8"),
 &"cast": SubResource("Animation_4oc1e")
 }
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_eys0g"]
-size = Vector2(480, 96)
 
 [node name="WolfHowlSkill" type="Node2D" unique_id=1549147273]
 script = ExtResource("1_4oc1e")
@@ -52,8 +37,3 @@ anchor_role = "primary_target"
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_02cxo")
-
-[node name="SkillHitbox" type="Area2D" parent="." unique_id=1563175428]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox" unique_id=1484904526]
-shape = SubResource("RectangleShape2D_eys0g")

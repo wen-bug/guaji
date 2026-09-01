@@ -3,8 +3,10 @@
 android/
 assets/
 addons/
-./tests/
 .agents/
 .godot_user/
 .vscode/
 .claude/
+.workbuddy/
+artifacts/
+docs/diagrams/

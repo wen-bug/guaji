@@ -81,6 +81,7 @@ const ATTACK_MODE_MELEE := "melee"
 const ATTACK_MODE_RANGED := "ranged"
 const ATTACK_MODES := [ATTACK_MODE_MELEE, ATTACK_MODE_RANGED]
 const RANGED_BASIC_ATTACK_ID := "fireball"
+const DEFAULT_ATTACK_SKILL_ID := "attack_skill"
 
 const SKILL_TARGET_SELF := "self"
 const SKILL_TARGET_SINGLE_ALLY := "single_ally"
@@ -593,8 +594,8 @@ const INNATE_TRAIT_DEFS := {
 	},
 	"sword_bone": {
 		"name": "天生剑骨",
-		"description": "普通攻击伤害提高 5% / 7% / 10%。",
-		"effects_by_rarity": {"common": [{"kind": "normal_attack_percent", "amount": 0.05}], "rare": [{"kind": "normal_attack_percent", "amount": 0.07}], "exceptional": [{"kind": "normal_attack_percent", "amount": 0.10}]},
+		"description": "直接伤害提高 5% / 7% / 10%。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.05}], "rare": [{"kind": "direct_damage_percent", "amount": 0.07}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.10}]},
 	},
 	"metal_edge": {
 		"name": "庚金锋魄",
@@ -628,8 +629,8 @@ const INNATE_TRAIT_DEFS := {
 	},
 	"burning_heart": {
 		"name": "烈性攻心",
-		"description": "普通攻击伤害提高；但受到的元素伤害增加。",
-		"effects_by_rarity": {"common": [{"kind": "normal_attack_percent", "amount": 0.08}, {"kind": "element_damage_taken_percent", "amount": 0.04}], "rare": [{"kind": "normal_attack_percent", "amount": 0.10}, {"kind": "element_damage_taken_percent", "amount": 0.05}], "exceptional": [{"kind": "normal_attack_percent", "amount": 0.12}, {"kind": "element_damage_taken_percent", "amount": 0.06}]},
+		"description": "直接伤害提高；但受到的元素伤害增加。",
+		"effects_by_rarity": {"common": [{"kind": "direct_damage_percent", "amount": 0.08}, {"kind": "element_damage_taken_percent", "amount": 0.04}], "rare": [{"kind": "direct_damage_percent", "amount": 0.10}, {"kind": "element_damage_taken_percent", "amount": 0.05}], "exceptional": [{"kind": "direct_damage_percent", "amount": 0.12}, {"kind": "element_damage_taken_percent", "amount": 0.06}]},
 	},
 	"heavy_body": {
 		"name": "重浊之身",
@@ -643,8 +644,8 @@ const INNATE_TRAIT_DEFS := {
 	},
 	"cold_obsession": {
 		"name": "寒魄偏执",
-		"description": "技能冷却减少；但普通攻击伤害降低。",
-		"effects_by_rarity": {"common": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "normal_attack_percent", "amount": -0.06}], "rare": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "normal_attack_percent", "amount": -0.08}], "exceptional": [{"kind": "skill_cooldown_turns", "amount": -2}, {"kind": "normal_attack_percent", "amount": -0.10}]},
+		"description": "技能冷却减少；但直接伤害降低。",
+		"effects_by_rarity": {"common": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "direct_damage_percent", "amount": -0.06}], "rare": [{"kind": "skill_cooldown_turns", "amount": -1}, {"kind": "direct_damage_percent", "amount": -0.08}], "exceptional": [{"kind": "skill_cooldown_turns", "amount": -2}, {"kind": "direct_damage_percent", "amount": -0.10}]},
 	},
 }
 
@@ -694,43 +695,91 @@ const ENEMY_SCENE_PATHS := {
 	"forest_wolf": "res://scripts/game/enemies/forest_wolf/enemy.tscn",
 }
 
+const APPEARANCE_DEFS := {
+	"actor_default": {"id": "actor_default", "kind": "party", "name": "默认角色", "scene_path": "res://scripts/actors/visuals/party/actor_default.tscn"},
+	"enemy_default": {"id": "enemy_default", "kind": "enemy", "name": "默认敌人", "scene_path": "res://scripts/actors/visuals/enemies/enemy_default.tscn"},
+	"forest_wolf": {"id": "forest_wolf", "kind": "enemy", "name": "林狼", "scene_path": "res://scripts/actors/visuals/enemies/forest_wolf.tscn"},
+	"training_dummy": {"id": "training_dummy", "kind": "enemy", "name": "木桩", "scene_path": "res://scripts/actors/visuals/enemies/training_dummy.tscn"},
+	"bear": {"id": "bear", "kind": "enemy", "name": "熊", "scene_path": "res://scripts/actors/visuals/enemies/bear.tscn"},
+	"gnome": {"id": "gnome", "kind": "enemy", "name": "地精", "scene_path": "res://scripts/actors/visuals/enemies/gnome.tscn"},
+	"lancer": {"id": "lancer", "kind": "enemy", "name": "枪兵", "scene_path": "res://scripts/actors/visuals/enemies/lancer.tscn"},
+	"lizard": {"id": "lizard", "kind": "enemy", "name": "蜥蜴", "scene_path": "res://scripts/actors/visuals/enemies/lizard.tscn"},
+	"minotaur": {"id": "minotaur", "kind": "enemy", "name": "牛头人", "scene_path": "res://scripts/actors/visuals/enemies/minotaur.tscn"},
+	"paddle_fish": {"id": "paddle_fish", "kind": "enemy", "name": "桨鱼", "scene_path": "res://scripts/actors/visuals/enemies/paddle_fish.tscn"},
+	"panda": {"id": "panda", "kind": "enemy", "name": "熊猫", "scene_path": "res://scripts/actors/visuals/enemies/panda.tscn"},
+	"shaman": {"id": "shaman", "kind": "enemy", "name": "萨满", "scene_path": "res://scripts/actors/visuals/enemies/shaman.tscn"},
+	"skull": {"id": "skull", "kind": "enemy", "name": "骷髅", "scene_path": "res://scripts/actors/visuals/enemies/skull.tscn"},
+	"snake": {"id": "snake", "kind": "enemy", "name": "蛇", "scene_path": "res://scripts/actors/visuals/enemies/snake.tscn"},
+	"spider": {"id": "spider", "kind": "enemy", "name": "蜘蛛", "scene_path": "res://scripts/actors/visuals/enemies/spider.tscn"},
+	"thief": {"id": "thief", "kind": "enemy", "name": "盗贼", "scene_path": "res://scripts/actors/visuals/enemies/thief.tscn"},
+	"troll": {"id": "troll", "kind": "enemy", "name": "巨人", "scene_path": "res://scripts/actors/visuals/enemies/troll.tscn"},
+	"turtle": {"id": "turtle", "kind": "enemy", "name": "龟", "scene_path": "res://scripts/actors/visuals/enemies/turtle.tscn"},
+}
+
 const DEFAULT_ENEMY_ID := "training_dummy"
 
 
-static func _mod_content():
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null:
-		return null
-	var api := tree.root.get_node_or_null("ModAPI")
-	return api.content if api != null else null
-
-
 static func content_definition(kind: String, content_id: String, fallback: Dictionary = {}) -> Dictionary:
-	var registry = _mod_content()
-	if registry != null and registry.has(kind, content_id):
-		return registry.definition(kind, content_id)
-	return fallback.duplicate(true)
+	if not fallback.is_empty():
+		return fallback.duplicate(true)
+	match kind:
+		"item":
+			return ITEM_DEFS.get(content_id, {}).duplicate(true)
+		"equipment":
+			return EQUIPMENT_DEFS.get(content_id, {}).duplicate(true)
+		"skill":
+			return core_skill_definition(content_id)
+		"enemy":
+			return core_enemy_definition(content_id)
+		"trait":
+			return INNATE_TRAIT_DEFS.get(content_id, {}).duplicate(true)
+		"recipe":
+			return ALCHEMY_RECIPE_DEFS.get(content_id, {}).duplicate(true)
+		"appearance":
+			return APPEARANCE_DEFS.get(content_id, {}).duplicate(true)
+		"basic_attack":
+			return BASIC_ATTACK_DEFS.get(content_id, {}).duplicate(true)
+		"enemy_rank":
+			return ENEMY_RANK_DEFS.get(content_id, {}).duplicate(true)
+	return {}
 
 
 static func content_definitions(kind: String, fallback: Dictionary = {}) -> Dictionary:
-	var registry = _mod_content()
-	return registry.all(kind) if registry != null else fallback.duplicate(true)
+	if not fallback.is_empty():
+		return fallback.duplicate(true)
+	match kind:
+		"item":
+			return ITEM_DEFS.duplicate(true)
+		"equipment":
+			return EQUIPMENT_DEFS.duplicate(true)
+		"skill":
+			return SKILL_DEFS.duplicate(true)
+		"enemy":
+			return all_core_enemy_definitions()
+		"trait":
+			return INNATE_TRAIT_DEFS.duplicate(true)
+		"recipe":
+			return ALCHEMY_RECIPE_DEFS.duplicate(true)
+		"appearance":
+			return APPEARANCE_DEFS.duplicate(true)
+		"basic_attack":
+			return BASIC_ATTACK_DEFS.duplicate(true)
+		"enemy_rank":
+			return ENEMY_RANK_DEFS.duplicate(true)
+	return {}
 
 
 static func content_ids(kind: String, fallback: Dictionary = {}) -> Array[String]:
-	var registry = _mod_content()
-	if registry != null:
-		return registry.ids(kind)
+	var definitions := content_definitions(kind, fallback)
 	var result: Array[String] = []
-	for content_id in fallback.keys():
+	for content_id in definitions.keys():
 		result.append(str(content_id))
 	result.sort()
 	return result
 
 
 static func content_has(kind: String, content_id: String, fallback: Dictionary = {}) -> bool:
-	var registry = _mod_content()
-	return registry.has(kind, content_id) if registry != null else fallback.has(content_id)
+	return fallback.has(content_id) if not fallback.is_empty() else not content_definition(kind, content_id).is_empty()
 
 
 static func item_definition(item_id: String) -> Dictionary:
@@ -1079,6 +1128,15 @@ static func create_basic_attack(attack_mode: String, base_damage: int = 0) -> Di
 	return attack
 
 
+static func create_default_attack_skill(base_damage: int) -> Dictionary:
+	var skill := create_skill(DEFAULT_ATTACK_SKILL_ID)
+	var effects: Array = skill.get("effects", []).duplicate(true)
+	if not effects.is_empty() and effects[0] is Dictionary:
+		effects[0]["base_amount"] = maxi(0, base_damage)
+	skill["effects"] = effects
+	return skill
+
+
 static func normalize_combat_affinity(value: String) -> String:
 	return value if COMBAT_AFFINITY_IDS.has(value) else COMBAT_AFFINITY_NORMAL
 
@@ -1129,6 +1187,7 @@ static func normalize_skill_definition(definition: Dictionary) -> Dictionary:
 		var tendency := str(skill.get("target_tendency", SKILL_TARGET_TENDENCY_FRONT))
 		skill["target_tendency"] = tendency if tendency in [SKILL_TARGET_TENDENCY_FRONT, SKILL_TARGET_TENDENCY_BACK] else SKILL_TARGET_TENDENCY_FRONT
 	skill.erase("release_distance")
+	skill["attack_mode"] = resolve_skill_attack_mode(skill)
 	skill["is_aoe"] = skill["target_mode"] == SKILL_TARGET_MODE_AOE
 	var tags: Array[String] = _skill_effect_tags(skill)
 	skill["effect_tags"] = tags
@@ -1139,6 +1198,32 @@ static func normalize_skill_definition(definition: Dictionary) -> Dictionary:
 
 static func skill_target_scope(skill: Dictionary) -> String:
 	return str(normalize_skill_definition(skill).get("target_scope", SKILL_TARGET_SINGLE_ENEMY))
+
+
+## 解析技能的近战/远程标签。显式 melee/ranged 优先；其次普通攻击的
+## basic_attack_mode；auto 按目标范围推导：指向自身、友方或群体的技能原地
+## 释放，单体对敌技能默认近战接战。
+static func resolve_skill_attack_mode(skill: Dictionary) -> String:
+	var mode := str(skill.get("attack_mode", "auto"))
+	if mode == ATTACK_MODE_MELEE or mode == ATTACK_MODE_RANGED:
+		return mode
+	var basic_mode := str(skill.get("basic_attack_mode", ""))
+	if basic_mode == ATTACK_MODE_MELEE or basic_mode == ATTACK_MODE_RANGED:
+		return basic_mode
+	if str(skill.get("type", "")) == "normal_attack":
+		return ATTACK_MODE_MELEE
+	var scope := str(skill.get("target_scope", ""))
+	if not SKILL_TARGET_SCOPES.has(scope):
+		scope = _default_skill_target_scope(str(skill.get("type", "")))
+	return ATTACK_MODE_MELEE if scope == SKILL_TARGET_SINGLE_ENEMY else ATTACK_MODE_RANGED
+
+
+static func skill_attack_mode(skill: Dictionary) -> String:
+	return str(normalize_skill_definition(skill).get("attack_mode", ATTACK_MODE_RANGED))
+
+
+static func skill_is_melee(skill: Dictionary) -> bool:
+	return skill_attack_mode(skill) == ATTACK_MODE_MELEE
 
 
 static func skill_target_mode(skill: Dictionary) -> String:
@@ -1485,12 +1570,7 @@ static func create_equipment(level: int, rng: RandomNumberGenerator, craft_bonus
 	var template_ids := content_ids("equipment", EQUIPMENT_DEFS)
 	if template_ids.is_empty():
 		return {}
-	var has_mod_templates := false
-	for candidate_id in template_ids:
-		if not EQUIPMENT_DEFS.has(str(candidate_id)):
-			has_mod_templates = true
-			break
-	var template_id := "" if has_mod_templates else EquipmentConfigParserScript.roll_template_id(rng)
+	var template_id := EquipmentConfigParserScript.roll_template_id(rng)
 	if template_id.is_empty() or not template_ids.has(template_id):
 		template_id = str(template_ids[rng.randi_range(0, template_ids.size() - 1)])
 	var rarity := "" if rarity_weights.is_empty() else random_rarity_from_weights(rng, rarity_weights)
@@ -1999,7 +2079,7 @@ static func item_type_name(type_id: String) -> String:
 		ITEM_TYPE_PILL:
 			return "丹药"
 		ITEM_TYPE_ALCHEMY_RECIPE:
-			return "图纸"  # 已废弃：核心已无图纸物品，保留类型名供 Mod 物品兼容
+			return "图纸"
 		_:
 			return type_id
 

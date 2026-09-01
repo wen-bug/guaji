@@ -25,6 +25,7 @@ display_name = "穿云一线"
 icon_name = "metal_xin_thread_pierce"
 icon_path = "res://assets/skills/metal_xin_thread_pierce.png"
 element = "metal"
+attack_mode = "ranged"
 mp_cost = 5
 cooldown = 2.0
 priority = 60

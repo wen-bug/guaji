@@ -1,7 +1,6 @@
 class_name Hud
 extends CanvasLayer
 
-const ModManagerPanelScript = preload("res://scripts/modding/ui/mod_manager_panel.gd")
 const SkillValueResolverScript = preload("res://scripts/game/combat/skill_value_resolver.gd")
 const MemberSkillSlotScript = preload("res://scripts/ui/member_skill_slot.gd")
 
@@ -55,6 +54,7 @@ signal home_camera_pan_started(direction: int)
 signal home_camera_pan_stopped()
 signal scene_transition_midpoint()
 signal scene_transition_finished()
+signal skill_test_requested()
 
 const DRAG_MARGIN := 12.0
 const INVENTORY_SLOT_COUNT := 25
@@ -149,7 +149,6 @@ const BUFF_TIME_WARNING_COLOR := Color(1.0, 0.66, 0.2, 1.0)
 @onready var fight_action_button: Button = $Root/FightPanel/PanelLayout/ExecuteButton
 @onready var expedition_hud: PanelContainer = $Root/ExpeditionHud
 @onready var return_home_button: Button = $Root/ExpeditionHud/PanelLayout/ReturnHomeButton
-@onready var skill_hitbox_mode_toggle: CheckButton = $Root/ExpeditionHud/PanelLayout/SkillHitboxModeToggle
 @onready var home_camera_controls: Control = $Root/HomeCameraControls
 @onready var home_camera_left_button: Button = $Root/HomeCameraControls/LeftButton
 @onready var home_camera_right_button: Button = $Root/HomeCameraControls/RightButton
@@ -168,6 +167,7 @@ const BUFF_TIME_WARNING_COLOR := Color(1.0, 0.66, 0.2, 1.0)
 @onready var debug_stat_option: OptionButton = $Root/DebugPanel/PanelLayout/StatRow/StatOption
 @onready var debug_stat_value_spinbox: SpinBox = $Root/DebugPanel/PanelLayout/StatRow/StatValueSpinBox
 @onready var debug_set_stat_button: Button = $Root/DebugPanel/PanelLayout/StatRow/SetStatButton
+@onready var debug_skill_test_button: Button = $Root/DebugPanel/PanelLayout/SkillTestButton
 @onready var alchemy_recipe_slot_button: Button = $Root/AlchemyPanel/PanelLayout/RecipeSlotButton
 @onready var alchemy_recipe_picker_panel: PanelContainer = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel
 @onready var alchemy_recipe_list: ItemList = $Root/AlchemyPanel/PanelLayout/RecipePickerPanel/RecipeList
@@ -276,8 +276,6 @@ var window_drag_mouse_start: Vector2 = Vector2.ZERO
 var window_drag_start_position: Vector2i = Vector2i.ZERO
 var menu_button_hover_tween: Tween = null
 var scene_transition_tween: Tween = null
-var mod_manager_button: Button = null
-var mod_manager_panel: Control = null
 var pending_salvage_instance_id := ""
 var pending_market_recycle_item_id := ""
 var pending_market_recycle_amount := 0
@@ -303,10 +301,6 @@ func _ready() -> void:
 	$Root/FightPanel/PanelLayout/ExecuteButton.pressed.connect(func(): home_action_requested.emit(GameDefs.TaskType.FIGHT))
 	expedition_map_option.item_selected.connect(_on_expedition_map_option_selected)
 	return_home_button.pressed.connect(func(): expedition_exit_requested.emit())
-	skill_hitbox_mode_toggle.toggled.connect(_on_skill_hitbox_mode_toggled)
-	var skill_presentation := get_node_or_null("/root/SkillPresentation")
-	if skill_presentation != null and skill_presentation.has_signal("mode_changed"):
-		skill_presentation.mode_changed.connect(_on_skill_presentation_mode_changed)
 	home_camera_left_button.button_down.connect(func(): home_camera_pan_started.emit(-1))
 	home_camera_left_button.button_up.connect(func(): home_camera_pan_stopped.emit())
 	home_camera_right_button.button_down.connect(func(): home_camera_pan_started.emit(1))
@@ -339,7 +333,6 @@ func _ready() -> void:
 	window_drag_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	loading_overlay.visible = false
 	loading_overlay.modulate.a = 0.0
-	_setup_mod_manager()
 
 
 func _initialize_static_control_data() -> void:
@@ -597,40 +590,8 @@ func _set_recruit_exchange_page(show_manual: bool) -> void:
 	for control in recruit_main_page_controls:
 		control.visible = not show_manual
 
-func _setup_mod_manager() -> void:
-	var root: Control = $Root
-	var mod_api := get_node_or_null("/root/ModAPI")
-	if mod_api == null:
-		return
-	mod_manager_button = Button.new()
-	mod_manager_button.name = "ModManagerButton"
-	mod_manager_button.text = "MOD"
-	mod_manager_button.tooltip_text = "Mod 管理"
-	mod_manager_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	mod_manager_button.position = Vector2(-58, 42)
-	mod_manager_button.size = Vector2(50, 28)
-	mod_manager_button.pressed.connect(func(): mod_manager_panel.open())
-	root.add_child(mod_manager_button)
-	mod_manager_panel = ModManagerPanelScript.new()
-	mod_manager_panel.name = "ModManagerPanel"
-	root.add_child(mod_manager_panel)
-	mod_manager_panel.setup(mod_api)
-
-
 func set_expedition_controls_visible(controls_visible: bool) -> void:
 	expedition_hud.visible = controls_visible
-
-
-func _on_skill_hitbox_mode_toggled(enabled: bool) -> void:
-	var skill_presentation := get_node_or_null("/root/SkillPresentation")
-	if skill_presentation == null or not skill_presentation.has_method("set_mode"):
-		return
-	skill_presentation.call("set_mode", &"hitbox" if enabled else &"material")
-	hud_save_requested.emit()
-
-
-func _on_skill_presentation_mode_changed(mode: StringName) -> void:
-	skill_hitbox_mode_toggle.set_pressed_no_signal(mode == &"hitbox")
 
 
 func set_home_camera_controls(controls_visible: bool, can_move_left: bool, can_move_right: bool) -> void:
@@ -713,11 +674,6 @@ func _input(event: InputEvent) -> void:
 
 func load_hud_save_data(data: Dictionary) -> void:
 	saved_panel_positions.clear()
-	var mode := StringName(str(data.get("skill_presentation_mode", "material")))
-	var skill_presentation := get_node_or_null("/root/SkillPresentation")
-	if skill_presentation != null and skill_presentation.has_method("set_mode"):
-		skill_presentation.call("set_mode", mode)
-		skill_hitbox_mode_toggle.set_pressed_no_signal(bool(skill_presentation.call("is_hitbox_mode")))
 	var panel_positions: Variant = data.get("panel_positions", {})
 	if panel_positions is Dictionary:
 		for panel_name in panel_positions.keys():
@@ -732,13 +688,8 @@ func load_hud_save_data(data: Dictionary) -> void:
 
 func to_hud_save_data() -> Dictionary:
 	_capture_current_panel_positions()
-	var mode := "material"
-	var skill_presentation := get_node_or_null("/root/SkillPresentation")
-	if skill_presentation != null and skill_presentation.has_method("get_mode"):
-		mode = str(skill_presentation.call("get_mode"))
 	return {
 		"panel_positions": saved_panel_positions.duplicate(true),
-		"skill_presentation_mode": mode,
 	}
 
 
@@ -1050,7 +1001,7 @@ func _refresh_member_info_skills(game_state) -> void:
 		var skill_id: String = str(skill.get("id", ""))
 		var slot: PanelContainer
 		if bool(skill.get("disabled", false)):
-			slot = _create_member_info_slot("技能%d" % (skill_index + 1), skill_id, "Mod 技能缺失，当前已禁用")
+			slot = _create_member_info_slot("技能%d" % (skill_index + 1), skill_id, "技能定义缺失，当前已禁用")
 		else:
 			var element_id: String = str(skill.get("element", ""))
 			var target_mode_text: String = DataTables.skill_target_mode_name(DataTables.skill_target_mode(skill))
@@ -1662,6 +1613,7 @@ func _connect_debug_controls() -> void:
 	debug_add_item_button.pressed.connect(_on_debug_add_item_pressed)
 	debug_add_equipment_button.pressed.connect(_on_debug_add_equipment_pressed)
 	debug_set_stat_button.pressed.connect(_on_debug_set_stat_pressed)
+	debug_skill_test_button.pressed.connect(func(): skill_test_requested.emit())
 
 
 func _draggable_panels() -> Array[Control]:

@@ -17,6 +17,7 @@ icon_texture = ExtResource("2_icon")
 icon_name = "thunder"
 icon_path = "res://assets/skills/thunder.png"
 element = "metal"
+attack_mode = "ranged"
 mp_cost = 12
 priority = 60
 effects = Array[Resource]([SubResource("Resource_damage")])

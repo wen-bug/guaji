@@ -136,21 +136,9 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.5333333, 0.55, 1.06),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"values": [{
-"args": [],
-"method": &"open_hitbox"
-}, {
-"args": [],
-"method": &"impact"
-}, {
-"args": [],
-"method": &"close_hitbox"
-}, {
-"args": [],
-"method": &"finish_cast"
-}]
+"times": PackedFloat32Array(0.5333333, 1.06),
+"transitions": PackedFloat32Array(1, 1),
+"values": [{"args": [], "method": &"impact"}, {"args": [], "method": &"finish_cast"}]
 }
 tracks/1/type = "method"
 tracks/1/imported = false
@@ -185,9 +173,6 @@ _data = {
 &"cast": SubResource("Animation_6i1xt")
 }
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_jhqdp"]
-size = Vector2(72, 96)
-
 [node name="HealSkill" type="Node2D" unique_id=1314482498]
 script = ExtResource("1_heal")
 skill_resource = ExtResource("2_6i1xt")
@@ -204,8 +189,3 @@ animation = &"cast"
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_dmny4")
-
-[node name="SkillHitbox" type="Area2D" parent="." unique_id=1013760276]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="SkillHitbox" unique_id=2072630824]
-shape = SubResource("RectangleShape2D_jhqdp")

@@ -3,6 +3,7 @@ extends Node2D
 const GAME_STATE_SCRIPT_PATH := "res://scripts/game/core/game_state.gd"
 const SAVE_MANAGER_SCRIPT_PATH := "res://scripts/game/core/save_manager.gd"
 const ACTOR_SCENE_PATH := "res://scripts/actors/actor.tscn"
+const SKILL_TEST_SCENE_PATH := "res://scripts/debug/combat_sandbox.tscn"
 const WINDOW_SIZE := Vector2i(960, 480)
 const SCENE_VIEWPORT_SIZE := Vector2(960, 480)
 const HOME_CAMERA_STEP := 48.0
@@ -53,9 +54,6 @@ func _ready() -> void:
 	if home_map != null:
 		home_map.update_progress_alerts(game_state)
 	hud.push_log("家园已启动")
-	var mod_api := get_node_or_null("/root/ModAPI")
-	if mod_api != null:
-		mod_api.notify_game_ready(game_state)
 
 
 func _on_home_node_selected(node_name: String) -> void:
@@ -504,6 +502,9 @@ func _connect_scene_signals() -> void:
 		var save_callback := Callable(self, "_queue_save_data")
 		if not hud.hud_save_requested.is_connected(save_callback):
 			hud.hud_save_requested.connect(save_callback)
+		var skill_test_callback := Callable(self, "_on_skill_test_requested")
+		if not hud.skill_test_requested.is_connected(skill_test_callback):
+			hud.skill_test_requested.connect(skill_test_callback)
 	if combat != null and hud != null:
 		var combat_log_callback := Callable(hud, "push_log")
 		if not combat.log_added.is_connected(combat_log_callback):
@@ -600,6 +601,15 @@ func _save_data() -> void:
 		"hud": hud_data,
 		"config": {"viewport_size": {"width": WINDOW_SIZE.x, "height": WINDOW_SIZE.y}},
 	})
+
+
+func _on_skill_test_requested() -> void:
+	if save_timer != null:
+		save_timer.stop()
+	_save_data()
+	var error := get_tree().change_scene_to_file(SKILL_TEST_SCENE_PATH)
+	if error != OK:
+		_push_log("技能测试场景打开失败：%s" % error_string(error))
 
 
 func _notification(what: int) -> void:

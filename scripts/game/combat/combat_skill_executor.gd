@@ -59,7 +59,7 @@ func execute(
 			"cooldown":
 				result["cooldown_multiplier"] = float(result.get("cooldown_multiplier", 1.0)) * maxf(0.0, float(effect.get("multiplier", 1.0)))
 			_:
-				_apply_custom_effect(caster, skill_targets, skill, effect, rng, result)
+				pass
 	if not result.get("target_ids", []).is_empty():
 		result["target_id"] = str(result.get("target_ids", [""])[0])
 	return result
@@ -183,25 +183,6 @@ func _apply_status_effect(caster: CombatActorStatus, targets: Array, skill: Dict
 			applied.append(status_event.get("status", {}).duplicate(true))
 			result["applied_effects"] = applied
 		_record_target(result, target.actor_id, {"status_id": str(status.get("status_id", ""))})
-
-
-func _apply_custom_effect(caster: CombatActorStatus, targets: Array, skill: Dictionary, effect: Dictionary, rng: RandomNumberGenerator, result: Dictionary) -> void:
-	var tree := Engine.get_main_loop() as SceneTree
-	var api := tree.root.get_node_or_null("ModAPI") if tree != null else null
-	var handler: Callable = api.effect_handler(str(effect.get("kind", ""))) if api != null else Callable()
-	if not handler.is_valid():
-		return
-	var custom_result = handler.call(effect.duplicate(true), {
-		"caster": caster,
-		"targets": targets.duplicate(),
-		"skill": skill.duplicate(true),
-		"rng": rng,
-	})
-	if not (custom_result is Dictionary):
-		return
-	_append_events(result, custom_result.get("events", []))
-	if custom_result.has("cooldown_multiplier"):
-		result["cooldown_multiplier"] = float(result.get("cooldown_multiplier", 1.0)) * maxf(0.0, float(custom_result.get("cooldown_multiplier", 1.0)))
 
 
 func _effect_targets(effect: Dictionary, caster: CombatActorStatus, skill_targets: Array, hit_targets: Array) -> Array:

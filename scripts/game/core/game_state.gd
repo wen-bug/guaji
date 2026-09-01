@@ -94,15 +94,6 @@ var market_state: Dictionary = {
 	"offers": [],
 	"commissions": [],
 }
-var orphaned_mod_data: Dictionary = {
-	"inventory": [],
-	"recipes": [],
-	"skills": [],
-	"traits": [],
-	"production_jobs": [],
-}
-
-
 func _init() -> void:
 	inventory_service = InventoryService.new(self)
 	market_service = MarketServiceScript.new(self)
@@ -174,15 +165,7 @@ func to_save_data() -> Dictionary:
 		"reward_progress": reward_progress.duplicate(true),
 		"permanent_building_bonuses": permanent_building_bonuses.duplicate(true),
 		"market_state": market_state.duplicate(true),
-		"orphaned_mod_data": orphaned_mod_data.duplicate(true),
 	}
-	var api = _mod_api()
-	if api != null:
-		api.emit_event(&"before_save", {
-			"schema_version": SAVE_SCHEMA_VERSION,
-			"party_member_ids": party_order.duplicate(),
-		})
-		result.merge(api.export_save_data(), true)
 	return result
 
 
@@ -192,11 +175,6 @@ func load_save_data(data: Dictionary) -> void:
 
 	var loaded_schema_version: int = int(data.get("schema_version", 1))
 	var legacy_production_jobs: Dictionary = data.get("production_jobs", {}).duplicate(true) if data.get("production_jobs", {}) is Dictionary else {}
-	orphaned_mod_data = data.get("orphaned_mod_data", orphaned_mod_data).duplicate(true)
-	_ensure_orphan_shape()
-	var api = _mod_api()
-	if api != null:
-		api.import_save_data(data)
 	_load_rng_state(data.get("rng", {}))
 	if data.has("account_progression"):
 		_load_dictionary_values(account_progression, data.get("account_progression", {}))
@@ -259,9 +237,8 @@ func load_save_data(data: Dictionary) -> void:
 	_ensure_account_progression()
 	_ensure_permanent_building_bonuses()
 	_ensure_farm_slots()
-	_restore_available_mod_content()
 	_resolve_member_skill_references()
-	_quarantine_unknown_mod_content()
+	_filter_unknown_content()
 	_sanitize_loaded_inventory()
 	if loaded_schema_version < 12:
 		_migrate_removed_production_traits()
@@ -297,68 +274,11 @@ func load_save_data(data: Dictionary) -> void:
 	changed.emit()
 
 
-func _mod_api():
-	var tree := Engine.get_main_loop() as SceneTree
-	return tree.root.get_node_or_null("ModAPI") if tree != null else null
-
-
-func _ensure_orphan_shape() -> void:
-	for key in ["inventory", "recipes", "skills", "traits", "production_jobs"]:
-		if not (orphaned_mod_data.get(key, null) is Array):
-			orphaned_mod_data[key] = []
-
-
 func _inventory_content_available(item: Dictionary) -> bool:
 	var item_id := str(item.get("item_id", ""))
 	if str(item.get("type", "")) == DataTables.ITEM_TYPE_EQUIPMENT:
 		return DataTables.content_has("equipment", item_id, DataTables.EQUIPMENT_DEFS)
 	return DataTables.content_has("item", item_id, DataTables.ITEM_DEFS)
-
-
-func _restore_available_mod_content() -> void:
-	_ensure_orphan_shape()
-	var remaining_inventory: Array = []
-	for item in orphaned_mod_data["inventory"]:
-		if not (item is Dictionary) or not _inventory_content_available(item):
-			remaining_inventory.append(item)
-			continue
-		var instance_id := str(item.get("instance_id", ""))
-		if inventory_item_by_instance(instance_id).is_empty():
-			inventory.append(item.duplicate(true))
-			var owner_id := str(item.get("equipped_by", ""))
-			var slot := str(item.get("equipped_slot", ""))
-			var owner := member_by_id(owner_id)
-			if not owner.is_empty() and not slot.is_empty():
-				owner.get("equipped", {})[slot] = instance_id
-	orphaned_mod_data["inventory"] = remaining_inventory
-	for category in ["skills", "traits"]:
-		var remaining: Array = []
-		var kind := "skill" if category == "skills" else "trait"
-		for record in orphaned_mod_data[category]:
-			if not (record is Dictionary) or not DataTables.content_has(kind, str(record.get("content_id", ""))):
-				remaining.append(record)
-				continue
-			var member := member_by_id(str(record.get("member_id", "")))
-			if member.is_empty():
-				remaining.append(record)
-				continue
-			var field := "skills" if category == "skills" else "innate_traits"
-			var values: Array = member.get(field, [])
-			values.append(record.get("value", {}).duplicate(true))
-			member[field] = values
-		orphaned_mod_data[category] = remaining
-	var pending_jobs: Dictionary = {}
-	var remaining_jobs: Array = []
-	for job in orphaned_mod_data["production_jobs"]:
-		if not (job is Dictionary):
-			continue
-		var building_id := str(job.get("building_id", ""))
-		if building_id == BUILDING_ALCHEMY and DataTables.item_definition(str(job.get("result_item_id", ""))).is_empty():
-			remaining_jobs.append(job)
-			continue
-		pending_jobs[building_id] = job.duplicate(true)
-	orphaned_mod_data["production_jobs"] = remaining_jobs
-	_settle_legacy_production_jobs(pending_jobs)
 
 
 func _migrate_removed_production_traits() -> void:
@@ -372,11 +292,6 @@ func _migrate_removed_production_traits() -> void:
 				if not REMOVED_PRODUCTION_TRAIT_IDS.has(trait_id):
 					kept_traits.append(raw_trait)
 			member["innate_traits"] = kept_traits
-	var kept_orphans: Array = []
-	for record in orphaned_mod_data.get("traits", []):
-		if not (record is Dictionary) or not REMOVED_PRODUCTION_TRAIT_IDS.has(str(record.get("content_id", ""))):
-			kept_orphans.append(record)
-	orphaned_mod_data["traits"] = kept_orphans
 
 
 func _settle_legacy_production_jobs(jobs: Dictionary) -> void:
@@ -396,7 +311,6 @@ func _settle_legacy_production_jobs(jobs: Dictionary) -> void:
 func _settle_legacy_forge_job(job: Dictionary) -> void:
 	var template_ids: Array = DataTables.content_ids("equipment", DataTables.EQUIPMENT_DEFS)
 	if template_ids.is_empty():
-		orphaned_mod_data["production_jobs"].append(job.duplicate(true))
 		return
 	var names: Array[String] = []
 	for _index in range(maxi(1, int(job.get("output_count", 1)))):
@@ -423,7 +337,6 @@ func _settle_legacy_forge_job(job: Dictionary) -> void:
 func _settle_legacy_alchemy_job(job: Dictionary) -> void:
 	var result_item_id := str(job.get("result_item_id", ""))
 	if result_item_id.is_empty() or DataTables.item_definition(result_item_id).is_empty():
-		orphaned_mod_data["production_jobs"].append(job.duplicate(true))
 		return
 	var amount := maxi(1, int(job.get("amount", 1)))
 	var result_count := amount * maxi(1, int(job.get("output_multiplier", 1)))
@@ -436,33 +349,22 @@ func _settle_legacy_alchemy_job(job: Dictionary) -> void:
 	log_added.emit("旧炼丹任务已结算：%s x%d" % [DataTables.resource_name(result_item_id), result_count])
 
 
-func _quarantine_unknown_mod_content() -> void:
-	_ensure_orphan_shape()
+func _filter_unknown_content() -> void:
 	var kept_inventory: Array = []
 	for item in inventory:
-		if item is Dictionary and not _inventory_content_available(item):
-			orphaned_mod_data["inventory"].append(item.duplicate(true))
-		else:
+		if item is Dictionary and _inventory_content_available(item):
 			kept_inventory.append(item)
 	inventory = kept_inventory
-	for member in companions:
-		if not (member is Dictionary):
-			continue
-		for field in ["innate_traits"]:
-			var kind := "trait"
-			var category := "traits"
-			var kept: Array = []
-			for value in member.get(field, []):
+	for collection in [companions, recruit_candidates]:
+		for member in collection:
+			if not (member is Dictionary):
+				continue
+			var kept_traits: Array = []
+			for value in member.get("innate_traits", []):
 				var content_id := str(value.get("id", "")) if value is Dictionary else str(value)
-				if DataTables.content_has(kind, content_id):
-					kept.append(value)
-				else:
-					orphaned_mod_data[category].append({
-						"member_id": str(member.get("id", "")),
-						"content_id": content_id,
-						"value": value.duplicate(true) if value is Dictionary or value is Array else value,
-					})
-			member[field] = kept
+				if DataTables.content_has("trait", content_id):
+					kept_traits.append(value)
+			member["innate_traits"] = kept_traits
 
 
 func _companions_save_data() -> Array:
@@ -480,23 +382,22 @@ func _companions_save_data() -> Array:
 
 
 func _resolve_member_skill_references() -> void:
-	for member in companions:
-		if not (member is Dictionary):
-			continue
-		var resolved: Array = []
-		for value in member.get("skills", []):
-			var skill_reference := _skill_reference(value)
-			var skill_id := str(skill_reference.get("id", ""))
-			if skill_id.is_empty():
+	for collection in [companions, recruit_candidates]:
+		for member in collection:
+			if not (member is Dictionary):
 				continue
-			if not DataTables.content_has("skill", skill_id, DataTables.SKILL_DEFS):
-				skill_reference["disabled"] = true
-				resolved.append(skill_reference)
-				continue
-			var skill := DataTables.create_skill(skill_id, str(skill_reference.get("obtain_source", "non_drop")))
-			skill["disabled"] = false
-			resolved.append(skill)
-		member["skills"] = resolved
+			var resolved: Array = []
+			for value in member.get("skills", []):
+				var skill_reference := _skill_reference(value)
+				var skill_id := str(skill_reference.get("id", ""))
+				if skill_id.is_empty():
+					continue
+				if not DataTables.content_has("skill", skill_id, DataTables.SKILL_DEFS):
+					continue
+				var skill := DataTables.create_skill(skill_id, str(skill_reference.get("obtain_source", "non_drop")))
+				skill["disabled"] = false
+				resolved.append(skill)
+			member["skills"] = resolved
 
 
 func _skill_reference(value) -> Dictionary:
@@ -1559,10 +1460,10 @@ func combat_total_stat_for(member_id: String, stat_id: String) -> int:
 	base_value *= 1.0 + _trait_stat_percent_bonus_for_member(member, stat_id)
 	var value := _apply_item_buff_modifiers_for_targets(base_value, stat_id, ["member", "combat_global"], member_id)
 	if stat_id == "attack":
-		var element_power := 0
+		var total_element_power := 0
 		for element_id in DataTables.ELEMENT_IDS:
-			element_power += combat_total_element_for(member_id, str(element_id))
-		value += int(float(element_power) * 0.15)
+			total_element_power += combat_total_element_for(member_id, str(element_id))
+		value += int(float(total_element_power) * 0.15)
 	return value
 
 
@@ -1804,7 +1705,7 @@ func add_cultivation(amount: int) -> void:
 
 func add_task_experience(task_type: int, amount: int) -> void:
 	var key: String = DataTables.task_zone_id(task_type)
-	# 保留 task_exp_percent 作为旧 Mod 命格兼容字段；内置命格不再使用。
+	# 保留 task_exp_percent 作为旧存档兼容字段；内置命格不再使用。
 	var bonus := 0.0
 	for member_id in party_order:
 		var member := member_by_id(str(member_id))
@@ -2716,7 +2617,7 @@ func innate_trait_effects_of_kind(member_id: String, kind: String) -> Array:
 
 
 func party_drop_chance_multiplier() -> float:
-	# 保留 drop_chance_percent 作为旧 Mod 命格兼容字段；内置命格不再使用。
+	# 保留 drop_chance_percent 作为旧存档兼容字段；内置命格不再使用。
 	var bonus := 0.0
 	for member_id in party_order:
 		var member := member_by_id(str(member_id))
@@ -3044,12 +2945,11 @@ func equipment_combat_modifiers_for(member_id: String) -> Dictionary:
 	result["leech_percent"] = float(result["leech_percent"]) + _innate_trait_modifier_for_member(member, "leech_percent")
 	result["defense_ignore"] = int(result["defense_ignore"]) + int(_innate_trait_modifier_for_member(member, "defense_ignore"))
 	# 命格专属修正：装备词条不存在这些 key，仅作为统一读取出口，不设上限。
-	result["normal_attack_percent"] = _innate_trait_modifier_for_member(member, "normal_attack_percent")
 	result["weakness_damage_percent"] = _innate_trait_modifier_for_member(member, "weakness_damage_percent")
 	result["physical_damage_taken_percent"] = _innate_trait_modifier_for_member(member, "physical_damage_taken_percent")
 	result["element_damage_taken_percent"] = _innate_trait_modifier_for_member(member, "element_damage_taken_percent")
 	result["skill_cooldown_turns"] = int(_innate_trait_modifier_for_member(member, "skill_cooldown_turns"))
-	# 仅兼容旧 Mod 命格；内置命格不再使用百分比冷却。
+	# 仅兼容旧存档命格；内置命格不再使用百分比冷却。
 	result["skill_cooldown_percent"] = _innate_trait_modifier_for_member(member, "skill_cooldown_percent")
 	for capped_id in DataTables.EQUIPMENT_COMBAT_MODIFIER_CAPS:
 		result[capped_id] = minf(float(result.get(capped_id, 0.0)), DataTables.equipment_combat_modifier_cap(str(capped_id)))

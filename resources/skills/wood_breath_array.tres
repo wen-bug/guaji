@@ -27,6 +27,7 @@ id = "wood_breath_array"
 display_name = "生息阵"
 icon_name = "wood_breath_array"
 icon_path = "res://assets/skills/wood_breath_array.png"
+attack_mode = "ranged"
 element = "wood"
 mp_cost = 10
 cooldown = 6.0

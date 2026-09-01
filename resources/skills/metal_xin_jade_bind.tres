@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="SkillDef" format=3]
+[gd_resource type="Resource" script_class="SkillDef" format=3 uid="uid://baljgbdof1cfm"]
 
-[ext_resource type="Script" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
-[ext_resource type="Script" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
-[ext_resource type="PackedScene" path="res://scripts/game/skills/status/visuals/debuff.tscn" id="3_status_debuff_stat"]
+[ext_resource type="Script" uid="uid://dxwqrv1hk7y7m" path="res://scripts/game/data/skill_def.gd" id="1_skill"]
+[ext_resource type="Script" uid="uid://cogeljjsxv1xu" path="res://scripts/game/data/skill_effect_def.gd" id="2_effect"]
+[ext_resource type="PackedScene" uid="uid://drjs0qnv1lccr" path="res://scripts/game/skills/status/visuals/debuff.tscn" id="3_status_debuff_stat"]
 
 [sub_resource type="Resource" id="Resource_fx_0"]
 script = ExtResource("2_effect")
@@ -14,14 +14,13 @@ script = ExtResource("2_effect")
 effect_id = "metal_xin_jade_bind_attack"
 kind = "status"
 target = "hit_targets"
-requires_hit = true
 base_amount = -2
+requires_hit = true
 status_id = "metal_xin_jade_bind_attack"
 status_kind = "debuff_stat"
 stat = "attack"
 duration_turns = 3
 status_visual_scene = ExtResource("3_status_debuff_stat")
-
 
 [resource]
 script = ExtResource("1_skill")
@@ -30,6 +29,7 @@ display_name = "珠缚诀"
 icon_name = "metal_xin_jade_bind"
 icon_path = "res://assets/skills/metal_xin_jade_bind.png"
 element = "metal"
+attack_mode = "ranged"
 mp_cost = 7
 cooldown = 5.0
 priority = 60

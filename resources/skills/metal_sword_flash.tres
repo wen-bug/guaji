@@ -16,6 +16,7 @@ display_name = "流光剑"
 icon_name = "metal_sword_flash"
 icon_path = "res://assets/skills/metal_sword_flash.png"
 element = "metal"
+attack_mode = "melee"
 mp_cost = 5
 cooldown = 2.0
 priority = 45

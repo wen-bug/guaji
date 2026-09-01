@@ -23,6 +23,7 @@ id = "earth_immovable_stance"
 display_name = "不动势"
 icon_name = "earth_immovable_stance"
 icon_path = "res://assets/skills/earth_immovable_stance.png"
+attack_mode = "ranged"
 element = "earth"
 mp_cost = 6
 cooldown = 6.0

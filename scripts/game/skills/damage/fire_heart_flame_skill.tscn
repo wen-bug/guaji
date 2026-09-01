@@ -1,8 +1,7 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/game/skills/damage/direct_damage_skill.gd" id="1_skill"]
 [ext_resource type="Resource" path="res://resources/skills/fire_heart_flame.tres" id="2_resource"]
-[ext_resource type="Script" path="res://scripts/game/skills/base/skill_projectile_path.gd" id="3_projectile"]
 
 [sub_resource type="Animation" id="Animation_reset"]
 length = 0.1
@@ -16,26 +15,10 @@ tracks/0/path = NodePath(".")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.45, 0.55, 0.57, 0.59),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"values": [{"args": [], "method": &"open_hitbox"}, {"args": [], "method": &"impact"}, {"args": [], "method": &"close_hitbox"}, {"args": [], "method": &"finish_cast"}]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("ProjectilePath:flight_progress")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0.0, 0.55),
+"times": PackedFloat32Array(0.55, 0.59),
 "transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0.0, 1.0]
+"values": [{"args": [], "method": &"impact"}, {"args": [], "method": &"finish_cast"}]
 }
-
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hitbox"]
-radius = 12.0
-height = 48.0
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_main"]
 _data = {&"RESET": SubResource("Animation_reset"), &"cast": SubResource("Animation_cast")}
@@ -51,11 +34,3 @@ anchor_role = "primary_target"
 callback_mode_process = 0
 callback_mode_method = 1
 libraries/ = SubResource("AnimationLibrary_main")
-
-[node name="ProjectilePath" type="Node2D" parent="."]
-script = ExtResource("3_projectile")
-
-[node name="SkillHitbox" type="Area2D" parent="ProjectilePath"]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="ProjectilePath/SkillHitbox"]
-shape = SubResource("CapsuleShape2D_hitbox")

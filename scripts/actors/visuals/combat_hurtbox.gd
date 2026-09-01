@@ -14,7 +14,6 @@ func configure_identity(value_actor_id: String, value_team: String) -> void:
 	actor_id = value_actor_id
 	team = value_team
 	monitoring = false
-	monitorable = true
+	monitorable = false
 	collision_mask = 0
-	collision_layer = PARTY_LAYER if team == TEAM_PARTY else ENEMY_LAYER
-
+	collision_layer = 0

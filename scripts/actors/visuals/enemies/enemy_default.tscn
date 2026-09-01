@@ -1,8 +1,6 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/actors/visuals/combat_visual.gd" id="1_visual"]
-[ext_resource type="Script" path="res://scripts/actors/visuals/combat_hurtbox.gd" id="2_hurtbox"]
-[ext_resource type="Script" path="res://scripts/actors/visuals/combat_hitbox.gd" id="3_hitbox"]
 
 [sub_resource type="Gradient" id="Gradient_white"]
 colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
@@ -13,12 +11,6 @@ width = 44
 height = 34
 fill_from = Vector2(0, 0)
 fill_to = Vector2(1, 1)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape_hurt"]
-size = Vector2(40, 32)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape_attack"]
-size = Vector2(42, 30)
 
 [sub_resource type="Animation" id="Animation_reset"]
 resource_name = "RESET"
@@ -55,9 +47,13 @@ length = 0.48
 tracks/0/type = "value"
 tracks/0/path = NodePath("Sprite2D:position")
 tracks/0/keys = {"times": PackedFloat32Array(0, 0.1, 0.2, 0.48), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector2(0, -8), Vector2(5, -8), Vector2(-12, -8), Vector2(0, -8)]}
-tracks/1/type = "method"
-tracks/1/path = NodePath(".")
-tracks/1/keys = {"times": PackedFloat32Array(0.16, 0.29), "transitions": PackedFloat32Array(1, 1), "values": [{"args": [], "method": &"open_attack_window"}, {"args": [], "method": &"close_attack_window"}]}
+
+[sub_resource type="Animation" id="Animation_ranged_attack"]
+resource_name = "ranged_attack"
+length = 0.48
+tracks/0/type = "value"
+tracks/0/path = NodePath("Sprite2D:position")
+tracks/0/keys = {"times": PackedFloat32Array(0, 0.48), "transitions": PackedFloat32Array(1, 1), "update": 0, "values": [Vector2(0, -8), Vector2(0, -8)]}
 
 [sub_resource type="Animation" id="Animation_hurt"]
 resource_name = "hurt"
@@ -80,9 +76,11 @@ tracks/1/keys = {"times": PackedFloat32Array(0, 0.42), "transitions": PackedFloa
 _data = {
 &"RESET": SubResource("Animation_reset"),
 &"attack": SubResource("Animation_attack"),
+&"melee_attack": SubResource("Animation_attack"),
 &"death": SubResource("Animation_death"),
 &"hurt": SubResource("Animation_hurt"),
 &"idle": SubResource("Animation_idle"),
+&"ranged_attack": SubResource("Animation_ranged_attack"),
 &"run": SubResource("Animation_run")
 }
 
@@ -93,21 +91,6 @@ placeholder_color = Color(0.55, 0.2, 0.2, 1)
 [node name="Sprite2D" type="Sprite2D" parent="."]
 position = Vector2(0, -8)
 texture = SubResource("GradientTexture_block")
-
-[node name="Hurtbox" type="Area2D" parent="."]
-script = ExtResource("2_hurtbox")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
-position = Vector2(0, -8)
-shape = SubResource("RectangleShape_hurt")
-
-[node name="AttackHitbox" type="Area2D" parent="."]
-monitoring = false
-script = ExtResource("3_hitbox")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox"]
-position = Vector2(-24, -7)
-shape = SubResource("RectangleShape_attack")
 
 [node name="Marker2D" type="Marker2D" parent="."]
 position = Vector2(-28, 0)
@@ -132,4 +115,3 @@ color = Color(0.92, 0.22, 0.18, 1)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries/ = SubResource("AnimationLibrary_default")
-

@@ -106,9 +106,6 @@ func recruit_candidate(candidate_id: String) -> bool:
 	companion["kind"] = "companion"
 	ensure_member_shape(companion)
 	game_state.companions.append(companion)
-	var mod_api = game_state._mod_api()
-	if mod_api != null:
-		mod_api.emit_event(&"member_created", {"member": companion.duplicate(true)})
 	if game_state.party_order.size() < PARTY_MAX_SIZE:
 		game_state.party_order.append(str(companion.get("id", "")))
 	else:

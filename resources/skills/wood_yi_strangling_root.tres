@@ -28,6 +28,7 @@ id = "wood_yi_strangling_root"
 display_name = "绞根杀"
 icon_name = "wood_yi_strangling_root"
 icon_path = "res://assets/skills/wood_yi_strangling_root.png"
+attack_mode = "ranged"
 element = "wood"
 mp_cost = 14
 cooldown = 8.0

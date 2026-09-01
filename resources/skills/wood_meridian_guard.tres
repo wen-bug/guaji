@@ -32,6 +32,7 @@ id = "wood_meridian_guard"
 display_name = "青木护脉"
 icon_name = "wood_meridian_guard"
 icon_path = "res://assets/skills/wood_meridian_guard.png"
+attack_mode = "ranged"
 element = "wood"
 mp_cost = 11
 cooldown = 7.0

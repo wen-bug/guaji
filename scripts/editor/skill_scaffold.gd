@@ -9,7 +9,7 @@ extends RefCounted
 ## 调用方式（game_eval 或任意编辑器/调试上下文）：
 ##   load("res://scripts/editor/skill_scaffold.gd").generate_all()
 ## 生成后人工三步：1. Inspector 填数值；2. EffectSprite 贴 SpriteFrames（参照 thunder_skill
-## 三轨道模式补 play/visible 轨道）；3. 判定块模式实放微调时机与判定形状。
+## 三轨道模式补 play/visible 轨道）；3. 微调 impact() 与 finish_cast() 的表现时机。
 
 const SKILL_INDEX_PATH := "res://resources/skills/index.tres"
 const ITEM_INDEX_PATH := "res://resources/items/index.tres"
@@ -25,16 +25,16 @@ const STAGE_EXCHANGE := {
 
 ## preset -> 场景结构参数。分类目录与根脚本按 SkillDef type 推导。
 const PRESETS := {
-	"single_enemy": {"type": "damage", "target_scope": "single_enemy", "anchor": "primary_target", "shape": "rect", "size": [72, 96], "length": 0.3, "keys": [0, 0.1, 0.11, 0.29]},
-	"aoe_enemy": {"type": "damage", "target_scope": "all_enemies", "anchor": "primary_target", "shape": "rect", "size": [480, 96], "length": 0.4, "keys": [0, 0.15, 0.16, 0.39]},
-	"self_buff": {"type": "buff", "target_scope": "self", "anchor": "caster", "shape": "rect", "size": [72, 96], "length": 0.3, "keys": [0, 0.1, 0.11, 0.29]},
-	"ally_buff": {"type": "defense", "target_scope": "single_ally", "anchor": "primary_target", "shape": "circle", "size": 96, "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
-	"heal_ally": {"type": "heal", "target_scope": "single_ally", "anchor": "primary_target", "shape": "circle", "size": 96, "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
-	"heal_all": {"type": "heal", "target_scope": "all_allies", "anchor": "caster", "shape": "rect", "size": [480, 96], "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
-	"team_buff": {"type": "defense", "target_scope": "all_allies", "anchor": "caster", "shape": "rect", "size": [480, 96], "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
-	"projectile": {"type": "damage", "target_scope": "single_enemy", "anchor": "primary_target", "shape": "capsule", "size": [12, 48], "length": 0.6, "keys": [0.45, 0.55, 0.57, 0.59], "projectile": true},
-	"multi_hit_2": {"type": "damage", "target_scope": "single_enemy", "anchor": "primary_target", "shape": "rect", "size": [72, 96], "length": 0.7, "windows": [[0.05, 0.2, 0.25], [0.4, 0.55, 0.6]], "finish": 0.69},
-	"multi_hit_3": {"type": "damage", "target_scope": "single_enemy", "anchor": "primary_target", "shape": "rect", "size": [72, 96], "length": 1.0, "windows": [[0.05, 0.2, 0.25], [0.4, 0.55, 0.6], [0.75, 0.9, 0.95]], "finish": 0.99},
+	"single_enemy": {"type": "damage", "target_scope": "single_enemy", "attack_mode": "melee", "anchor": "primary_target", "length": 0.3, "keys": [0, 0.1, 0.11, 0.29]},
+	"aoe_enemy": {"type": "damage", "target_scope": "all_enemies", "attack_mode": "ranged", "anchor": "primary_target", "length": 0.4, "keys": [0, 0.15, 0.16, 0.39]},
+	"self_buff": {"type": "buff", "target_scope": "self", "attack_mode": "ranged", "anchor": "caster", "length": 0.3, "keys": [0, 0.1, 0.11, 0.29]},
+	"ally_buff": {"type": "defense", "target_scope": "single_ally", "attack_mode": "ranged", "anchor": "primary_target", "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
+	"heal_ally": {"type": "heal", "target_scope": "single_ally", "attack_mode": "ranged", "anchor": "primary_target", "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
+	"heal_all": {"type": "heal", "target_scope": "all_allies", "attack_mode": "ranged", "anchor": "caster", "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
+	"team_buff": {"type": "defense", "target_scope": "all_allies", "attack_mode": "ranged", "anchor": "caster", "length": 0.5, "keys": [0, 0.2, 0.21, 0.49]},
+	"delayed_enemy": {"type": "damage", "target_scope": "single_enemy", "attack_mode": "ranged", "anchor": "primary_target", "length": 0.6, "keys": [0.45, 0.55, 0.57, 0.59]},
+	"multi_hit_2": {"type": "damage", "target_scope": "single_enemy", "attack_mode": "ranged", "anchor": "primary_target", "length": 0.7, "windows": [[0.05, 0.2, 0.25], [0.4, 0.55, 0.6]], "finish": 0.69},
+	"multi_hit_3": {"type": "damage", "target_scope": "single_enemy", "attack_mode": "ranged", "anchor": "primary_target", "length": 1.0, "windows": [[0.05, 0.2, 0.25], [0.4, 0.55, 0.6], [0.75, 0.9, 0.95]], "finish": 0.99},
 }
 
 const ROOT_SCRIPTS := {
@@ -49,7 +49,6 @@ const SCENE_DIRS := {
 	"defense": "buff",
 	"heal": "heal",
 }
-const PROJECTILE_SCRIPT := "res://scripts/game/skills/base/skill_projectile_path.gd"
 
 ## 通用状态场景（status_kind -> .tscn）。
 const STATUS_SCENES := {
@@ -105,7 +104,7 @@ const MANIFEST := [
 	{"id": "water_gui_eroding_rain", "name": "侵蚀雨", "element": "water", "stage": 4, "preset": "aoe_enemy", "mp": 11, "cd": 6.0, "fx": [["d", 0.6], ["stat", "attack", -1, 3], ["stat", "defense", -1, 3]], "desc": "侵蚀之雨，全面削弱全场敌人。"},
 	{"id": "water_gui_dew_mercy", "name": "甘霖降", "element": "water", "stage": 4, "preset": "heal_all", "mp": 13, "cd": 8.0, "trigger": "hp_below_35", "fx": [["h", 0.6]], "desc": "甘霖普降，救治全体同伴。"},
 	# 火·丙（三阶）
-	{"id": "fire_heart_flame", "name": "焚心火", "element": "fire", "stage": 3, "preset": "projectile", "mp": 6, "cd": 3.0, "fx": [["d", 1.3]], "desc": "心火化矢，掷向单个敌人。"},
+	{"id": "fire_heart_flame", "name": "焚心火", "element": "fire", "stage": 3, "preset": "delayed_enemy", "mp": 6, "cd": 3.0, "fx": [["d", 1.3]], "desc": "心火凝聚，灼击单个敌人。"},
 	{"id": "fire_blazing_mark", "name": "烈焰印", "element": "fire", "stage": 3, "preset": "aoe_enemy", "mp": 9, "cd": 5.0, "fx": [["d", 0.85], ["dot", 3, 2]], "desc": "烈焰烙印，灼烧全场敌人。"},
 	{"id": "fire_edge_rite", "name": "燃锋祭", "element": "fire", "stage": 3, "preset": "self_buff", "mp": 7, "cd": 6.0, "fx": [["stat", "attack", 4, 3]], "desc": "以火祭锋，短时间大幅提升攻击。"},
 	{"id": "fire_heavenly_flame", "name": "天火劫", "element": "fire", "stage": 3, "preset": "aoe_enemy", "mp": 16, "cd": 8.0, "fx": [["d", 1.55]], "desc": "天火降临，重创全场敌人。"},
@@ -163,9 +162,9 @@ static func generate_all() -> Dictionary:
 	report["manual_steps"] = [
 		"1. Inspector 填写 SkillDef 数值与效果（生成值为占位：伤害/治疗 base_amount=7）",
 		"2. EffectSprite 贴 SpriteFrames，参照 thunder_skill 三轨道模式补 play/visible 轨道",
-		"3. 判定块模式实放，微调 open/impact/close 时机与判定形状",
+		"3. 微调 impact() 与 finish_cast() 的动画时机",
 		"4. 补图标素材 res://assets/skills/<id>.png 与 res://assets/items/skill_book_<id>.png",
-		"5. 多段技能若追加状态效果，需为该效果显式指定 impact_id 对应窗口",
+		"5. 多段技能若追加状态效果，需为该效果显式指定 impact_id 对应结算帧",
 	]
 	print("技能脚手架：生成 %d，跳过 %d，错误 %d" % [report["generated"].size(), report["skipped"].size(), report["errors"].size()])
 	for id in report["generated"]:
@@ -249,6 +248,7 @@ static func _skill_def_text(spec: Dictionary) -> String:
 		lines.append("type = \"%s\"" % str(preset["type"]))
 	if str(preset["target_scope"]) != "single_enemy":
 		lines.append("target_scope = \"%s\"" % str(preset["target_scope"]))
+	lines.append("attack_mode = \"%s\"" % str(preset["attack_mode"]))
 	if str(preset["target_scope"]) in ["all_allies", "all_enemies"]:
 		lines.append("target_count = %d" % int(spec.get("target_count", 2)))
 		lines.append("target_tendency = \"%s\"" % str(spec.get("target_tendency", "front")))
@@ -335,8 +335,7 @@ static func _effect_sub_resource(spec: Dictionary, index: int, sub_id: String) -
 				lines.append("target = \"hit_targets\"")
 				lines.append("requires_hit = true")
 			elif is_buff and is_self_scope:
-				# 自身预设的增益显式挂自身；同伴/全队预设保持默认 skill_targets
-				# （判定块按 target_scope 绑定己方层，重叠谁增益就挂谁）。
+				# 自身预设的增益显式挂自身；同伴/全队预设保持默认 skill_targets。
 				lines.append("target = \"caster\"")
 			lines.append("base_amount = %d" % amount)
 			lines.append("status_id = \"%s_%s\"" % [id, str(fx[1])])
@@ -362,15 +361,11 @@ static func _float_text(value: float) -> String:
 static func _scene_text(spec: Dictionary, preset: Dictionary) -> String:
 	var id := str(spec["id"])
 	var root_script: String = ROOT_SCRIPTS[str(preset["type"])]
-	var is_projectile := bool(preset.get("projectile", false))
-	var windows: Array = preset.get("windows", [])
-	var ext_count := 2 + (1 if is_projectile else 0)
-	var sub_count := 4 # reset + cast + shape + library（flight 轨道在 cast 动画内部，不占子资源）
+	var ext_count := 2
+	var sub_count := 3 # reset + cast + library
 	var lines: Array[String] = ["[gd_scene load_steps=%d format=3]" % (ext_count + sub_count + 1), ""]
 	lines.append("[ext_resource type=\"Script\" path=\"%s\" id=\"1_skill\"]" % root_script)
 	lines.append("[ext_resource type=\"Resource\" path=\"res://resources/skills/%s.tres\" id=\"2_resource\"]" % id)
-	if is_projectile:
-		lines.append("[ext_resource type=\"Script\" path=\"%s\" id=\"3_projectile\"]" % PROJECTILE_SCRIPT)
 	lines.append("")
 	lines.append("[sub_resource type=\"Animation\" id=\"Animation_reset\"]")
 	lines.append("length = 0.1")
@@ -378,23 +373,23 @@ static func _scene_text(spec: Dictionary, preset: Dictionary) -> String:
 	lines.append("[sub_resource type=\"Animation\" id=\"Animation_cast\"]")
 	lines.append("length = %s" % _float_text(float(preset["length"])))
 	var track_index := 0
+	var impact_times: Array = []
+	var impact_methods: Array = []
+	var impact_args: Array = []
+	var windows: Array = preset.get("windows", [])
 	if windows.is_empty():
-		lines.append_array(_method_track_lines(track_index, ".", preset["keys"], [["open_hitbox"], ["impact"], ["close_hitbox"], ["finish_cast"]]))
-		track_index += 1
+		impact_times.append(float(preset["keys"][1]))
+		impact_methods.append(["impact"])
+		impact_args.append([])
 	else:
-		for window_index in range(windows.size()):
-			var window: Array = windows[window_index]
-			var window_id := "hit_%d" % (window_index + 1)
-			# close_hitbox 无参数；args 短一位时 _method_track_lines 自动回退 []。
-			lines.append_array(_method_track_lines(track_index, ".", [window[0], window[1], window[2]], [["open_hitbox"], ["impact"], ["close_hitbox"]], [[window_id], [window_id]]))
-			track_index += 1
-		lines.append_array(_method_track_lines(track_index, ".", [float(preset["finish"])], [["finish_cast"]]))
-		track_index += 1
-	if is_projectile:
-		# 弹道在 impact 时刻（keys[1]）抵达目标：flight_progress 0 -> 1
-		lines.append_array(_value_track_lines(track_index, "ProjectilePath:flight_progress", [0.0, float(preset["keys"][1])], [0.0, 1.0]))
-	lines.append("")
-	lines.append_array(_shape_lines(preset))
+		for index in range(windows.size()):
+			impact_times.append(float(windows[index][1]))
+			impact_methods.append(["impact"])
+			impact_args.append(["hit_%d" % (index + 1)])
+	lines.append_array(_method_track_lines(track_index, ".", impact_times, impact_methods, impact_args))
+	track_index += 1
+	var finish_time := float(preset["finish"]) if preset.has("finish") else float(preset["keys"][3])
+	lines.append_array(_method_track_lines(track_index, ".", [finish_time], [["finish_cast"]]))
 	lines.append("")
 	lines.append("[sub_resource type=\"AnimationLibrary\" id=\"AnimationLibrary_main\"]")
 	lines.append("_data = {&\"RESET\": SubResource(\"Animation_reset\"), &\"cast\": SubResource(\"Animation_cast\")}")
@@ -410,21 +405,6 @@ static func _scene_text(spec: Dictionary, preset: Dictionary) -> String:
 	lines.append("callback_mode_process = 0")
 	lines.append("callback_mode_method = 1")
 	lines.append("libraries/ = SubResource(\"AnimationLibrary_main\")")
-	lines.append("")
-	# .tscn 的 parent 路径相对场景根：弹道命中盒挂在 ProjectilePath 下时，
-	# CollisionShape2D 必须写 "ProjectilePath/SkillHitbox"，否则实例化时父节点丢失。
-	var hitbox_parent := "ProjectilePath/SkillHitbox" if is_projectile else "SkillHitbox"
-	if is_projectile:
-		lines.append("[node name=\"ProjectilePath\" type=\"Node2D\" parent=\".\"]")
-		lines.append("script = ExtResource(\"3_projectile\")")
-		lines.append("")
-		lines.append("[node name=\"SkillHitbox\" type=\"Area2D\" parent=\"ProjectilePath\"]")
-	else:
-		lines.append("[node name=\"SkillHitbox\" type=\"Area2D\" parent=\".\"]")
-	lines.append("")
-	lines.append("[node name=\"CollisionShape2D\" type=\"CollisionShape2D\" parent=\"%s\"]" % hitbox_parent)
-	lines.append("shape = SubResource(\"%s\")" % _shape_id(preset))
-	lines.append("")
 	return "\n".join(lines)
 
 
@@ -449,45 +429,6 @@ static func _method_track_lines(index: int, path: String, times: Array, methods:
 	lines.append("\"values\": [%s]" % ", ".join(values))
 	lines.append("}")
 	return lines
-
-
-static func _value_track_lines(index: int, path: String, times: Array, values: Array) -> Array[String]:
-	var times_text := ", ".join(times.map(func(value) -> String: return _float_text(float(value))))
-	var transitions := ", ".join(times.map(func(_value) -> String: return "1"))
-	var lines: Array[String] = []
-	lines.append("tracks/%d/type = \"value\"" % index)
-	lines.append("tracks/%d/imported = false" % index)
-	lines.append("tracks/%d/enabled = true" % index)
-	lines.append("tracks/%d/path = NodePath(\"%s\")" % [index, path])
-	lines.append("tracks/%d/interp = 1" % index)
-	lines.append("tracks/%d/loop_wrap = true" % index)
-	lines.append("tracks/%d/keys = {" % index)
-	lines.append("\"times\": PackedFloat32Array(%s)," % times_text)
-	lines.append("\"transitions\": PackedFloat32Array(%s)," % transitions)
-	lines.append("\"update\": 0,")
-	lines.append("\"values\": [%s]" % ", ".join(values.map(func(value) -> String: return _float_text(float(value)))))
-	lines.append("}")
-	return lines
-
-
-static func _shape_lines(preset: Dictionary) -> Array[String]:
-	var shape := str(preset["shape"])
-	var raw_size = preset["size"]
-	var size: Array = raw_size if raw_size is Array else [raw_size]
-	if shape == "circle":
-		return ["[sub_resource type=\"CircleShape2D\" id=\"CircleShape2D_hitbox\"]", "radius = %s" % _float_text(float(size[0]))]
-	if shape == "capsule":
-		return ["[sub_resource type=\"CapsuleShape2D\" id=\"CapsuleShape2D_hitbox\"]", "radius = %s" % _float_text(float(size[0])), "height = %s" % _float_text(float(size[1]))]
-	return ["[sub_resource type=\"RectangleShape2D\" id=\"RectangleShape2D_hitbox\"]", "size = Vector2(%s, %s)" % [_float_text(float(size[0])), _float_text(float(size[1]))]]
-
-
-static func _shape_id(preset: Dictionary) -> String:
-	match str(preset["shape"]):
-		"circle":
-			return "CircleShape2D_hitbox"
-		"capsule":
-			return "CapsuleShape2D_hitbox"
-	return "RectangleShape2D_hitbox"
 
 
 ## ---- 技能书 .tres 生成（参照 skill_book_water_cold_talisman.tres）----

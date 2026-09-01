@@ -39,6 +39,7 @@ id = "water_mirror_art"
 display_name = "水镜诀"
 icon_name = "water_mirror_art"
 icon_path = "res://assets/skills/water_mirror_art.png"
+attack_mode = "ranged"
 element = "water"
 mp_cost = 8
 cooldown = 5.0
